@@ -1,0 +1,11 @@
+{
+  "name": "plugin-contabilidad-electronica",
+  "version": "1.0.0",
+  "description": "el contador realizara la contabilidad electronica mensual, usa orquestador para elegir la skill que debe usar",
+  "author": "Despacho Contable",
+  "skills": [
+    "./orquestador.md",
+    "./skills/revision-gastos-no-deducibles-v4.md",
+    "./skills/cedula-facturacion-y-cobranza-mensual.md"
+  ]
+}

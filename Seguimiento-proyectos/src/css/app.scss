@@ -1,0 +1,80 @@
+// app global css
+// Estilos globales de la aplicacion
+
+// Tipografias institucionales (carpeta /src/assets/fonts)
+// Se usa `font-family: 'Matter', sans-serif` para el texto general
+@font-face {
+  font-family: 'Matter';
+  src: url('../assets/fonts/MATTER/Matter-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Matter';
+  src: url('../assets/fonts/MATTER/Matter-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Matter';
+  src: url('../assets/fonts/MATTER/Matter-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Matter';
+  src: url('../assets/fonts/MATTER/Matter-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+// Monument Extended se usa solo en titulos (encabezados de pagina)
+@font-face {
+  font-family: 'MonumentExtended';
+  src: url('../assets/fonts/MONUMENT/MonumentExtended-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MonumentExtended';
+  src: url('../assets/fonts/MONUMENT/MonumentExtended-Ultrabold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+// Se aplica Matter a todo el cuerpo de la aplicacion
+body {
+  font-family: 'Matter', 'Roboto', sans-serif;
+}
+
+// Los titulos principales usan Monument Extended
+.q-layout,
+.text-h1,
+.text-h2,
+.text-h3,
+.text-h4,
+.text-h5,
+.text-h6 {
+  font-family: 'Matter', 'Roboto', sans-serif;
+}
+
+// Foco visible para la navegacion con teclado (accesibilidad WCAG 2.4.7).
+// Quasar aplica `outline: 0` a QBtn/QItem y, ademas, la clase `.no-outline`
+// con `outline: 0 !important` a los botones; por eso aqui hace falta
+// `!important` para que el anillo realmente se pinte. `currentColor` mantiene
+// el contraste tanto en superficies claras (texto oscuro) como oscuras (menu).
+// `.q-item__section` entra porque hay bloques informativos NO clickables cuyo
+// elemento enfocable es la seccion y no el item (la identidad de usuario del
+// menu): sin ella su tooltip se queda sin acceso por teclado.
+.q-item:focus-visible,
+.q-item__section:focus-visible,
+.q-btn:focus-visible {
+  outline: 2px solid currentColor !important;
+  outline-offset: -2px;
+}
