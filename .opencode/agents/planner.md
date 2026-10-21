@@ -1,7 +1,7 @@
 ---
 description: SDD - redacta la spec, el plan y las tareas de una petición, sin tocar código
 mode: subagent
-model: anthropic/claude-sonnet-5-5
+model: opencode/nemotron-3.5-super-vl-free
 permissions:
   - action: edit
     resource: "*"
