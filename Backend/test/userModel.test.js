@@ -1,4 +1,13 @@
 const assert = require('node:assert');
+const crypto = require('node:crypto');
+const { describe, test, before, after } = require('node:test');
+const {
+  prepararBaseDeDatos,
+  crearUsuarioDePrueba,
+  registrarUsuarioCreado,
+  limpiarDatosDePrueba,
+  cerrarBaseDeDatos,
+} = require('../soporte-pruebas/bd');
 const {
   findByUsername,
   create,
@@ -14,12 +23,22 @@ const {
  * datos MariaDB de prueba configurada en `src/config/db.js`.
  * Mientras el módulo no exista, las pruebas fallan al importarlo (en rojo),
  * que es el estado esperado de la tarea T5.
+ *
+ * Aislamiento (plan 9.2 y 9.3): cada prueba crea sus propios usuarios con
+ * prefijo `zz_test_` y nombre único, y la limpieza del `after` borra solo lo
+ * que este proceso registró.
  */
 
+// Nombre único de usuario de prueba con el prefijo acordado (plan 9.3).
+function nombreDePrueba(prefijo) {
+  return `zz_test_${prefijo}_${crypto.randomBytes(4).toString('hex')}`;
+}
+
 async function testFindByUsernameDevuelveUsuarioExistente() {
-  const usuario = await findByUsername('admin_seed');
+  const propio = await crearUsuarioDePrueba('administrador');
+  const usuario = await findByUsername(propio.usuario);
   assert.ok(usuario, 'findByUsername debe devolver el usuario cuando existe');
-  assert.strictEqual(usuario.usuario, 'admin_seed');
+  assert.strictEqual(usuario.usuario, propio.usuario);
   assert.ok(usuario.password_hash, 'el usuario debe tener password_hash');
   assert.strictEqual(usuario.rol, 'administrador');
 }
@@ -34,18 +53,26 @@ async function testFindByUsernameDevuelveNullCuandoNoExiste() {
 }
 
 async function testCreateInsertaUsuarioYDevuelveId() {
-  const id = await create('usuario_create_t5', 'hash_prueba_t5', 'contador');
-  assert.ok(
-    typeof id === 'number' && id > 0,
+  const nombre = nombreDePrueba('usuario_create');
+  const id = await create(nombre, 'hash_prueba_t5', 'contador');
+  registrarUsuarioCreado(nombre);
+  assert.strictEqual(
+    typeof id,
+    'number',
     'create debe devolver el id numérico del usuario insertado'
   );
+  assert.ok(id > 0, 'el id devuelto por create debe ser mayor que cero');
   const usuario = await findById(id);
-  assert.strictEqual(usuario.usuario, 'usuario_create_t5');
+  assert.ok(usuario, 'el registro insertado debe existir con el id devuelto');
+  assert.strictEqual(usuario.id, id);
+  assert.strictEqual(usuario.usuario, nombre);
   assert.strictEqual(usuario.rol, 'contador');
 }
 
 async function testFindByIdDevuelveUsuarioExistente() {
-  const id = await create('usuario_findid_t5', 'hash_prueba_t5', 'contador');
+  const nombre = nombreDePrueba('usuario_findid');
+  const id = await create(nombre, 'hash_prueba_t5', 'contador');
+  registrarUsuarioCreado(nombre);
   const usuario = await findById(id);
   assert.ok(usuario, 'findById debe devolver el usuario cuando existe');
   assert.strictEqual(usuario.id, id);
@@ -62,15 +89,25 @@ async function testFindByIdDevuelveNullCuandoNoExiste() {
 }
 
 async function testFindAllDevuelveArray() {
+  const propio = await crearUsuarioDePrueba('administrador');
   const todos = await findAll();
   assert.ok(Array.isArray(todos), 'findAll debe devolver un array');
+  assert.ok(
+    todos.some((u) => u.id === propio.id),
+    'findAll debe incluir el usuario creado por la prueba'
+  );
 }
 
 async function testFindAllPorRolContadorSoloDevuelveContadores() {
+  const propio = await crearUsuarioDePrueba('contador');
   const contadores = await findAll({ rol: 'contador' });
   assert.ok(
     Array.isArray(contadores),
     'findAll({ rol: "contador" }) debe devolver un array'
+  );
+  assert.ok(
+    contadores.some((c) => c.id === propio.id),
+    'findAll(contador) debe incluir el contador creado por la prueba'
   );
   contadores.forEach((c) => {
     assert.strictEqual(
@@ -81,12 +118,21 @@ async function testFindAllPorRolContadorSoloDevuelveContadores() {
   });
 }
 
-module.exports = {
-  testFindByUsernameDevuelveUsuarioExistente,
-  testFindByUsernameDevuelveNullCuandoNoExiste,
-  testCreateInsertaUsuarioYDevuelveId,
-  testFindByIdDevuelveUsuarioExistente,
-  testFindByIdDevuelveNullCuandoNoExiste,
-  testFindAllDevuelveArray,
-  testFindAllPorRolContadorSoloDevuelveContadores,
-};
+describe('UserModel', () => {
+  before(async () => {
+    await prepararBaseDeDatos();
+  });
+
+  after(async () => {
+    await limpiarDatosDePrueba();
+    await cerrarBaseDeDatos();
+  });
+
+  test('findByUsername devuelve el usuario cuando existe', testFindByUsernameDevuelveUsuarioExistente);
+  test('findByUsername devuelve null cuando no existe', testFindByUsernameDevuelveNullCuandoNoExiste);
+  test('create inserta el usuario y devuelve su id', testCreateInsertaUsuarioYDevuelveId);
+  test('findById devuelve el usuario cuando existe', testFindByIdDevuelveUsuarioExistente);
+  test('findById devuelve null cuando no existe', testFindByIdDevuelveNullCuandoNoExiste);
+  test('findAll devuelve un array de usuarios', testFindAllDevuelveArray);
+  test('findAll por rol contador solo devuelve contadores', testFindAllPorRolContadorSoloDevuelveContadores);
+});

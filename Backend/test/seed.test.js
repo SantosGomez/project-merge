@@ -1,6 +1,12 @@
 const assert = require('node:assert');
+const { describe, test, before, after } = require('node:test');
+const {
+  prepararBaseDeDatos,
+  limpiarDatosDePrueba,
+  cerrarBaseDeDatos,
+} = require('../soporte-pruebas/bd');
 const { seedDatabase } = require('../src/utils/seed');
-const { findAll } = require('../src/models/UserModel');
+const { findByUsername, findAll } = require('../src/models/UserModel');
 
 /**
  * Pruebas del seed de datos maestros (RF-27).
@@ -8,35 +14,39 @@ const { findAll } = require('../src/models/UserModel');
  * MariaDB de prueba configurada en `src/config/db.js`.
  * Mientras el módulo no exista, las pruebas fallan al importarlo (en rojo),
  * que es el estado esperado de la tarea T5.
+ *
+ * Aislamiento (plan 9.2): solo se comprueban las cuentas que crea el seed
+ * (`admin_seed` y `contador_seed`), nunca el resto de la tabla, y ninguna
+ * prueba las borra ni las modifica.
  */
+
+// Cuenta cuántas filas hay con un nombre exacto (detecta duplicados del seed).
+async function contarPorNombre(nombre) {
+  const usuarios = await findAll();
+  return usuarios.filter((u) => u.usuario === nombre).length;
+}
 
 async function testSeedCreaAlmenosUnAdministradorYUnContador() {
   await seedDatabase();
-  const usuarios = await findAll();
-  const administradores = usuarios.filter((u) => u.rol === 'administrador');
-  const contadores = usuarios.filter((u) => u.rol === 'contador');
-  assert.ok(
-    administradores.length >= 1,
-    'el seed debe crear al menos una cuenta de administrador'
-  );
-  assert.ok(
-    contadores.length >= 1,
-    'el seed debe crear al menos una cuenta de contador'
-  );
+  const administrador = await findByUsername('admin_seed');
+  assert.ok(administrador, 'el seed debe crear la cuenta admin_seed');
+  assert.strictEqual(administrador.rol, 'administrador');
+  const contador = await findByUsername('contador_seed');
+  assert.ok(contador, 'el seed debe crear la cuenta contador_seed');
+  assert.strictEqual(contador.rol, 'contador');
 }
 
 async function testSeedContraseñasEstanHasheadasConArgon2id() {
   await seedDatabase();
-  const usuarios = await findAll();
-  const administrador = usuarios.find((u) => u.rol === 'administrador');
-  const contador = usuarios.find((u) => u.rol === 'contador');
-  assert.ok(administrador, 'debe existir un administrador para verificar su hash');
+  const administrador = await findByUsername('admin_seed');
+  assert.ok(administrador, 'debe existir admin_seed para verificar su hash');
   assert.ok(
     typeof administrador.password_hash === 'string' &&
       administrador.password_hash.startsWith('$argon2id$'),
     'la contraseña del administrador debe estar hasheada con Argon2id (RNF-1)'
   );
-  assert.ok(contador, 'debe existir un contador para verificar su hash');
+  const contador = await findByUsername('contador_seed');
+  assert.ok(contador, 'debe existir contador_seed para verificar su hash');
   assert.ok(
     typeof contador.password_hash === 'string' &&
       contador.password_hash.startsWith('$argon2id$'),
@@ -46,29 +56,38 @@ async function testSeedContraseñasEstanHasheadasConArgon2id() {
 
 async function testSeedNoDuplicaUsuariosAlEjecutarseDosVeces() {
   await seedDatabase();
-  const usuarios1 = await findAll();
-  const admins1 = usuarios1.filter((u) => u.rol === 'administrador').length;
-  const contadores1 = usuarios1.filter((u) => u.rol === 'contador').length;
+  const admins1 = await contarPorNombre('admin_seed');
+  const contadores1 = await contarPorNombre('contador_seed');
 
   await seedDatabase(); // segunda ejecución: no debe duplicar ni fallar
 
-  const usuarios2 = await findAll();
-  const admins2 = usuarios2.filter((u) => u.rol === 'administrador').length;
-  const contadores2 = usuarios2.filter((u) => u.rol === 'contador').length;
+  const admins2 = await contarPorNombre('admin_seed');
+  const contadores2 = await contarPorNombre('contador_seed');
   assert.strictEqual(
     admins2,
     admins1,
-    'el seed no debe duplicar el administrador cuando ya existe'
+    'el seed no debe duplicar admin_seed cuando ya existe'
   );
   assert.strictEqual(
     contadores2,
     contadores1,
-    'el seed no debe duplicar el contador cuando ya existe'
+    'el seed no debe duplicar contador_seed cuando ya existe'
   );
+  assert.strictEqual(admins2, 1, 'debe existir una sola cuenta admin_seed');
+  assert.strictEqual(contadores2, 1, 'debe existir una sola cuenta contador_seed');
 }
 
-module.exports = {
-  testSeedCreaAlmenosUnAdministradorYUnContador,
-  testSeedContraseñasEstanHasheadasConArgon2id,
-  testSeedNoDuplicaUsuariosAlEjecutarseDosVeces,
-};
+describe('seed de datos maestros', () => {
+  before(async () => {
+    await prepararBaseDeDatos();
+  });
+
+  after(async () => {
+    await limpiarDatosDePrueba();
+    await cerrarBaseDeDatos();
+  });
+
+  test('crea al menos un administrador y un contador', testSeedCreaAlmenosUnAdministradorYUnContador);
+  test('las contraseñas están hasheadas con Argon2id', testSeedContraseñasEstanHasheadasConArgon2id);
+  test('no duplica usuarios al ejecutarse dos veces', testSeedNoDuplicaUsuariosAlEjecutarseDosVeces);
+});

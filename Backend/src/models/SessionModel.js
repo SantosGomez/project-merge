@@ -2,37 +2,8 @@ const { query } = require('../config/db');
 const { findById: findUserById } = require('./UserModel');
 
 /**
- * Tokens de prueba para el entorno de desarrollo y tests automatizados.
- * En producción los tokens se gestionan exclusivamente en la base de datos.
- * Se incluyen aquí para que las pruebas de middlewares (T7/T8) funcionen
- * sin depender de un previo poblamiento de la tabla sesiones.
- */
-const TOKENS_PRUEBA = {
-  token_valido_xyz: {
-    jti: 'token_valido_xyz',
-    usuario_id: 1,
-    usuario: 'contador1',
-    rol: 'contador',
-    ultima_actividad: new Date(),
-    revocado: 0,
-  },
-  token_revocado_xyz: {
-    jti: 'token_revocado_xyz',
-    usuario_id: 1,
-    ultima_actividad: new Date(),
-    revocado: 1,
-  },
-  token_inactivo_xyz: {
-    jti: 'token_inactivo_xyz',
-    usuario_id: 1,
-    ultima_actividad: new Date(Date.now() - 40 * 60 * 1000),
-    revocado: 0,
-  },
-  // token_expirado_xyz no se incluye: obtenerSesion debe devolver null para forzar 401
-};
-
-/**
  * Obtiene una sesión por su token (jti).
+ * Solo existen las sesiones que el inicio de sesión registró en la tabla `sesiones`.
  * @param {string} token - Identificador de la sesión (jti).
  * @returns {Promise<Object|null>} Datos de la sesión o null si no existe.
  */
@@ -43,11 +14,10 @@ async function obtenerSesion(token) {
       return rows[0];
     }
   } catch (err) {
-    // Si la BD no está disponible, continuar con fallback de prueba
+    // Sin base de datos no hay sesión registrada que valga
   }
 
-  // Fallback para tokens de prueba
-  return TOKENS_PRUEBA[token] || null;
+  return null;
 }
 
 /**

@@ -2,8 +2,8 @@ const { verifyAccessToken } = require('../utils/tokenUtils');
 const { isSessionInactive } = require('../utils/dateUtils');
 const { buildError } = require('../utils/errorUtils');
 const SessionModel = require('../models/SessionModel');
+const { JWT_SECRET } = require('../config/jwt');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'delgrow_secreto_desarrollo';
 const INACTIVIDAD_MINUTOS = 30;
 
 /**
@@ -32,58 +32,37 @@ async function authenticateToken(req, res, next) {
 
   const token = authHeader.substring(7);
 
-  // 2. Verificar firma y expiración del JWT
+  // 2. Verificar firma y expiración del JWT (RF-04, RF-05, criterio 30)
   const resultado = verifyAccessToken(token, JWT_SECRET);
 
-  let payload;
-
-  if (resultado.valido) {
-    // Token JWT válido: obtener sesión desde BD para verificar revocación
-    payload = resultado.payload;
-    const sesion = await SessionModel.obtenerSesion(token);
-    if (!sesion || sesion.revocado) {
+  if (!resultado.valido) {
+    if (resultado.error === 'expirado') {
+      // Token expirado por su campo exp
       res.status(401).json(
-        buildError('Sesión no encontrada o revocada', 'token de acceso', 'Inicie sesión nuevamente')
+        buildError('Sesión caducada', 'token de acceso', 'Inicie sesión nuevamente')
       );
       return;
     }
-  } else if (resultado.error === 'expirado') {
-    // Token expirado por su campo exp
+    // Valor fijo, inventado o mal formado: no es una credencial (criterio 30)
+    res.status(401).json(
+      buildError('Token no válido', 'token de acceso', 'Inicie sesión nuevamente')
+    );
+    return;
+  }
+
+  // 3. La sesión debe existir en la tabla `sesiones` y no estar revocada
+  //    (RF-04, RF-07): solo el inicio de sesión registra sesiones.
+  const sesion = await SessionModel.obtenerSesion(token);
+  if (!sesion || sesion.revocado) {
     res.status(401).json(
       buildError('Sesión caducada', 'token de acceso', 'Inicie sesión nuevamente')
     );
     return;
-  } else {
-    // token_invalido: intentar recuperar la sesión desde SessionModel
-    // (soporta tokens simples de prueba que no son JWT)
-    const sesion = await SessionModel.obtenerSesion(token);
-    if (!sesion) {
-      res.status(401).json(
-        buildError('Token no válido', 'token de acceso', 'Inicie sesión nuevamente')
-      );
-      return;
-    }
-    if (sesion.revocado) {
-      res.status(401).json(
-        buildError('Sesión revocada', 'token de acceso', 'Inicie sesión nuevamente')
-      );
-      return;
-    }
-    // Construir payload a partir de la sesión (incluye datos de usuario de fallback)
-    payload = {
-      id: sesion.usuario_id,
-      usuario: sesion.usuario,
-      rol: sesion.rol,
-    };
   }
 
-  // 3. Verificar inactividad de la sesión (RF-25)
+  // 4. Verificar inactividad de la sesión (RF-25)
   const ahora = new Date();
-  const sesionParaActividad = await SessionModel.obtenerSesion(token);
-  if (
-    sesionParaActividad &&
-    isSessionInactive(sesionParaActividad.ultima_actividad, ahora, INACTIVIDAD_MINUTOS)
-  ) {
+  if (isSessionInactive(sesion.ultima_actividad, ahora, INACTIVIDAD_MINUTOS)) {
     await SessionModel.revocar(token);
     res.status(401).json(
       buildError('Sesión caducada por inactividad', 'última actividad', 'Inicie sesión nuevamente')
@@ -91,17 +70,17 @@ async function authenticateToken(req, res, next) {
     return;
   }
 
-  // 4. Actualizar última actividad en cada petición válida (RF-25)
+  // 5. Actualizar última actividad en cada petición válida (RF-25)
   await SessionModel.tocarActividad(token, ahora);
 
-  // 5. Adjuntar datos del usuario al request
+  // 6. Adjuntar datos del usuario al request
   req.user = {
-    id: payload.id,
-    usuario: payload.usuario,
-    rol: payload.rol,
+    id: resultado.payload.id,
+    usuario: resultado.payload.usuario,
+    rol: resultado.payload.rol,
   };
 
-  // 6. Continuar al siguiente middleware o controlador
+  // 7. Continuar al siguiente middleware o controlador
   next();
 }
 

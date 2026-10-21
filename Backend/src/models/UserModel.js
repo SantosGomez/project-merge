@@ -22,7 +22,7 @@ async function findByUsername(usuario) {
  */
 async function create(usuario, passwordHash, rol) {
   const ahora = formatLocalDate(nowLocal());
-  const [result] = await query(
+  const result = await query(
     'INSERT INTO usuarios (usuario, password_hash, rol, creado_en) VALUES (?, ?, ?, ?)',
     [usuario, passwordHash, rol, ahora]
   );

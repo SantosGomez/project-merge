@@ -1,4 +1,5 @@
 const assert = require('node:assert');
+const { describe, test } = require('node:test');
 const { buildError } = require('../src/utils/errorUtils');
 
 /**
@@ -31,7 +32,7 @@ function testBuildErrorMensajeEnEspanolNoAmbiguo() {
   assert.ok(!/error|invalid|failed|unauthorized/i.test(resultado.mensaje), 'el mensaje no debe contener términos ambiguos en inglés');
 }
 
-module.exports = {
-  testBuildErrorTresPartes,
-  testBuildErrorMensajeEnEspanolNoAmbiguo,
-};
+describe('errorUtils', () => {
+  test('testBuildErrorTresPartes', testBuildErrorTresPartes);
+  test('testBuildErrorMensajeEnEspanolNoAmbiguo', testBuildErrorMensajeEnEspanolNoAmbiguo);
+});

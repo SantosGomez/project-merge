@@ -1,4 +1,5 @@
 const assert = require('node:assert');
+const { describe, test } = require('node:test');
 const {
   validateLoginInput,
   validateNewCaseInput,
@@ -127,21 +128,21 @@ function testPrioridadesInvalidas() {
   assert.strictEqual(validatePriority('alta'), false); // distingue mayúsculas
 }
 
-module.exports = {
-  testLoginInputCamposVacios,
-  testLoginInputSoloEspacios,
-  testLoginInputFaltaUsuario,
-  testLoginInputFaltaContrasena,
-  testLoginInputValido,
-  testNuevoCasoClienteVacio,
-  testNuevoCasoClienteSoloEspacios,
-  testNuevoCasoClienteDemasiadoLargo,
-  testNuevoCasoClienteExactamente80,
-  testNuevoCasoPrioridadVacia,
-  testNuevoCasoPrioridadInvalida,
-  testNuevoCasoValido,
-  testStatusValidos,
-  testStatusInvalidos,
-  testPrioridadesValidas,
-  testPrioridadesInvalidas,
-};
+describe('validationUtils', () => {
+  test('testLoginInputCamposVacios', testLoginInputCamposVacios);
+  test('testLoginInputSoloEspacios', testLoginInputSoloEspacios);
+  test('testLoginInputFaltaUsuario', testLoginInputFaltaUsuario);
+  test('testLoginInputFaltaContrasena', testLoginInputFaltaContrasena);
+  test('testLoginInputValido', testLoginInputValido);
+  test('testNuevoCasoClienteVacio', testNuevoCasoClienteVacio);
+  test('testNuevoCasoClienteSoloEspacios', testNuevoCasoClienteSoloEspacios);
+  test('testNuevoCasoClienteDemasiadoLargo', testNuevoCasoClienteDemasiadoLargo);
+  test('testNuevoCasoClienteExactamente80', testNuevoCasoClienteExactamente80);
+  test('testNuevoCasoPrioridadVacia', testNuevoCasoPrioridadVacia);
+  test('testNuevoCasoPrioridadInvalida', testNuevoCasoPrioridadInvalida);
+  test('testNuevoCasoValido', testNuevoCasoValido);
+  test('testStatusValidos', testStatusValidos);
+  test('testStatusInvalidos', testStatusInvalidos);
+  test('testPrioridadesValidas', testPrioridadesValidas);
+  test('testPrioridadesInvalidas', testPrioridadesInvalidas);
+});

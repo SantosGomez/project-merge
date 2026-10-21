@@ -5,9 +5,7 @@ const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 const { verifyPassword } = require('../utils/passwordUtils');
 const { nowLocal } = require('../utils/dateUtils');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'delgrow_secret_cambiar_en_produccion';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
 /**
  * Inicio de sesión: valida credenciales, genera token JWT, registra sesión y devuelve token + rol + usuario.

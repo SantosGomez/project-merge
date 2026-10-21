@@ -1,193 +1,166 @@
 const assert = require('node:assert');
-const http = require('node:http');
-const express = require('express');
-const authRoutes = require('../src/routes/authRoutes');
-const userRoutes = require('../src/routes/userRoutes');
+const crypto = require('node:crypto');
+const { describe, test, before, after } = require('node:test');
+const {
+  prepararBaseDeDatos,
+  crearUsuarioDePrueba,
+  registrarUsuarioCreado,
+  limpiarDatosDePrueba,
+  cerrarBaseDeDatos,
+} = require('../soporte-pruebas/bd');
+const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
+const { query } = require('../src/config/db');
 
 /**
  * Pruebas de integración de las rutas de usuarios (userRoutes).
- * RF-28 a RF-30, RF-23, RNF-5, RNF-6.
+ * RF-28 a RF-30, RF-23, RNF-1, RNF-5, RNF-6.
  *
- * Inicia un servidor Express mínimo con las rutas de auth y usuarios montadas.
- * Requiere MariaDB de prueba.
+ * Levanta la aplicación real en un puerto libre con las rutas de autenticación y
+ * de usuarios montadas. Requiere MariaDB en marcha (XAMPP, puerto 3306).
+ *
+ * Aislamiento (plan 9.2 y 9.3): cada ejecución crea su propio administrador y su
+ * propio contador con prefijo `zz_test_`; los usuarios dados de alta por la API
+ * se registran para la limpieza y el `after` borra solo lo que este proceso creó.
  */
 
-function crearApp() {
-  const app = express();
-  app.use(express.json());
-  app.use('/auth', authRoutes);
-  app.use('/usuarios', userRoutes);
-  return app;
+let servidor;
+let administrador;
+let contador;
+
+// Nombre único de usuario de prueba con el prefijo acordado (plan 9.3).
+function nombreDePrueba(prefijo) {
+  return `zz_test_${prefijo}_${crypto.randomBytes(4).toString('hex')}`;
 }
 
-function iniciarServidor(app) {
-  return new Promise((resolve) => {
-    const server = app.listen(0, () => {
-      const puerto = server.address().port;
-      resolve({ server, puerto });
-    });
-  });
+async function loginAdmin() {
+  return iniciarSesion(servidor.puerto, administrador.usuario, administrador.password);
 }
 
-function hacerPeticion(puerto, metodo, ruta, datos, token) {
-  return new Promise((resolve, reject) => {
-    const body = datos ? JSON.stringify(datos) : null;
-    const opciones = {
-      hostname: '127.0.0.1',
-      port: puerto,
-      path: ruta,
-      method: metodo,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    };
-
-    const req = http.request(opciones, (res) => {
-      let datosRespuesta = '';
-      res.on('data', (trozo) => {
-        datosRespuesta += trozo;
-      });
-      res.on('end', () => {
-        let parsed;
-        try {
-          parsed = JSON.parse(datosRespuesta);
-        } catch (_) {
-          parsed = datosRespuesta;
-        }
-        resolve({ statusCode: res.statusCode, body: parsed, headers: res.headers });
-      });
-    });
-
-    req.on('error', reject);
-    if (body) req.write(body);
-    req.end();
-  });
-}
-
-async function loginAdmin(puerto) {
-  const resp = await hacerPeticion(puerto, 'POST', '/auth/login', {
-    usuario: 'admin_seed',
-    password: 'Admin1234',
-  });
-  assert.strictEqual(resp.statusCode, 200, 'login del admin debe ser exitoso');
-  return resp.body.token;
-}
-
-async function loginContador(puerto) {
-  const resp = await hacerPeticion(puerto, 'POST', '/auth/login', {
-    usuario: 'contador_seed',
-    password: 'Contador1234',
-  });
-  assert.strictEqual(resp.statusCode, 200, 'login del contador debe ser exitoso');
-  return resp.body.token;
+async function loginContador() {
+  return iniciarSesion(servidor.puerto, contador.usuario, contador.password);
 }
 
 // ---------- RF-28: admin da de alta un usuario ----------
 async function testAltaUsuarioComoAdmin() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginAdmin(puerto);
+  const token = await loginAdmin();
+  const nombre = nombreDePrueba('alta');
 
-    const respuesta = await hacerPeticion(
-      puerto,
-      'POST',
-      '/usuarios',
-      { usuario: 'nuevo_usuario_t9', password: 'NuevoPass1234', rol: 'contador' },
-      token
-    );
-    assert.strictEqual(respuesta.statusCode, 201, 'debe responder 201 al dar de alta usuario');
-    assert.ok(
-      respuesta.body.mensaje.includes('Usuario dado de alta correctamente'),
-      'mensaje debe indicar alta exitosa'
-    );
-  } finally {
-    server.close();
-  }
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: nombre, password: 'NuevoPass1234', rol: 'contador' },
+    token
+  );
+  // El usuario queda registrado para que la limpieza lo borre, aunque falle un aserto.
+  registrarUsuarioCreado(nombre);
+
+  assert.strictEqual(respuesta.statusCode, 201, 'debe responder 201 al dar de alta usuario');
+  assert.ok(
+    respuesta.body.mensaje.includes('Usuario dado de alta correctamente'),
+    'mensaje debe indicar alta exitosa'
+  );
+
+  // El alta deja una sola fila con ese nombre, con la contraseña hasheada con Argon2id (RF-28, RNF-1).
+  const filas = await query(
+    'SELECT id, usuario, password_hash, rol FROM usuarios WHERE usuario = ?',
+    [nombre]
+  );
+  assert.strictEqual(filas.length, 1, 'debe existir una sola fila con el nombre dado de alta');
+  assert.strictEqual(filas[0].usuario, nombre, 'la fila debe tener el nombre dado de alta');
+  assert.ok(
+    filas[0].password_hash.startsWith('$argon2id$'),
+    'la contraseña debe estar hasheada con Argon2id'
+  );
+  assert.strictEqual(filas[0].rol, 'contador', 'la fila debe tener el rol indicado en el alta');
 }
 
 // ---------- RF-29: contador no puede dar de alta usuarios (acceso denegado) ----------
 async function testAltaUsuarioComoContadorEsDenegado() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginContador(puerto);
+  const token = await loginContador();
+  const nombre = nombreDePrueba('denegado');
 
-    const respuesta = await hacerPeticion(
-      puerto,
-      'POST',
-      '/usuarios',
-      { usuario: 'otro_usuario_t9', password: 'OtroPass1234', rol: 'contador' },
-      token
-    );
-    assert.strictEqual(respuesta.statusCode, 403, 'debe responder 403 para contador');
-    assert.ok(
-      respuesta.body.mensaje.includes('Acceso denegado') || respuesta.body.mensaje.includes('Rol insuficiente'),
-      'mensaje debe ser de acceso denegado'
-    );
-  } finally {
-    server.close();
-  }
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: nombre, password: 'OtroPass1234', rol: 'contador' },
+    token
+  );
+  assert.strictEqual(respuesta.statusCode, 403, 'debe responder 403 para contador');
+  assert.ok(
+    respuesta.body.mensaje.includes('Acceso denegado') || respuesta.body.mensaje.includes('Rol insuficiente'),
+    'mensaje debe ser de acceso denegado'
+  );
+
+  // El contador no dio de alta a nadie: no debe existir ninguna fila con ese nombre.
+  const filas = await query('SELECT id FROM usuarios WHERE usuario = ?', [nombre]);
+  assert.strictEqual(filas.length, 0, 'el contador no debe poder crear usuarios');
 }
 
 // ---------- RF-30: datos inválidos al dar de alta ----------
 async function testAltaUsuarioDatosInvalidos() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginAdmin(puerto);
+  const token = await loginAdmin();
 
-    // Usuario vacío
-    const r1 = await hacerPeticion(
-      puerto,
-      'POST',
-      '/usuarios',
-      { usuario: '', password: 'Pass1234', rol: 'contador' },
-      token
-    );
-    assert.strictEqual(r1.statusCode, 400, 'debe responder 400 con usuario vacío');
+  // Usuario vacío
+  const r1 = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: '', password: 'Pass1234', rol: 'contador' },
+    token
+  );
+  assert.strictEqual(r1.statusCode, 400, 'debe responder 400 con usuario vacío');
 
-    // Contraseña corta (< 8 caracteres)
-    const r2 = await hacerPeticion(
-      puerto,
-      'POST',
-      '/usuarios',
-      { usuario: 'usuario_valido_t9', password: 'corto', rol: 'contador' },
-      token
-    );
-    assert.strictEqual(r2.statusCode, 400, 'debe responder 400 con contraseña corta');
-    assert.ok(r2.body.mensaje.includes('contraseña'), 'mensaje debe mencionar contraseña');
+  // Contraseña corta (< 8 caracteres)
+  const r2 = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: nombreDePrueba('clave_corta'), password: 'corto', rol: 'contador' },
+    token
+  );
+  assert.strictEqual(r2.statusCode, 400, 'debe responder 400 con contraseña corta');
+  assert.ok(r2.body.mensaje.includes('contraseña'), 'mensaje debe mencionar contraseña');
 
-    // Rol no permitido
-    const r3 = await hacerPeticion(
-      puerto,
-      'POST',
-      '/usuarios',
-      { usuario: 'usuario_rol_invalido_t9', password: 'Pass1234', rol: 'invitado' },
-      token
-    );
-    assert.strictEqual(r3.statusCode, 400, 'debe responder 400 con rol inválido');
-    assert.ok(r3.body.mensaje.includes('rol'), 'mensaje debe mencionar rol');
+  // Rol no permitido
+  const r3 = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: nombreDePrueba('rol_invalido'), password: 'Pass1234', rol: 'invitado' },
+    token
+  );
+  assert.strictEqual(r3.statusCode, 400, 'debe responder 400 con rol inválido');
+  assert.ok(r3.body.mensaje.includes('rol'), 'mensaje debe mencionar rol');
 
-    // Usuario ya existe
-    const r4 = await hacerPeticion(
-      puerto,
-      'POST',
-      '/usuarios',
-      { usuario: 'admin_seed', password: 'Pass1234', rol: 'contador' },
-      token
-    );
-    assert.strictEqual(r4.statusCode, 400, 'debe responder 400 si el usuario ya existe');
-    assert.ok(r4.body.mensaje.includes('usuario ya existe'), 'mensaje debe indicar que el usuario ya existe');
-  } finally {
-    server.close();
-  }
+  // Usuario ya existe (el administrador propio de esta prueba)
+  const r4 = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: administrador.usuario, password: 'Pass1234', rol: 'contador' },
+    token
+  );
+  assert.strictEqual(r4.statusCode, 400, 'debe responder 400 si el usuario ya existe');
+  assert.ok(r4.body.mensaje.includes('usuario ya existe'), 'mensaje debe indicar que el usuario ya existe');
 }
 
-module.exports = {
-  testAltaUsuarioComoAdmin,
-  testAltaUsuarioComoContadorEsDenegado,
-  testAltaUsuarioDatosInvalidos,
-};
+describe('rutas de usuarios', () => {
+  before(async () => {
+    await prepararBaseDeDatos();
+    administrador = await crearUsuarioDePrueba('administrador');
+    contador = await crearUsuarioDePrueba('contador');
+    servidor = await iniciarServidor();
+  });
+
+  after(async () => {
+    await servidor.cerrar();
+    await limpiarDatosDePrueba();
+    await cerrarBaseDeDatos();
+  });
+
+  test('el administrador da de alta un usuario con contraseña Argon2id', testAltaUsuarioComoAdmin);
+  test('el contador no puede dar de alta usuarios', testAltaUsuarioComoContadorEsDenegado);
+  test('los datos inválidos de alta responden 400', testAltaUsuarioDatosInvalidos);
+});

@@ -1,12 +1,22 @@
 const assert = require('node:assert');
+const { describe, test, before, after } = require('node:test');
 const { checkCaseOwnership } = require('../src/middlewares/ownershipMiddleware');
+const { query } = require('../src/config/db');
+const {
+  prepararBaseDeDatos,
+  crearUsuarioDePrueba,
+  crearCasoDePrueba,
+  limpiarDatosDePrueba,
+  cerrarBaseDeDatos,
+} = require('../soporte-pruebas/bd');
 
 /**
  * Pruebas del middleware de propiedad de caso checkCaseOwnership (RF-10, RF-11, RF-16).
  *
- * Requieren que exista `src/middlewares/ownershipMiddleware.js` (tarea T8).
- * Mientras el módulo no exista, las pruebas fallan al importarlo (en rojo),
- * que es el estado esperado de la tarea T7.
+ * Requiere MariaDB en marcha (XAMPP, puerto 3306, base delgrow_contadores).
+ * Aislamiento (plan 9.2): se usan dos contadores propios `zz_test_*` y sus casos
+ * propios; el caso inexistente se obtiene creando un caso y borrándolo, en lugar
+ * de depender de ids fijos. El `after` borra solo lo registrado por este proceso.
  *
  * El middleware:
  * - Verifica que el caso exista (CaseModel.findById)
@@ -14,6 +24,12 @@ const { checkCaseOwnership } = require('../src/middlewares/ownershipMiddleware')
  * - Rechaza con 404 si el caso no existe (RF-16)
  * - Rechaza con 403 si el caso es de otro contador (RF-10, RF-11)
  */
+
+let contadorPropietario;
+let contadorAjeno;
+let casoPropio;
+let casoAjeno;
+let casoEliminado;
 
 function crearRes() {
   return {
@@ -43,9 +59,9 @@ function reqConUsuarioYParam(idUsuario, idCaso) {
   return { user: { id: idUsuario }, params: { id: idCaso } };
 }
 
-// RF-10, RF-11: caso existente y del contador autenticado -> next llamado
+// ---------- RF-10, RF-11: caso existente y del contador autenticado ----------
 async function testCheckCaseOwnershipPermiteCasoPropio() {
-  const req = reqConUsuarioYParam(1, 10);
+  const req = reqConUsuarioYParam(contadorPropietario.id, casoPropio);
   const res = crearRes();
   const next = crearNext();
   await checkCaseOwnership(req, res, next);
@@ -53,9 +69,9 @@ async function testCheckCaseOwnershipPermiteCasoPropio() {
   assert.strictEqual(res.statusCode, 200, 'no debe establecer código de error');
 }
 
-// RF-16: caso inexistente -> 404, next no llamado
+// ---------- RF-16: caso inexistente ----------
 async function testCheckCaseOwnershipRechazaCasoInexistente() {
-  const req = reqConUsuarioYParam(1, 99999999);
+  const req = reqConUsuarioYParam(contadorPropietario.id, casoEliminado);
   const res = crearRes();
   const next = crearNext();
   await checkCaseOwnership(req, res, next);
@@ -72,9 +88,9 @@ async function testCheckCaseOwnershipRechazaCasoInexistente() {
   );
 }
 
-// RF-10, RF-11: caso existente pero de otro contador -> 403, next no llamado
+// ---------- RF-10, RF-11: caso existente pero de otro contador ----------
 async function testCheckCaseOwnershipRechazaCasoAjeno() {
-  const req = reqConUsuarioYParam(1, 20); // caso 20 pertenece al contador 2
+  const req = reqConUsuarioYParam(contadorPropietario.id, casoAjeno);
   const res = crearRes();
   const next = crearNext();
   await checkCaseOwnership(req, res, next);
@@ -91,9 +107,9 @@ async function testCheckCaseOwnershipRechazaCasoAjeno() {
   );
 }
 
-// RF-10, RF-11: sin req.user -> rechaza con 403 (o 401), next no llamado
+// ---------- RF-10, RF-11: sin req.user ----------
 async function testCheckCaseOwnershipRechazaSinUsuario() {
-  const req = { params: { id: 10 } };
+  const req = { params: { id: casoPropio } };
   const res = crearRes();
   const next = crearNext();
   await checkCaseOwnership(req, res, next);
@@ -104,9 +120,27 @@ async function testCheckCaseOwnershipRechazaSinUsuario() {
   assert.strictEqual(next.llamado(), false, 'no debe llamar a next sin usuario autenticado');
 }
 
-module.exports = {
-  testCheckCaseOwnershipPermiteCasoPropio,
-  testCheckCaseOwnershipRechazaCasoInexistente,
-  testCheckCaseOwnershipRechazaCasoAjeno,
-  testCheckCaseOwnershipRechazaSinUsuario,
-};
+describe('middleware de propiedad del caso', () => {
+  before(async () => {
+    await prepararBaseDeDatos();
+    contadorPropietario = await crearUsuarioDePrueba('contador');
+    contadorAjeno = await crearUsuarioDePrueba('contador');
+
+    casoPropio = await crearCasoDePrueba(contadorPropietario.id, { cliente: 'zz_test_caso_propio' });
+    casoAjeno = await crearCasoDePrueba(contadorAjeno.id, { cliente: 'zz_test_caso_ajeno' });
+
+    // Caso inexistente: se crea uno y se borra, así el id existió y ya no existe.
+    casoEliminado = await crearCasoDePrueba(contadorPropietario.id, { cliente: 'zz_test_caso_eliminado' });
+    await query('DELETE FROM casos WHERE id = ?', [casoEliminado]);
+  });
+
+  after(async () => {
+    await limpiarDatosDePrueba();
+    await cerrarBaseDeDatos();
+  });
+
+  test('permite un caso propio del contador autenticado', testCheckCaseOwnershipPermiteCasoPropio);
+  test('rechaza con 404 un caso inexistente', testCheckCaseOwnershipRechazaCasoInexistente);
+  test('rechaza con 403 un caso de otro contador', testCheckCaseOwnershipRechazaCasoAjeno);
+  test('rechaza sin usuario autenticado', testCheckCaseOwnershipRechazaSinUsuario);
+});

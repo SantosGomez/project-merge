@@ -1,4 +1,5 @@
 const assert = require('node:assert');
+const { describe, test } = require('node:test');
 const { hashPassword, verifyPassword } = require('../src/utils/passwordUtils');
 
 /**
@@ -34,9 +35,9 @@ async function testHashesDiferentesParaContrasenasDiferentes() {
   assert.notStrictEqual(hash1, hash2, 'hashes de contraseñas distintas no deben ser iguales');
 }
 
-module.exports = {
-  testHashPasswordDevuelveString,
-  testVerifyPasswordContrasenaCorrecta,
-  testVerifyPasswordContrasenaIncorrecta,
-  testHashesDiferentesParaContrasenasDiferentes,
-};
+describe('passwordUtils', () => {
+  test('testHashPasswordDevuelveString', testHashPasswordDevuelveString);
+  test('testVerifyPasswordContrasenaCorrecta', testVerifyPasswordContrasenaCorrecta);
+  test('testVerifyPasswordContrasenaIncorrecta', testVerifyPasswordContrasenaIncorrecta);
+  test('testHashesDiferentesParaContrasenasDiferentes', testHashesDiferentesParaContrasenasDiferentes);
+});

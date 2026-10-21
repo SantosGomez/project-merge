@@ -1,4 +1,5 @@
 const assert = require('node:assert');
+const { describe, test } = require('node:test');
 const { requireAdmin, requireAdminOrSistema } = require('../src/middlewares/roleMiddleware');
 
 /**
@@ -156,13 +157,13 @@ async function testRequireAdminOrSistemaRechazaSinUsuario() {
   assert.strictEqual(next.llamado(), false, 'requireAdminOrSistema no debe llamar a next sin usuario');
 }
 
-module.exports = {
-  testRequireAdminPermiteADministrador,
-  testRequireAdminRechazaAContador,
-  testRequireAdminRechazaAUsuariosDeSistema,
-  testRequireAdminRechazaSinUsuario,
-  testRequireAdminOrSistemaPermiteAAdministrador,
-  testRequireAdminOrSistemaPermiteAUsuariosDeSistema,
-  testRequireAdminOrSistemaRechazaAContador,
-  testRequireAdminOrSistemaRechazaSinUsuario,
-};
+describe('roleMiddleware', () => {
+  test('testRequireAdminPermiteADministrador', testRequireAdminPermiteADministrador);
+  test('testRequireAdminRechazaAContador', testRequireAdminRechazaAContador);
+  test('testRequireAdminRechazaAUsuariosDeSistema', testRequireAdminRechazaAUsuariosDeSistema);
+  test('testRequireAdminRechazaSinUsuario', testRequireAdminRechazaSinUsuario);
+  test('testRequireAdminOrSistemaPermiteAAdministrador', testRequireAdminOrSistemaPermiteAAdministrador);
+  test('testRequireAdminOrSistemaPermiteAUsuariosDeSistema', testRequireAdminOrSistemaPermiteAUsuariosDeSistema);
+  test('testRequireAdminOrSistemaRechazaAContador', testRequireAdminOrSistemaRechazaAContador);
+  test('testRequireAdminOrSistemaRechazaSinUsuario', testRequireAdminOrSistemaRechazaSinUsuario);
+});

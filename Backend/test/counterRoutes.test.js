@@ -1,196 +1,168 @@
 const assert = require('node:assert');
-const http = require('node:http');
-const express = require('express');
-const authRoutes = require('../src/routes/authRoutes');
-const counterRoutes = require('../src/routes/counterRoutes');
+const { describe, test, before, after } = require('node:test');
+const {
+  prepararBaseDeDatos,
+  crearUsuarioDePrueba,
+  crearCasoDePrueba,
+  limpiarDatosDePrueba,
+  cerrarBaseDeDatos,
+} = require('../soporte-pruebas/bd');
+const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
+const { query } = require('../src/config/db');
 
 /**
  * Pruebas de integración de las rutas de contadores (counterRoutes).
  * RF-12 a RF-16, RF-08, RF-09, RF-23, RNF-5, RNF-6.
  *
- * Inicia un servidor Express mínimo con las rutas de auth y contadores montadas.
- * Requiere MariaDB de prueba.
+ * Levanta la aplicación real en un puerto libre y hace peticiones HTTP reales.
+ * Requiere MariaDB en marcha (XAMPP, puerto 3306, base delgrow_contadores).
+ *
+ * Aislamiento (plan 9.2 y 9.3): cada ejecución crea su propio administrador y sus
+ * propios contadores con prefijo `zz_test_`; los conteos y los casos se afirman
+ * sobre datos propios (nunca sobre el seed ni sobre `contadores[0]`), el id
+ * inexistente se calcula en vez de fijarlo y el `after` borra solo lo que este
+ * proceso registró y cierra el pool.
  */
 
-function crearApp() {
-  const app = express();
-  app.use(express.json());
-  app.use('/auth', authRoutes);
-  app.use('/contadores', counterRoutes);
-  return app;
+let servidor;
+let administrador;
+let contador;
+let contadorConCasos;
+let tokenAdmin;
+let tokenContador;
+
+async function iniciarSesionDe(usuario) {
+  return iniciarSesion(servidor.puerto, usuario.usuario, usuario.password);
 }
 
-function iniciarServidor(app) {
-  return new Promise((resolve) => {
-    const server = app.listen(0, () => {
-      const puerto = server.address().port;
-      resolve({ server, puerto });
-    });
-  });
-}
-
-function hacerPeticion(puerto, metodo, ruta, datos, token) {
-  return new Promise((resolve, reject) => {
-    const body = datos ? JSON.stringify(datos) : null;
-    const opciones = {
-      hostname: '127.0.0.1',
-      port: puerto,
-      path: ruta,
-      method: metodo,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    };
-
-    const req = http.request(opciones, (res) => {
-      let datosRespuesta = '';
-      res.on('data', (trozo) => {
-        datosRespuesta += trozo;
-      });
-      res.on('end', () => {
-        let parsed;
-        try {
-          parsed = JSON.parse(datosRespuesta);
-        } catch (_) {
-          parsed = datosRespuesta;
-        }
-        resolve({ statusCode: res.statusCode, body: parsed, headers: res.headers });
-      });
-    });
-
-    req.on('error', reject);
-    if (body) req.write(body);
-    req.end();
-  });
-}
-
-async function loginAdmin(puerto) {
-  const resp = await hacerPeticion(puerto, 'POST', '/auth/login', {
-    usuario: 'admin_seed',
-    password: 'Admin1234',
-  });
-  assert.strictEqual(resp.statusCode, 200, 'login del admin debe ser exitoso');
-  return resp.body.token;
-}
-
-async function loginContador(puerto) {
-  const resp = await hacerPeticion(puerto, 'POST', '/auth/login', {
-    usuario: 'contador_seed',
-    password: 'Contador1234',
-  });
-  assert.strictEqual(resp.statusCode, 200, 'login del contador debe ser exitoso');
-  return resp.body.token;
+/**
+ * Calcula un id de usuario que no existe: el máximo actual más un margen amplio.
+ * Evita depender de un número fijo (aislamiento, plan 9.3).
+ * @returns {Promise<number>} Id de usuario inexistente.
+ */
+async function idDeUsuarioInexistente() {
+  const filas = await query('SELECT COALESCE(MAX(id), 0) + 1000 AS id FROM usuarios');
+  return Number(filas[0].id);
 }
 
 // ---------- RF-12: listar contadores (solo admin) ----------
 async function testListarContadoresComoAdmin() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginAdmin(puerto);
+  const respuesta = await peticion(servidor.puerto, 'GET', '/contadores', null, tokenAdmin);
+  assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 al listar contadores');
+  assert.ok(Array.isArray(respuesta.body.contadores), 'debe devolver un array de contadores');
 
-    const respuesta = await hacerPeticion(puerto, 'GET', '/contadores', null, token);
-    assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 al listar contadores');
-    assert.ok(Array.isArray(respuesta.body.contadores), 'debe devolver un array de contadores');
-    assert.ok(respuesta.body.contadores.length > 0, 'debe haber al menos un contador (seed)');
-  } finally {
-    server.close();
-  }
+  // La lista trae todos los contadores de la base: se afirma la presencia de los propios,
+  // nunca una cantidad total (otros archivos de prueba y el seed también aparecen).
+  const nombres = respuesta.body.contadores.map((fila) => fila.usuario);
+  assert.ok(nombres.includes(contador.usuario), 'la lista debe incluir el contador propio');
+  assert.ok(nombres.includes(contadorConCasos.usuario), 'la lista debe incluir el contador propio con casos');
 }
 
 // ---------- RF-08: contador no puede listar contadores (acceso denegado) ----------
 async function testListarContadoresComoContadorEsDenegado() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginContador(puerto);
-
-    const respuesta = await hacerPeticion(puerto, 'GET', '/contadores', null, token);
-    assert.strictEqual(respuesta.statusCode, 403, 'debe responder 403 para contador');
-    assert.ok(respuesta.body.mensaje.includes('Acceso denegado') || respuesta.body.mensaje.includes('Rol insuficiente'), 'mensaje debe ser de acceso denegado');
-  } finally {
-    server.close();
-  }
+  const respuesta = await peticion(servidor.puerto, 'GET', '/contadores', null, tokenContador);
+  assert.strictEqual(respuesta.statusCode, 403, 'debe responder 403 para contador');
+  assert.ok(respuesta.body.mensaje.includes('Acceso denegado') || respuesta.body.mensaje.includes('Rol insuficiente'), 'mensaje debe ser de acceso denegado');
 }
 
 // ---------- RF-13: conteos por estado con ceros ----------
 async function testConteosPorEstado() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginAdmin(puerto);
+  const respuesta = await peticion(
+    servidor.puerto,
+    'GET',
+    `/contadores/${contadorConCasos.id}/conteos`,
+    null,
+    tokenAdmin
+  );
+  assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 con los conteos');
+  assert.ok(typeof respuesta.body.pendiente === 'number', 'debe incluir conteo pendiente');
+  assert.ok(typeof respuesta.body.en_proceso === 'number', 'debe incluir conteo en_proceso');
+  assert.ok(typeof respuesta.body.finalizado === 'number', 'debe incluir conteo finalizado');
 
-    // Primero obtener un contador existente para consultar sus conteos
-    const listaResp = await hacerPeticion(puerto, 'GET', '/contadores', null, token);
-    const contadorId = listaResp.body.contadores[0].id;
-
-    const respuesta = await hacerPeticion(
-      puerto,
-      'GET',
-      `/contadores/${contadorId}/conteos`,
-      null,
-      token
-    );
-    assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 con los conteos');
-    assert.ok(typeof respuesta.body.pendiente === 'number', 'debe incluir conteo pendiente');
-    assert.ok(typeof respuesta.body.en_proceso === 'number', 'debe incluir conteo en_proceso');
-    assert.ok(typeof respuesta.body.finalizado === 'number', 'debe incluir conteo finalizado');
-  } finally {
-    server.close();
-  }
+  // Conteos exactos sobre los casos propios creados en `before` (2 Pendiente, 0 En proceso, 1 Finalizado).
+  assert.strictEqual(respuesta.body.pendiente, 2, 'debe contar exactamente los casos Pendiente propios');
+  assert.strictEqual(respuesta.body.en_proceso, 0, 'debe devolver cero cuando no hay casos En proceso (RF-13)');
+  assert.strictEqual(respuesta.body.finalizado, 1, 'debe contar exactamente los casos Finalizado propios');
 }
 
 // ---------- RF-16: contador inexistente devuelve 404 ----------
 async function testContadorInexistenteDevuelve404() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginAdmin(puerto);
+  const contadorInexistente = await idDeUsuarioInexistente();
 
-    const respuesta = await hacerPeticion(
-      puerto,
-      'GET',
-      '/contadores/99999999/conteos',
-      null,
-      token
-    );
-    assert.strictEqual(respuesta.statusCode, 404, 'debe responder 404 para contador inexistente');
-    assert.ok(respuesta.body.mensaje.includes('No se encontró el contador'), 'mensaje debe indicar no encontrado');
-  } finally {
-    server.close();
-  }
+  const conteosResp = await peticion(
+    servidor.puerto,
+    'GET',
+    `/contadores/${contadorInexistente}/conteos`,
+    null,
+    tokenAdmin
+  );
+  assert.strictEqual(conteosResp.statusCode, 404, 'debe responder 404 para contador inexistente');
+  assert.ok(conteosResp.body.mensaje.includes('No se encontró el contador'), 'mensaje debe indicar no encontrado');
+
+  // El endpoint de casos de un contador inexistente también responde no encontrado.
+  const casosResp = await peticion(
+    servidor.puerto,
+    'GET',
+    `/contadores/${contadorInexistente}/casos`,
+    null,
+    tokenAdmin
+  );
+  assert.strictEqual(casosResp.statusCode, 404, 'el endpoint de casos también debe responder 404');
+  assert.ok(casosResp.body.mensaje.includes('No se encontró el contador'), 'mensaje debe indicar no encontrado');
+  assert.strictEqual(casosResp.body.casos, undefined, 'no debe devolver casos de un contador inexistente');
 }
 
 // ---------- RF-14: casos de un contador (admin) ----------
 async function testCasosDeContadorComoAdmin() {
-  const app = crearApp();
-  const { server, puerto } = await iniciarServidor(app);
-  try {
-    const token = await loginAdmin(puerto);
+  const respuesta = await peticion(
+    servidor.puerto,
+    'GET',
+    `/contadores/${contadorConCasos.id}/casos`,
+    null,
+    tokenAdmin
+  );
+  assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 con los casos del contador');
+  assert.ok(Array.isArray(respuesta.body.casos), 'debe devolver un array de casos');
 
-    const listaResp = await hacerPeticion(puerto, 'GET', '/contadores', null, token);
-    const contadorId = listaResp.body.contadores[0].id;
-
-    const respuesta = await hacerPeticion(
-      puerto,
-      'GET',
-      `/contadores/${contadorId}/casos`,
-      null,
-      token
-    );
-    assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 con los casos del contador');
-    assert.ok(Array.isArray(respuesta.body.casos), 'debe devolver un array de casos');
-  } finally {
-    server.close();
-  }
+  // Solo los casos propios de ese contador, exactamente los creados en `before`.
+  assert.strictEqual(respuesta.body.casos.length, 3, 'debe devolver exactamente los casos propios del contador');
+  assert.ok(
+    respuesta.body.casos.every((caso) => caso.contador_id === contadorConCasos.id),
+    'todos los casos deben pertenecer al contador consultado'
+  );
+  const clientes = respuesta.body.casos.map((caso) => caso.cliente).sort();
+  assert.deepStrictEqual(
+    clientes,
+    ['Cliente finalizado', 'Cliente pendiente dos', 'Cliente pendiente uno'],
+    'debe devolver el detalle de cada caso propio con su cliente'
+  );
 }
 
-module.exports = {
-  testListarContadoresComoAdmin,
-  testListarContadoresComoContadorEsDenegado,
-  testConteosPorEstado,
-  testContadorInexistenteDevuelve404,
-  testCasosDeContadorComoAdmin,
-};
+describe('rutas de contadores', () => {
+  before(async () => {
+    await prepararBaseDeDatos();
+    administrador = await crearUsuarioDePrueba('administrador');
+    contador = await crearUsuarioDePrueba('contador');
+    contadorConCasos = await crearUsuarioDePrueba('contador');
+    servidor = await iniciarServidor();
+    tokenAdmin = await iniciarSesionDe(administrador);
+    tokenContador = await iniciarSesionDe(contador);
+
+    // Casos propios con conteos conocidos: 2 Pendiente, 0 En proceso, 1 Finalizado.
+    await crearCasoDePrueba(contadorConCasos.id, { cliente: 'Cliente pendiente uno', estado: 'Pendiente' });
+    await crearCasoDePrueba(contadorConCasos.id, { cliente: 'Cliente pendiente dos', estado: 'Pendiente' });
+    await crearCasoDePrueba(contadorConCasos.id, { cliente: 'Cliente finalizado', estado: 'Finalizado' });
+  });
+
+  after(async () => {
+    await servidor.cerrar();
+    await limpiarDatosDePrueba();
+    await cerrarBaseDeDatos();
+  });
+
+  test('el administrador lista los contadores propios', testListarContadoresComoAdmin);
+  test('el contador no puede listar contadores', testListarContadoresComoContadorEsDenegado);
+  test('los conteos por estado son exactos e incluyen ceros', testConteosPorEstado);
+  test('un contador inexistente responde 404 en conteos y en casos', testContadorInexistenteDevuelve404);
+  test('el administrador lee exactamente los casos propios del contador', testCasosDeContadorComoAdmin);
+});

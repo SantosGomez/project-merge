@@ -62,7 +62,7 @@ async function countByStatus(contadorId) {
  */
 async function create({ contador_id, cliente, estado, prioridad, creado_en, actualizado_en }) {
   const ahora = formatLocalDate(nowLocal());
-  const [result] = await query(
+  const result = await query(
     `INSERT INTO casos (contador_id, cliente, estado, prioridad, creado_en, actualizado_en)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [contador_id, cliente, estado, prioridad, creado_en || ahora, actualizado_en || ahora]

@@ -1,4 +1,5 @@
 const assert = require('node:assert');
+const { describe, test } = require('node:test');
 const {
   nowLocal,
   formatLocalDate,
@@ -48,9 +49,9 @@ function testIsSessionInactiveActiva() {
   );
 }
 
-module.exports = {
-  testNowLocalDevuelveDate,
-  testFormatLocalDateFormato,
-  testIsSessionInactiveInactiva,
-  testIsSessionInactiveActiva,
-};
+describe('dateUtils', () => {
+  test('testNowLocalDevuelveDate', testNowLocalDevuelveDate);
+  test('testFormatLocalDateFormato', testFormatLocalDateFormato);
+  test('testIsSessionInactiveInactiva', testIsSessionInactiveInactiva);
+  test('testIsSessionInactiveActiva', testIsSessionInactiveActiva);
+});

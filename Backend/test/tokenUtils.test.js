@@ -1,4 +1,5 @@
 const assert = require('node:assert');
+const { describe, test } = require('node:test');
 const {
   generateAccessToken,
   verifyAccessToken,
@@ -74,10 +75,10 @@ function testIsTokenExpiredTokenValido() {
   );
 }
 
-module.exports = {
-  testGenerateAccessTokenDevuelveStringJWT,
-  testVerifyAccessTokenValido,
-  testVerifyAccessTokenInvalido,
-  testIsTokenExpiredTokenVencido,
-  testIsTokenExpiredTokenValido,
-};
+describe('tokenUtils', () => {
+  test('testGenerateAccessTokenDevuelveStringJWT', testGenerateAccessTokenDevuelveStringJWT);
+  test('testVerifyAccessTokenValido', testVerifyAccessTokenValido);
+  test('testVerifyAccessTokenInvalido', testVerifyAccessTokenInvalido);
+  test('testIsTokenExpiredTokenVencido', testIsTokenExpiredTokenVencido);
+  test('testIsTokenExpiredTokenValido', testIsTokenExpiredTokenValido);
+});

@@ -1,5 +1,5 @@
 # Spec 002 — Backend con autenticación y datos
-Estado: implementada (cambio 1 aprobado, pendiente de implementar; cambio 2 pendiente de aprobación)
+Estado: implementada (cambios 1 y 2 aprobados, pendientes de implementar; cambio 3 previsto)
 
 ## Contexto y objetivo
 
@@ -9,7 +9,9 @@ Objetivo: definir qué debe hacer el backend para soportar (1) el inicio de sesi
 
 Cambio 1 (aprobado), posterior a la implementación y previo al desarrollo del frontend funcional (spec 003): al contrastar el backend con lo que necesita el frontend se detectaron dos defectos. (1) La lista de contadores que recibe el administrador incluye datos de acceso (el hash de contraseña), que nunca deben salir del servidor. (2) El backend acepta peticiones desde cualquier origen, cuando solo debe aceptarlas desde los orígenes locales de desarrollo del frontend web. Además se detectaron otros dos incumplimientos: el inicio de sesión no devolvía el identificador del usuario que RF-01 ya exige, y los endpoints de administrador de conteos y de casos por contador trataban como contador a cualquier usuario existente, aunque tuviera otro rol. Este cambio añade los requisitos RF-32 a RF-35 y RNF-7, modifica RF-12, RF-14 y RF-16, y modifica el criterio de finalización 1 y el 24, y añade los criterios 26 a 29.
 
-Cambio 2 (reparación, pendiente de aprobación; se ejecuta antes del frontend): la validación anterior dio por buenas pruebas del backend que en realidad no se ejecutaban, y al revisarlas se detectó que la implementación aceptaba ciertos valores fijos de prueba como credencial de acceso sin haber iniciado sesión, lo que incumple RF-04 y RF-07. Este cambio no añade requisitos: reescribe el criterio de finalización 25, añade el criterio 30 y un caso límite sobre RF-04 y RF-07.
+Cambio 2 (reparación, aprobado; se ejecuta antes del Cambio 1 y antes del frontend): la validación anterior dio por buenas pruebas del backend que en realidad no se ejecutaban, y al revisarlas se detectó que la implementación aceptaba ciertos valores fijos de prueba como credencial de acceso sin haber iniciado sesión, lo que incumple RF-04 y RF-07. Este cambio no añade requisitos: reescribe el criterio de finalización 25, añade el criterio 30 y un caso límite sobre RF-04 y RF-07.
+
+Cambio 3 (previsto, pendiente; sin requisitos redactados todavía): agrupa defectos de robustez y de perfil detectados al revisar el backend (ver «Decisiones tomadas»). Se hará después del Cambio 2 y antes del frontend, y seguirá el flujo completo: spec, aprobación, plan y tareas, aprobación.
 
 ## Usuarios
 
@@ -228,6 +230,7 @@ Esta spec queda lista para aprobación cuando se verifiquen, sobre el backend im
 - Cambio 2: ¿Qué se hace con los valores fijos de prueba que el backend aceptaba como credencial de acceso? → se eliminan ya, dentro del bloque de reparación; las pruebas de autenticación y de perfiles se rehacen usando solo tokens emitidos por el inicio de sesión (criterio 30). Porqué: se detectó una puerta trasera: ciertos valores fijos daban acceso sin iniciar sesión, lo que incumple RF-04 y RF-07. No es un requisito nuevo, sino un incumplimiento de la implementación; por eso no se añade ningún RF y se refuerzan los criterios. (Decisión del usuario.)
 - Cambio 2: ¿Qué se hace con el experimento de pruebas suelto que falla siempre? → se elimina. Porqué: no es una prueba del proyecto y hace fallar la ejecución completa, lo que impide cumplir el criterio 25. (Decisión del usuario.)
 - Cambio 2: ¿Cómo se cuenta el máximo de 10 tareas? → por bloque de cambio dentro de esta spec: el Cambio 1 y la reparación (Cambio 2) son bloques de cambio de la spec 002 y no se abre una spec nueva. Porqué: modifican requisitos de la misma spec y comparten su criterio de cierre. (Decisión del usuario.)
+- Cambio 3 (previsto): ¿Qué defectos de robustez y de perfil se tratarán aparte y cuándo? → se agrupan en un Cambio 3 de esta spec, que se hará después del Cambio 2 y antes del frontend, con el flujo completo (spec, aprobación, plan y tareas, aprobación). Incluye: (1) entradas no textuales en el inicio de sesión (por ejemplo un usuario o una contraseña enviados como número) que dejan la petición colgada sin respuesta; (2) los errores de base de datos que se ignoran al registrar la sesión, actualizar su actividad y revocarla, de modo que un cierre de sesión podría avisar de éxito sin haber invalidado el token (RF-26, RF-31); (3) el rol de contador exigido al cambiar el estado o la prioridad de un caso, para que un administrador o un usuarios_de_sistema reciba siempre acceso denegado (RF-09) y no «no encontrado» sobre un caso inexistente. Porqué: son defectos de la implementación detectados al revisar el backend; se separan de los Cambios 1 y 2 para no mezclar alcances y se resuelven antes del frontend para que este se construya sobre un backend robusto. (Decisión del usuario; sin requisitos redactados hasta su propia spec.)
 
 ## Dudas abiertas
 
