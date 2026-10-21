@@ -43,8 +43,8 @@ async function login(req, res) {
   const ahora = nowLocal();
   await SessionModel.registrarSesion(token, cuenta.id, ahora);
 
-  // 5. Responder 200 con token, rol y usuario (RF-01, RF-06)
-  return res.status(200).json({ token, rol: cuenta.rol, usuario: cuenta.usuario });
+  // 5. Responder 200 con token, rol, id y usuario (RF-01, RF-06)
+  return res.status(200).json({ token, rol: cuenta.rol, id: cuenta.id, usuario: cuenta.usuario });
 }
 
 /**

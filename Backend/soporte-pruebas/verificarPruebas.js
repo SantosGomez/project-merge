@@ -16,8 +16,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('node:test');
 
-// Mínimos por archivo acordados en el plan 9.5, punto 3 (15 archivos, total 93).
+// Mínimos por archivo acordados en el plan 9.5, punto 3 (20 archivos, total 116).
 const MINIMOS = {
+  'appCors.test.js': 4,
   'authMiddleware.test.js': 13,
   'authRoutes.test.js': 4,
   'caseModel.test.js': 8,
@@ -25,8 +26,12 @@ const MINIMOS = {
   'counterRoutes.test.js': 5,
   'dateUtils.test.js': 4,
   'errorUtils.test.js': 2,
+  'idsContador.test.js': 6,
+  'originMiddleware.test.js': 3,
+  'originUtils.test.js': 7,
   'ownershipMiddleware.test.js': 4,
   'passwordUtils.test.js': 4,
+  'respuestasApi.test.js': 3,
   'roleMiddleware.test.js': 8,
   'seed.test.js': 3,
   'tokenUtils.test.js': 5,

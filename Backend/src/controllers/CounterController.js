@@ -1,6 +1,7 @@
 const UserModel = require('../models/UserModel');
 const CaseModel = require('../models/CaseModel');
 const { buildError } = require('../utils/errorUtils');
+const { parseCounterId } = require('../utils/validationUtils');
 
 /**
  * Lista todos los contadores registrados (solo administrador).
@@ -9,7 +10,7 @@ const { buildError } = require('../utils/errorUtils');
  * @param {Object} res - Respuesta Express.
  */
 async function listCounters(req, res) {
-  const contadores = await UserModel.findAll({ rol: 'contador' });
+  const contadores = await UserModel.findCountersPublic();
   if (contadores.length === 0) {
     return res.status(200).json({
       mensaje: 'No hay contadores registrados',
@@ -28,8 +29,9 @@ async function listCounters(req, res) {
 async function countCasesByStatus(req, res) {
   const { id } = req.params;
 
-  // Verificar que el contador exista (RF-16)
-  const contador = await UserModel.findById(id);
+  // El identificador debe ser un entero positivo y pertenecer a un contador (RF-16, RF-35)
+  const idNumerico = parseCounterId(id);
+  const contador = idNumerico ? await UserModel.findCounterById(idNumerico) : null;
   if (!contador) {
     return res.status(404).json(
       buildError('No se encontró el contador', 'contador solicitado', 'Verifique el identificador del contador')
@@ -37,7 +39,7 @@ async function countCasesByStatus(req, res) {
   }
 
   // Obtener conteos con ceros incluidos (RF-13)
-  const conteos = await CaseModel.countByStatus(id);
+  const conteos = await CaseModel.countByStatus(idNumerico);
   return res.status(200).json({
     contador_id: id,
     pendiente: conteos.pendiente,
@@ -55,15 +57,16 @@ async function countCasesByStatus(req, res) {
 async function getCasesByCounter(req, res) {
   const { id } = req.params;
 
-  // Verificar que el contador exista (RF-16)
-  const contador = await UserModel.findById(id);
+  // El identificador debe ser un entero positivo y pertenecer a un contador (RF-16, RF-35)
+  const idNumerico = parseCounterId(id);
+  const contador = idNumerico ? await UserModel.findCounterById(idNumerico) : null;
   if (!contador) {
     return res.status(404).json(
       buildError('No se encontró el contador', 'contador solicitado', 'Verifique el identificador del contador')
     );
   }
 
-  const casos = await CaseModel.findByCounter(id);
+  const casos = await CaseModel.findByCounter(idNumerico);
   if (casos.length === 0) {
     return res.status(200).json({
       mensaje: 'El contador no tiene casos registrados',

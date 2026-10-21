@@ -203,47 +203,47 @@ Reglas comunes del bloque:
 
 Plan: sección 8 de `plan.md`. Requisitos: RF-12, RF-14, RF-16 (modificados), RF-32 a RF-35, RNF-7, criterios 1 y 24 a 29. **Empieza solo cuando el Cambio 2 está cerrado (T20).** Al aprobar este plan y estas tareas se aprueba también la creación de los archivos nuevos que figuran en T21-T28. **Prerrequisito de toda tarea con base de datos: MariaDB en marcha (XAMPP, puerto 3306); si no responde, la tarea se detiene y avisa al usuario en lugar de dar nada por verificado.** Las pruebas nuevas usan `node:test` y los apoyos de `backend/soporte-pruebas/` (datos propios `zz_test_`, limpieza, cierre de servidor y pool), y cada archivo de prueba nuevo se añade con su mínimo a la tabla del verificador (plan 9.5). ⚠️ = modifica archivos existentes que ya funcionan; requiere aprobación explícita antes de empezar. Cada tarea termina con `node --test <archivos>` en el resultado indicado y `MEMORY.md` actualizado.
 
-- [ ] **T21. Tests en rojo de orígenes permitidos: funciones puras y guard.** RF-34
+- [x] **T21. Tests en rojo de orígenes permitidos: funciones puras y guard.** RF-34
   - Prerrequisito: ninguno (pruebas puras y con simulación, sin base de datos).
   - Archivos nuevos: `backend/test/originUtils.test.js`, `backend/test/originMiddleware.test.js`.
   - Hecho cuando: `node --test test/originUtils.test.js test/originMiddleware.test.js` falla porque `originUtils.js` y `originMiddleware.js` no existen. Los tests cubren: `parseAllowedOrigins` (lista con comas y espacios, barra final, vacío o `undefined` devuelve los dos orígenes por defecto de desarrollo), `isOriginAllowed` (exacto sí; otro puerto, otro host, `null`, vacío y mayúsculas distintas no) y el guard (sin origen llama a `next`; permitido llama a `next`; no permitido responde 403 con las tres partes en español y no llama a `next`). Se añaden a la constante `MINIMOS` de `soporte-pruebas/verificarPruebas.js` (archivo creado en T11; plan 9.5, punto 2.c) las entradas `'originUtils.test.js': 7` y `'originMiddleware.test.js': 3`.
 
-- [ ] **T22. Implementar `originUtils` y `originMiddleware`.** RF-34, RF-23
+- [x] **T22. Implementar `originUtils` y `originMiddleware`.** RF-34, RF-23
   - Prerrequisito: ninguno (sin base de datos).
   - Archivos nuevos: `backend/src/utils/originUtils.js`, `backend/src/middlewares/originMiddleware.js`.
   - Hecho cuando: `node --test test/originUtils.test.js test/originMiddleware.test.js` pasa en verde (10 o más pruebas reales, 0 omitidas); `createOriginGuard` y `buildCorsOptions` exportados; las funciones puras no dependen de Express ni del entorno.
 
-- [ ] **T23. Tests en rojo de CORS sobre la app real.** RF-34, criterios 24, 28
+- [x] **T23. Tests en rojo de CORS sobre la app real.** RF-34, criterios 24, 28
   - Prerrequisito: ninguno (las peticiones sin token se rechazan antes de consultar la base de datos).
   - Archivo nuevo: `backend/test/appCors.test.js` (usa `crearApp({ origenesPermitidos: [...] })`).
   - Hecho cuando: `node --test test/appCors.test.js` falla (hoy `cors()` acepta cualquier origen) comprobando: origen local permitido devuelve la cabecera `Access-Control-Allow-Origin` con ese origen; origen de otro sitio y puerto local no listado reciben 403 sin esa cabecera; petición sin origen a un endpoint protegido y sin token devuelve 401 (llegó al control de acceso, no 403 por origen); preflight `OPTIONS` con origen permitido responde con las cabeceras CORS y con origen no permitido responde 403. Se añade a la constante `MINIMOS` de `soporte-pruebas/verificarPruebas.js` la entrada `'appCors.test.js': 4`.
 
-- [ ] **T24. ⚠️ Cablear la restricción de orígenes en `app.js` y `.env`.** RF-34, criterios 24, 28
+- [x] **T24. ⚠️ Cablear la restricción de orígenes en `app.js` y `.env`.** RF-34, criterios 24, 28
   - Prerrequisito: **MariaDB en marcha (XAMPP, puerto 3306)** (el `node --test` completo y el arranque del servidor la usan).
   - Archivos existentes tocados: `backend/src/app.js` (`crearApp(opciones)` acepta `origenesPermitidos`; sustituye `cors()` por guard + `cors(buildCorsOptions(...))` antes de `express.json()`; corrige el comentario RF-24 → RF-34) y `backend/.env` (añade `CORS_ORIGENES=http://localhost:9000,http://127.0.0.1:9000`, sin credenciales).
   - Hecho cuando: `node --test test/appCors.test.js` pasa en verde y las rutas existentes siguen montadas igual (`crearApp()` sin argumentos sigue funcionando); `node --test` completo sigue con 0 fallos; `node src/server.js` arranca sin errores.
 
-- [ ] **T25. Tests en rojo de respuestas: `id` en login, lista de contadores y barrido sin datos de acceso.** RF-01, RF-12, RF-32, RF-33, RNF-7, criterios 1, 26, 27
+- [x] **T25. Tests en rojo de respuestas: `id` en login, lista de contadores y barrido sin datos de acceso.** RF-01, RF-12, RF-32, RF-33, RNF-7, criterios 1, 26, 27
   - Prerrequisito: **MariaDB en marcha (XAMPP, puerto 3306)**.
   - Archivo nuevo: `backend/test/respuestasApi.test.js` (MariaDB real; usuario de sistema creado con nombre único y limpieza).
   - Hecho cuando: `node --test test/respuestasApi.test.js` falla porque: el login de administrador, contador y usuarios_de_sistema no incluye `id` numérico; `GET /contadores` trae además `password_hash`, `rol` y `creado_en` (cada contador debe tener exactamente las claves `id` y `usuario`); el barrido (login, logout, lista de contadores, conteos, casos de contador, mis casos, alta y cambio de caso, alta de usuario, y errores 400/401/403/404) encuentra `password_hash` en `GET /contadores`. Se añade a la constante `MINIMOS` de `soporte-pruebas/verificarPruebas.js` la entrada `'respuestasApi.test.js': 3`.
 
-- [ ] **T26. ⚠️ Añadir `id` al login y filtrar la lista de contadores a `id` y `usuario`.** RF-01, RF-12, RF-32, RF-33, RNF-7, criterios 1, 26, 27
+- [x] **T26. ⚠️ Añadir `id` al login y filtrar la lista de contadores a `id` y `usuario`.** RF-01, RF-12, RF-32, RF-33, RNF-7, criterios 1, 26, 27
   - Prerrequisito: **MariaDB en marcha (XAMPP, puerto 3306)**.
   - Archivos existentes tocados: `backend/src/models/UserModel.js` (solo **añade** `findCountersPublic`; las demás funciones no cambian), `backend/src/controllers/CounterController.js` (`listCounters` usa `findCountersPublic`; mismo mensaje de vacío), `backend/src/controllers/AuthController.js` (`login` añade `id: cuenta.id` a la respuesta).
   - Hecho cuando: `node --test test/respuestasApi.test.js` pasa en verde; ninguna respuesta del barrido contiene `password_hash` ni `$argon2`; `findByUsername`, `findAll`, `findById` y `create` quedan sin cambios (el diff de `UserModel.js` solo añade código); `node --test` completo sigue con 0 fallos.
 
-- [ ] **T27. Tests en rojo de ids que no son de un contador.** RF-35, RF-14, RF-16, criterio 29
+- [x] **T27. Tests en rojo de ids que no son de un contador.** RF-35, RF-14, RF-16, criterio 29
   - Prerrequisito: **MariaDB en marcha (XAMPP, puerto 3306)**.
   - Archivo nuevo: `backend/test/idsContador.test.js` (MariaDB real, datos propios; incluye los casos puros de `parseCounterId`).
   - Hecho cuando: `node --test test/idsContador.test.js` falla porque `parseCounterId` no existe y porque `/contadores/:id/conteos` y `/contadores/:id/casos` devuelven 200 para el id de un administrador y de un usuarios_de_sistema. Debe comprobar además: id inexistente, no numérico (`abc`, `2abc`) y negativo devuelven 404 con el texto "No se encontró el contador"; el id de un contador real sigue devolviendo 200 con conteos (ceros incluidos) y casos. Se añade a la constante `MINIMOS` de `soporte-pruebas/verificarPruebas.js` la entrada `'idsContador.test.js': 6`.
 
-- [ ] **T28. ⚠️ Rechazar con 404 los ids que no son de un contador.** RF-35, RF-14, RF-16, criterio 29
+- [x] **T28. ⚠️ Rechazar con 404 los ids que no son de un contador.** RF-35, RF-14, RF-16, criterio 29
   - Prerrequisito: **MariaDB en marcha (XAMPP, puerto 3306)**.
   - Archivos existentes tocados: `backend/src/utils/validationUtils.js` (solo **añade** `parseCounterId`), `backend/src/models/UserModel.js` (solo **añade** `findCounterById`), `backend/src/controllers/CounterController.js` (`countCasesByStatus` y `getCasesByCounter` usan `parseCounterId` + `findCounterById` en lugar de `findById`; mensajes y códigos iguales que hoy).
   - Hecho cuando: `node --test test/idsContador.test.js test/respuestasApi.test.js` pasa en verde; el diff de los tres archivos solo añade funciones y cambia las llamadas de esos dos controladores; `getMyCases` y `listCounters` no se modifican en esta tarea; `node --test` completo sigue con 0 fallos.
 
-- [ ] **T29. Validación y cierre del Cambio 1 (lo valida el reviewer).** RF-12, RF-14, RF-16, RF-32 a RF-35, RNF-7, criterios 1 y 24 a 29
+- [x] **T29. Validación y cierre del Cambio 1 (lo valida el reviewer).** RF-12, RF-14, RF-16, RF-32 a RF-35, RNF-7, criterios 1 y 24 a 29
   - Prerrequisito: **MariaDB en marcha (XAMPP, puerto 3306)**; si no responde, se detiene y avisa.
   - Hecho cuando: `cd backend && node --test` termina por sí solo con **0 fallos, 0 omitidas y 0 pendientes**, con **20 archivos y al menos 116 pruebas** (las 93 del Cambio 2 más las nuevas de T21-T27); `node soporte-pruebas/verificarPruebas.js` termina con código 0 con los mínimos de los archivos nuevos ya incluidos en `MINIMOS` y el resumen `RESUMEN: archivos 20 | con pruebas reales 20 | pruebas <n> de 116 mínimas | fallidas 0 | omitidas 0 | pendientes 0 | canceladas 0 | .js ajenos 0 | RESULTADO: OK` (con `<n>` igual o mayor que 116); 0 filas `zz_test_%` al terminar; con las credenciales del seed y el servidor levantado se comprueba manualmente: login con `id`, `GET /contadores` sin `password_hash`, conteos de un id de administrador devuelve 404, petición con `Origin` distinto devuelve 403 y sin `Origin` funciona con token; `MEMORY.md` actualizado; la línea `Estado:` de `spec.md` cambia a `implementada` solo si el usuario lo aprueba.
 

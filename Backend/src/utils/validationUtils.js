@@ -79,10 +79,37 @@ function validateRol(rol) {
   return ROLES_VALIDOS.includes(rol);
 }
 
+/**
+ * Convierte un identificador de contador en un entero positivo.
+ * RF-35.
+ * Solo acepta valores formados exclusivamente por dígitos ('12' -> 12);
+ * cualquier otro (letras, signos, decimales, espacios, vacío o cero) devuelve null.
+ * @param {string|number} valor - Identificador recibido en la ruta.
+ * @returns {number|null} El entero positivo o null si el identificador no es válido.
+ */
+function parseCounterId(valor) {
+  if (valor === null || valor === undefined) {
+    return null;
+  }
+
+  const texto = String(valor);
+  if (!/^\d+$/.test(texto)) {
+    return null;
+  }
+
+  const numero = Number(texto);
+  if (!Number.isSafeInteger(numero) || numero <= 0) {
+    return null;
+  }
+
+  return numero;
+}
+
 module.exports = {
   validateLoginInput,
   validateNewCaseInput,
   validateStatus,
   validatePriority,
   validateRol,
+  parseCounterId,
 };

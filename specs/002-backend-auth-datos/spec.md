@@ -1,5 +1,5 @@
 # Spec 002 — Backend con autenticación y datos
-Estado: implementada (cambios 1 y 2 aprobados, pendientes de implementar; cambio 3 previsto)
+Estado: implementada (cambios 1 y 2 implementados y aprobados por el reviewer; cambio 3 previsto, sin spec aprobada)
 
 ## Contexto y objetivo
 
