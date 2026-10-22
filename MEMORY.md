@@ -7,14 +7,14 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - **Spec 002 (backend): implementada con salvedades** — Cambios 1 y 2 aprobados por el reviewer: T1-T29 todas `[x]`; `node --test` 119 pruebas, 119 pass, 0 fail en 20 archivos; verificador `RESULTADO: OK` (cifras validadas por el reviewer y comprobadas por el coordinador). Su línea `Estado:` ya lo refleja.
 - Contenido del Cambio 1: CORS con orígenes locales vía `CORS_ORIGENES`; login con `id`; `GET /contadores` solo `id` y `usuario`; 404 para ids que no son de contador (`parseCounterId` + `findCounterById`).
 - Cambio 2: pruebas reales con `node:test`, verificador con tabla de mínimos, apoyos en `soporte-pruebas/`, sin puerta trasera de tokens (93 pruebas en 15 archivos en su momento).
-- **Spec 004 (`specs/004-correcciones-backend/`) creada, sin commitear y sin implementar**: los incumplimientos pendientes de la 002 pasan allí, en 23 tareas (T1-T23; bloques de 7, 7 y 9). Requiere la 002 implementada. También sin commitear `specs/002-backend-auth-datos/spec.md` (3 líneas).
-- **Spec 003 (frontend funcional, T1-T10): sin empezar**; el frontend sigue siendo maqueta (spec 001 completa, 5 pantallas) con datos de ejemplo y cuentas locales `admin`/`contador`; no se conecta al backend.
+- **Spec 004** (`specs/004-correcciones-backend/`, 23 tareas en bloques de 7, 7 y 9): en curso en paralelo con Claude Code en la rama `worktree-spec-004` (worktree `.claude/worktrees/spec-004`, solo toca `Backend/` y `specs/004`); T1-T3 hechas, sin merge a `main`.
+- **Spec 003 (frontend, T1-T10)**: T1 hecha (pruebas en rojo de 4 utilidades, sin commit). Plan corregido: claves `username`/`password` en `faltantes`; en P-4 la prioridad se traduce con `prioridadABackend` antes de `validarPrioridad`; en `traduccionBackend.js`, `…DeBackend` = backend→interno; `session.js` es nuevo. **axios `^1.20.0` instalado** (decisión 13: instancia en `src/services/api.js`, `timeout: 15000`, interceptores, sin boot). La spec cambió (RF-45 a RF-47): requiere nueva aprobación antes de T2.
 
 ## Próximos pasos
 
-- Empezar la **spec 003** (T1-T10) antes que la 004, por decisión del usuario (la 002 ya se alargó demasiado).
-- Después, implementar la **spec 004** para cerrar los pendientes de la 002.
-- Commit de `specs/002.../spec.md` y `specs/004-correcciones-backend/` solo cuando el usuario lo pida; nunca push sin preguntar.
+- Spec 003: con la aprobación del usuario, seguir con T2; la 004 avanza en su rama y se integra con merge cuando el usuario lo decida.
+- Nunca `git add .` en `main`: `.claude/` (worktree de la 004) no está en `.gitignore`.
+- Nunca push sin preguntar.
 
 ## Pendientes que pasan a la spec 004
 
