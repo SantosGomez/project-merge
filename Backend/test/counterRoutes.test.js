@@ -9,10 +9,14 @@ const {
 } = require('../soporte-pruebas/bd');
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { query } = require('../src/config/db');
+const { formatLocalDate } = require('../src/utils/dateUtils');
+
+// Formato de hora local de RNF-2: sin `T`, sin `Z` y sin milisegundos.
+const FORMATO_FECHA_LOCAL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
 /**
  * Pruebas de integración de las rutas de contadores (counterRoutes).
- * RF-12 a RF-16, RF-08, RF-09, RF-23, RNF-5, RNF-6.
+ * RF-12 a RF-16, RF-08, RF-09, RF-23, RF-48, RNF-2, RNF-5, RNF-6.
  *
  * Levanta la aplicación real en un puerto libre y hace peticiones HTTP reales.
  * Requiere MariaDB en marcha (XAMPP, puerto 3306, base delgrow_contadores).
@@ -138,6 +142,32 @@ async function testCasosDeContadorComoAdmin() {
   );
 }
 
+// ---------- RF-48, RNF-2, criterio 23: fechas de los casos en hora local ----------
+async function testFechasDeCasosEnHoraLocal() {
+  const respuesta = await peticion(
+    servidor.puerto,
+    'GET',
+    `/contadores/${contadorConCasos.id}/casos`,
+    null,
+    tokenAdmin
+  );
+  assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 con los casos del contador');
+  assert.ok(respuesta.body.casos.length > 0, 'debe haber casos propios para comprobar sus fechas');
+
+  for (const caso of respuesta.body.casos) {
+    const filas = await query('SELECT creado_en, actualizado_en FROM casos WHERE id = ?', [caso.id]);
+    for (const campo of ['creado_en', 'actualizado_en']) {
+      assert.strictEqual(typeof caso[campo], 'string', `${campo} debe llegar como texto`);
+      assert.match(caso[campo], FORMATO_FECHA_LOCAL, `${campo} debe tener el formato YYYY-MM-DD HH:mm:ss`);
+      assert.strictEqual(
+        caso[campo],
+        formatLocalDate(filas[0][campo]),
+        `${campo} debe coincidir con la hora local guardada en la base de datos`
+      );
+    }
+  }
+}
+
 describe('rutas de contadores', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -165,4 +195,5 @@ describe('rutas de contadores', () => {
   test('los conteos por estado son exactos e incluyen ceros', testConteosPorEstado);
   test('un contador inexistente responde 404 en conteos y en casos', testContadorInexistenteDevuelve404);
   test('el administrador lee exactamente los casos propios del contador', testCasosDeContadorComoAdmin);
+  test('las fechas de los casos de un contador llegan en hora local YYYY-MM-DD HH:mm:ss', testFechasDeCasosEnHoraLocal);
 });

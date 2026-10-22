@@ -2,6 +2,16 @@ const UserModel = require('../models/UserModel');
 const CaseModel = require('../models/CaseModel');
 const { buildError } = require('../utils/errorUtils');
 const { parseCounterId } = require('../utils/validationUtils');
+const { formatLocalDate } = require('../utils/dateUtils');
+
+// Devuelve el caso con sus fechas como texto en hora local YYYY-MM-DD HH:mm:ss (RF-48, RNF-2).
+function conFechasLocales(caso) {
+  return {
+    ...caso,
+    creado_en: formatLocalDate(caso.creado_en),
+    actualizado_en: formatLocalDate(caso.actualizado_en),
+  };
+}
 
 /**
  * Lista todos los contadores registrados (solo administrador).
@@ -73,7 +83,7 @@ async function getCasesByCounter(req, res) {
       casos: [],
     });
   }
-  return res.status(200).json({ casos });
+  return res.status(200).json({ casos: casos.map(conFechasLocales) });
 }
 
 /**
@@ -90,7 +100,7 @@ async function getMyCases(req, res) {
       casos: [],
     });
   }
-  return res.status(200).json({ casos });
+  return res.status(200).json({ casos: casos.map(conFechasLocales) });
 }
 
 module.exports = { listCounters, countCasesByStatus, getCasesByCounter, getMyCases };

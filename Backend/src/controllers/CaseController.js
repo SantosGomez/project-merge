@@ -8,6 +8,15 @@ const {
 const { buildError } = require('../utils/errorUtils');
 const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
 
+// Devuelve el caso con sus fechas como texto en hora local YYYY-MM-DD HH:mm:ss (RF-48, RNF-2).
+function conFechasLocales(caso) {
+  return {
+    ...caso,
+    creado_en: formatLocalDate(caso.creado_en),
+    actualizado_en: formatLocalDate(caso.actualizado_en),
+  };
+}
+
 /**
  * Registra un nuevo caso (solo contador autenticado).
  * RF-17, RF-18, RF-19, RF-20, RF-21.
@@ -65,7 +74,7 @@ async function createCase(req, res) {
 
   return res.status(201).json({
     mensaje: 'Caso registrado correctamente',
-    caso,
+    caso: conFechasLocales(caso),
   });
 }
 
@@ -114,7 +123,7 @@ async function updateCase(req, res) {
 
   return res.status(200).json({
     mensaje: 'Caso actualizado correctamente',
-    caso,
+    caso: conFechasLocales(caso),
   });
 }
 

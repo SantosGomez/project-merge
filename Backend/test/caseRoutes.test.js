@@ -8,10 +8,14 @@ const {
 } = require('../soporte-pruebas/bd');
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { query } = require('../src/config/db');
+const { formatLocalDate } = require('../src/utils/dateUtils');
+
+// Formato de hora local de RNF-2: sin `T`, sin `Z` y sin milisegundos.
+const FORMATO_FECHA_LOCAL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
 /**
  * Pruebas de integración de las rutas de casos (caseRoutes).
- * RF-10, RF-15, RF-16, RF-17 a RF-22, RF-23, RNF-5, RNF-6.
+ * RF-10, RF-15, RF-16, RF-17 a RF-22, RF-23, RF-48, RNF-2, RNF-5, RNF-6.
  *
  * Levanta la aplicación real en un puerto libre y hace peticiones HTTP reales.
  * Requiere MariaDB en marcha (XAMPP, puerto 3306, base delgrow_contadores).
@@ -219,6 +223,48 @@ async function testCasoInexistenteDevuelve404() {
   assert.ok(respuesta.body.mensaje.includes('No se encontró el caso'), 'mensaje debe indicar no encontrado');
 }
 
+/**
+ * Comprueba que las fechas del caso devuelto son texto en hora local y que
+ * coinciden con la fila guardada (RF-48, RNF-2, criterio 23).
+ * @param {Object} caso - Caso devuelto por la API.
+ * @param {string} origen - Petición que lo devolvió, para el mensaje del aserto.
+ */
+async function comprobarFechasEnHoraLocal(caso, origen) {
+  const filas = await query('SELECT creado_en, actualizado_en FROM casos WHERE id = ?', [caso.id]);
+  for (const campo of ['creado_en', 'actualizado_en']) {
+    assert.strictEqual(typeof caso[campo], 'string', `${origen}: ${campo} debe llegar como texto`);
+    assert.match(caso[campo], FORMATO_FECHA_LOCAL, `${origen}: ${campo} debe tener el formato YYYY-MM-DD HH:mm:ss`);
+    assert.strictEqual(
+      caso[campo],
+      formatLocalDate(filas[0][campo]),
+      `${origen}: ${campo} debe coincidir con la hora local guardada en la base de datos`
+    );
+  }
+}
+
+// ---------- RF-48, RNF-2, criterio 23: fechas del caso en hora local ----------
+async function testFechasDelCasoEnHoraLocal() {
+  const crearResp = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente con fechas', prioridad: 'Baja' },
+    tokenContador
+  );
+  assert.strictEqual(crearResp.statusCode, 201, 'el caso debe crearse');
+  await comprobarFechasEnHoraLocal(crearResp.body.caso, 'POST /casos');
+
+  const patchResp = await peticion(
+    servidor.puerto,
+    'PATCH',
+    `/casos/${crearResp.body.caso.id}`,
+    { estado: 'En proceso' },
+    tokenContador
+  );
+  assert.strictEqual(patchResp.statusCode, 200, 'el caso debe actualizarse');
+  await comprobarFechasEnHoraLocal(patchResp.body.caso, 'PATCH /casos/:id');
+}
+
 describe('rutas de casos', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -244,4 +290,5 @@ describe('rutas de casos', () => {
   test('cambiar estado y prioridad de un caso propio actualiza el caso', testCambiarEstadoYPrioridadCasoPropio);
   test('cambiar un caso ajeno es acceso denegado para otro contador y para el administrador', testCambiarCasoAjenoEsDenegado);
   test('un caso inexistente responde 404', testCasoInexistenteDevuelve404);
+  test('crear y cambiar un caso devuelve las fechas en hora local YYYY-MM-DD HH:mm:ss', testFechasDelCasoEnHoraLocal);
 });
