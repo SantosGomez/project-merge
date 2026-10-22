@@ -25,7 +25,9 @@ const MINIMOS = {
   'caseRoutes.test.js': 7,
   'counterRoutes.test.js': 5,
   'dateUtils.test.js': 4,
+  'errorHandlerGlobal.test.js': 8,
   'errorUtils.test.js': 2,
+  'fallosPersistencia.test.js': 7,
   'idsContador.test.js': 6,
   'originMiddleware.test.js': 3,
   'originUtils.test.js': 7,
@@ -34,10 +36,10 @@ const MINIMOS = {
   'respuestasApi.test.js': 3,
   'roleMiddleware.test.js': 8,
   'seed.test.js': 3,
-  'tokenUtils.test.js': 5,
+  'tokenUtils.test.js': 6,
   'userModel.test.js': 7,
   'userRoutes.test.js': 3,
-  'validationUtils.test.js': 16,
+  'validationUtils.test.js': 22,
 };
 
 const TESTS_DIR = path.join(__dirname, '..', 'test');

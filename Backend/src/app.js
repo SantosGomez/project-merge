@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const caseRoutes = require('./routes/caseRoutes');
 const counterRoutes = require('./routes/counterRoutes');
 const userRoutes = require('./routes/userRoutes');
+const { buildError } = require('./utils/errorUtils');
 
 /**
  * Crea y configura la aplicación Express.
@@ -44,13 +45,19 @@ function crearApp(opciones) {
     });
   });
 
-  // Middleware de errores internos 500
+  // Middleware global de errores: entrada inválida → 400, fallo interno → 503 (RF-37, RF-47, RNF-8)
   app.use((err, req, res, next) => {
     // eslint-disable-next-line no-console
     console.error(err);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor sobre la petición: intente nuevamente o contacte al administrador',
-    });
+    // express.json() marca el JSON mal formado con status 400 y type 'entity.parse.failed'
+    if (err.status === 400 || err.type === 'entity.parse.failed') {
+      return res.status(400).json(
+        buildError('Cuerpo de la petición no válido', 'cuerpo JSON', 'Envíe un cuerpo bien formado como JSON')
+      );
+    }
+    return res.status(503).json(
+      buildError('Fallo interno del servidor', 'operación solicitada', 'Inténtelo nuevamente en unos momentos')
+    );
   });
 
   return app;

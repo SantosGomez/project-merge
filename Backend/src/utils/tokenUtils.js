@@ -1,16 +1,19 @@
+const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 
-// Utilidades de tokens de acceso JWT (RF-01, RF-04, RF-05, RF-25, RF-26).
+// Utilidades de tokens de acceso JWT (RF-01, RF-04, RF-05, RF-25, RF-26, RF-41).
 
 /**
- * Genera un token de acceso JWT firmado con su propio campo exp (RF-01).
+ * Genera un token de acceso JWT firmado con su propio campo exp (RF-01) y un
+ * `jti` aleatorio, para que cada inicio de sesión tenga un token y una sesión
+ * propios aunque sea el mismo usuario en el mismo instante (RF-41).
  * @param {object} payload - datos del usuario (id, usuario, rol).
  * @param {string} secreto - secreto con el que se firma el token.
  * @param {string|number} expiresIn - duración del token (ej. '1h', '30m').
  * @returns {string} token JWT firmado.
  */
 function generateAccessToken(payload, secreto, expiresIn) {
-  return jwt.sign(payload, secreto, { expiresIn });
+  return jwt.sign({ ...payload, jti: crypto.randomBytes(16).toString('hex') }, secreto, { expiresIn });
 }
 
 /**
@@ -24,7 +27,7 @@ function generateAccessToken(payload, secreto, expiresIn) {
 function verifyAccessToken(token, secreto) {
   try {
     const decodificado = jwt.verify(token, secreto);
-    // Se descartan iat y exp: el payload devuelto son solo los datos del usuario.
+    // Se descartan iat y exp: el payload devuelto son los datos del usuario y su jti.
     const { iat, exp, ...payload } = decodificado;
     return { valido: true, payload, error: null };
   } catch (err) {

@@ -33,8 +33,28 @@ function testVerifyAccessTokenValido() {
   );
   const resultado = verifyAccessToken(token, 'secreto');
   assert.strictEqual(resultado.valido, true, 'verifyAccessToken debe devolver valido: true para un token válido');
-  assert.deepStrictEqual(resultado.payload, { id: 1, usuario: 'admin', rol: 'administrador' });
+  assert.strictEqual(resultado.payload.id, 1);
+  assert.strictEqual(resultado.payload.usuario, 'admin');
+  assert.strictEqual(resultado.payload.rol, 'administrador');
+  assert.strictEqual(typeof resultado.payload.jti, 'string', 'el payload debe incluir el jti del token (RF-41)');
+  assert.ok(resultado.payload.jti.length > 0, 'el jti no debe estar vacío');
   assert.strictEqual(resultado.error, null, 'el error debe ser null para un token válido');
+}
+
+// RF-41: dos tokens emitidos en el mismo instante con el mismo payload son distintos
+function testDosTokensDelMismoInstanteSonDistintos() {
+  const payload = { id: 1, usuario: 'admin', rol: 'administrador' };
+  const primero = generateAccessToken(payload, 'secreto', '1h');
+  const segundo = generateAccessToken(payload, 'secreto', '1h');
+
+  assert.notStrictEqual(primero, segundo, 'cada inicio de sesión debe recibir un token propio');
+
+  const jtiPrimero = verifyAccessToken(primero, 'secreto').payload.jti;
+  const jtiSegundo = verifyAccessToken(segundo, 'secreto').payload.jti;
+  assert.strictEqual(typeof jtiPrimero, 'string', 'el primer token debe tener jti de texto');
+  assert.strictEqual(typeof jtiSegundo, 'string', 'el segundo token debe tener jti de texto');
+  assert.ok(jtiPrimero.length > 0 && jtiSegundo.length > 0, 'los jti no deben estar vacíos');
+  assert.notStrictEqual(jtiPrimero, jtiSegundo, 'cada token debe tener un jti distinto');
 }
 
 // verifyAccessToken con token inválido -> { valido: false, payload: null, error: 'token_invalido' }
@@ -81,4 +101,5 @@ describe('tokenUtils', () => {
   test('testVerifyAccessTokenInvalido', testVerifyAccessTokenInvalido);
   test('testIsTokenExpiredTokenVencido', testIsTokenExpiredTokenVencido);
   test('testIsTokenExpiredTokenValido', testIsTokenExpiredTokenValido);
+  test('testDosTokensDelMismoInstanteSonDistintos', testDosTokensDelMismoInstanteSonDistintos);
 });

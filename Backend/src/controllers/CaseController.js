@@ -1,5 +1,10 @@
 const CaseModel = require('../models/CaseModel');
-const { validateNewCaseInput, validateStatus, validatePriority } = require('../utils/validationUtils');
+const {
+  validarCampoTexto,
+  validateNewCaseInput,
+  validateStatus,
+  validatePriority,
+} = require('../utils/validationUtils');
 const { buildError } = require('../utils/errorUtils');
 const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
 
@@ -22,6 +27,10 @@ async function createCase(req, res) {
       queOcurrio = 'Falta el campo cliente';
       sobreQue = 'cliente';
       queHacer = 'Ingrese el nombre del cliente';
+    } else if (validacion.error === 'cliente_tipo_invalido') {
+      queOcurrio = 'Dato inválido';
+      sobreQue = 'cliente';
+      queHacer = 'El cliente debe enviarse como texto';
     } else if (validacion.error === 'cliente_demasiado_largo') {
       queOcurrio = 'El cliente supera el máximo de caracteres permitidos';
       sobreQue = 'cliente';
@@ -30,6 +39,10 @@ async function createCase(req, res) {
       queOcurrio = 'Falta la prioridad';
       sobreQue = 'prioridad';
       queHacer = 'Seleccione una prioridad: Alta, Media o Baja';
+    } else if (validacion.error === 'prioridad_tipo_invalida') {
+      queOcurrio = 'Dato inválido';
+      sobreQue = 'prioridad';
+      queHacer = 'La prioridad debe enviarse como texto: Alta, Media o Baja';
     } else if (validacion.error === 'prioridad_invalida') {
       queOcurrio = 'Prioridad no válida';
       sobreQue = 'prioridad';
@@ -65,6 +78,16 @@ async function createCase(req, res) {
 async function updateCase(req, res) {
   const { id } = req.params;
   const { estado, prioridad } = req.body;
+
+  // RF-37: un dato no textual se rechaza antes de guardar nada, para no dejar cambios a medias
+  for (const [campo, valor, queHacer] of [
+    ['estado', estado, 'El estado debe enviarse como texto: Pendiente, En proceso o Finalizado'],
+    ['prioridad', prioridad, 'La prioridad debe enviarse como texto: Alta, Media o Baja'],
+  ]) {
+    if (valor !== undefined && validarCampoTexto(valor, campo).estado === 'tipo_invalido') {
+      return res.status(400).json(buildError('Dato inválido', campo, queHacer));
+    }
+  }
 
   // Si se envía estado, validar y actualizar (RF-22)
   if (estado !== undefined) {

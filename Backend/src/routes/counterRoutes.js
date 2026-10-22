@@ -3,14 +3,15 @@ const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
 const { requireAdmin } = require('../middlewares/roleMiddleware');
 const { listCounters, countCasesByStatus, getCasesByCounter } = require('../controllers/CounterController');
+const { asyncHandler } = require('../utils/asyncHandler');
 
 // GET /contadores — Listar contadores (solo administrador) (RF-12, RF-24)
-router.get('/', authenticateToken, requireAdmin, listCounters);
+router.get('/', authenticateToken, requireAdmin, asyncHandler(listCounters));
 
 // GET /contadores/:id/conteos — Conteo de casos por estado de un contador (solo administrador) (RF-13, RF-16)
-router.get('/:id/conteos', authenticateToken, requireAdmin, countCasesByStatus);
+router.get('/:id/conteos', authenticateToken, requireAdmin, asyncHandler(countCasesByStatus));
 
 // GET /contadores/:id/casos — Casos de un contador (solo administrador) (RF-14, RF-16, RF-24)
-router.get('/:id/casos', authenticateToken, requireAdmin, getCasesByCounter);
+router.get('/:id/casos', authenticateToken, requireAdmin, asyncHandler(getCasesByCounter));
 
 module.exports = router;

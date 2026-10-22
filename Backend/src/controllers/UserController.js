@@ -1,4 +1,4 @@
-const { validateLoginInput, validateRol } = require('../utils/validationUtils');
+const { validarCampoTexto, validateLoginInput, validateRol } = require('../utils/validationUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 const { buildError } = require('../utils/errorUtils');
@@ -14,6 +14,12 @@ async function createUser(req, res) {
 
   // 1. Validar campos con validateLoginInput y contraseña >= 8 caracteres (RF-30)
   const validacion = validateLoginInput(usuario, password);
+  if (validacion.tipoInvalido.length > 0) {
+    // RF-37: se indica el dato enviado con un tipo distinto de texto
+    return res.status(400).json(
+      buildError('Dato inválido', validacion.tipoInvalido.join(' y '), 'debe enviarse como texto')
+    );
+  }
   if (!validacion.valido) {
     return res.status(400).json(
       buildError('Datos inválidos', 'usuario/contraseña', 'Corrija el dato indicado e intente nuevamente')
@@ -24,6 +30,11 @@ async function createUser(req, res) {
     return res.status(400).json(
       buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')
     );
+  }
+
+  // RF-37: un rol que no es texto se indica como tal
+  if (validarCampoTexto(rol, 'rol').estado === 'tipo_invalido') {
+    return res.status(400).json(buildError('Dato inválido', 'rol', 'El rol debe enviarse como texto'));
   }
 
   // Validar que el rol sea uno de los permitidos (RF-30)
