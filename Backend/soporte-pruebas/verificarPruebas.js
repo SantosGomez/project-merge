@@ -22,7 +22,7 @@ const MINIMOS = {
   'authMiddleware.test.js': 13,
   'authRoutes.test.js': 6,
   'caseModel.test.js': 8,
-  'caseRoutes.test.js': 8,
+  'caseRoutes.test.js': 9,
   'counterRoutes.test.js': 6,
   'dateUtils.test.js': 4,
   'errorHandlerGlobal.test.js': 8,

@@ -11,7 +11,7 @@ const { asyncHandler } = require('../utils/asyncHandler');
 router.post('/', authenticateToken, requireContador, asyncHandler(createCase));
 
 // PATCH /casos/:id — Cambiar estado y/o prioridad de caso propio (solo contador, checkCaseOwnership) (RF-22)
-router.patch('/:id', authenticateToken, asyncHandler(checkCaseOwnership), asyncHandler(updateCase));
+router.patch('/:id', authenticateToken, requireContador, asyncHandler(checkCaseOwnership), asyncHandler(updateCase));
 
 // GET /casos/mis-casos — Leer los propios casos del contador autenticado (RF-15, RF-24)
 router.get('/mis-casos', authenticateToken, asyncHandler(getMyCases));

@@ -15,7 +15,7 @@ const FORMATO_FECHA_LOCAL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
 /**
  * Pruebas de integración de las rutas de casos (caseRoutes).
- * RF-10, RF-15, RF-16, RF-17 a RF-22, RF-23, RF-48, RNF-2, RNF-5, RNF-6.
+ * RF-09, RF-10, RF-15, RF-16, RF-17 a RF-22, RF-23, RF-46, RF-48, RNF-2, RNF-5, RNF-6.
  *
  * Levanta la aplicación real en un puerto libre y hace peticiones HTTP reales.
  * Requiere MariaDB en marcha (XAMPP, puerto 3306, base delgrow_contadores).
@@ -199,7 +199,10 @@ async function testCambiarCasoAjenoEsDenegado() {
     tokenAdmin
   );
   assert.strictEqual(patchAdmin.statusCode, 403, 'el administrador debe recibir 403 al intentar cambiar un caso');
-  assert.ok(patchAdmin.body.mensaje.includes('Acceso denegado'), 'mensaje debe ser de acceso denegado');
+  assert.ok(
+    patchAdmin.body.mensaje.includes('Acceso denegado') || patchAdmin.body.mensaje.includes('Rol insuficiente'),
+    'mensaje debe ser de acceso denegado'
+  );
 
   // Ninguno de los dos intentos modificó el caso: sigue Pendiente para su dueño.
   const misCasos = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, tokenContador);
@@ -265,6 +268,61 @@ async function testFechasDelCasoEnHoraLocal() {
   await comprobarFechasEnHoraLocal(patchResp.body.caso, 'PATCH /casos/:id');
 }
 
+// ---------- RF-46, RF-09, RF-16, criterios 13 y 37: el perfil se comprueba antes de buscar el caso ----------
+async function testPerfilSeCompruebaAntesDelCaso() {
+  const sistema = await crearUsuarioDePrueba('usuarios_de_sistema');
+  const tokenSistema = await iniciarSesionDe(sistema);
+  const casoInexistente = await idDeCasoInexistente();
+
+  const crearResp = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente perfil antes del caso', prioridad: 'Media' },
+    tokenContador
+  );
+  assert.strictEqual(crearResp.statusCode, 201, 'el caso del contador debe crearse');
+  const casoExistente = crearResp.body.caso.id;
+
+  // Ni el administrador ni usuarios_de_sistema averiguan si el caso existe: siempre acceso denegado.
+  for (const [perfil, token] of [['administrador', tokenAdmin], ['usuarios_de_sistema', tokenSistema]]) {
+    for (const [descripcion, casoId] of [['inexistente', casoInexistente], ['existente', casoExistente]]) {
+      const respuesta = await peticion(servidor.puerto, 'PATCH', `/casos/${casoId}`, { estado: 'Finalizado' }, token);
+      assert.strictEqual(respuesta.statusCode, 403, `${perfil} sobre un caso ${descripcion} debe recibir 403`);
+      assert.match(
+        String(respuesta.body.mensaje),
+        /Acceso denegado|Rol insuficiente/,
+        `${perfil} sobre un caso ${descripcion}: el aviso debe ser de acceso denegado`
+      );
+    }
+  }
+
+  // Un contador sí recibe no encontrado para un caso inexistente (RF-16).
+  const contadorInexistente = await peticion(
+    servidor.puerto,
+    'PATCH',
+    `/casos/${casoInexistente}`,
+    { estado: 'Finalizado' },
+    tokenContador
+  );
+  assert.strictEqual(contadorInexistente.statusCode, 404, 'un contador sobre un caso inexistente debe recibir 404');
+  assert.ok(contadorInexistente.body.mensaje.includes('No se encontró'), 'el aviso debe ser de no encontrado');
+
+  // Registrar un caso como administrador sigue denegado (criterio 13).
+  const registroAdmin = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente del administrador', prioridad: 'Alta' },
+    tokenAdmin
+  );
+  assert.strictEqual(registroAdmin.statusCode, 403, 'el administrador no debe poder registrar casos');
+
+  // Ningún intento denegado modificó el caso existente.
+  const filas = await query('SELECT estado FROM casos WHERE id = ?', [casoExistente]);
+  assert.strictEqual(filas[0].estado, 'Pendiente', 'los intentos denegados no deben modificar el caso');
+}
+
 describe('rutas de casos', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -291,4 +349,5 @@ describe('rutas de casos', () => {
   test('cambiar un caso ajeno es acceso denegado para otro contador y para el administrador', testCambiarCasoAjenoEsDenegado);
   test('un caso inexistente responde 404', testCasoInexistenteDevuelve404);
   test('crear y cambiar un caso devuelve las fechas en hora local YYYY-MM-DD HH:mm:ss', testFechasDelCasoEnHoraLocal);
+  test('un perfil que no es contador recibe 403 exista o no el caso, y un contador recibe 404', testPerfilSeCompruebaAntesDelCaso);
 });
