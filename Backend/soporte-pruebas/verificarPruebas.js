@@ -38,7 +38,7 @@ const MINIMOS = {
   'seed.test.js': 3,
   'tokenUtils.test.js': 6,
   'userModel.test.js': 9,
-  'userRoutes.test.js': 4,
+  'userRoutes.test.js': 7,
   'validationUtils.test.js': 22,
 };
 

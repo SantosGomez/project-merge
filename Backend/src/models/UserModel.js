@@ -87,9 +87,19 @@ async function findCounterById(id) {
   return rows.length > 0 ? rows[0] : null;
 }
 
+/**
+ * Guarda la contraseña nueva (ya hasheada) de un usuario (RF-42).
+ * @param {number} id - ID del usuario.
+ * @param {string} hash - Contraseña hasheada con Argon2id.
+ */
+async function updatePassword(id, hash) {
+  await query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [hash, id]);
+}
+
 module.exports = {
   findByUsername,
   usuarioExisteIgnoreCase,
+  updatePassword,
   create,
   findById,
   findAll,

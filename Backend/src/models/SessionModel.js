@@ -53,4 +53,13 @@ async function revocar(token) {
   await query('UPDATE sesiones SET revocado = 1 WHERE jti = ?', [token]);
 }
 
-module.exports = { obtenerSesion, registrarSesion, tocarActividad, revocar };
+/**
+ * Revoca todas las sesiones de un usuario, p. ej. tras restablecer su contraseña (RF-42, RF-05).
+ * Un fallo de la base de datos se propaga.
+ * @param {number} usuarioId - ID del usuario.
+ */
+async function revocarSesionesDeUsuario(usuarioId) {
+  await query('UPDATE sesiones SET revocado = 1 WHERE usuario_id = ?', [usuarioId]);
+}
+
+module.exports = { obtenerSesion, registrarSesion, tocarActividad, revocar, revocarSesionesDeUsuario };
