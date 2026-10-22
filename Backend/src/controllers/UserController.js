@@ -27,6 +27,13 @@ async function createUser(req, res) {
     );
   }
 
+  // RF-30: el máximo se comprueba aquí para que la base de datos nunca reciba un nombre más largo
+  if (usuario.length > 100) {
+    return res.status(400).json(
+      buildError('El usuario supera el máximo de caracteres', 'usuario', 'El usuario debe tener máximo 100 caracteres')
+    );
+  }
+
   if (!password || password.length < 8) {
     return res.status(400).json(
       buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')

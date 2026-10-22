@@ -168,6 +168,49 @@ async function testAltaDuplicadaConOtraCapitalizacionRechaza() {
   assert.strictEqual(filas.length, 1, 'no debe crearse una segunda cuenta con el mismo nombre');
 }
 
+// Nombre de prueba de la longitud exacta indicada, con el prefijo `zz_test_`.
+function nombreDeLongitud(longitud) {
+  const base = nombreDePrueba('largo');
+  return (base + 'x'.repeat(longitud)).slice(0, longitud);
+}
+
+// ---------- RF-30, criterio 42: máximo de 100 caracteres del nombre de usuario ----------
+async function testAltaConNombreDemasiadoLargoRechaza() {
+  const token = await loginAdmin();
+
+  const nombreLargo = nombreDeLongitud(101);
+  // Si la base de datos truncara el nombre, la fila tendría sus primeros 100 caracteres.
+  const truncado = nombreLargo.slice(0, 100);
+  const largo = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: nombreLargo, password: 'Pass12345', rol: 'contador' },
+    token
+  );
+  registrarUsuarioCreado(nombreLargo);
+  registrarUsuarioCreado(truncado);
+
+  assert.strictEqual(largo.statusCode, 400, 'un nombre de 101 caracteres debe responder 400');
+  assert.ok(String(largo.body.mensaje).includes('100'), 'el mensaje debe indicar el máximo de 100 caracteres');
+  const filasLargo = await query('SELECT id FROM usuarios WHERE usuario IN (?, ?)', [nombreLargo, truncado]);
+  assert.strictEqual(filasLargo.length, 0, 'no debe crearse ninguna cuenta con el nombre largo');
+
+  const nombreJusto = nombreDeLongitud(100);
+  const justo = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: nombreJusto, password: 'Pass12345', rol: 'contador' },
+    token
+  );
+  registrarUsuarioCreado(nombreJusto);
+
+  assert.strictEqual(justo.statusCode, 201, 'un nombre de exactamente 100 caracteres debe aceptarse');
+  const filasJusto = await query('SELECT id FROM usuarios WHERE usuario = ?', [nombreJusto]);
+  assert.strictEqual(filasJusto.length, 1, 'la cuenta de 100 caracteres debe existir');
+}
+
 // ---------- Apoyos del restablecimiento de contraseña (RF-42 a RF-44) ----------
 
 const queryOriginal = pool.query.bind(pool);
@@ -356,4 +399,5 @@ describe('rutas de usuarios', () => {
   test('restablecer la contraseña la cambia con Argon2id e invalida todas las sesiones', testRestablecerContrasenaCorrecto);
   test('restablecer una cuenta inexistente responde 404, un contador recibe 403 y se puede restablecer la propia', testRestablecerNoEncontradoDenegadoYPropio);
   test('restablecer con una contraseña nueva inválida responde 400 sin cambiarla', testRestablecerConContrasenaInvalida);
+  test('el alta con un nombre de más de 100 caracteres responde 400 y con 100 se acepta', testAltaConNombreDemasiadoLargoRechaza);
 });
