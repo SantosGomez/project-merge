@@ -44,8 +44,8 @@ async function createUser(req, res) {
     );
   }
 
-  // 2. Verificar que no exista un usuario con ese nombre (RF-30)
-  const existe = await UserModel.findByUsername(usuario);
+  // 2. Verificar que no exista un usuario con ese nombre, sin distinguir mayúsculas (RF-30, RF-45)
+  const existe = await UserModel.usuarioExisteIgnoreCase(usuario);
   if (existe) {
     return res.status(400).json(
       buildError('El usuario ya existe', 'usuario', 'Elija otro nombre de usuario')

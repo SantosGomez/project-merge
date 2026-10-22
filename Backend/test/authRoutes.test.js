@@ -10,7 +10,7 @@ const { iniciarServidor, peticion } = require('../soporte-pruebas/http');
 
 /**
  * Pruebas de integración de las rutas de autenticación (authRoutes).
- * RF-01 a RF-07, RF-23, RF-26, RF-31, RNF-5, RNF-6.
+ * RF-01 a RF-07, RF-23, RF-26, RF-31, RF-36, RF-41, RNF-5, RNF-6.
  *
  * Levanta la aplicación real en un puerto libre y hace peticiones HTTP reales.
  * Requiere MariaDB en marcha (XAMPP, puerto 3306, base delgrow_contadores).
@@ -121,6 +121,50 @@ async function testLogoutRevocado() {
   assert.ok(reintento.body.mensaje, 'el rechazo debe incluir un mensaje de error');
 }
 
+// ---------- RF-36, criterio 31: el login distingue mayúsculas en el nombre ----------
+async function testLoginDistingueMayusculas() {
+  const conOtraCapitalizacion = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    usuario: contador.usuario.toUpperCase(),
+    password: contador.password,
+  });
+  assert.strictEqual(
+    conOtraCapitalizacion.statusCode,
+    401,
+    'debe responder 401 si el nombre llega con otra capitalización'
+  );
+  assert.ok(
+    conOtraCapitalizacion.body.mensaje && conOtraCapitalizacion.body.mensaje.includes('Credenciales no válidas'),
+    'el rechazo debe usar el mensaje genérico'
+  );
+
+  const exacto = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    usuario: contador.usuario,
+    password: contador.password,
+  });
+  assert.strictEqual(exacto.statusCode, 200, 'debe responder 200 con el nombre exacto');
+}
+
+// ---------- RF-41, criterio 36: dos inicios de sesión simultáneos son independientes ----------
+async function testDosSesionesSimultaneasSonIndependientes() {
+  const credenciales = { usuario: contador.usuario, password: contador.password };
+  const [primero, segundo] = await Promise.all([
+    peticion(servidor.puerto, 'POST', '/auth/login', credenciales),
+    peticion(servidor.puerto, 'POST', '/auth/login', credenciales),
+  ]);
+  assert.strictEqual(primero.statusCode, 200, 'el primer inicio de sesión debe responder 200');
+  assert.strictEqual(segundo.statusCode, 200, 'el segundo inicio de sesión debe responder 200');
+  assert.notStrictEqual(primero.body.token, segundo.body.token, 'cada inicio de sesión debe tener su propio token');
+
+  const logout = await peticion(servidor.puerto, 'POST', '/auth/logout', null, primero.body.token);
+  assert.strictEqual(logout.statusCode, 200, 'debe cerrar la primera sesión');
+
+  const conCerrado = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, primero.body.token);
+  assert.strictEqual(conCerrado.statusCode, 401, 'el token cerrado debe recibir 401');
+
+  const conAbierto = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, segundo.body.token);
+  assert.strictEqual(conAbierto.statusCode, 200, 'la otra sesión debe seguir abierta');
+}
+
 describe('rutas de autenticación', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -138,4 +182,6 @@ describe('rutas de autenticación', () => {
   test('el login sin campos responde 400', testLoginSinCamposRechazaCon400);
   test('las credenciales incorrectas responden 401 con mensaje genérico', testCredencialesIncorrectasRechazanCon401);
   test('el logout revoca el token y el mismo token recibe 401', testLogoutRevocado);
+  test('el login solo acepta el nombre de usuario con su capitalización exacta', testLoginDistingueMayusculas);
+  test('dos inicios de sesión simultáneos tienen tokens independientes', testDosSesionesSimultaneasSonIndependientes);
 });

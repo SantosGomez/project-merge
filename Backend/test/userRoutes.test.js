@@ -13,7 +13,7 @@ const { query } = require('../src/config/db');
 
 /**
  * Pruebas de integración de las rutas de usuarios (userRoutes).
- * RF-28 a RF-30, RF-23, RNF-1, RNF-5, RNF-6.
+ * RF-28 a RF-30, RF-23, RF-45, RNF-1, RNF-5, RNF-6.
  *
  * Levanta la aplicación real en un puerto libre con las rutas de autenticación y
  * de usuarios montadas. Requiere MariaDB en marcha (XAMPP, puerto 3306).
@@ -146,6 +146,28 @@ async function testAltaUsuarioDatosInvalidos() {
   assert.ok(r4.body.mensaje.includes('usuario ya existe'), 'mensaje debe indicar que el usuario ya existe');
 }
 
+// ---------- RF-45, criterio 40: duplicado que solo difiere en mayúsculas ----------
+async function testAltaDuplicadaConOtraCapitalizacionRechaza() {
+  const token = await loginAdmin();
+  const nombreEnMayusculas = contador.usuario.toUpperCase();
+
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/usuarios',
+    { usuario: nombreEnMayusculas, password: 'Pass1234', rol: 'contador' },
+    token
+  );
+  // Por si el alta llegara a crearse, la limpieza la borra.
+  registrarUsuarioCreado(nombreEnMayusculas);
+
+  assert.strictEqual(respuesta.statusCode, 400, 'debe responder 400 si el nombre solo difiere en mayúsculas');
+  assert.ok(respuesta.body.mensaje.includes('usuario ya existe'), 'mensaje debe indicar que el usuario ya existe');
+
+  const filas = await query('SELECT id FROM usuarios WHERE LOWER(usuario) = LOWER(?)', [contador.usuario]);
+  assert.strictEqual(filas.length, 1, 'no debe crearse una segunda cuenta con el mismo nombre');
+}
+
 describe('rutas de usuarios', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -163,4 +185,5 @@ describe('rutas de usuarios', () => {
   test('el administrador da de alta un usuario con contraseña Argon2id', testAltaUsuarioComoAdmin);
   test('el contador no puede dar de alta usuarios', testAltaUsuarioComoContadorEsDenegado);
   test('los datos inválidos de alta responden 400', testAltaUsuarioDatosInvalidos);
+  test('el alta con un nombre que solo difiere en mayúsculas responde 400', testAltaDuplicadaConOtraCapitalizacionRechaza);
 });

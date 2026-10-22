@@ -20,7 +20,7 @@ const { run } = require('node:test');
 const MINIMOS = {
   'appCors.test.js': 4,
   'authMiddleware.test.js': 13,
-  'authRoutes.test.js': 4,
+  'authRoutes.test.js': 6,
   'caseModel.test.js': 8,
   'caseRoutes.test.js': 8,
   'counterRoutes.test.js': 6,
@@ -37,8 +37,8 @@ const MINIMOS = {
   'roleMiddleware.test.js': 8,
   'seed.test.js': 3,
   'tokenUtils.test.js': 6,
-  'userModel.test.js': 7,
-  'userRoutes.test.js': 3,
+  'userModel.test.js': 9,
+  'userRoutes.test.js': 4,
   'validationUtils.test.js': 22,
 };
 
