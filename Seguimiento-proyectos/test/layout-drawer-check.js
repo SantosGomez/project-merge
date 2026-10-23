@@ -34,7 +34,7 @@ describe('Drawer sidebar — verificación estática', () => {
     const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
     assert.ok(src.includes('v-model="drawerOpen"'), 'falta v-model drawerOpen')
     assert.ok(src.includes('show-if-above'), 'falta show-if-above')
-    assert.ok(src.includes(':breakpoint="1024"'), 'falta breakpoint 1024')
+    assert.ok(src.includes(':breakpoint="1023"'), 'falta breakpoint 1023 (fijo desde 1024 px)')
     assert.ok(drawerTag.includes(':width="250"'), 'falta width 250')
     assert.ok(drawerTag.includes('bg-primary'), 'falta el azul marino de la marca')
     assert.ok(!drawerTag.includes('bg-blue-1'), 'el drawer ya no usa bg-blue-1')

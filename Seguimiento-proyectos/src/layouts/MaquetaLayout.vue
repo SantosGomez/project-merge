@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header elevated class="bg-primary text-white">
+    <q-header v-if="$q.screen.lt.md" elevated class="bg-primary text-white">
       <div class="layout-bar">
         <div class="layout-bar__row">
           <q-btn
@@ -33,7 +33,7 @@
     <q-drawer
       v-model="drawerOpen"
       show-if-above
-      :breakpoint="1024"
+      :breakpoint="1023"
       :width="250"
       class="bg-primary menu-lateral"
       aria-label="Navegación principal"
@@ -171,7 +171,25 @@
       </div>
     </q-drawer>
 
-    <q-page-container>
+    <q-page-container class="contenedor-paginas">
+      <header v-if="$q.screen.gt.sm" class="page-header">
+        <q-btn
+          v-if="backRouteName && !accessDenied"
+          flat
+          no-caps
+          color="primary"
+          icon="arrow_back"
+          label="Volver"
+          class="control-touch"
+          :to="{ name: backRouteName }"
+          :aria-label="`Volver a ${backTitle}`"
+        >
+          <q-tooltip>Vuelve a {{ backTitle }}, la pantalla anterior del recorrido.</q-tooltip>
+        </q-btn>
+
+        <h1 class="page-header__title">{{ pageTitle }}</h1>
+      </header>
+
       <q-page v-if="session.sesionCaducada" class="access-page">
         <AvisoSesionCaducada />
       </q-page>
@@ -331,6 +349,41 @@ onBeforeUnmount(() => {
   min-width: 0;
   margin: 0;
   font-size: clamp(1.05rem, 4vw, 1.4rem);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/*
+ * QPage calcula su alto mínimo sin contar el encabezado de escritorio, lo que dejaba
+ * un scroll de sobra. El contenedor reparte la ventana: el encabezado toma su alto y
+ * la página se estira con el resto.
+ */
+.contenedor-paginas {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.contenedor-paginas > :deep(.q-page) {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+}
+
+/* Encabezado de escritorio: mismo orden que la barra y el relleno horizontal de las páginas. */
+.page-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 24px 0;
+}
+
+.page-header__title {
+  flex: 1 1 180px;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.4rem;
   font-weight: 600;
   line-height: 1.2;
 }
