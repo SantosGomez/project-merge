@@ -92,6 +92,7 @@ npm run build
 - las vistas deben ser responsivas para todo tipo de dispositivos (mobile, desktop).
 - los textos de las vistas no tienen que ser ambiguos para que todas los usuarios puedan entender
 - tener tooltips para dar contexto al usuario y evitar ambiguedad.
+- Identidad visual: la app se llama «Seguimiento de Proyectos» y comparte el diseño de las demás apps de Grupo DelGrow S.C. (menú lateral oscuro de altura completa con logo, nombre de la empresa y de la app, secciones por rol y usuario con cierre de sesión al pie).
 
 ## Reglas de dominio / trampas conocidas
 

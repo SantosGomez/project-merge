@@ -6,7 +6,9 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 
 - **Metodología (desde 2026-10-23): rebanadas verticales con la skill `tdd`** (rojo-verde-refactor, código mínimo, sin sobreingeniería). Se eliminó el SDD: skill `sdd`, comandos `sdd-*`, `coordinator`, `planner` y la carpeta `specs/` (siguen en el historial de git, antes del commit que los borra). Constitución sin «La spec manda» (principios renumerados 1-4).
 - Hecho hasta ahora (antes en specs 001-004): frontend funcional conectado al backend y backend con autenticación, casos, robustez, fechas locales, login exacto y restablecimiento de contraseña. Backend `node --test` 162 pruebas (verificador `162 de 159` OK); frontend 277; `npm run build` en verde.
-- Siguiente: primera rebanada (propuesta: alta de usuarios desde la interfaz; `POST /usuarios` ya existe). Push solo cuando el usuario lo pida.
+- Flujo: `/backlog` → `/story` → `/pair` (con `tdd`) → `/code-review` hecho por un modelo distinto del que condujo. D-16 hace backlog y story; B-127 conduce `/pair` en lo normal y D-16 en lo delicado.
+- Backlog aprobado (2026-10-23): 8 historias de UI/UX del layout con identidad DelGrow (drawer oscuro completo, secciones por rol —`usuarios_de_sistema` ve «Administración»—, usuario y logout al pie, sin barra superior en escritorio, barra delgada en celular, modo mini con despliegue al pasar el cursor, fijar con clic en el logo). Las historias van al tracker del usuario. Siguiente: `/story` de la #1.
+- Pendiente aparte: pantallas de alta de usuarios y restablecer contraseña (el backend ya existe). Push solo cuando el usuario lo pida.
 
 ## Backend (lo esencial)
 
