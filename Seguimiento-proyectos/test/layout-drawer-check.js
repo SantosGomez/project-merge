@@ -51,6 +51,17 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('view="lHh Lpr lFf"'), 'falta view lHh Lpr lFf (menú a toda altura)')
   })
 
+  it('la barra superior ya no tiene el botón de cerrar sesión', () => {
+    const header = src.slice(src.indexOf('<q-header'), src.indexOf('</q-header>'))
+    assert.ok(!header.includes('Cerrar sesión'), 'la barra ya no muestra Cerrar sesión')
+    assert.ok(!header.includes('abrirDialogoCierre'), 'la barra ya no abre el diálogo de cierre')
+    assert.ok(!src.includes('botonCerrarSesion'), 'no queda la ref botonCerrarSesion')
+    assert.ok(!src.includes('.layout-bar__close'), 'no queda la clase layout-bar__close')
+    assert.ok(header.includes('Volver'), 'la barra conserva Volver')
+    assert.ok(header.includes('icon="menu"'), 'la barra conserva el botón de menú')
+    assert.ok(header.includes('layout-bar__title'), 'la barra conserva el título')
+  })
+
   it('contiene drawerOpen como ref en script', () => {
     assert.ok(src.includes('import { computed, ref }'), 'falta import ref junto a computed')
     assert.ok(src.includes('const drawerOpen = ref(false)'), 'falta drawerOpen ref(false)')
@@ -218,8 +229,22 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.match(src, /formatearRol\(session\.rol\)/, 'falta el rol legible de la sesión')
 
     const pieTag = src.match(/<div class="drawer-usuario"[^>]*>/)?.[0] ?? ''
-    assert.match(pieTag, /v-if="session\.usuario"/, 'el pie se muestra solo cuando hay usuario')
+    assert.match(pieTag, /v-if="session\.autenticado"/, 'el pie se muestra con la sesión abierta')
     assert.doesNotMatch(pieTag, /esAdministrador|esContador/, 'el pie no depende del rol')
+
+    const filaTag = src.match(/<div class="drawer-usuario__fila"[^>]*>/)?.[0] ?? ''
+    assert.match(filaTag, /v-if="session\.usuario"/, 'la fila del nombre se muestra con usuario')
+    assert.doesNotMatch(filaTag, /esAdministrador|esContador/, 'la fila no depende del rol')
+
+    const filaInicio = src.indexOf('<div class="drawer-usuario__fila"')
+    const opcionInicio = src.indexOf('@click="abrirDialogoCierre"')
+    assert.ok(opcionInicio > filaInicio, 'la opción va después del inicio de la fila')
+    let filaFin = filaInicio
+    for (let cierre = 0; cierre < 3; cierre += 1) {
+      filaFin = src.indexOf('</div>', filaFin + 1)
+      assert.ok(filaFin > filaInicio, 'no se encontró el cierre de la fila del nombre')
+    }
+    assert.ok(opcionInicio > filaFin, 'la opción de cierre no va dentro de la fila del nombre')
   })
 
   it('el nombre del pie se recorta en una línea y el tooltip muestra el nombre completo', () => {
@@ -279,6 +304,59 @@ describe('Drawer sidebar — verificación estática', () => {
     const nav = cssRule('.drawer-nav')
     assert.match(nav, /flex:\s*1 1 auto/, 'la lista ocupa el espacio libre')
     assert.match(nav, /min-height:\s*0/, 'la lista puede encogerse y hacer scroll')
+  })
+
+  it('el pie ofrece «Cerrar Sesión» con su tooltip y abre la confirmación existente', () => {
+    const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('</q-drawer>'))
+    assert.ok(pie.includes('class="q-item--nav"'), 'la opción usa el estilo del menú')
+    assert.match(
+      pie,
+      /<q-item-label>Cerrar Sesión<\/q-item-label>/,
+      'falta la etiqueta Cerrar Sesión',
+    )
+    assert.match(pie, /<q-icon name="logout" \/>/, 'falta el icono de salir')
+    assert.match(pie, /@click="abrirDialogoCierre"/, 'la opción abre la confirmación existente')
+    assert.match(
+      pie,
+      /<q-tooltip>Cierra la sesión actual y vuelve a la pantalla de inicio de sesión\.<\/q-tooltip>/,
+      'falta el tooltip de la opción',
+    )
+    assert.ok(
+      pie.indexOf('Cerrar Sesión') > pie.indexOf('drawer-usuario__rol'),
+      'la opción va debajo del nombre y el rol',
+    )
+    assert.ok(src.includes('dialogoCierreAbierto'), 'falta el diálogo de confirmación')
+  })
+
+  it('el icono de Cerrar Sesión queda alineado con el avatar y la lista', () => {
+    const pie = cssRule('.drawer-usuario')
+    const relleno = pie.match(/padding:\s*\d+px\s+(\d+)px/)?.[1]
+    assert.ok(relleno, 'el pie declara relleno horizontal')
+
+    assert.match(
+      cssRule('.drawer-usuario__salir'),
+      new RegExp(`margin:\\s*0\\s+-${relleno}px`),
+      'la opción compensa el relleno horizontal del pie',
+    )
+
+    const pieHtml = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('</q-drawer>'))
+    assert.match(
+      pieHtml,
+      /class="drawer-usuario__salir"[\s\S]*?class="q-item--nav"/,
+      'la clase de alineación envuelve la opción de cierre',
+    )
+  })
+
+  it('la opción «Cerrar Sesión» del pie se desactiva mientras se cierra la sesión', () => {
+    const clic = src.indexOf('@click="abrirDialogoCierre"')
+    assert.ok(clic >= 0, 'falta la opción que abre el cierre')
+
+    const inicioEtiqueta = src.lastIndexOf('<q-item', clic)
+    const finEtiqueta = src.indexOf('>', clic)
+    assert.ok(inicioEtiqueta >= 0 && finEtiqueta > clic, 'no se encontró la etiqueta de la opción')
+
+    const etiqueta = src.slice(inicioEtiqueta, finEtiqueta + 1)
+    assert.match(etiqueta, /:disable="cerrandoSesion"/, 'la opción del pie se desactiva al cerrar')
   })
 
   it('tiene los 4 links internos con rutas aprobadas', () => {

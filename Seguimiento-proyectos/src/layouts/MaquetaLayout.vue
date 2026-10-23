@@ -26,21 +26,6 @@
           />
 
           <h1 class="layout-bar__title">{{ pageTitle }}</h1>
-
-          <q-btn
-            ref="botonCerrarSesion"
-            flat
-            no-caps
-            icon="logout"
-            label="Cerrar sesión"
-            text-color="white"
-            class="control-touch layout-bar__close"
-            :aria-label="'Cerrar sesión'"
-            :disable="cerrandoSesion"
-            @click="abrirDialogoCierre"
-          >
-            <q-tooltip>Cierra la sesión actual y vuelve a la pantalla de inicio de sesión.</q-tooltip>
-          </q-btn>
         </div>
       </div>
     </q-header>
@@ -153,14 +138,35 @@
         </q-list>
       </q-scroll-area>
 
-      <div class="drawer-usuario" v-if="session.usuario">
-        <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
-        <div class="drawer-usuario__datos">
-          <p class="drawer-usuario__nombre">
-            {{ session.usuario }}
-            <q-tooltip>{{ session.usuario }}</q-tooltip>
-          </p>
-          <p class="drawer-usuario__rol">{{ rolLegible }}</p>
+      <div class="drawer-usuario" v-if="session.autenticado">
+        <div class="drawer-usuario__fila" v-if="session.usuario">
+          <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
+          <div class="drawer-usuario__datos">
+            <p class="drawer-usuario__nombre">
+              {{ session.usuario }}
+              <q-tooltip>{{ session.usuario }}</q-tooltip>
+            </p>
+            <p class="drawer-usuario__rol">{{ rolLegible }}</p>
+          </div>
+        </div>
+
+        <div class="drawer-usuario__salir">
+          <q-item
+            clickable
+            v-ripple
+            class="q-item--nav"
+            aria-label="Cerrar sesión"
+            :disable="cerrandoSesion"
+            @click="abrirDialogoCierre"
+          >
+            <q-item-section avatar>
+              <q-icon name="logout" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Cerrar Sesión</q-item-label>
+            </q-item-section>
+            <q-tooltip>Cierra la sesión actual y vuelve a la pantalla de inicio de sesión.</q-tooltip>
+          </q-item>
         </div>
       </div>
     </q-drawer>
@@ -329,11 +335,6 @@ onBeforeUnmount(() => {
   line-height: 1.2;
 }
 
-.layout-bar__close {
-  min-width: 44px;
-  min-height: 44px;
-}
-
 .control-touch {
   min-width: 44px;
   min-height: 44px;
@@ -403,10 +404,20 @@ onBeforeUnmount(() => {
 .drawer-usuario {
   display: flex;
   flex: 0 0 auto;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
   padding: 12px 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.drawer-usuario__fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.drawer-usuario__salir {
+  margin: 0 -16px;
 }
 
 .drawer-usuario__avatar {
