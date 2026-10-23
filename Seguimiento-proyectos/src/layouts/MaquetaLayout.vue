@@ -38,7 +38,7 @@
       :breakpoint="1023"
       :width="250"
       :mini="menuCompacto"
-      mini-to-overlay
+      :mini-to-overlay="!menuFijado"
       :mini-width="96"
       @mouseenter="cursorEnMenu = true"
       @mouseleave="cursorEnMenu = false"
@@ -50,13 +50,24 @@
       transition-hide="slide-left"
     >
       <div class="drawer-marca">
-        <img
-          class="drawer-marca__logo"
-          src="logos/PNG/DELGROW_ISOTIPO-OF_T.png"
-          alt=""
-          width="64"
-          height="64"
-        />
+        <!-- Siempre el mismo botón: crearlo o destruirlo al cruzar 1024 px perdía el foco. -->
+        <button
+          type="button"
+          class="drawer-marca__logo-boton"
+          aria-label="Fijar menú abierto"
+          :aria-pressed="menuFijado"
+          :aria-disabled="!esEscritorio"
+          @click="alternarMenuFijado"
+        >
+          <img
+            class="drawer-marca__logo"
+            src="logos/PNG/DELGROW_ISOTIPO-OF_T.png"
+            alt=""
+            width="64"
+            height="64"
+          />
+          <q-tooltip v-if="esEscritorio">{{ textoBotonMenu }}</q-tooltip>
+        </button>
         <div class="drawer-marca__textos">
           <p class="drawer-marca__empresa">Grupo DelGrow S.C.</p>
           <p class="drawer-marca__app">Seguimiento de Proyectos</p>
@@ -252,6 +263,7 @@
 import { computed, ref } from 'vue'
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 
 import AccessDenied from '../components/AccessDenied.vue'
 import AvisoSesionCaducada from '../components/AvisoSesionCaducada.vue'
@@ -260,7 +272,9 @@ import { useCasesStore } from '../stores/cases.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
+import { guardarMenuFijado, leerMenuFijado } from '../utils/preferenciaMenu.js'
 
+const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
@@ -268,10 +282,11 @@ const counters = useCountersStore()
 const cases = useCasesStore()
 
 const drawerOpen = ref(false)
+const menuFijado = ref(leerMenuFijado())
 // Cursor y foco se siguen por separado: el menú se compacta solo sin ninguno de los dos.
 const cursorEnMenu = ref(false)
 const focoEnMenu = ref(false)
-const menuCompacto = computed(() => !cursorEnMenu.value && !focoEnMenu.value)
+const menuCompacto = computed(() => !menuFijado.value && !cursorEnMenu.value && !focoEnMenu.value)
 
 const alEntrarFoco = (evento) => {
   // Solo el foco de teclado despliega: el que QDialog devuelve tras un clic no es visible.
@@ -283,6 +298,19 @@ const alSalirFoco = (evento) => {
   if (!evento.currentTarget.contains(evento.relatedTarget)) {
     focoEnMenu.value = false
   }
+}
+
+const textoBotonMenu = computed(() =>
+  menuFijado.value ? 'Volver a menú compacto' : 'Fijar menú abierto',
+)
+
+// Por debajo de 1024 px el menú se abre con el botón de la barra y el logo no fija nada.
+const esEscritorio = computed(() => $q.screen.gt.sm)
+
+const alternarMenuFijado = () => {
+  if (!esEscritorio.value) return
+  menuFijado.value = !menuFijado.value
+  guardarMenuFijado(menuFijado.value)
 }
 
 const dialogoCierreAbierto = ref(false)
@@ -448,6 +476,25 @@ onBeforeUnmount(() => {
   width: 64px;
   height: 64px;
   object-fit: contain;
+}
+
+.drawer-marca__logo-boton {
+  display: flex;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.drawer-marca__logo-boton[aria-disabled='true'] {
+  cursor: default;
+}
+
+.drawer-marca__logo-boton:focus-visible {
+  outline: 3px solid var(--q-secondary);
+  outline-offset: 2px;
 }
 
 .drawer-marca__textos {

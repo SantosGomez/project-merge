@@ -480,8 +480,8 @@ describe('Drawer compacto — verificación estática', () => {
   it('el menú solo se compacta cuando no tiene ni el cursor ni el foco dentro', () => {
     assert.match(
       declaracion('menuCompacto'),
-      /computed\(\(\) => !cursorEnMenu\.value && !focoEnMenu\.value\)/,
-      'cursor y foco son estados separados; basta uno para desplegar',
+      /computed\(\(\) => !menuFijado\.value && !cursorEnMenu\.value && !focoEnMenu\.value\)/,
+      'solo es compacto sin menú fijado, sin cursor y sin foco; basta uno para desplegar',
     )
 
     const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
@@ -543,5 +543,71 @@ describe('Drawer compacto — verificación estática', () => {
     }
 
     assert.ok(!src.includes('.q-drawer--mobile'), 'el compacto no define reglas para el móvil')
+  })
+
+  it('el logo es un botón con mano, nombre accesible y tooltip según el estado', () => {
+    const boton = src.match(/<button[\s\S]*?<\/button>/)?.[0] ?? ''
+    assert.ok(boton, 'falta el botón del logo')
+
+    assert.match(boton, /type="button"/, 'es un botón real')
+    assert.match(boton, /@click="alternarMenuFijado"/, 'el clic fija o suelta el menú')
+    // Botón de alternancia: el nombre no cambia; el estado lo anuncia aria-pressed.
+    assert.match(boton, /\saria-label="Fijar menú abierto"/, 'nombre accesible fijo')
+    assert.doesNotMatch(boton, /:aria-label=/, 'el nombre no cambia con el estado')
+    assert.match(boton, /:aria-pressed="menuFijado"/, 'anuncia si está fijado')
+    assert.match(
+      boton,
+      /<q-tooltip[^>]*>\{\{\s*textoBotonMenu\s*\}\}<\/q-tooltip>/,
+      'tooltip según el estado',
+    )
+    assert.match(boton, /class="drawer-marca__logo"/, 'mantiene el logo dentro')
+
+    assert.match(cssRule('.drawer-marca__logo-boton'), /cursor:\s*pointer/, 'muestra la mano')
+    assert.match(
+      cssRule('.drawer-marca__logo-boton:focus-visible'),
+      /outline:/,
+      'foco visible al llegar con el teclado',
+    )
+
+    assert.ok(src.includes("'Fijar menú abierto'"), 'texto para fijar')
+    assert.ok(src.includes("'Volver a menú compacto'"), 'texto para soltar')
+  })
+
+  it('fijar deja el menú abierto empujando la página; soltar vuelve al compacto', () => {
+    const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
+    assert.match(drawerTag, /:mini-to-overlay="!menuFijado"/, 'fijado, el menú ocupa su ancho')
+    assert.match(drawerTag, /:mini="menuCompacto"/, 'el modo mini sigue al estado compacto')
+
+    assert.match(
+      src,
+      /const menuCompacto = computed\(\(\) =>[^\n]*!menuFijado\.value[^\n]*\)/,
+      'fijado impide compactar',
+    )
+    assert.match(src, /const menuFijado = ref\(leerMenuFijado\(\)\)/, 'arranca con lo guardado')
+
+    const inicio = src.indexOf('const alternarMenuFijado')
+    const alternar = src.slice(inicio, src.indexOf('\nconst ', inicio + 1))
+    assert.match(alternar, /menuFijado\.value = !menuFijado\.value/, 'alterna el estado')
+    assert.match(alternar, /guardarMenuFijado\(menuFijado\.value\)/, 'guarda la preferencia')
+  })
+
+  it('el logo es siempre el mismo botón; por debajo de 1024 px queda sin acción', () => {
+    // Crear o destruir el botón al cruzar 1024 px hacía perder el foco del teclado.
+    const boton = src.match(/<button[\s\S]*?<\/button>/)?.[0] ?? ''
+    const apertura = boton.match(/<button[^>]*>/)?.[0] ?? ''
+    assert.doesNotMatch(apertura, /v-if=/, 'el botón no se crea ni se destruye por ancho')
+    assert.equal((src.match(/class="drawer-marca__logo"/g) ?? []).length, 1, 'un solo logo')
+
+    assert.match(apertura, /:aria-disabled="!esEscritorio"/, 'en móvil se anuncia no disponible')
+    assert.match(boton, /<q-tooltip v-if="esEscritorio">/, 'en móvil no muestra tooltip')
+    assert.match(
+      cssRule(".drawer-marca__logo-boton[aria-disabled='true']"),
+      /cursor:\s*default/,
+      'en móvil no muestra la mano',
+    )
+
+    const inicio = src.indexOf('const alternarMenuFijado')
+    const alternar = src.slice(inicio, src.indexOf('\nconst ', inicio + 1))
+    assert.match(alternar, /if \(!esEscritorio\.value\) return/, 'en móvil el clic no hace nada')
   })
 })
