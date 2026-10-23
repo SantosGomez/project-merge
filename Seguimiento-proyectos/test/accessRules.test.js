@@ -2,7 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { exampleAccounts } from '../src/services/exampleData.js'
-import { normalizeCredential, resolveProfile, validateLoginForm } from '../src/utils/accessRules.js'
+import {
+  decidirAcceso,
+  normalizeCredential,
+  resolveProfile,
+  validateLoginForm,
+} from '../src/utils/accessRules.js'
 
 // Cuentas de apoyo para comprobar la regla defensiva de RF-4 sin tocar la semilla.
 const accountsWithUnknownProfile = [
@@ -137,4 +142,97 @@ test('resolveProfile no modifica la lista de cuentas', () => {
   resolveProfile('Admin', 'admin123', exampleAccounts)
 
   assert.deepEqual(exampleAccounts, before)
+})
+
+// --- Decisión del guard de navegación (T5: RF-05, RF-06, RF-10) -------------
+
+const RUTA_LOGIN = { requiereSesion: false, perfil: null }
+const RUTA_ADMIN_DASHBOARD = { requiereSesion: true, perfil: 'administrador' }
+const RUTA_ADMIN_DIRECTORIO = { requiereSesion: true, perfil: 'administrador' }
+const RUTA_CONTADOR_REGISTRO = { requiereSesion: true, perfil: 'contador' }
+const RUTA_CONTADOR_CASOS = { requiereSesion: true, perfil: 'contador' }
+
+test('decidirAcceso exige iniciar sesión en una pantalla interna sin sesión (RF-05)', () => {
+  const sesion = { autenticado: false, rol: null }
+
+  for (const ruta of [
+    RUTA_ADMIN_DASHBOARD,
+    RUTA_ADMIN_DIRECTORIO,
+    RUTA_CONTADOR_REGISTRO,
+    RUTA_CONTADOR_CASOS,
+  ]) {
+    assert.deepEqual(decidirAcceso({ ruta, sesion }), { accion: 'ir_login', aviso: 'sesion' })
+  }
+})
+
+test('decidirAcceso permite P-1 con sesión activa sin cerrarla (RF-10)', () => {
+  for (const rol of ['administrador', 'contador', 'usuarios_de_sistema']) {
+    assert.deepEqual(decidirAcceso({ ruta: RUTA_LOGIN, sesion: { autenticado: true, rol } }), {
+      accion: 'permitir',
+    })
+  }
+
+  assert.deepEqual(
+    decidirAcceso({ ruta: RUTA_LOGIN, sesion: { autenticado: false, rol: null } }),
+    { accion: 'permitir' },
+  )
+})
+
+test('decidirAcceso deja entrar al perfil correcto en sus cuatro pantallas (RF-06)', () => {
+  const admin = { autenticado: true, rol: 'administrador' }
+  const contador = { autenticado: true, rol: 'contador' }
+
+  assert.deepEqual(decidirAcceso({ ruta: RUTA_ADMIN_DASHBOARD, sesion: admin }), {
+    accion: 'permitir',
+  })
+  assert.deepEqual(decidirAcceso({ ruta: RUTA_ADMIN_DIRECTORIO, sesion: admin }), {
+    accion: 'permitir',
+  })
+  assert.deepEqual(decidirAcceso({ ruta: RUTA_CONTADOR_REGISTRO, sesion: contador }), {
+    accion: 'permitir',
+  })
+  assert.deepEqual(decidirAcceso({ ruta: RUTA_CONTADOR_CASOS, sesion: contador }), {
+    accion: 'permitir',
+  })
+})
+
+test('decidirAcceso deniega al contador las pantallas de administrador (RF-06)', () => {
+  const sesion = { autenticado: true, rol: 'contador' }
+
+  for (const ruta of [RUTA_ADMIN_DASHBOARD, RUTA_ADMIN_DIRECTORIO]) {
+    assert.deepEqual(decidirAcceso({ ruta, sesion }), {
+      accion: 'denegar',
+      motivo: 'perfil',
+      destino: 'contador-casos',
+    })
+  }
+})
+
+test('decidirAcceso deniega al administrador las pantallas de contador (RF-06)', () => {
+  const sesion = { autenticado: true, rol: 'administrador' }
+
+  for (const ruta of [RUTA_CONTADOR_REGISTRO, RUTA_CONTADOR_CASOS]) {
+    assert.deepEqual(decidirAcceso({ ruta, sesion }), {
+      accion: 'denegar',
+      motivo: 'perfil',
+      destino: 'admin-dashboard',
+    })
+  }
+})
+
+test('decidirAcceso deniega un perfil sin pantalla asignada y ofrece volver a P-1', () => {
+  const sesion = { autenticado: true, rol: 'usuarios_de_sistema' }
+
+  for (const ruta of [
+    RUTA_ADMIN_DASHBOARD,
+    RUTA_ADMIN_DIRECTORIO,
+    RUTA_CONTADOR_REGISTRO,
+    RUTA_CONTADOR_CASOS,
+  ]) {
+    assert.deepEqual(decidirAcceso({ ruta, sesion }), {
+      accion: 'denegar',
+      motivo: 'sin_pantalla',
+      destino: null,
+    })
+  }
 })

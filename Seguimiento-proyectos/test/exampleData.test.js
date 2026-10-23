@@ -7,7 +7,6 @@ import {
   PRIORITY_COLORS,
   PRIORITY_LABELS,
   PROFILES,
-  SIMULATION,
   STATUSES,
   STATUS_LABELS,
 } from '../src/utils/constants.js'
@@ -43,8 +42,6 @@ test('constants.js reúne los valores únicos del dominio', () => {
   assert.deepEqual(PRIORITY_COLORS, { alta: 'red', media: 'amber', baja: 'green' })
   assert.deepEqual(PROFILES, { administrador: 'administrador', contador: 'contador' })
   assert.equal(MAX_CLIENT_LENGTH, 80)
-  assert.equal(SIMULATION.error, 'Simular error')
-  assert.equal(SIMULATION.expiry, 'Simular caducidad')
 })
 
 test('la semilla trae las dos cuentas de ejemplo con su perfil y su contador asignado', () => {

@@ -1,38 +1,53 @@
 <template>
   <li class="counter-row-item">
-    <button
-      type="button"
-      class="counter-row"
-      :class="{ 'counter-row--selected': selected }"
-      :aria-pressed="selected"
-      @click="emit('select')"
-    >
-      <span class="counter-row__identity">
-        <span class="counter-row__name">{{ counter.name }}</span>
-        <span v-if="selected" class="counter-row__selected-mark">Seleccionado</span>
-      </span>
+    <div class="counter-row" :class="{ 'counter-row--selected': selected }">
+      <button
+        type="button"
+        class="counter-row__select"
+        :aria-pressed="selected"
+        @click="emit('select')"
+      >
+        <span class="counter-row__identity">
+          <span class="counter-row__name">{{ counter.name }}</span>
+          <span v-if="selected" class="counter-row__selected-mark">Seleccionado</span>
+        </span>
+      </button>
 
       <span class="counter-row__counts">
-        <span v-for="status in STATUSES" :key="status" class="counter-row__count">
+        <span
+          v-for="status in STATUSES"
+          :key="status"
+          class="counter-row__count"
+          tabindex="0"
+          :aria-label="`${STATUS_LABELS[status]}: ${counts[status] ?? 0}. ${ayudaConteo(status)}`"
+        >
           <span class="counter-row__count-value">{{ counts[status] ?? 0 }}</span>
           <span class="counter-row__count-label">{{ STATUS_LABELS[status] }}</span>
+
+          <!-- Ayuda contextual de cada conteo: qué está contando (RNF-03). -->
+          <q-tooltip v-if="ayudaConteo(status)">{{ ayudaConteo(status) }}</q-tooltip>
         </span>
       </span>
-    </button>
+    </div>
   </li>
 </template>
 
 <script setup>
 import { STATUS_LABELS, STATUSES } from '../utils/constants.js'
+import { ayudaConteo } from '../utils/filasVista.js'
 
 /*
- * Fila de un contador en P-2 (RF-12, RF-13, RF-15): nombre completo, sus tres conteos
+ * Fila de un contador en P-2 (RF-12, RF-13, RF-15, RNF-03): nombre completo, sus tres conteos
  * por estado (también el "0") y la selección del contador cuyo detalle se muestra.
  * El componente no decide qué contador está seleccionado ni cuenta casos: recibe los
- * conteos ya calculados y avisa con un evento. El nombre nunca se recorta (RNF-9).
+ * conteos ya calculados y avisa con un evento. El nombre nunca se recorta (RNF-08).
+ *
+ * La selección vive en el botón del nombre (un solo control por fila). Los conteos quedan
+ * fuera de ese botón para que cada uno pueda recibir foco y mostrar su ayuda con teclado,
+ * además de con puntero y con toque (RNF-03); dentro de un `button` el foco no llegaría.
  */
 defineProps({
-  /** Contador de ejemplo: `{ id, name }`. */
+  /** Contador: `{ id, name }`. */
   counter: {
     type: Object,
     required: true,
@@ -70,9 +85,6 @@ const emit = defineEmits(['select'])
   border-radius: 10px;
   background: #ffffff;
   color: #102a43;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
 }
 
 .counter-row:hover {
@@ -80,8 +92,27 @@ const emit = defineEmits(['select'])
   background: #f0f6fc;
 }
 
-/* El foco de teclado siempre es visible (RNF-8). */
-.counter-row:focus-visible {
+/* Control de selección de la fila: nombre y marca; área táctil de 44 px de alto (RNF-02). */
+.counter-row__select {
+  display: flex;
+  flex: 1 1 180px;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: stretch;
+  justify-content: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* El foco de teclado siempre es visible (RNF-07). */
+.counter-row__select:focus-visible {
   outline: 3px solid #0b5cad;
   outline-offset: 2px;
 }
@@ -95,7 +126,6 @@ const emit = defineEmits(['select'])
 
 .counter-row__identity {
   display: flex;
-  flex: 1 1 180px;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
@@ -123,14 +153,24 @@ const emit = defineEmits(['select'])
 }
 
 .counter-row__count {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   min-width: 68px;
+  min-height: 44px;
   padding: 4px 8px;
   border: 1px solid #dbe4ee;
   border-radius: 8px;
   background: #f4f7fb;
+  cursor: help;
+}
+
+/* Cada conteo recibe foco para explicar qué cuenta también con teclado (RNF-03, RNF-07). */
+.counter-row__count:focus-visible {
+  outline: 3px solid #0b5cad;
+  outline-offset: 2px;
 }
 
 .counter-row__count-value {

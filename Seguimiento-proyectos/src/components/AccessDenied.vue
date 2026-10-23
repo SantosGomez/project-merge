@@ -14,7 +14,9 @@
       label="Volver a mi pantalla principal"
       class="access-denied__action control-touch"
       :to="{ name: homeRouteName }"
-    />
+    >
+      <q-tooltip>Vuelve a la pantalla principal de tu perfil.</q-tooltip>
+    </q-btn>
 
     <!-- Ayuda siempre visible: se lee con puntero, con teclado y con toque (RNF-3). -->
     <section class="access-denied__help" aria-labelledby="access-denied-help-title">

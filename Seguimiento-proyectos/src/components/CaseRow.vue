@@ -6,7 +6,18 @@
       <dl class="case-row__meta">
         <div class="case-row__meta-item">
           <dt class="case-row__meta-label">Estado</dt>
-          <dd class="case-row__meta-value">{{ statusLabel }}</dd>
+          <dd class="case-row__meta-value">
+            <span
+              class="case-row__status"
+              tabindex="0"
+              :aria-label="estadoAccesible"
+            >
+              {{ statusLabel }}
+
+              <!-- Ayuda contextual del estado: puntero, teclado y toque (RNF-03). -->
+              <q-tooltip v-if="statusTooltip">{{ statusTooltip }}</q-tooltip>
+            </span>
+          </dd>
         </div>
 
         <div class="case-row__meta-item">
@@ -32,12 +43,14 @@
 import { computed } from 'vue'
 
 import PriorityTag from './PriorityTag.vue'
+import { formatearEstado } from '../utils/formateadores.js'
+import { estadoABackend } from '../utils/traduccionBackend.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 
 /*
- * Fila de un caso (RF-13, RF-29, RNF-9): cliente completo, estado y etiqueta de prioridad.
- * En P-2 se usa en modo solo lectura y no ofrece ningún control de edición (RF-13, RF-15).
- * La zona `actions` queda preparada para los selectores de P-5 sin crear otra fila.
+ * Fila de un caso (RF-13, RF-28, RF-29, RNF-08, RNF-03): cliente completo, estado y etiqueta
+ * de prioridad. En P-2 se usa en modo solo lectura y no ofrece ningún control de edición
+ * (RF-13, RF-15). La zona `actions` queda preparada para los selectores de P-5 sin crear otra fila.
  */
 const props = defineProps({
   /** Caso de ejemplo: `{ id, client, status, priority, counterId }`. */
@@ -54,6 +67,18 @@ const props = defineProps({
 
 /** Etiqueta en español del estado; el estado nunca se comunica solo con color. */
 const statusLabel = computed(() => STATUS_LABELS[props.caseItem.status] ?? props.caseItem.status)
+
+/** Ayuda contextual del estado: qué significa cada uno (RNF-03). */
+const statusTooltip = computed(
+  () => formatearEstado(estadoABackend(props.caseItem.status))?.tooltip ?? '',
+)
+
+/** Nombre accesible del estado: el texto visible y, cuando existe, la ayuda contextual. */
+const estadoAccesible = computed(() =>
+  statusTooltip.value === ''
+    ? `Estado ${statusLabel.value}`
+    : `Estado ${statusLabel.value}. ${statusTooltip.value}`,
+)
 </script>
 
 <style scoped>
@@ -112,6 +137,27 @@ const statusLabel = computed(() => STATUS_LABELS[props.caseItem.status] ?? props
   color: #102a43;
   font-size: 0.95rem;
   line-height: 1.3;
+}
+
+/* El estado recibe foco para que su ayuda se lea con teclado, con foco siempre visible (RNF-03, RNF-07). */
+.case-row__status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  cursor: help;
+}
+
+.case-row__status:focus-visible {
+  outline: 3px solid #0b5cad;
+  outline-offset: 2px;
+}
+
+/* Área táctil de 44 px de alto para la ayuda (RNF-02) sin cambiar el aspecto de la fila. */
+.case-row__status::after {
+  content: '';
+  position: absolute;
+  inset: -10px 0;
 }
 
 .case-row__actions {

@@ -1,5 +1,5 @@
 # Spec 003 — Frontend funcional conectado al backend
-Estado: aprobada
+Estado: implementada
 
 ## Contexto y objetivo
 

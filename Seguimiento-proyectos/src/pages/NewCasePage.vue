@@ -13,7 +13,7 @@
 
     <ErrorState
       v-else-if="screenStateName === SCREEN_STATES.error"
-      detail="el registro de caso."
+      :detail="mensajeError"
       @retry="retry"
     />
 
@@ -136,6 +136,8 @@
               no-caps
               unelevated
               class="control-touch"
+              :loading="cases.guardando"
+              :disable="cases.guardando"
             />
           </div>
         </form>
@@ -172,28 +174,32 @@ import ScreenLoader from '../components/ScreenLoader.vue'
 import { PRIORITIES, PRIORITY_LABELS } from '../utils/constants.js'
 import { CASE_ERROR_CODES } from '../utils/caseRules.js'
 import { STATUS_LABELS, STATUSES } from '../utils/constants.js'
-import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
+import { useCasesStore } from '../stores/cases.js'
+import { useSessionStore } from '../stores/session.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
-import { exampleCounters } from '../services/exampleData.js'
+import { validarCliente, validarPrioridad } from '../utils/validators.js'
+import { prioridadABackend } from '../utils/traduccionBackend.js'
 
-const maqueta = useMaquetaStore()
+const cases = useCasesStore()
+const session = useSessionStore()
 
 const client = ref('')
 const priority = ref('')
 const formError = ref(null)
 const successMessage = ref(false)
 
-const screen = computed(() => maqueta.screens[SCREEN_IDS.newCase])
+const cargando = ref(true)
+const errorCarga = ref(null)
+const errorGuardado = ref(null)
 
-const assignedCounter = computed(() => {
-  const id = maqueta.currentCounterId
-  return id ? (exampleCounters.find((c) => c.id === id) ?? null) : null
-})
+const assignedCounter = computed(() =>
+  session.usuario ? { id: session.id, name: session.usuario } : null,
+)
 
 const screenStateName = computed(() =>
   screenState({
-    loading: screen.value.loading,
-    error: screen.value.error,
+    loading: cargando.value,
+    error: errorCarga.value || errorGuardado.value,
     rows: assignedCounter.value ? [assignedCounter.value] : [],
   }),
 )
@@ -208,28 +214,53 @@ const assignedCounterName = computed(() =>
 
 const statusLabel = STATUS_LABELS[STATUSES[0]]
 
+const mensajeError = computed(() => {
+  const error = errorCarga.value || errorGuardado.value
+  return error?.mensaje ?? 'el registro de caso.'
+})
+
 const clearFormError = () => {
   formError.value = null
 }
 
-const submitCase = () => {
+const submitCase = async () => {
+  if (cases.guardando) return
+
   clearFormError()
   successMessage.value = false
+  errorGuardado.value = null
 
-  const result = maqueta.registerCase({ client: client.value, priority: priority.value })
+  const clienteLimpio = client.value.trim()
 
-  if (!result.valid) {
+  const validacionCliente = validarCliente(clienteLimpio)
+  if (!validacionCliente.valido) {
     formError.value = {
-      code: result.errorCode,
+      code:
+        validacionCliente.error === 'cliente_requerido'
+          ? CASE_ERROR_CODES.clientRequired
+          : CASE_ERROR_CODES.clientTooLong,
       message:
-        result.errorCode === CASE_ERROR_CODES.clientRequired
+        validacionCliente.error === 'cliente_requerido'
           ? 'El cliente es obligatorio.'
-          : result.errorCode === CASE_ERROR_CODES.clientTooLong
-            ? 'El cliente supera los 80 caracteres permitidos.'
-            : result.errorCode === CASE_ERROR_CODES.priorityRequired
-              ? 'Se debe elegir una prioridad.'
-              : 'Resultado no válido.',
+          : 'El cliente supera los 80 caracteres permitidos.',
     }
+    return
+  }
+
+  const prioridadBackend = prioridadABackend(priority.value)
+  const validacionPrioridad = validarPrioridad(prioridadBackend)
+  if (!validacionPrioridad.valido) {
+    formError.value = {
+      code: CASE_ERROR_CODES.priorityRequired,
+      message: 'Se debe elegir una prioridad.',
+    }
+    return
+  }
+
+  const resultado = await cases.crearCaso(clienteLimpio, prioridadBackend)
+
+  if (!resultado.ok) {
+    errorGuardado.value = resultado.error
     return
   }
 
@@ -238,12 +269,20 @@ const submitCase = () => {
   priority.value = ''
 }
 
-const retry = () => {
-  maqueta.retryScreen(SCREEN_IDS.newCase)
+const retry = async () => {
+  if (errorGuardado.value) {
+    await submitCase()
+    return
+  }
+
+  errorCarga.value = null
+  cargando.value = false
 }
 
 onMounted(() => {
-  maqueta.startScreenLoad(SCREEN_IDS.newCase)
+  cargando.value = true
+  // Preparación síncrona del formulario: no hay datos que obtener del backend.
+  cargando.value = false
 })
 </script>
 

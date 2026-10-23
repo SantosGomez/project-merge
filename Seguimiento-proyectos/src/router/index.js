@@ -11,28 +11,38 @@ import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
 import NewCasePage from '../pages/NewCasePage.vue'
+import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
+import { useSessionStore } from '../stores/session.js'
+import { PANTALLA_PRINCIPAL_POR_ROL, decidirAcceso } from '../utils/accessRules.js'
 import { PROFILES } from '../utils/constants.js'
-import { accessDenied } from './accessState.js'
+import { accessDenied, arranqueFallido } from './accessState.js'
 
 /*
- * Rutas de la maqueta (plan 001, sección 5). Sustituyen a las rutas automáticas
- * de la plantilla de Quasar: las cinco pantallas y una redirección para la raíz.
- * Las pantallas internas comparten `MaquetaLayout` (título, regreso y simulaciones).
+ * Rutas de la aplicación (plan 003, sección 2).
+ * P-1 usa `LoginLayout` (sin menú interno); P-2 a P-5 comparten `MaquetaLayout`
+ * (título, regreso y, hasta T7, los controles de simulación de la maqueta 001).
+ * La raíz siempre lleva a P-1.
  */
 const routes = [
   {
     path: '/login',
-    name: 'login',
-    component: LoginPage,
-    meta: { titulo: 'Inicio de sesión' },
+    component: LoginLayout,
+    children: [
+      {
+        path: '',
+        name: 'login',
+        component: LoginPage,
+        meta: { titulo: 'Inicio de sesión' },
+      },
+    ],
   },
   {
     path: '/',
     component: MaquetaLayout,
     children: [
-      // Abrir la maqueta sin dirección concreta lleva siempre a P-1 (RF-1).
+      // Abrir la aplicación sin dirección concreta lleva siempre a P-1 (RF-01).
       { path: '', redirect: { name: 'login' } },
       {
         path: 'admin/dashboard',
@@ -87,6 +97,20 @@ const routes = [
 ]
 
 /*
+ * Compatibilidad intermedia (T5 a T8): `MaquetaLayout` y `AccessDenied.vue` todavía
+ * leen la identidad de `maqueta.js` para elegir la vuelta a la pantalla principal.
+ * El guard mantiene esa copia sincronizada con la sesión real; los datos de las
+ * pantallas siguen siendo los de ejemplo hasta que T6 a T8 los conecten.
+ */
+const sincronizarIdentidadMaqueta = (sesion) => {
+  const maqueta = useMaquetaStore()
+
+  maqueta.session = sesion.autenticado
+    ? { profile: sesion.rol, account: sesion.usuario, counterId: sesion.id }
+    : null
+}
+
+/*
  * If not building with SSR mode, you can
  * directly export the Router instantiation;
  *
@@ -112,19 +136,62 @@ export default defineRouter((/* { store, ssrContext } */) => {
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE),
   })
 
-  // Guard único de acceso: sesión (RF-5) y perfil (RF-6).
-  Router.beforeEach((to) => {
-    const maqueta = useMaquetaStore()
+  // Arranque único por carga de la aplicación (plan 4.3): conectar los ganchos de
+  // api.js y restaurar la sesión guardada antes de decidir la primera navegación.
+  let arranque = null
+
+  // Guard único de acceso: sesión (RF-05), perfil (RF-06) y P-1 abierta con sesión (RF-10).
+  Router.beforeEach(async (to) => {
+    const sesion = useSessionStore()
 
     accessDenied.value = false
 
-    // P-1 se mantiene abierta aunque haya sesión: volver a entrar no la cierra (RF-10).
-    if (to.meta.requiereSesion && !maqueta.isAuthenticated) {
+    // El token y el perfil se leen de sessionStorage en cada navegación (RF-42).
+    sesion.aplicarSesionGuardada()
+
+    if (arranque === null) {
+      sesion.conectarServicios()
+      arranque = sesion.restaurarSesion()
+
+      const resultado = await arranque
+
+      if (resultado.estado === 'caducada') {
+        // Token vencido o 401: P-1 muestra el aviso de sesión caducada (RF-07, RF-42/43).
+        return { name: 'login', replace: true }
+      }
+
+      if (resultado.estado === 'error') {
+        // Red o servidor caídos: no se borra la sesión; P-1 ofrece reintentar (RF-36).
+        arranqueFallido.value = resultado.error
+        return { name: 'login', replace: true }
+      }
+
+      if (resultado.estado === 'acceso_denegado') {
+        // Perfil sin pantalla asignada: vuelve a P-1 a iniciar sesión con otra cuenta.
+        return { name: 'login', query: { aviso: 'perfil' }, replace: true }
+      }
+
+      // Recarga con token vigente: se abre la pantalla principal del perfil (RF-44).
+      if (resultado.estado === 'valida' && to.name === 'login') {
+        return { name: PANTALLA_PRINCIPAL_POR_ROL[resultado.rol], replace: true }
+      }
+    } else {
+      await arranque
+    }
+
+    sincronizarIdentidadMaqueta(sesion)
+
+    const decision = decidirAcceso({
+      ruta: { requiereSesion: to.meta.requiereSesion === true, perfil: to.meta.perfil ?? null },
+      sesion: { autenticado: sesion.autenticado, rol: sesion.rol },
+    })
+
+    if (decision.accion === 'ir_login') {
       return { name: 'login', query: { aviso: 'sesion' }, replace: true }
     }
 
-    // La dirección se conserva; el layout muestra el aviso con la vuelta al perfil (RF-6).
-    if (to.meta.perfil && maqueta.session?.profile !== to.meta.perfil) {
+    if (decision.accion === 'denegar') {
+      // La dirección se conserva; el layout muestra el aviso con la vuelta al perfil (RF-06).
       accessDenied.value = true
     }
 

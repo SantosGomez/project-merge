@@ -2,22 +2,30 @@
   <section class="error-state" role="alert" :aria-labelledby="titleId">
     <h2 :id="titleId" class="error-state__title">{{ title }}</h2>
 
-    <!-- Un mensaje de error siempre contiene las tres partes de RNF-1. -->
-    <p class="error-state__part">
-      <strong class="error-state__part-label">Qué ocurrió:</strong>
-      la maqueta intentó obtener los datos de esta pantalla y la carga no terminó bien.
-    </p>
+    <!--
+      Si el detalle ya es un mensaje completo de tres partes (construirError o el backend),
+      se muestra tal cual para no repetir las etiquetas. Si es una frase corta sobre qué falló,
+      se envuelve en las tres partes de RNF-01.
+    -->
+    <template v-if="mensajeCompleto">
+      <p class="error-state__part">{{ detail }}</p>
+    </template>
+    <template v-else>
+      <p class="error-state__part">
+        <strong class="error-state__part-label">Qué ocurrió:</strong>
+        la pantalla intentó obtener los datos del servidor y la carga no terminó bien.
+      </p>
 
-    <p class="error-state__part">
-      <strong class="error-state__part-label">Sobre qué dato o acción:</strong>
-      {{ detail }}
-    </p>
+      <p class="error-state__part">
+        <strong class="error-state__part-label">Sobre qué dato o acción:</strong>
+        {{ detail }}
+      </p>
 
-    <p class="error-state__part">
-      <strong class="error-state__part-label">Qué hacer:</strong>
-      pulsa «{{ retryLabel }}» para repetir la carga; si el error continúa, recarga la página para
-      volver a los datos de ejemplo.
-    </p>
+      <p class="error-state__part">
+        <strong class="error-state__part-label">Qué hacer:</strong>
+        pulsa «{{ retryLabel }}» para repetir la carga; si el error continúa, recarga la página.
+      </p>
+    </template>
 
     <q-btn
       class="error-state__button control-touch"
@@ -31,14 +39,9 @@
 </template>
 
 <script setup>
-import { useId } from 'vue'
+import { computed, useId } from 'vue'
 
-/*
- * Mensaje de error de una pantalla con datos (RF-37, RNF-1).
- * El texto de las tres partes está fijo aquí para que ningún mensaje se quede en un "Error";
- * la pantalla solo indica sobre qué dato o acción falló la carga.
- */
-defineProps({
+const props = defineProps({
   /** Qué falló, en una frase (parte "qué ocurrió" de RNF-1). */
   title: {
     type: String,
@@ -59,6 +62,12 @@ defineProps({
 const emit = defineEmits(['retry'])
 
 const titleId = useId()
+
+/** El detalle ya trae las tres partes: se muestra tal cual, sin repetir etiquetas. */
+const mensajeCompleto = computed(() => {
+  const texto = String(props.detail ?? '')
+  return texto.includes('Qué ocurrió:') && texto.includes('Qué hacer:')
+})
 </script>
 
 <style scoped>
@@ -93,7 +102,6 @@ const titleId = useId()
   margin-top: 12px;
 }
 
-/* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-8). */
 .error-state__button:focus-visible {
   outline: 3px solid #0b5cad !important;
   outline-offset: 2px;

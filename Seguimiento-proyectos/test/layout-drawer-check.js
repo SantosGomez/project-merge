@@ -34,7 +34,7 @@ describe('Drawer sidebar — verificación estática', () => {
 
   it('contiene drawerOpen como ref en script', () => {
     assert.ok(src.includes('import { computed, ref }'), 'falta import ref junto a computed')
-    assert.ok(src.includes('const drawerOpen = ref(true)'), 'falta drawerOpen ref(true)')
+    assert.ok(src.includes('const drawerOpen = ref(false)'), 'falta drawerOpen ref(false)')
   })
 
   it('tiene q-toolbar con título "Navegación" al inicio del drawer', () => {

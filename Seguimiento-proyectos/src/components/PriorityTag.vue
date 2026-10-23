@@ -1,19 +1,24 @@
 <template>
-  <span class="priority-tag" :class="colorClass">
+  <span class="priority-tag" :class="colorClass" tabindex="0" :aria-label="etiquetaAccesible">
     <span class="priority-tag__text">{{ label }}</span>
+
+    <!-- Ayuda contextual: se muestra con puntero, con foco de teclado y con toque (RNF-03). -->
+    <q-tooltip v-if="tooltip">{{ tooltip }}</q-tooltip>
   </span>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 
+import { formatearPrioridad } from '../utils/formateadores.js'
+import { prioridadABackend } from '../utils/traduccionBackend.js'
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '../utils/constants.js'
 
 /*
- * Etiqueta de prioridad de un caso (RF-20, RF-29, RNF-7).
+ * Etiqueta de prioridad de un caso (RF-20, RF-29, RNF-06, RNF-07, RNF-03).
  * El texto es siempre visible y acompaña al color: el color nunca es el único
  * portador del significado. La etiqueta no decide reglas de negocio, solo pinta
- * la prioridad que recibe por prop.
+ * la prioridad que recibe por prop y explica qué significa (RNF-03).
  */
 const props = defineProps({
   /** Prioridad del caso: 'alta', 'media' o 'baja' (PRIORITIES de las constantes). */
@@ -32,10 +37,21 @@ const colorClass = computed(() => {
 
   return colorName === undefined ? 'priority-tag--unknown' : `priority-tag--${colorName}`
 })
+
+/** Ayuda contextual de la prioridad: qué significa cada una (RNF-03). */
+const tooltip = computed(
+  () => formatearPrioridad(prioridadABackend(props.priority))?.tooltip ?? '',
+)
+
+/** Nombre accesible: el texto visible y, cuando existe, la ayuda contextual. */
+const etiquetaAccesible = computed(() =>
+  tooltip.value === '' ? `Prioridad ${label.value}` : `Prioridad ${label.value}. ${tooltip.value}`,
+)
 </script>
 
 <style scoped>
 .priority-tag {
+  position: relative;
   display: inline-flex;
   align-items: center;
   min-height: 26px;
@@ -45,6 +61,26 @@ const colorClass = computed(() => {
   font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.2;
+  cursor: help;
+}
+
+/*
+ * La etiqueta recibe foco para que su ayuda se lea también con teclado (RNF-03, RNF-07);
+ * el foco siempre es visible.
+ */
+.priority-tag:focus-visible {
+  outline: 3px solid #0b5cad;
+  outline-offset: 2px;
+}
+
+/*
+ * Área táctil de 44 px de alto para la ayuda (RNF-02) sin cambiar el aspecto de la
+ * etiqueta ni tapar los controles que están a su lado.
+ */
+.priority-tag::after {
+  content: '';
+  position: absolute;
+  inset: -9px 0;
 }
 
 .priority-tag__text {

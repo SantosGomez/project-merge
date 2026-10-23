@@ -4,46 +4,47 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 
 ## Estado actual
 
-- **Spec 002 (backend): implementada con salvedades** — Cambios 1 y 2 aprobados por el reviewer: T1-T29 todas `[x]`; `node --test` 119 pruebas, 119 pass, 0 fail en 20 archivos; verificador `RESULTADO: OK` (cifras validadas por el reviewer y comprobadas por el coordinador). Su línea `Estado:` ya lo refleja.
-- Contenido del Cambio 1: CORS con orígenes locales vía `CORS_ORIGENES`; login con `id`; `GET /contadores` solo `id` y `usuario`; 404 para ids que no son de contador (`parseCounterId` + `findCounterById`).
-- Cambio 2: pruebas reales con `node:test`, verificador con tabla de mínimos, apoyos en `soporte-pruebas/`, sin puerta trasera de tokens (93 pruebas en 15 archivos en su momento).
-- **Spec 004** (`specs/004-correcciones-backend/`, 23 tareas en bloques de 7, 7 y 9): en curso en paralelo con Claude Code en la rama `worktree-spec-004` (worktree `.claude/worktrees/spec-004`, solo toca `Backend/` y `specs/004`); T1-T3 hechas, sin merge a `main`.
-- **Spec 003 (frontend, T1-T10)**: T1 hecha (pruebas en rojo de 4 utilidades, sin commit). Plan corregido: claves `username`/`password` en `faltantes`; en P-4 la prioridad se traduce con `prioridadABackend` antes de `validarPrioridad`; en `traduccionBackend.js`, `…DeBackend` = backend→interno; `session.js` es nuevo. **axios `^1.20.0` instalado** (decisión 13: instancia en `src/services/api.js`, `timeout: 15000`, interceptores, sin boot). La spec cambió (RF-45 a RF-47): requiere nueva aprobación antes de T2.
+- **Spec 003 (frontend funcional): implementada y validada — T1-T10 [x] en `specs/003-frontend-funcional/tasks.md` y `Estado: implementada` en la spec.** `node --test`: 277 pruebas (solo frontend, desde `Seguimiento-proyectos/`) y 396 (277 frontend + 119 backend, desde la raíz del repo), 0 fail. `npm run build` en verde. T10 verificó 31 criterios en navegador real (Chrome DevTools) con frontend (9000) y backend (3000) en marcha; MaríaDB arriba.
+- **Reviewer: APROBADO** (RF-01 a RF-47, RNF-01 a RNF-09 y los 31 criterios). No queda nada pendiente en la 003; cambios de la 003 commiteados y empujados a `main`.
+- **Spec 002 (backend): implementada con salvedades** — T1-T29 [x]; 119 pruebas; verificador OK. Pendientes pasaron a la 004.
+- **Spec 004 (correcciones backend):** en curso en worktree `.claude/worktrees/spec-004` (rama `worktree-spec-004`), solo toca `Backend/` y `specs/004`; T1-T3 hechas, sin merge a `main`.
 
-## Próximos pasos
+## Lo que se hizo en la 003 (resumen)
 
-- Spec 003: con la aprobación del usuario, seguir con T2; la 004 avanza en su rama y se integra con merge cuando el usuario lo decida.
-- Nunca `git add .` en `main`: `.claude/` (worktree de la 004) no está en `.gitignore`.
-- Nunca push sin preguntar.
-
-## Pendientes que pasan a la spec 004
-
-- RF-28 / criterio 9: no existe restablecimiento de contraseña (solo alta de usuarios).
-- RNF-2 / criterio 23: las fechas se devuelven en UTC ISO (`...Z`) en vez de hora local `YYYY-MM-DD HH:mm:ss`.
-- El login no distingue mayúsculas (colación `utf8mb4_general_ci`; `ADMIN_SEED` entra como `admin_seed`).
-- Un `usuario` no textual (p. ej. `12345`) rompe un handler `async` de Express 4: `TypeError`, petición sin respuesta y riesgo de tumbar el proceso.
-- `SessionModel` ignora errores de BD: logout que confirma sin invalidar, login con token sin sesión, fallo de consulta leído como «sesión caducada».
-- Dos inicios de sesión del mismo usuario en el mismo segundo dan el mismo token (el JWT no lleva `jti`).
-- Un admin o usuarios_de_sistema que cambia un caso inexistente recibe 404 en vez de 403.
+- Servicios axios (api/auth/counter/case) con timeout 15 s e interceptores; stores session/counters/cases; P-1 a P-5 con carga/vacío/error/acceso denegado/caducidad; tooltips; responsive; cierre voluntario con diálogo (RF-45/46/47); eliminación de `SimulationControls.vue` y `SIMULATION`. Caducidad 30 min medida en cliente; token en sessionStorage; recarga valida con petición protegida según rol.
 
 ## Decisiones (y por qué)
 
-- Tests de backend con `node --test`, sin paquetes extra (Constitución, Principio 2); base `delgrow_contadores` con datos `zz_test_*` que cada archivo borra al terminar.
-- Funciones puras en `backend/src/utils/`, síncronas, con `hoy` inyectado para ser deterministas.
-- Mensajes de error con tres partes en español (RF-23, RNF-5, RNF-6).
-- MariaDB con mysql2 (pool); seed idempotente (RF-27).
-- `buildCorsOptions` en `middlewares/originMiddleware.js`; `originUtils.js` solo tiene funciones puras con los orígenes por defecto. Orden en `app.js`: guard de orígenes → `cors(...)` → `express.json()`.
-- `parseCounterId` acepta solo dígitos y se valida antes de consultar (MariaDB convierte `'2abc'` en `2`, RF-35).
-- La tabla `sesiones` no tiene `id`: su clave primaria es `jti`; contar con `COUNT(*)`.
-- Cerrar la 002 con salvedades en vez de alargarla: lo pendiente se documenta y se implementa en la 004.
+- Token en sessionStorage (sobrevive a recarga, se limpia al cerrar pestaña; independiente por pestaña). Caducidad medida en cliente, 30 min, cada petición válida reinicia.
+- Mensajes de error con tres partes (RNF-01); `construirError` solo si no llega respuesta.
+- axios `^1.20.0` (instancia en `src/services/api.js`, timeout 15 s, sin boot).
+- `validators.js` usa claves `username`/`password` (coinciden con P-1).
+- Prioridad de P-4 se traduce con `prioridadABackend` antes de `validarPrioridad`.
+- `traduccionBackend.js`: `…DeBackend` = backend→interno; `…ABackend` = interno→backend.
+- `session.js` nuevo store de sesión.
+
+## Excepciones aprobadas (T1-T10)
+
+- `test/t9Pages.test.js`: aserción `maqueta.registerCase(` → `cases.crearCaso(` (T8). `test/layout-drawer-check.js`: aserción `ref(true)` → `ref(false)` (T9, arreglo del menú lateral).
+- `counters.js` y `cases.js` modificados en T9 (guardia de versión contra respuestas tardías), aunque tasks.md no los listaba.
+- `constants.js` perdió `SIMULATION` en T7 junto con su componente y las aserciones de `exampleData.test.js`.
+- `CaseRow.vue`, `CounterCountsRow.vue`, `ErrorState.vue`, `PriorityTag.vue` adaptados en T6/T9 (tooltips, foco, texto de error).
 
 ## Aprendizajes y errores a evitar
 
-- Un archivo de prueba "pass" no significa nada: contar por archivo y usar `node soporte-pruebas/verificarPruebas.js`.
-- Contrastar los veredictos del reviewer con la spec: hubo un «APROBADO — spec completa» con RF-28 y criterios 9/23 en realidad pendientes.
-- Un parche de `db.query` en una prueba no llega a los modelos (`const { query } = require('../config/db')`): para simular fallos hay que sustituir `pool.query`.
-- Los apoyos de prueba van en `soporte-pruebas/`, fuera de `test/` (dentro se ejecutan como archivo de prueba).
-- Aislar datos (`zz_test_*`, limpiar solo lo que creó el proceso), cerrar servidor y pool en `after` o `node --test` se cuelga; MariaDB en marcha (3306, XAMPP).
-- `query()` devuelve `rows`: en un `INSERT` es un objeto con `insertId`, no una lista.
-- Reiniciar el servidor de desarrollo tras tocar el middleware de auth; cualquier script con `config/db.js` debe cerrar el pool; una ejecución interrumpida deja filas `zz_test_*` huérfanas.
-- PowerShell no soporta `&&` ni `||`: usar comandos separados.
+- PowerShell no soporta `&&` ni `||`: usar comandos separados; `npm.cmd` en vez de `npm.ps1` (bloqueado).
+- El MCP del navegador se puede perder: mantener servidores hasta el final de la verificación.
+- `node --test`: desde `Seguimiento-proyectos/` son 277 pruebas (solo frontend); desde la raíz del repo son 396 (277 frontend + 119 backend).
+- Base `delgrow_contadores`: partida 2 usuarios y 2 casos; limpiar `zz_test_*` al final (script con `pool.end()`). Cerrar backend/frontend y liberar puertos 9000/3000 al terminar.
+
+## Dependencias
+
+- Spec 004: el login no distingue mayúsculas hasta T12-T13 de la 004 (colación `utf8mb4_general_ci`); el frontend envía credenciales tal cual y trata cualquier 401 como inválida.
+
+## Puntos NO verificados en T10 (justificados)
+
+- Cierre de pestaña, otra pestaña sin sesión, recarga con token vigente, caducidad durante carga lenta y formulario P-4 a medio llenar: cubiertos por unit tests/`sessionStorage`/store; no observados.
+- Estados vacíos de P-5/detalle sin casos, nombres largos y listas largas con scroll: sin datos en el seed; cubierto por tests de store/`exampleData`/componentes.
+- Respuesta tardía tras cierre y reemplazo de sesión (RF-10) y recorrido completo solo con teclado: cubierto por tests de store / verificado estáticamente.
+
+Nada sensible en esta memoria. Los cambios de la 003 quedaron en `main` con commit y push.

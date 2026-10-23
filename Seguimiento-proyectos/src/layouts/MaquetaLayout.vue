@@ -26,10 +26,21 @@
           />
 
           <h1 class="layout-bar__title">{{ pageTitle }}</h1>
-        </div>
 
-        <div class="layout-bar__simulations">
-          <SimulationControls @simulate-error="simulateError" @simulate-expiry="simulateExpiry" />
+          <q-btn
+            ref="botonCerrarSesion"
+            flat
+            no-caps
+            icon="logout"
+            label="Cerrar sesión"
+            text-color="white"
+            class="control-touch layout-bar__close"
+            :aria-label="'Cerrar sesión'"
+            :disable="cerrandoSesion"
+            @click="abrirDialogoCierre"
+          >
+            <q-tooltip>Cierra la sesión actual y vuelve a la pantalla de inicio de sesión.</q-tooltip>
+          </q-btn>
         </div>
       </div>
     </q-header>
@@ -129,28 +140,77 @@
     </q-drawer>
 
     <q-page-container>
-      <q-page v-if="accessDenied" class="access-page">
+      <q-page v-if="session.sesionCaducada" class="access-page">
+        <AvisoSesionCaducada />
+      </q-page>
+      <q-page v-else-if="accessDenied" class="access-page">
         <AccessDenied />
       </q-page>
       <router-view v-else />
     </q-page-container>
+
+    <q-dialog
+      v-model="dialogoCierreAbierto"
+      transition-show="scale"
+      transition-hide="scale"
+      @hide="alCerrarDialogo"
+    >
+      <q-card class="dialogo-cierre" role="dialog" aria-modal="true" aria-labelledby="dialogo-cierre-titulo">
+        <q-card-section>
+          <h2 id="dialogo-cierre-titulo" class="dialogo-cierre__titulo">¿Cerrar sesión?</h2>
+          <p class="dialogo-cierre__texto">Tendrá que iniciar sesión de nuevo.</p>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn
+            flat
+            no-caps
+            label="Cancelar"
+            class="control-touch"
+            :disable="cerrandoSesion"
+            @click="cancelarCierre"
+          >
+            <q-tooltip>Conserva la sesión actual y vuelve a la pantalla.</q-tooltip>
+          </q-btn>
+          <q-btn
+            color="primary"
+            no-caps
+            label="Cerrar sesión"
+            class="control-touch"
+            :loading="cerrandoSesion"
+            :disable="cerrandoSesion"
+            @click="confirmarCierre"
+          >
+            <q-tooltip>Confirma el cierre de sesión y vuelve a la pantalla de inicio.</q-tooltip>
+          </q-btn>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import { onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AccessDenied from '../components/AccessDenied.vue'
-import SimulationControls from '../components/SimulationControls.vue'
+import AvisoSesionCaducada from '../components/AvisoSesionCaducada.vue'
 import { accessDenied } from '../router/accessState.js'
-import { useMaquetaStore } from '../stores/maqueta.js'
+import { useCasesStore } from '../stores/cases.js'
+import { useCountersStore } from '../stores/counters.js'
+import { useSessionStore } from '../stores/session.js'
 
 const route = useRoute()
 const router = useRouter()
-const maqueta = useMaquetaStore()
+const session = useSessionStore()
+const counters = useCountersStore()
+const cases = useCasesStore()
 
-const drawerOpen = ref(true)
+const drawerOpen = ref(false)
+
+const dialogoCierreAbierto = ref(false)
+const cerrandoSesion = ref(false)
 
 const pageTitle = computed(() => route.meta.titulo ?? 'Pantalla')
 const backRouteName = computed(() => route.meta.volverA ?? null)
@@ -162,15 +222,57 @@ const backTitle = computed(() => {
   return router.resolve({ name: backRouteName.value }).meta.titulo ?? 'la pantalla anterior'
 })
 
-// "Simular error" y "Simular caducidad" existen en todas las pantallas internas (RF-38).
-const simulateError = () => {
-  maqueta.simulateError(route.meta.screenId)
+const abrirDialogoCierre = () => {
+  dialogoCierreAbierto.value = true
 }
 
-const simulateExpiry = () => {
-  maqueta.simulateExpiry()
-  router.replace({ name: 'login' })
+const cancelarCierre = () => {
+  dialogoCierreAbierto.value = false
 }
+
+const confirmarCierre = async () => {
+  if (cerrandoSesion.value) return
+  cerrandoSesion.value = true
+  try {
+    await session.cerrarSesionVoluntaria()
+    counters.reiniciar()
+    cases.reiniciar()
+    await router.replace({ name: 'login' })
+  } finally {
+    cerrandoSesion.value = false
+    dialogoCierreAbierto.value = false
+  }
+}
+
+const alCerrarDialogo = () => {
+  // Si se cierra con Escape o clic fuera, se considera cancelación.
+  if (cerrandoSesion.value) return
+  dialogoCierreAbierto.value = false
+}
+
+const manejarActividad = () => {
+  session.marcarActividad()
+}
+
+onMounted(() => {
+  // Reinicio del contador de inactividad con la interacción del usuario (RNF-02, RF-07).
+  window.addEventListener('click', manejarActividad, true)
+  window.addEventListener('keydown', manejarActividad, true)
+  window.addEventListener('pointerdown', manejarActividad, true)
+  window.addEventListener('touchstart', manejarActividad, true)
+
+  // El temporizador solo se arranca si hay sesión viva y no está caducada.
+  if (session.autenticado && !session.sesionCaducada) {
+    session.iniciarTemporizador()
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('click', manejarActividad, true)
+  window.removeEventListener('keydown', manejarActividad, true)
+  window.removeEventListener('pointerdown', manejarActividad, true)
+  window.removeEventListener('touchstart', manejarActividad, true)
+})
 </script>
 
 <style scoped>
@@ -197,10 +299,9 @@ const simulateExpiry = () => {
   line-height: 1.2;
 }
 
-.layout-bar__simulations {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.layout-bar__close {
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .control-touch {
@@ -230,5 +331,21 @@ const simulateExpiry = () => {
 /* El ícono vuelve a blanco cuando el item está activo (active-class bg-primary). */
 .q-item--nav.bg-primary .q-icon {
   color: #fff !important;
+}
+
+.dialogo-cierre {
+  min-width: 280px;
+  max-width: 90vw;
+}
+
+.dialogo-cierre__titulo {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.dialogo-cierre__texto {
+  margin: 0;
+  color: #334e68;
+  line-height: 1.5;
 }
 </style>

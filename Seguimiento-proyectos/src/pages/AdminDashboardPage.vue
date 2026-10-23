@@ -1,93 +1,114 @@
 <template>
   <q-page class="dashboard-page">
-    <div class="dashboard-page__head">
-      <p class="dashboard-page__lead">
-        Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el detalle
-        de sus casos.
-      </p>
+    <div class="dashboard-page__inner">
+      <div class="dashboard-page__head">
+        <p class="dashboard-page__lead">
+          Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el detalle
+          de sus casos. Esta pantalla es de solo consulta: aquí no se cambia el estado ni la
+          prioridad de ningún caso.
+        </p>
 
-      <q-btn
-        class="dashboard-page__directory-btn control-touch"
-        color="primary"
-        no-caps
-        unelevated
-        icon="groups"
-        label="Ver directorio"
-        :to="{ name: 'admin-directorio' }"
+        <q-btn
+          class="dashboard-page__directory-btn control-touch"
+          color="primary"
+          no-caps
+          unelevated
+          icon="groups"
+          label="Ver directorio"
+          :to="{ name: 'admin-directorio' }"
+        >
+          <q-tooltip>Abre el directorio de contadores para buscar a una persona por su nombre.</q-tooltip>
+        </q-btn>
+      </div>
+
+      <ScreenLoader
+        v-if="estadoPantalla === SCREEN_STATES.loading"
+        text="Cargando los contadores del equipo y los conteos de sus casos…"
       />
-    </div>
 
-    <ScreenLoader
-      v-if="screenStateName === SCREEN_STATES.loading"
-      text="Cargando los contadores del equipo y los conteos de sus casos…"
-    />
+      <ErrorState
+        v-else-if="estadoPantalla === SCREEN_STATES.error"
+        :detail="mensajeError"
+        @retry="reintentar"
+      />
 
-    <ErrorState
-      v-else-if="screenStateName === SCREEN_STATES.error"
-      detail="los contadores del equipo y los conteos de sus casos."
-      @retry="retry"
-    />
+      <EmptyState
+        v-else-if="estadoPantalla === SCREEN_STATES.empty"
+        title="No hay contadores registrados"
+        message="El equipo todavía no tiene contadores registrados, por eso no hay conteos ni casos que mostrar."
+      />
 
-    <div v-else class="dashboard-page__grid">
-      <section class="dashboard-panel" aria-labelledby="counter-list-title">
-        <div class="dashboard-panel__head">
-          <h2 id="counter-list-title" class="dashboard-panel__title">Contadores del equipo</h2>
-          <p class="dashboard-panel__help">
-            Cada conteo indica cuántos casos tiene el contador en estado Pendiente, En proceso o
-            Finalizado; se muestra 0 cuando no hay casos en ese estado. Selecciona un contador para
-            ver el detalle de sus casos.
-          </p>
-        </div>
+      <div v-else class="dashboard-page__grid">
+        <section class="dashboard-panel" aria-labelledby="counter-list-title">
+          <div class="dashboard-panel__head">
+            <h2 id="counter-list-title" class="dashboard-panel__title">Contadores del equipo</h2>
+            <p class="dashboard-panel__help">
+              Cada conteo indica cuántos casos tiene el contador en estado Pendiente, En proceso o
+              Finalizado; se muestra 0 cuando no hay casos en ese estado. Selecciona un contador para
+              ver el detalle de sus casos.
+            </p>
+          </div>
 
-        <div class="dashboard-panel__body">
-          <ul class="counter-list">
-            <CounterCountsRow
-              v-for="counter in counters"
-              :key="counter.id"
-              :counter="counter"
-              :counts="maqueta.countsFor(counter.id)"
-              :selected="counter.id === maqueta.selectedCounterId"
-              @select="selectCounter(counter.id)"
+          <div class="dashboard-panel__body">
+            <ul class="counter-list">
+              <CounterCountsRow
+                v-for="contador in contadores"
+                :key="contador.id"
+                :counter="contadorAFila(contador)"
+                :counts="contadoresStore.conteosDe(contador.id)"
+                :selected="contador.id === contadoresStore.contadorSeleccionadoId"
+                @select="seleccionar(contador.id)"
+              />
+            </ul>
+          </div>
+        </section>
+
+        <section class="dashboard-panel" aria-labelledby="counter-detail-title">
+          <div class="dashboard-panel__head">
+            <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
+
+            <p v-if="contadorSeleccionado" class="dashboard-panel__help">
+              Casos de {{ contadorSeleccionado.usuario }}. Esta vista es de solo consulta: no permite
+              cambiar el estado ni la prioridad.
+            </p>
+            <p v-else class="dashboard-panel__help">
+              Selecciona un contador de la lista para ver el cliente, el estado y la prioridad de cada
+              uno de sus casos.
+            </p>
+          </div>
+
+          <div class="dashboard-panel__body">
+            <p v-if="!contadorSeleccionado" class="dashboard-panel__prompt" role="status">
+              Todavía no hay un contador seleccionado. Elige uno de la lista para ver sus casos.
+            </p>
+
+            <ScreenLoader
+              v-else-if="estadoDetalle === SCREEN_STATES.loading"
+              text="Cargando los casos del contador seleccionado…"
             />
-          </ul>
-        </div>
-      </section>
 
-      <section class="dashboard-panel" aria-labelledby="counter-detail-title">
-        <div class="dashboard-panel__head">
-          <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
-
-          <p v-if="selectedCounter" class="dashboard-panel__help">
-            Casos de {{ selectedCounter.name }}. Esta vista es de solo consulta: no permite cambiar
-            el estado ni la prioridad.
-          </p>
-          <p v-else class="dashboard-panel__help">
-            Selecciona un contador de la lista para ver el cliente, el estado y la prioridad de cada
-            uno de sus casos.
-          </p>
-        </div>
-
-        <div class="dashboard-panel__body">
-          <p v-if="!selectedCounter" class="dashboard-panel__prompt" role="status">
-            Todavía no hay un contador seleccionado. Elige uno de la lista para ver sus casos.
-          </p>
-
-          <EmptyState
-            v-else-if="selectedCases.length === 0"
-            title="Este contador no tiene casos"
-            :message="`El contador ${selectedCounter.name} no tiene casos registrados. Selecciona otro contador de la lista para ver su detalle.`"
-          />
-
-          <ul v-else class="case-list">
-            <CaseRow
-              v-for="oneCase in selectedCases"
-              :key="oneCase.id"
-              :case-item="oneCase"
-              readonly
+            <!--
+              El estado de error del detalle no llega aquí: el store lo comparte con la carga
+              general y la pantalla muestra el ErrorState completo, que al reintentar vuelve sin
+              contador seleccionado (RF-36).
+            -->
+            <EmptyState
+              v-else-if="estadoDetalle === SCREEN_STATES.empty"
+              title="Este contador no tiene casos"
+              :message="`El contador ${contadorSeleccionado.usuario} no tiene casos registrados. Selecciona otro contador de la lista para ver su detalle.`"
             />
-          </ul>
-        </div>
-      </section>
+
+            <ul v-else class="case-list">
+              <CaseRow
+                v-for="caso in filasDetalle"
+                :key="caso.id"
+                :case-item="caso"
+                readonly
+              />
+            </ul>
+          </div>
+        </section>
+      </div>
     </div>
   </q-page>
 </template>
@@ -100,61 +121,78 @@ import CounterCountsRow from '../components/CounterCountsRow.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
-import { exampleCounters } from '../services/exampleData.js'
-import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
-import { casesByCounter } from '../utils/caseRules.js'
-import { SCREEN_STATES, screenState } from '../utils/screenState.js'
+import { useCountersStore } from '../stores/counters.js'
+import { casosAFilas, contadorAFila } from '../utils/filasVista.js'
+import { SCREEN_STATES } from '../utils/screenState.js'
 
 /*
- * P-2 Dashboard del administrador (RF-11 a RF-15, RF-42, RNF-9, RNF-10).
- * Lista todos los contadores con sus tres conteos y muestra el detalle del seleccionado.
- * Solo consulta: no hay controles para cambiar estado ni prioridad (RF-13, RF-15).
+ * P-2 Dashboard del administrador (RF-11 a RF-15, RF-34 a RF-36, RF-38, RF-39, RNF-02,
+ * RNF-03, RNF-08, RNF-09). Obtiene la lista de contadores y sus conteos del backend a
+ * través del store, muestra el detalle del contador seleccionado y solo permite consultar:
+ * no hay ningún control para cambiar estado ni prioridad (RF-13).
+ *
+ * Al abrir la pantalla se repite la carga completa y no se muestran datos anteriores
+ * (RF-34). Si la carga falla, el store descarta los conteos parciales y la selección;
+ * el ErrorState ofrece reintentar y P-2 vuelve sin contador seleccionado (RF-36).
  */
-const maqueta = useMaquetaStore()
-const counters = exampleCounters
+const contadoresStore = useCountersStore()
 
-const screen = computed(() => maqueta.screens[SCREEN_IDS.dashboard])
+/** Contadores registrados, tal como los entrega el servicio (`{ id, usuario }`). */
+const contadores = computed(() => contadoresStore.contadores)
 
-/** Carga, error o contenido; los conteos siempre existen porque hay contadores (RF-35, RF-37). */
-const screenStateName = computed(() =>
-  screenState({
-    loading: screen.value.loading,
-    error: screen.value.error,
-    rows: counters,
-  }),
+/** Estado general de la pantalla: carga, error, vacío o contenido (RF-34 a RF-36). */
+const estadoPantalla = computed(() => contadoresStore.estadoPantalla)
+
+/** Estado del detalle: carga del contador elegido, vacío de casos o contenido (RF-13, RF-14). */
+const estadoDetalle = computed(() => contadoresStore.estadoDetalle)
+
+/** Contador cuyo detalle se está viendo, o null (RF-13). */
+const contadorSeleccionado = computed(() => contadoresStore.contadorSeleccionado)
+
+/** Casos del detalle adaptados a las props de CaseRow (cliente, estado y prioridad). */
+const filasDetalle = computed(() => casosAFilas(contadoresStore.casosDetalle))
+
+/** Mensaje de tres partes del último error; si no llegó, se describe la carga (RNF-01). */
+const mensajeError = computed(
+  () => contadoresStore.error?.mensaje ?? 'la carga de los contadores y de sus conteos.',
 )
 
-const selectedCounter = computed(
-  () => counters.find((counter) => counter.id === maqueta.selectedCounterId) ?? null,
-)
+/** Selecciona un contador y reemplaza el detalle anterior (RF-13, RF-15). */
+const seleccionar = (contadorId) => contadoresStore.seleccionarContador(contadorId)
 
-/** Casos del contador seleccionado; cambiar de selección reemplaza el detalle (RF-15). */
-const selectedCases = computed(() =>
-  selectedCounter.value ? casesByCounter(maqueta.cases, selectedCounter.value.id) : [],
-)
+/** Reintenta la carga completa; P-2 vuelve sin contador seleccionado (RF-36). */
+const reintentar = () => contadoresStore.reintentar()
 
-const selectCounter = (counterId) => {
-  if (screen.value.loading || screen.value.error) {
+onMounted(async () => {
+  /*
+   * RF-17: P-3 deja el contador elegido en el store antes de abrir P-2. La carga de P-2
+   * reinicia la selección, así que se guarda aquí y se restablece al terminar, siempre que
+   * el contador siga existiendo. Sin selección previa, P-2 se abre sin detalle (RF-13).
+   */
+  const seleccionPrevia = contadoresStore.contadorSeleccionadoId
+
+  await contadoresStore.cargarContadores()
+
+  if (seleccionPrevia === null) {
     return
   }
 
-  maqueta.selectCounter(counterId)
-}
+  const existe = contadoresStore.contadores.some((contador) => contador.id === seleccionPrevia)
 
-/** Reintento de la carga; el store descarta la selección anterior en P-2 (RF-37). */
-const retry = () => {
-  maqueta.retryScreen(SCREEN_IDS.dashboard)
-}
-
-// Cada vez que se abre P-2 se repite la carga simulada de aproximadamente un segundo (RF-35).
-onMounted(() => {
-  maqueta.startScreenLoad(SCREEN_IDS.dashboard)
+  if (existe) {
+    await contadoresStore.seleccionarContador(seleccionPrevia)
+  }
 })
 </script>
 
 <style scoped>
 .dashboard-page {
   padding: 16px;
+}
+
+.dashboard-page__inner {
+  width: 100%;
+  min-width: 0;
 }
 
 .dashboard-page__head {
@@ -179,7 +217,7 @@ onMounted(() => {
   min-height: 44px;
 }
 
-/* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-8). */
+/* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-07). */
 .dashboard-page__directory-btn:focus-visible {
   outline: 3px solid #0b5cad !important;
   outline-offset: 2px;
@@ -244,11 +282,20 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   list-style: none;
+  min-width: 0;
+}
+
+/* RNF-02: una columna con 720 px de ancho como máximo, centrada, entre 600 y 1023 px. */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .dashboard-page__inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
 }
 
 /*
- * En escritorio, la lista de contadores y el detalle tienen desplazamiento vertical
- * propio, sin paginación y sin recortar filas (RNF-10).
+ * RNF-09: desde 1024 px hay varias columnas y cada lista se recorre con desplazamiento
+ * vertical propio, sin paginación y sin recortar filas.
  */
 @media (min-width: 1024px) {
   .dashboard-page {

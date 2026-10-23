@@ -36,9 +36,3 @@ export const PROFILES = {
 
 /** Máximo de caracteres visibles del nombre del cliente: 80 se aceptan, 81 no. */
 export const MAX_CLIENT_LENGTH = 80
-
-/** Textos de los dos controles de simulación, identificados como simulación a propósito. */
-export const SIMULATION = {
-  error: 'Simular error',
-  expiry: 'Simular caducidad',
-}

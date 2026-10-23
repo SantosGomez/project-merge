@@ -20,13 +20,13 @@
 
     <ErrorState
       v-else-if="screenStateName === SCREEN_STATES.error"
-      detail="tus casos asignados."
+      :detail="mensajeError"
       @retry="retry"
     />
 
     <div v-else class="my-cases-page__body">
       <EmptyState
-        v-if="cases.length === 0"
+        v-if="cases.casos.length === 0"
         title="No tienes casos registrados"
         message="Aún no hay casos asignados a tu cuenta. Usa el control «Registrar caso» para registrar el primero y empezar a gestionar tu carga."
         action-label="Registrar caso"
@@ -34,7 +34,7 @@
       />
 
       <ul v-else class="case-list">
-        <CaseRow v-for="oneCase in cases" :key="oneCase.id" :case-item="oneCase">
+        <CaseRow v-for="oneCase in filas" :key="oneCase.id" :case-item="oneCase">
           <template #actions="{ item }">
             <div class="case-actions">
               <div class="case-action-group">
@@ -50,6 +50,7 @@
                   emit-value
                   map-options
                   aria-label="Cambiar estado del caso"
+                  :disable="cases.guardando"
                   @update:model-value="(v) => changeStatus(item.id, v)"
                 />
               </div>
@@ -66,6 +67,7 @@
                   emit-value
                   map-options
                   aria-label="Cambiar prioridad del caso"
+                  :disable="cases.guardando"
                   @update:model-value="(v) => changePriority(item.id, v)"
                 />
               </div>
@@ -91,26 +93,31 @@ import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { STATUSES, STATUS_LABELS, PRIORITIES, PRIORITY_LABELS } from '../utils/constants.js'
-import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
+import { useCasesStore } from '../stores/cases.js'
+import { casosAFilas } from '../utils/filasVista.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
-const maqueta = useMaquetaStore()
+const cases = useCasesStore()
 const router = useRouter()
 
-const screen = computed(() => maqueta.screens[SCREEN_IDS.myCases])
+const filas = computed(() => casosAFilas(cases.casos))
 
 const screenStateName = computed(() =>
   screenState({
-    loading: screen.value.loading,
-    error: screen.value.error,
-    rows: maqueta.myCases,
+    loading: cases.cargando,
+    error: cases.error || errorCambio.value,
+    rows: cases.casos,
   }),
 )
 
-const cases = computed(() => maqueta.myCases)
-
-/** Texto de la confirmación del último cambio (RF-39): dice qué se cambió y en qué caso. */
 const confirmation = ref('')
+const errorCambio = ref(null)
+const ultimoCambio = ref(null)
+
+const mensajeError = computed(() => {
+  const error = cases.error || errorCambio.value
+  return error?.mensaje ?? 'tus casos asignados.'
+})
 
 const statusOptions = computed(() => STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s })))
 
@@ -118,35 +125,58 @@ const priorityOptions = computed(() =>
   PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p })),
 )
 
-/** Nombre del caso al que pertenece un cambio, para que la confirmación sea inequívoca. */
-const clientNameOf = (caseId) =>
-  cases.value.find((oneCase) => oneCase.id === caseId)?.client ?? 'el caso'
+const changeStatus = async (caseId, newStatus) => {
+  if (cases.guardando) return
+  errorCambio.value = null
+  ultimoCambio.value = { id: caseId, cambios: { estado: newStatus } }
 
-const changeStatus = (caseId, newStatus) => {
-  maqueta.changeCaseStatus(caseId, newStatus)
-  confirmation.value = `El caso de ${clientNameOf(caseId)} ahora está en ${
-    STATUS_LABELS[newStatus] ?? newStatus
-  }.`
+  const resultado = await cases.actualizarCaso(caseId, { estado: newStatus })
+
+  if (resultado.ok) {
+    confirmation.value = 'Cambio guardado.'
+    ultimoCambio.value = null
+  } else {
+    errorCambio.value = resultado.error
+  }
 }
 
-const changePriority = (caseId, newPriority) => {
-  maqueta.changeCasePriority(caseId, newPriority)
-  confirmation.value = `La prioridad de ${clientNameOf(caseId)} ahora es ${
-    PRIORITY_LABELS[newPriority] ?? newPriority
-  }.`
+const changePriority = async (caseId, newPriority) => {
+  if (cases.guardando) return
+  errorCambio.value = null
+  ultimoCambio.value = { id: caseId, cambios: { prioridad: newPriority } }
+
+  const resultado = await cases.actualizarCaso(caseId, { prioridad: newPriority })
+
+  if (resultado.ok) {
+    confirmation.value = 'Cambio guardado.'
+    ultimoCambio.value = null
+  } else {
+    errorCambio.value = resultado.error
+  }
 }
 
-/** "Registrar caso" abre P-4, tanto si la lista tiene casos como si está vacía (RF-43). */
 const openNewCase = () => {
   router.push({ name: 'contador-registro' })
 }
 
-const retry = () => {
-  maqueta.retryScreen(SCREEN_IDS.myCases)
+const retry = async () => {
+  if (errorCambio.value && ultimoCambio.value) {
+    const { id, cambios } = ultimoCambio.value
+    if (cambios.estado !== undefined) {
+      await changeStatus(id, cambios.estado)
+    } else if (cambios.prioridad !== undefined) {
+      await changePriority(id, cambios.prioridad)
+    }
+    return
+  }
+
+  errorCambio.value = null
+  ultimoCambio.value = null
+  await cases.reintentar()
 }
 
 onMounted(() => {
-  maqueta.startScreenLoad(SCREEN_IDS.myCases)
+  cases.cargarCasos()
 })
 </script>
 

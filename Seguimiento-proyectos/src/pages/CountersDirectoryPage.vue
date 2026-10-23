@@ -32,13 +32,13 @@
             <button
               type="button"
               class="counter-name-btn"
-              :class="{ 'counter-name-btn--selected': counter.id === maqueta.selectedCounterId }"
-              :aria-pressed="counter.id === maqueta.selectedCounterId"
+              :class="{ 'counter-name-btn--selected': counter.id === contadoresStore.contadorSeleccionadoId }"
+              :aria-pressed="counter.id === contadoresStore.contadorSeleccionadoId"
               @click="selectCounter(counter.id)"
             >
               <span class="counter-name-btn__text">{{ counter.name }}</span>
               <span
-                v-if="counter.id === maqueta.selectedCounterId"
+                v-if="counter.id === contadoresStore.contadorSeleccionadoId"
                 class="counter-name-btn__selected-mark"
                 >Seleccionado</span
               >
@@ -57,36 +57,45 @@ import { useRouter } from 'vue-router'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
-import { exampleCounters } from '../services/exampleData.js'
+import { useCountersStore } from '../stores/counters.js'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
+import { contadorAFila } from '../utils/filasVista.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const router = useRouter()
 const maqueta = useMaquetaStore()
-const counters = exampleCounters
+const contadoresStore = useCountersStore()
 
-const screen = computed(() => maqueta.screens[SCREEN_IDS.directory])
+/** Contadores adaptados a filas con nombre visible (RNF-08, RF-16). */
+const counters = computed(() =>
+  contadoresStore.contadores.map(contadorAFila).filter((fila) => fila !== null),
+)
 
 const screenStateName = computed(() =>
   screenState({
-    loading: screen.value.loading,
-    error: screen.value.error,
-    rows: counters,
+    loading: contadoresStore.cargando,
+    error: contadoresStore.error,
+    rows: counters.value,
   }),
 )
 
 const selectCounter = (counterId) => {
-  if (screen.value.loading || screen.value.error) return
+  if (contadoresStore.cargando || contadoresStore.error) return
+  // RF-17: se deja el contador elegido en el store para que P-2 lo muestre seleccionado.
+  contadoresStore.contadorSeleccionadoId = counterId
+  // Compatibilidad con la maqueta 001: se mantiene la selección sincronizada.
   maqueta.selectCounter(counterId)
   router.push({ name: 'admin-dashboard' })
 }
 
 const retry = () => {
-  maqueta.retryScreen(SCREEN_IDS.directory)
+  contadoresStore.reintentar()
 }
 
 onMounted(() => {
+  // Compatibilidad con el flujo anterior (carga inicial de la pantalla en la maqueta).
   maqueta.startScreenLoad(SCREEN_IDS.directory)
+  contadoresStore.cargarContadores()
 })
 </script>
 

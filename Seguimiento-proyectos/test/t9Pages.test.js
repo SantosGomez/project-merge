@@ -106,7 +106,7 @@ describe('T9 — revisión estática de P-4 (RF-19 a RF-25, RF-43)', () => {
   })
 
   it('delega el alta en el store y limpia el formulario al confirmar (RF-21)', () => {
-    assert.match(newCaseSource, /maqueta\.registerCase\(/)
+    assert.match(newCaseSource, /cases\.crearCaso\(/)
     assert.match(newCaseSource, /client\.value = ''/)
     assert.match(newCaseSource, /priority\.value = ''/)
     assert.match(newCaseSource, /successMessage\.value = true/)
