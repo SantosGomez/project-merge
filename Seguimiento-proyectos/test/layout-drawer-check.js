@@ -71,12 +71,122 @@ describe('Drawer sidebar — verificación estática', () => {
     )
   })
 
-  it('tiene q-scroll-area sin altura fija en px, q-list y etiqueta de navegación', () => {
+  it('tiene q-scroll-area sin altura fija en px, q-list y etiqueta de sección', () => {
     assert.ok(src.includes('<q-scroll-area'), 'falta q-scroll-area')
     assert.ok(!src.includes('calc(100vh'), 'no debe llevar altura fija calc(100vh)')
     assert.ok(src.includes('<q-list'), 'falta q-list')
-    assert.ok(src.includes('Navegación'), 'falta texto Navegación')
+    assert.ok(
+      src.includes('>Administración</q-item-label>'),
+      'falta la etiqueta de la sección Administración',
+    )
     assert.ok(src.includes('<q-item-label header'), 'falta header de lista')
+  })
+
+  it('el administrador ve solo la sección «Administración» con Dashboard admin y Directorio, y no las opciones del contador', () => {
+    const inicioAdmin = src.indexOf('<template v-if="session.esAdministrador">')
+    const finAdmin = src.indexOf('</template>', inicioAdmin)
+    assert.ok(inicioAdmin >= 0, 'falta el bloque <template v-if="session.esAdministrador">')
+    assert.ok(finAdmin > inicioAdmin, 'falta el cierre del bloque del administrador')
+
+    const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
+    assert.match(bloqueAdmin, />Administración</, 'falta el título Administración')
+    assert.ok(bloqueAdmin.includes("name: 'admin-dashboard'"), 'falta Dashboard admin')
+    assert.ok(bloqueAdmin.includes("name: 'admin-directorio'"), 'falta Directorio')
+    assert.ok(
+      !bloqueAdmin.includes("name: 'contador-registro'"),
+      'el administrador no ve Registro de caso',
+    )
+    assert.ok(!bloqueAdmin.includes("name: 'contador-casos'"), 'el administrador no ve Mis casos')
+
+    const inicioContador = src.indexOf('<template v-if="session.esContador">')
+    const finContador = src.indexOf('</template>', inicioContador)
+    assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.esContador">')
+    assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
+
+    const bloqueContador = src.slice(inicioContador, finContador)
+    const sinBloques = src.replace(bloqueAdmin, '').replace(bloqueContador, '')
+    for (const ruta of [
+      'admin-dashboard',
+      'admin-directorio',
+      'contador-registro',
+      'contador-casos',
+    ]) {
+      assert.ok(
+        !sinBloques.includes(`name: '${ruta}'`),
+        `la opción ${ruta} quedó fuera de su bloque de rol`,
+      )
+    }
+
+    assert.ok(
+      !/q-item[^>]*v-if="session\.esAdministrador"/.test(src),
+      'el v-if del administrador debe estar solo en el <template>',
+    )
+    assert.ok(
+      !/q-item[^>]*v-if="session\.esContador"/.test(src),
+      'el v-if del contador debe estar solo en el <template>',
+    )
+  })
+
+  it('el contador ve solo la sección «Mis casos» con Registro de caso y Mis casos, y no las opciones del administrador', () => {
+    const inicioContador = src.indexOf('<template v-if="session.esContador">')
+    const finContador = src.indexOf('</template>', inicioContador)
+    assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.esContador">')
+    assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
+
+    const bloqueContador = src.slice(inicioContador, finContador)
+    assert.match(bloqueContador, /header>Mis casos<\/q-item-label>/, 'falta el título Mis casos')
+    assert.ok(bloqueContador.includes("name: 'contador-registro'"), 'falta Registro de caso')
+    assert.ok(bloqueContador.includes("name: 'contador-casos'"), 'falta Mis casos')
+    assert.ok(
+      !bloqueContador.includes("name: 'admin-dashboard'"),
+      'el contador no ve Dashboard admin',
+    )
+    assert.ok(!bloqueContador.includes("name: 'admin-directorio'"), 'el contador no ve Directorio')
+
+    const inicioAdmin = src.indexOf('<template v-if="session.esAdministrador">')
+    const finAdmin = src.indexOf('</template>', inicioAdmin)
+    assert.ok(inicioAdmin >= 0, 'falta el bloque <template v-if="session.esAdministrador">')
+    assert.ok(finAdmin > inicioAdmin, 'falta el cierre del bloque del administrador')
+
+    const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
+    const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '')
+    for (const ruta of [
+      'admin-dashboard',
+      'admin-directorio',
+      'contador-registro',
+      'contador-casos',
+    ]) {
+      assert.ok(
+        !sinBloques.includes(`name: '${ruta}'`),
+        `la opción ${ruta} quedó fuera de su bloque de rol`,
+      )
+    }
+
+    assert.ok(
+      !/q-item[^>]*v-if="session\.esContador"/.test(src),
+      'el v-if del contador debe estar solo en el <template>',
+    )
+    assert.ok(
+      !/q-item[^>]*v-if="session\.esAdministrador"/.test(src),
+      'el v-if del administrador debe estar solo en el <template>',
+    )
+  })
+
+  it('el título de la sección usa el azul claro de la marca y tiene contraste suficiente', () => {
+    const variables = read('../src/css/quasar.variables.scss')
+    const primary = variables.match(/\$primary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    const secondary = variables.match(/\$secondary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    assert.ok(primary && secondary, 'quasar.variables.scss declara $primary y $secondary')
+
+    assert.match(
+      cssRule('.drawer-nav .q-item__label--header'),
+      /color:\s*var\(--q-secondary\)/,
+      'el título de sección usa var(--q-secondary)',
+    )
+    assert.ok(
+      contraste(secondary, primary) >= MINIMO_WCAG,
+      `contraste ${contraste(secondary, primary).toFixed(2)}:1`,
+    )
   })
 
   it('tiene los 4 links internos con rutas aprobadas', () => {

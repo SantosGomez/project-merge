@@ -14,10 +14,11 @@ Expensive decisions: modelo de roles (ya existe: administrador, contador y usuar
 6. Como usuario de celular, quiero una barra superior delgada con el botón de menú y el nombre de la página, para poder abrir la navegación en pantallas pequeñas. Requires: #5
 7. Como usuario de escritorio, quiero que el menú quede compacto, solo con iconos, y se despliegue al pasar el cursor, para ganar espacio sin perder la navegación. Requires: #1
 8. Como usuario de escritorio, quiero fijar o soltar el menú abierto con un clic en el logo y que se recuerde la próxima vez, para elegir cómo prefiero trabajar. Requires: #7
+9. Como usuario de sistema, quiero una sección «Usuarios» en el menú para dar de alta cuentas y restablecer contraseñas, para administrar el acceso sin ver los casos de los contadores. Requires: #2
 
 Notas acordadas:
-- #2: `usuarios_de_sistema` ve la sección «Administración».
+- #2: solo administrador («Administración») y contador («Mis casos»). `usuarios_de_sistema` no ve «Administración»: hoy no tiene pantallas y las rutas de contadores exigen administrador; su sección llega con la #9.
 - #8: el logo muestra cursor de mano y un tooltip («Fijar menú abierto» / «Volver a menú compacto») y se activa también con el teclado.
 
 ## Pendiente aparte
-- Pantallas de alta de usuarios y de restablecer contraseña (el backend ya existe).
+- Pantallas de alta de usuarios y de restablecer contraseña (el backend ya existe): las cubre la #9 para `usuarios_de_sistema`. Si el administrador también debe usarlas, se decide al refinar la #9.

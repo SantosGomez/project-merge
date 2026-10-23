@@ -71,79 +71,85 @@
 
       <q-scroll-area class="drawer-nav">
         <q-list padding>
-          <q-item-label header>Navegación</q-item-label>
+          <template v-if="session.esAdministrador">
+            <q-item-label header>Administración</q-item-label>
 
-          <q-item
-            clickable
-            v-ripple
-            class="q-item--nav"
-            active-class="q-item--nav-activo"
-            :to="{ name: 'admin-dashboard' }"
-            aria-label="Ir al dashboard del administrador"
-          >
-            <q-item-section avatar>
-              <q-icon name="dashboard" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Dashboard admin</q-item-label>
-              <q-item-label caption>Ver conteos y casos</q-item-label>
-            </q-item-section>
-            <q-tooltip>Ir al dashboard del administrador</q-tooltip>
-          </q-item>
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'admin-dashboard' }"
+              aria-label="Ir al dashboard del administrador"
+            >
+              <q-item-section avatar>
+                <q-icon name="dashboard" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Dashboard admin</q-item-label>
+                <q-item-label caption>Ver conteos y casos</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir al dashboard del administrador</q-tooltip>
+            </q-item>
 
-          <q-item
-            clickable
-            v-ripple
-            class="q-item--nav"
-            active-class="q-item--nav-activo"
-            :to="{ name: 'admin-directorio' }"
-            aria-label="Ir al directorio de contadores"
-          >
-            <q-item-section avatar>
-              <q-icon name="group" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Directorio</q-item-label>
-              <q-item-label caption>Elegir contador</q-item-label>
-            </q-item-section>
-            <q-tooltip>Ir al directorio de contadores</q-tooltip>
-          </q-item>
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'admin-directorio' }"
+              aria-label="Ir al directorio de contadores"
+            >
+              <q-item-section avatar>
+                <q-icon name="group" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Directorio</q-item-label>
+                <q-item-label caption>Elegir contador</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir al directorio de contadores</q-tooltip>
+            </q-item>
+          </template>
 
-          <q-item
-            clickable
-            v-ripple
-            class="q-item--nav"
-            active-class="q-item--nav-activo"
-            :to="{ name: 'contador-registro' }"
-            aria-label="Ir al registro de caso"
-          >
-            <q-item-section avatar>
-              <q-icon name="add_circle" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Registro de caso</q-item-label>
-              <q-item-label caption>Crear nuevo caso</q-item-label>
-            </q-item-section>
-            <q-tooltip>Ir al registro de caso</q-tooltip>
-          </q-item>
+          <template v-if="session.esContador">
+            <q-item-label header>Mis casos</q-item-label>
 
-          <q-item
-            clickable
-            v-ripple
-            class="q-item--nav"
-            active-class="q-item--nav-activo"
-            :to="{ name: 'contador-casos' }"
-            aria-label="Ir a mis casos"
-          >
-            <q-item-section avatar>
-              <q-icon name="list_alt" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Mis casos</q-item-label>
-              <q-item-label caption>Revisar y editar</q-item-label>
-            </q-item-section>
-            <q-tooltip>Ir a mis casos</q-tooltip>
-          </q-item>
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'contador-registro' }"
+              aria-label="Ir al registro de caso"
+            >
+              <q-item-section avatar>
+                <q-icon name="add_circle" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Registro de caso</q-item-label>
+                <q-item-label caption>Crear nuevo caso</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir al registro de caso</q-tooltip>
+            </q-item>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'contador-casos' }"
+              aria-label="Ir a mis casos"
+            >
+              <q-item-section avatar>
+                <q-icon name="list_alt" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Mis casos</q-item-label>
+                <q-item-label caption>Revisar y editar</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir a mis casos</q-tooltip>
+            </q-item>
+          </template>
         </q-list>
       </q-scroll-area>
     </q-drawer>
@@ -380,7 +386,7 @@ onBeforeUnmount(() => {
 }
 
 .drawer-nav .q-item__label--header {
-  color: #c9cfd8;
+  color: var(--q-secondary);
 }
 
 .q-item--nav {
