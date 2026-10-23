@@ -37,6 +37,13 @@
       show-if-above
       :breakpoint="1023"
       :width="250"
+      :mini="menuCompacto"
+      mini-to-overlay
+      :mini-width="96"
+      @mouseenter="cursorEnMenu = true"
+      @mouseleave="cursorEnMenu = false"
+      @focusin="alEntrarFoco"
+      @focusout="alSalirFoco"
       class="bg-primary menu-lateral"
       aria-label="Navegación principal"
       transition-show="slide-right"
@@ -261,6 +268,22 @@ const counters = useCountersStore()
 const cases = useCasesStore()
 
 const drawerOpen = ref(false)
+// Cursor y foco se siguen por separado: el menú se compacta solo sin ninguno de los dos.
+const cursorEnMenu = ref(false)
+const focoEnMenu = ref(false)
+const menuCompacto = computed(() => !cursorEnMenu.value && !focoEnMenu.value)
+
+const alEntrarFoco = (evento) => {
+  // Solo el foco de teclado despliega: el que QDialog devuelve tras un clic no es visible.
+  focoEnMenu.value = evento.target.matches(':focus-visible')
+}
+
+const alSalirFoco = (evento) => {
+  // Al tabular dentro del menú el foco sigue contenido.
+  if (!evento.currentTarget.contains(evento.relatedTarget)) {
+    focoEnMenu.value = false
+  }
+}
 
 const dialogoCierreAbierto = ref(false)
 const cerrandoSesion = ref(false)
@@ -531,6 +554,20 @@ onBeforeUnmount(() => {
 .q-item--nav-activo {
   background: rgba(255, 255, 255, 0.1);
   box-shadow: inset 3px 0 0 var(--q-secondary);
+}
+
+/*
+ * Modo compacto: solo el logo, los iconos y las iniciales. Se cuelga de la clase que
+ * QDrawer pone únicamente en escritorio; q-mini-drawer-hide también oculta en móvil.
+ */
+.q-drawer--mini .drawer-marca__textos,
+.q-drawer--mini .drawer-nav .q-item__label--header,
+.q-drawer--mini .drawer-usuario__datos {
+  display: none;
+}
+
+.q-drawer--mini .drawer-usuario__fila {
+  justify-content: center;
 }
 
 .dialogo-cierre {

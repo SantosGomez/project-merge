@@ -456,3 +456,92 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes(':width="250"'), 'drawer usa ancho 250')
   })
 })
+
+describe('Drawer compacto — verificación estática', () => {
+  it('el menú arranca compacto, reserva su ancho y se despliega encima de la página', () => {
+    const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
+
+    assert.ok(drawerTag, 'falta q-drawer')
+    assert.ok(drawerTag.includes(':mini="menuCompacto"'), 'el menú depende del estado compacto')
+    assert.ok(drawerTag.includes('mini-to-overlay'), 'el despliegue va encima de la página')
+    assert.ok(drawerTag.includes(':mini-width="96"'), 'el ancho compacto cabe el logo')
+
+    // Arranca compacto: sin cursor ni foco dentro.
+    assert.ok(src.includes('const cursorEnMenu = ref(false)'), 'arranca sin cursor dentro')
+    assert.ok(src.includes('const focoEnMenu = ref(false)'), 'arranca sin foco dentro')
+  })
+
+  const declaracion = (nombre) => {
+    const inicio = src.indexOf(`const ${nombre} =`)
+    const fin = src.indexOf('\nconst ', inicio + 1)
+    return inicio === -1 ? '' : src.slice(inicio, fin === -1 ? undefined : fin)
+  }
+
+  it('el menú solo se compacta cuando no tiene ni el cursor ni el foco dentro', () => {
+    assert.match(
+      declaracion('menuCompacto'),
+      /computed\(\(\) => !cursorEnMenu\.value && !focoEnMenu\.value\)/,
+      'cursor y foco son estados separados; basta uno para desplegar',
+    )
+
+    const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
+    assert.ok(drawerTag.includes('@mouseenter="cursorEnMenu = true"'), 'el cursor despliega')
+    assert.ok(drawerTag.includes('@mouseleave="cursorEnMenu = false"'), 'salir el cursor no toca el foco')
+    assert.ok(drawerTag.includes('@focusin="alEntrarFoco"'), 'el foco despliega')
+    assert.ok(drawerTag.includes('@focusout="alSalirFoco"'), 'salir el foco no toca el cursor')
+
+    const salida = declaracion('alSalirFoco')
+    assert.match(salida, /relatedTarget/, 'mira a dónde fue el foco')
+    assert.match(salida, /focoEnMenu\.value = false/, 'solo apaga el foco')
+    assert.doesNotMatch(salida, /cursorEnMenu/, 'no apaga el cursor')
+  })
+
+  it('solo el foco visible (teclado) despliega; el que devuelve el diálogo tras un clic no', () => {
+    // QDialog devuelve el foco a «Cerrar Sesión» al ocultarse; tras un clic ese foco no es visible.
+    assert.match(
+      declaracion('alEntrarFoco'),
+      /focoEnMenu\.value = evento\.target\.matches\(':focus-visible'\)/,
+      'el foco cuenta solo si es visible',
+    )
+  })
+
+  it('compacto oculta los textos de la marca, los títulos de sección y el nombre y rol', () => {
+    const bloque = src.match(/\.q-drawer--mini [^{]*\{([^}]*)\}/)?.[0] ?? ''
+
+    assert.ok(bloque, 'falta el bloque del modo compacto')
+    assert.match(bloque, /\.drawer-marca__textos/, 'oculta los textos de la marca')
+    assert.match(bloque, /\.drawer-nav \.q-item__label--header/, 'oculta los títulos de sección')
+    assert.match(bloque, /\.drawer-usuario__datos/, 'oculta el nombre y el rol')
+    assert.match(bloque, /display:\s*none/, 'los oculta de verdad')
+  })
+
+  it('compacto conserva el logo, los iconos y las iniciales, con las iniciales centradas', () => {
+    const bloque = src.match(/\.q-drawer--mini [^{]*\{([^}]*)\}/)?.[0] ?? ''
+    assert.ok(bloque, 'falta el bloque del modo compacto')
+
+    for (const selector of ['.drawer-marca__logo', '.q-item--nav', '.drawer-usuario__avatar']) {
+      assert.ok(!bloque.includes(selector), `el compacto no oculta ${selector}`)
+    }
+
+    const fila = src.match(/\.q-drawer--mini \.drawer-usuario__fila\s*\{([^}]*)\}/)?.[1] ?? ''
+    assert.match(fila, /justify-content:\s*center/, 'las iniciales quedan centradas')
+  })
+
+  it('el compacto solo actúa en escritorio: el menú móvil conserva sus textos', () => {
+    // Quasar también oculta .q-mini-drawer-hide en .q-drawer--mobile.
+    assert.doesNotMatch(
+      src,
+      /\.q-mini-drawer-hide\b\s*[,{]/,
+      'no usa la clase que Quasar también oculta en móvil',
+    )
+
+    const reglas = src.match(/\.q-drawer--mini [^{]*\{[^}]*\}/g) ?? []
+    assert.ok(reglas.length >= 2, 'faltan las reglas del modo compacto')
+
+    for (const regla of reglas) {
+      assert.ok(regla.startsWith('.q-drawer--mini'), 'las reglas cuelgan de la clase de escritorio')
+    }
+
+    assert.ok(!src.includes('.q-drawer--mobile'), 'el compacto no define reglas para el móvil')
+  })
+})
