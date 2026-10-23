@@ -24,6 +24,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - MariaDB con mysql2 (pool); seed idempotente. La tabla `sesiones` tiene `jti` como clave primaria.
 - `parseCounterId` acepta solo dígitos (MariaDB convierte `'2abc'` en `2`).
 - Se trabaja con las reglas de la skill `ponytail` (cambio mínimo completo); `AGENTS.md` manda sobre ella.
+- Agentes (2026-10-23): opencode = «Orion Pax» (`.opencode/agents/`), Claude Code = «D-16» con `planner`, `implementer` y `reviewer` en `.claude/agents/` (adaptados de opencode; sin `coordinator`: lo hace la sesión principal), deepseek harness = «B-127» (pendiente). `.claude/` no está en git.
 
 ## Excepciones aprobadas en la 003
 
