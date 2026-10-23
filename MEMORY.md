@@ -5,7 +5,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 ## Estado actual
 
 - **Spec 002 (backend): implementada con salvedades** — Cambios 1 y 2 aprobados por el reviewer: T1-T29 todas `[x]`; `node --test` 119 pruebas, 119 pass, 0 fail en 20 archivos; verificador `RESULTADO: OK` (cifras validadas por el reviewer y comprobadas por el coordinador). Su línea `Estado:` ya lo refleja. (Cambio 1: CORS local, login con `id`, `GET /contadores` solo `id`/`usuario`; Cambio 2: pruebas reales, verificador con mínimos, sin puerta trasera de tokens.)
-- **Spec 004 (`specs/004-correcciones-backend/`)**, rama `worktree-spec-004` (worktree `.claude/worktrees/spec-004`; solo toca `Backend/` y `specs/004`). **T1-T32 hechas; validación SDD final (2026-10-23): APROBADO.** `node --test` 162/162 en 22 archivos, verificador «162 de 159» OK. T1-T23 con commit; **Bloque 4 (T24-T32) sin commit**.
+- **Spec 004 (`specs/004-correcciones-backend/`)**, rama `worktree-spec-004` (worktree `.claude/worktrees/spec-004`; solo toca `Backend/` y `specs/004`). **T1-T32 hechas; validación SDD final (2026-10-23): APROBADO.** `node --test` 162/162 en 22 archivos, verificador «162 de 159» OK. Todo con commit (Bloque 4 en `23c64bf`, sin push).
   - Bloque 1 (A-C, `55d78df`, APROBADO): `validarCampoTexto`, `asyncHandler` + handler global 400/503, `SessionModel` propaga errores → 503. Área D (`55d78df`): `jti` propio por token.
   - Bloque 2 (`871a723`, `0634980`, cierre `da332b5`, APROBADO): fechas `YYYY-MM-DD HH:mm:ss` con `conFechasLocales`; `findByUsername` exacto y `usuarioExisteIgnoreCase` para duplicados.
   - Bloque 3: G `5f75b9a` (`PATCH /usuarios/:usuario/restablecer-contrasena`, revoca todas las sesiones); H `9b66837` (`requireContador` antes de `checkCaseOwnership`; opción A del usuario: el aserto del admin acepta «Rol insuficiente»); I `bcb6401` (máximo de 100 en el alta); J `c09b16c` (barrido sin fugas, `src/` sin cambios).
@@ -15,7 +15,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 
 ## Próximos pasos
 
-- **Spec 004 lista para cerrar.** Falta, con aprobación del usuario: commit del Bloque 4, cambiar la línea `Estado:` de `spec.md`, merge en `main` (sin `git add .`) y reiniciar el servidor del puerto 3000; luego retomar la spec 003.
+- **Spec 004 completada** (línea `Estado:` de `spec.md` cambiada con aprobación del usuario). Falta, con aprobación del usuario: merge en `main` (sin `git add .`) y reiniciar el servidor del puerto 3000; luego retomar la spec 003.
 - Se trabaja con las reglas de la skill `ponytail` (cambio mínimo completo; en `.claude/skills/ponytail/` de `main`). `AGENTS.md` manda sobre ella.
 - Commits solo cuando el usuario lo pida; nunca push sin preguntar.
 

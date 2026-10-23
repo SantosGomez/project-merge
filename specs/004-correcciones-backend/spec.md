@@ -1,5 +1,5 @@
 # Spec 004 — Correcciones del backend (robustez, restablecimiento de contraseña, fechas y mayúsculas)
-Estado: aprobada (contenido aprobado por el usuario como Cambio 3 de la spec 002; pendiente de plan y tareas definitivos al abrir esta spec)
+Estado: completada (T1-T32 implementadas; validación SDD final del revisor independiente: APROBADO; 162/162 pruebas, verificador 162 de 159 OK)
 
 ## Contexto y objetivo
 
