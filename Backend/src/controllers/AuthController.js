@@ -21,7 +21,7 @@ async function login(req, res) {
   const validacion = validateLoginInput(usuario, password);
   if (validacion.tipoInvalido.length > 0) {
     return res.status(400).json(
-      buildError('Dato inválido', 'usuario o contraseña', 'debe enviarse como texto')
+      buildError('Dato inválido', validacion.tipoInvalido.join(' y '), 'debe enviarse como texto')
     );
   }
   if (!validacion.valido) {

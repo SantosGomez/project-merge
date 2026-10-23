@@ -10,6 +10,7 @@ const {
 } = require('../soporte-pruebas/bd');
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { pool, query } = require('../src/config/db');
+const jwt = require('jsonwebtoken');
 
 /**
  * Pruebas de integración de las rutas de usuarios (userRoutes).
@@ -378,6 +379,70 @@ async function testRestablecerConContrasenaInvalida() {
   );
 }
 
+// ---------- RF-42, criterio 44: cuenta de administrador, cuenta del seed y cuenta propia ----------
+// Usa su propio administrador: restablecer la cuenta propia revoca el token del solicitante.
+// contador_seed se deja con su hash y sus sesiones como estaban.
+async function testRestablecerAdministradorSeedYPropia() {
+  const solicitante = await crearUsuarioDePrueba('administrador');
+  const otroAdministrador = await crearUsuarioDePrueba('administrador');
+  const tokenSolicitante = await iniciarSesion(servidor.puerto, solicitante.usuario, solicitante.password);
+  const nueva = 'NuevaClave2026';
+
+  const [seed] = (await query('SELECT id, usuario, password_hash FROM usuarios WHERE usuario = ?', ['contador_seed']))
+    .filter((fila) => fila.usuario === 'contador_seed');
+  assert.ok(seed, 'la cuenta contador_seed debe existir');
+  const sesionesSeed = await query('SELECT jti, revocado FROM sesiones WHERE usuario_id = ?', [seed.id]);
+  const tokensSeed = [];
+
+  try {
+    const administradorResp = await restablecer(otroAdministrador.usuario, { password: nueva }, tokenSolicitante);
+    assert.strictEqual(administradorResp.statusCode, 200, 'debe poder restablecerse una cuenta de administrador');
+    assert.strictEqual(await estadoDelLogin(otroAdministrador.usuario, nueva), 200, 'el administrador debe entrar con la nueva');
+
+    const seedResp = await restablecer('contador_seed', { password: nueva }, tokenSolicitante);
+    assert.strictEqual(seedResp.statusCode, 200, 'debe poder restablecerse una cuenta del seed');
+    const loginSeed = await peticion(servidor.puerto, 'POST', '/auth/login', { usuario: 'contador_seed', password: nueva });
+    if (loginSeed.body.token) tokensSeed.push(loginSeed.body.token);
+    assert.strictEqual(loginSeed.statusCode, 200, 'contador_seed debe entrar con la nueva');
+
+    // La cuenta propia va al final porque invalida el token del solicitante.
+    const propia = await restablecer(solicitante.usuario, { password: nueva }, tokenSolicitante);
+    assert.strictEqual(propia.statusCode, 200, 'el administrador debe poder restablecer su propia contraseña');
+    await afirmarSesionCaducada(tokenSolicitante, 'cuenta propia');
+    assert.strictEqual(await estadoDelLogin(solicitante.usuario, nueva), 200, 'debe entrar con su contraseña nueva');
+  } finally {
+    await query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [seed.password_hash, seed.id]);
+    for (const sesion of sesionesSeed.filter((fila) => Number(fila.revocado) === 0)) {
+      await query('UPDATE sesiones SET revocado = 0 WHERE jti = ?', [sesion.jti]);
+    }
+    for (const token of tokensSeed) {
+      await query('DELETE FROM sesiones WHERE jti = ?', [jwt.decode(token).jti]);
+    }
+  }
+}
+
+// ---------- RF-42, criterio 43: fallo al revocar las sesiones durante el restablecimiento ----------
+// Riesgo aceptado en T16: tras el 503 la contraseña ya cambió; aquí solo se fija que el reintento lo completa.
+async function testFalloAlRevocarSesionesYReintento() {
+  const tokenAdmin = await loginAdmin();
+  const cuenta = await crearUsuarioDePrueba('contador');
+  const sesionUno = await iniciarSesion(servidor.puerto, cuenta.usuario, cuenta.password);
+  const sesionDos = await iniciarSesion(servidor.puerto, cuenta.usuario, cuenta.password);
+  const nueva = 'NuevaClave2026';
+
+  const conFallo = await conFalloDeBd(
+    (sql) => sql.startsWith('UPDATE sesiones SET revocado = 1 WHERE usuario_id'),
+    () => restablecer(cuenta.usuario, { password: nueva }, tokenAdmin)
+  );
+  assert.strictEqual(conFallo.statusCode, 503, 'un fallo al revocar las sesiones debe responder 503');
+  assert.match(String(conFallo.body.mensaje), /^.+ sobre .+: .+$/, 'el 503 debe tener las tres partes');
+
+  const reintento = await restablecer(cuenta.usuario, { password: nueva }, tokenAdmin);
+  assert.strictEqual(reintento.statusCode, 200, 'el reintento debe completar el restablecimiento');
+  await afirmarSesionCaducada(sesionUno, 'primera sesión tras el reintento');
+  await afirmarSesionCaducada(sesionDos, 'segunda sesión tras el reintento');
+}
+
 describe('rutas de usuarios', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -400,4 +465,6 @@ describe('rutas de usuarios', () => {
   test('restablecer una cuenta inexistente responde 404, un contador recibe 403 y se puede restablecer la propia', testRestablecerNoEncontradoDenegadoYPropio);
   test('restablecer con una contraseña nueva inválida responde 400 sin cambiarla', testRestablecerConContrasenaInvalida);
   test('el alta con un nombre de más de 100 caracteres responde 400 y con 100 se acepta', testAltaConNombreDemasiadoLargoRechaza);
+  test('se restablece una cuenta de administrador, una del seed y la propia del administrador', testRestablecerAdministradorSeedYPropia);
+  test('si falla la revocación de sesiones responde 503 y el reintento las revoca', testFalloAlRevocarSesionesYReintento);
 });

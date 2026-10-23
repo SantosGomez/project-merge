@@ -266,6 +266,12 @@ async function testFechasDelCasoEnHoraLocal() {
   );
   assert.strictEqual(patchResp.statusCode, 200, 'el caso debe actualizarse');
   await comprobarFechasEnHoraLocal(patchResp.body.caso, 'PATCH /casos/:id');
+
+  const misCasos = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, tokenContador);
+  assert.strictEqual(misCasos.statusCode, 200, 'los casos propios deben listarse');
+  const propio = misCasos.body.casos.find((caso) => caso.id === crearResp.body.caso.id);
+  assert.ok(propio, 'el caso creado debe aparecer en los casos propios');
+  await comprobarFechasEnHoraLocal(propio, 'GET /casos/mis-casos');
 }
 
 // ---------- RF-46, RF-09, RF-16, criterios 13 y 37: el perfil se comprueba antes de buscar el caso ----------
@@ -287,13 +293,15 @@ async function testPerfilSeCompruebaAntesDelCaso() {
   // Ni el administrador ni usuarios_de_sistema averiguan si el caso existe: siempre acceso denegado.
   for (const [perfil, token] of [['administrador', tokenAdmin], ['usuarios_de_sistema', tokenSistema]]) {
     for (const [descripcion, casoId] of [['inexistente', casoInexistente], ['existente', casoExistente]]) {
-      const respuesta = await peticion(servidor.puerto, 'PATCH', `/casos/${casoId}`, { estado: 'Finalizado' }, token);
-      assert.strictEqual(respuesta.statusCode, 403, `${perfil} sobre un caso ${descripcion} debe recibir 403`);
-      assert.match(
-        String(respuesta.body.mensaje),
-        /Acceso denegado|Rol insuficiente/,
-        `${perfil} sobre un caso ${descripcion}: el aviso debe ser de acceso denegado`
-      );
+      for (const cambio of [{ estado: 'Finalizado' }, { prioridad: 'Alta' }]) {
+        const respuesta = await peticion(servidor.puerto, 'PATCH', `/casos/${casoId}`, cambio, token);
+        assert.strictEqual(respuesta.statusCode, 403, `${perfil} sobre un caso ${descripcion} debe recibir 403`);
+        assert.match(
+          String(respuesta.body.mensaje),
+          /Acceso denegado|Rol insuficiente/,
+          `${perfil} sobre un caso ${descripcion}: el aviso debe ser de acceso denegado`
+        );
+      }
     }
   }
 
@@ -318,9 +326,22 @@ async function testPerfilSeCompruebaAntesDelCaso() {
   );
   assert.strictEqual(registroAdmin.statusCode, 403, 'el administrador no debe poder registrar casos');
 
+  // Registrar un caso como usuarios_de_sistema también está denegado y no crea nada (criterios 13 y 37).
+  const registroSistema = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente de usuarios de sistema', prioridad: 'Alta' },
+    tokenSistema
+  );
+  assert.strictEqual(registroSistema.statusCode, 403, 'usuarios_de_sistema no debe poder registrar casos');
+  const casosSistema = await query('SELECT COUNT(*) AS total FROM casos WHERE contador_id = ?', [sistema.id]);
+  assert.strictEqual(Number(casosSistema[0].total), 0, 'usuarios_de_sistema no debe tener casos');
+
   // Ningún intento denegado modificó el caso existente.
-  const filas = await query('SELECT estado FROM casos WHERE id = ?', [casoExistente]);
-  assert.strictEqual(filas[0].estado, 'Pendiente', 'los intentos denegados no deben modificar el caso');
+  const filas = await query('SELECT estado, prioridad FROM casos WHERE id = ?', [casoExistente]);
+  assert.strictEqual(filas[0].estado, 'Pendiente', 'los intentos denegados no deben modificar el estado');
+  assert.strictEqual(filas[0].prioridad, 'Media', 'los intentos denegados no deben modificar la prioridad');
 }
 
 describe('rutas de casos', () => {

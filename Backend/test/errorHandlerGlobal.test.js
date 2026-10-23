@@ -66,16 +66,17 @@ function conLimite(promesa) {
  * @param {number} puerto - Puerto del servidor.
  * @param {string} ruta - Ruta solicitada.
  * @param {string} cuerpoCrudo - Texto que se envía como cuerpo.
+ * @param {string} [metodo='POST'] - Método HTTP.
  * @returns {Promise<{statusCode: number, body: any}>} Respuesta con el cuerpo interpretado.
  */
-function peticionCruda(puerto, ruta, cuerpoCrudo) {
+function peticionCruda(puerto, ruta, cuerpoCrudo, metodo = 'POST') {
   return new Promise((resolve, reject) => {
     const solicitud = http.request(
       {
         host: '127.0.0.1',
         port: puerto,
         path: ruta,
-        method: 'POST',
+        method: metodo,
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(cuerpoCrudo) },
         agent: false,
       },
@@ -157,6 +158,27 @@ async function testLoginUsuarioNumerico() {
     'el mensaje debe tener las tres partes, indicar el dato y que debe enviarse como texto'
   );
   assert.strictEqual(respuesta.body.token, undefined, 'no debe devolver token');
+}
+
+// ---------- RF-37, criterio 32: el 400 del login nombra exactamente el dato no textual ----------
+async function testLoginNombraElDatoNoTextual() {
+  const noTextuales = [{ clave: 'valor' }, ['Secreta123'], true];
+  const casos = [
+    { dato: 'usuario', cuerpo: (valor) => ({ usuario: valor, password: 'Secreta123' }) },
+    { dato: 'contraseña', cuerpo: (valor) => ({ usuario: 'zz_test_login', password: valor }) },
+    { dato: 'usuario y contraseña', cuerpo: (valor) => ({ usuario: valor, password: valor }) },
+  ];
+
+  for (const { dato, cuerpo } of casos) {
+    const esperado = buildError('Dato inválido', dato, 'debe enviarse como texto').mensaje;
+    for (const valor of noTextuales) {
+      const respuesta = await conLimite(peticion(servidor.puerto, 'POST', '/auth/login', cuerpo(valor)));
+
+      assert.strictEqual(respuesta.statusCode, 400, `un ${dato} que no es texto debe responder 400`);
+      assert.strictEqual(respuesta.body.mensaje, esperado, `el mensaje debe nombrar exactamente «${dato}»`);
+      assert.strictEqual(respuesta.body.token, undefined, 'no debe devolver token');
+    }
+  }
 }
 
 // ---------- RF-47, criterio 41: fallo interno en el login → 503 y el servidor sigue ----------
@@ -254,6 +276,73 @@ async function testAltaConRolNoTextual() {
   assert.strictEqual(Number(filas[0].total), 0, 'con un rol inválido no debe crearse la cuenta');
 }
 
+const NO_TEXTUALES = [{ clave: 'valor' }, ['valor'], true];
+
+// ---------- RF-37, criterio 32: usuario o contraseña no textuales en el alta ----------
+async function testAltaConUsuarioOContrasenaNoTextuales() {
+  const administrador = await crearUsuarioDePrueba('administrador');
+  const token = await iniciarSesion(servidor.puerto, administrador.usuario, administrador.password);
+  const nombre = `zz_test_alta_${administrador.id}`;
+
+  for (const valor of NO_TEXTUALES) {
+    const conUsuario = await conLimite(
+      peticion(servidor.puerto, 'POST', '/usuarios', { usuario: valor, password: 'Secreta123', rol: 'contador' }, token)
+    );
+    afirmarDatoNoTextual(conUsuario, 'usuario');
+
+    const conContrasena = await conLimite(
+      peticion(servidor.puerto, 'POST', '/usuarios', { usuario: nombre, password: valor, rol: 'contador' }, token)
+    );
+    afirmarDatoNoTextual(conContrasena, 'contraseña');
+  }
+
+  const [filas] = await queryOriginal('SELECT COUNT(*) AS total FROM usuarios WHERE usuario = ?', [nombre]);
+  assert.strictEqual(Number(filas[0].total), 0, 'con una contraseña no textual no debe crearse la cuenta');
+}
+
+// ---------- RF-37, criterio 32: cliente o prioridad no textuales al registrar un caso ----------
+async function testRegistroDeCasoConDatosNoTextuales() {
+  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const contarCasos = async () => {
+    const [filas] = await queryOriginal('SELECT COUNT(*) AS total FROM casos WHERE contador_id = ?', [contador.id]);
+    return Number(filas[0].total);
+  };
+  const antes = await contarCasos();
+
+  for (const valor of NO_TEXTUALES) {
+    const conCliente = await conLimite(
+      peticion(servidor.puerto, 'POST', '/casos', { cliente: valor, prioridad: 'Alta' }, token)
+    );
+    afirmarDatoNoTextual(conCliente, 'cliente');
+
+    const conPrioridad = await conLimite(
+      peticion(servidor.puerto, 'POST', '/casos', { cliente: `zz_test_cliente_${contador.id}`, prioridad: valor }, token)
+    );
+    afirmarDatoNoTextual(conPrioridad, 'prioridad');
+  }
+
+  assert.strictEqual(await contarCasos(), antes, 'con un dato no textual no debe registrarse ningún caso');
+}
+
+// ---------- RF-37, RNF-8: JSON mal formado en casos y en el restablecimiento ----------
+async function testCasosYRestablecimientoJsonMalFormado() {
+  const peticiones = [
+    ['POST', '/casos'],
+    ['PATCH', '/casos/1'],
+    ['PATCH', `/usuarios/${contador.usuario}/restablecer-contrasena`],
+  ];
+
+  for (const [metodo, ruta] of peticiones) {
+    const respuesta = await conLimite(peticionCruda(servidor.puerto, ruta, '{"cliente": ', metodo));
+
+    assert.strictEqual(respuesta.statusCode, 400, `${metodo} ${ruta} con JSON mal formado debe responder 400`);
+    assert.strictEqual(respuesta.body.mensaje, MENSAJE_CUERPO_INVALIDO, 'el mensaje debe tener las tres partes');
+  }
+
+  const siguiente = await conLimite(peticion(servidor.puerto, 'GET', '/contadores'));
+  assert.strictEqual(siguiente.statusCode, 401, 'el servidor sigue atendiendo');
+}
+
 describe('manejo global de errores', () => {
   before(async () => {
     process.on('unhandledRejection', registrarRechazo);
@@ -277,8 +366,12 @@ describe('manejo global de errores', () => {
   test('el alta con JSON mal formado responde 400 de tres partes', { timeout: 5000 }, testAltaJsonMalFormado);
   test('tras esas respuestas el servidor sigue atendiendo', testServidorSigueAtendiendo);
   test('el login con usuario numérico responde 400 que indica el dato', testLoginUsuarioNumerico);
+  test('el login con usuario o contraseña no textuales nombra exactamente el dato', testLoginNombraElDatoNoTextual);
   test('un fallo interno en el login responde 503 sin token', { timeout: 5000 }, testFalloInternoEnLogin);
   test('el cambio de caso con estado o prioridad no textuales responde 400 que indica el dato', testCambioDeCasoConDatosNoTextuales);
   test('el cambio de caso con un dato no textual no guarda nada', testCambioDeCasoNoGuardaAMedias);
   test('el alta con un rol no textual responde 400 que indica el dato', testAltaConRolNoTextual);
+  test('el alta con usuario o contraseña no textuales responde 400 y no crea la cuenta', testAltaConUsuarioOContrasenaNoTextuales);
+  test('registrar un caso con cliente o prioridad no textuales responde 400 y no lo crea', testRegistroDeCasoConDatosNoTextuales);
+  test('el JSON mal formado en casos y en el restablecimiento responde 400 de tres partes', { timeout: 5000 }, testCasosYRestablecimientoJsonMalFormado);
 });

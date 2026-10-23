@@ -242,6 +242,7 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
   // Se registra aunque un aserto falle después, para que la limpieza lo borre.
   registrarUsuarioCreado(nombreNuevo);
   guardar('alta de usuario', altaUsuario);
+  assert.strictEqual(altaUsuario.statusCode, 201, 'usuarios_de_sistema debe poder dar de alta usuarios (criterio 9)');
   guardar(
     'alta de usuario con rol inválido',
     await peticion(
