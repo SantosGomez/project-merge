@@ -4,20 +4,6 @@
       <div class="layout-bar">
         <div class="layout-bar__row">
           <q-btn
-            v-if="backRouteName && !accessDenied"
-            flat
-            no-caps
-            icon="arrow_back"
-            label="Volver"
-            text-color="white"
-            class="control-touch"
-            :to="{ name: backRouteName }"
-            :aria-label="`Volver a ${backTitle}`"
-          >
-            <q-tooltip>Vuelve a {{ backTitle }}, la pantalla anterior del recorrido.</q-tooltip>
-          </q-btn>
-
-          <q-btn
             flat
             icon="menu"
             aria-label="Abrir menú de navegación"
@@ -25,7 +11,23 @@
             @click="drawerOpen = !drawerOpen"
           />
 
-          <h1 class="layout-bar__title">{{ pageTitle }}</h1>
+          <q-btn
+            v-if="backRouteName && !accessDenied"
+            flat
+            no-caps
+            icon="arrow_back"
+            text-color="white"
+            class="control-touch"
+            :to="{ name: backRouteName }"
+            :aria-label="`Volver a ${backTitle}`"
+          >
+            <q-tooltip>Volver a {{ backTitle }}</q-tooltip>
+          </q-btn>
+
+          <h1 class="layout-bar__title">
+            {{ pageTitle }}
+            <q-tooltip>{{ pageTitle }}</q-tooltip>
+          </h1>
         </div>
       </div>
     </q-header>
@@ -334,12 +336,12 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px 12px 8px;
+  padding: 4px 12px;
 }
 
 .layout-bar__row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
 }
@@ -351,6 +353,9 @@ onBeforeUnmount(() => {
   font-size: clamp(1.05rem, 4vw, 1.4rem);
   font-weight: 600;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /*

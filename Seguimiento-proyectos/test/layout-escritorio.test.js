@@ -100,22 +100,25 @@ describe('Layout de escritorio — verificación estática', () => {
     )
   })
 
-  it('el «Volver» del encabezado conserva destino, etiqueta accesible y tooltip de la barra', () => {
+  it('el «Volver» del encabezado conserva destino y etiqueta accesible de la barra', () => {
     const inicioEncabezado = src.indexOf('<header')
     const finEncabezado = src.indexOf('</header>', inicioEncabezado)
     const encabezado = src.slice(inicioEncabezado, finEncabezado)
     const barra = src.slice(src.indexOf('<q-header'), src.indexOf('</q-header>'))
 
-    const marcas = [
-      ':to="{ name: backRouteName }"',
-      ':aria-label="`Volver a ${backTitle}`"',
-      '<q-tooltip>Vuelve a {{ backTitle }}, la pantalla anterior del recorrido.</q-tooltip>',
-    ]
+    const marcas = [':to="{ name: backRouteName }"', ':aria-label="`Volver a ${backTitle}`"']
 
     for (const marca of marcas) {
       assert.ok(barra.includes(marca), `la barra conserva ${marca}`)
       assert.ok(encabezado.includes(marca), `el encabezado reutiliza ${marca}`)
     }
+
+    assert.ok(
+      encabezado.includes(
+        '<q-tooltip>Vuelve a {{ backTitle }}, la pantalla anterior del recorrido.</q-tooltip>',
+      ),
+      'el encabezado de escritorio conserva su tooltip',
+    )
   })
 
   it('el «Volver» del encabezado se ve sobre fondo claro con el azul de la marca', () => {
