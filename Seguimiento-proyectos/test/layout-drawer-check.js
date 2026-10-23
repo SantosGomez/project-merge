@@ -439,10 +439,16 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(count >= 4, `se esperan al menos 4 q-tooltip, hay ${count}`)
   })
 
-  it('tiene botón de menú en cabecera con clases de visibilidad', () => {
+  it('tiene botón de menú en cabecera, visible mientras se vea la barra', () => {
     assert.ok(src.includes('icon="menu"'), 'falta icon menu')
     assert.ok(src.includes('aria-label="Abrir menú de navegación"'), 'falta aria-label menú')
-    assert.ok(src.includes('lt-lg'), 'falta clase lt-lg')
+    // La barra solo existe por debajo de 1024 px; el botón no necesita reglas propias para ocultarse.
+    assert.ok(!src.includes('lt-lg'), 'sobra la clase lt-lg')
+    assert.doesNotMatch(
+      src,
+      /@media \(min-width: 1024px\)\s*\{\s*\.layout-bar__menu/,
+      'sobra la media query que oculta el botón desde 1024 px',
+    )
   })
 
   it('no introduce overflow horizontal a 360px (sin widths fijos en px fuera del drawer)', () => {

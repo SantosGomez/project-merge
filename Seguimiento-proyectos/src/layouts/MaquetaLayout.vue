@@ -21,7 +21,7 @@
             flat
             icon="menu"
             aria-label="Abrir menú de navegación"
-            class="lt-lg layout-bar__menu control-touch"
+            class="layout-bar__menu control-touch"
             @click="drawerOpen = !drawerOpen"
           />
 
@@ -396,12 +396,6 @@ onBeforeUnmount(() => {
 .layout-bar__menu {
   min-width: 44px;
   min-height: 44px;
-}
-
-@media (min-width: 1024px) {
-  .layout-bar__menu {
-    display: none;
-  }
 }
 
 .access-page {
