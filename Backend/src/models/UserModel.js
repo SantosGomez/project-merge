@@ -73,6 +73,22 @@ async function create(usuario, passwordHash, rol) {
 }
 
 /**
+ * Crea una cuenta con nombre y correo propios (login por correo) y devuelve su ID.
+ * Mientras exista la columna `usuario`, guarda en ella el mismo correo.
+ * @param {{ nombre: string, correo: string, passwordHash: string, rol: string }} datos
+ * @returns {Promise<number>} ID del usuario insertado.
+ */
+async function createConCorreo({ nombre, correo, passwordHash, rol }) {
+  const ahora = formatLocalDate(nowLocal());
+  const result = await query(
+    `INSERT INTO usuarios (usuario, nombre, correo, password_hash, rol, creado_en, actualizado_en)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [correo, nombre, correo, passwordHash, rol, ahora, ahora]
+  );
+  return result.insertId;
+}
+
+/**
  * Busca un usuario por su ID.
  * @param {number} id - ID del usuario.
  * @returns {Promise<Object|null>} El usuario encontrado o null.
@@ -130,6 +146,7 @@ async function updatePassword(id, hash) {
 
 module.exports = {
   correoDeTransicion,
+  createConCorreo,
   findByCorreo,
   registrarUltimoAcceso,
   findByUsername,
