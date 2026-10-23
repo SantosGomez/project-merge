@@ -157,6 +157,22 @@ async function testUsuarioExisteIgnoreCase() {
   );
 }
 
+async function testCreateDaCorreoNombreYActualizacionDeTransicion() {
+  const nombre = nombreDePrueba('Usuario_Transicion');
+  const id = await create(nombre, 'hash_prueba_correo', 'contador');
+  registrarUsuarioCreado(nombre);
+  const usuario = await findById(id);
+  // Mientras el alta pide «usuario», ese texto (en minúsculas) también es el correo de acceso.
+  assert.strictEqual(usuario.correo, `${nombre.toLowerCase()}@prueba.local`);
+  assert.strictEqual(usuario.nombre, nombre);
+  assert.ok(usuario.actualizado_en, 'actualizado_en se llena al crear');
+
+  const conCorreo = `${nombreDePrueba('conarroba')}@Ejemplo.MX`;
+  const id2 = await create(conCorreo, 'hash_prueba_correo', 'contador');
+  registrarUsuarioCreado(conCorreo);
+  assert.strictEqual((await findById(id2)).correo, conCorreo.toLowerCase(), 'si ya es correo se usa tal cual');
+}
+
 describe('UserModel', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -170,6 +186,7 @@ describe('UserModel', () => {
   test('findByUsername devuelve el usuario cuando existe', testFindByUsernameDevuelveUsuarioExistente);
   test('findByUsername devuelve null cuando no existe', testFindByUsernameDevuelveNullCuandoNoExiste);
   test('create inserta el usuario y devuelve su id', testCreateInsertaUsuarioYDevuelveId);
+  test('create da correo, nombre y actualizado_en a la cuenta nueva', testCreateDaCorreoNombreYActualizacionDeTransicion);
   test('findById devuelve el usuario cuando existe', testFindByIdDevuelveUsuarioExistente);
   test('findById devuelve null cuando no existe', testFindByIdDevuelveNullCuandoNoExiste);
   test('findAll devuelve un array de usuarios', testFindAllDevuelveArray);

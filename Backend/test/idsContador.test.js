@@ -41,7 +41,7 @@ let tokenAdmin;
  * @returns {Promise<string>} Token de acceso.
  */
 async function iniciarSesionDe(cuenta) {
-  return iniciarSesion(servidor.puerto, cuenta.usuario, cuenta.password);
+  return iniciarSesion(servidor.puerto, cuenta.correo, cuenta.password);
 }
 
 /**

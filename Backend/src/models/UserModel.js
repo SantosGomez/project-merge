@@ -14,6 +14,25 @@ async function findByUsername(usuario) {
 }
 
 /**
+ * Busca una cuenta por su correo de acceso, sin distinguir mayúsculas ni espacios extremos.
+ * @param {string} correo - Correo con el que se inicia sesión.
+ * @returns {Promise<Object|null>} La cuenta encontrada o null.
+ */
+async function findByCorreo(correo) {
+  const rows = await query('SELECT * FROM usuarios WHERE correo = ? LIMIT 1', [correo.trim().toLowerCase()]);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Guarda la fecha del último inicio de sesión exitoso de la cuenta.
+ * @param {number} id - ID del usuario.
+ * @param {Date} momento - Momento del inicio de sesión.
+ */
+async function registrarUltimoAcceso(id, momento) {
+  await query('UPDATE usuarios SET ultimo_acceso_en = ? WHERE id = ?', [formatLocalDate(momento), id]);
+}
+
+/**
  * Indica si ya existe un usuario con ese nombre sin distinguir mayúsculas (RF-45).
  * @param {string} usuario - Nombre de usuario.
  * @returns {Promise<boolean>} true si existe una cuenta con ese nombre.
@@ -21,6 +40,18 @@ async function findByUsername(usuario) {
 async function usuarioExisteIgnoreCase(usuario) {
   const rows = await query('SELECT id FROM usuarios WHERE LOWER(usuario) = LOWER(?) LIMIT 1', [usuario]);
   return rows.length > 0;
+}
+
+/**
+ * Correo de acceso de una cuenta mientras el alta todavía pide «usuario»: el mismo
+ * texto en minúsculas si ya es un correo, o `usuario@prueba.local` si no lo es.
+ * Es la misma regla que aplica la migración a las cuentas existentes.
+ * @param {string} usuario - Nombre de usuario.
+ * @returns {string} correo en minúsculas.
+ */
+function correoDeTransicion(usuario) {
+  const minusculas = usuario.toLowerCase();
+  return minusculas.includes('@') ? minusculas : `${minusculas}@prueba.local`;
 }
 
 /**
@@ -34,8 +65,9 @@ async function usuarioExisteIgnoreCase(usuario) {
 async function create(usuario, passwordHash, rol) {
   const ahora = formatLocalDate(nowLocal());
   const result = await query(
-    'INSERT INTO usuarios (usuario, password_hash, rol, creado_en) VALUES (?, ?, ?, ?)',
-    [usuario, passwordHash, rol, ahora]
+    `INSERT INTO usuarios (usuario, nombre, correo, password_hash, rol, creado_en, actualizado_en)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [usuario, usuario, correoDeTransicion(usuario), passwordHash, rol, ahora, ahora]
   );
   return result.insertId;
 }
@@ -97,6 +129,9 @@ async function updatePassword(id, hash) {
 }
 
 module.exports = {
+  correoDeTransicion,
+  findByCorreo,
+  registrarUltimoAcceso,
   findByUsername,
   usuarioExisteIgnoreCase,
   updatePassword,

@@ -212,3 +212,24 @@ describe('T9 — flujo de P-3 hacia P-2 (RF-16, RF-17)', () => {
     assert.equal(typeof counts.pendiente, 'number', 'P-2 puede calcular los conteos del detalle')
   })
 })
+
+describe('Login por correo — verificación estática de P-1', () => {
+  const login = read('../src/pages/LoginPage.vue')
+  const campo = login.slice(login.indexOf('ref="usernameInput"'), login.indexOf('</q-input>', login.indexOf('ref="usernameInput"')))
+
+  it('el primer campo pide el correo, con teclado y autocompletado de correo', () => {
+    assert.match(campo, /label="Correo"/, 'la etiqueta dice Correo')
+    assert.match(campo, /type="email"/, 'abre el teclado de correo en celular')
+    assert.match(campo, /autocomplete="email"/, 'el navegador sugiere el correo')
+    assert.match(campo, /aria-label="Ayuda sobre el campo correo"/, 'ayuda accesible del campo')
+    assert.doesNotMatch(campo, /label="Usuario"/, 'ya no pide el usuario')
+  })
+
+  it('los avisos hablan de correo, no de usuario', () => {
+    assert.ok(login.includes('Falta el correo. Escríbelo para iniciar sesión.'), 'aviso de campo vacío')
+    assert.ok(
+      login.includes('Credenciales no válidas. Verifique el correo y la contraseña e intente de nuevo.'),
+      'aviso genérico de credenciales',
+    )
+  })
+})

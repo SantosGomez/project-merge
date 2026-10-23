@@ -7,6 +7,7 @@ const {
 } = require('../soporte-pruebas/bd');
 const { seedDatabase } = require('../src/utils/seed');
 const { findByUsername, findAll } = require('../src/models/UserModel');
+const { query } = require('../src/config/db');
 
 /**
  * Pruebas del seed de datos maestros (RF-27).
@@ -77,6 +78,29 @@ async function testSeedNoDuplicaUsuariosAlEjecutarseDosVeces() {
   assert.strictEqual(contadores2, 1, 'debe existir una sola cuenta contador_seed');
 }
 
+async function testMigracionAgregaColumnasDeLaCuenta() {
+  await seedDatabase();
+  const columnas = (await query('SHOW COLUMNS FROM usuarios')).map((c) => c.Field);
+  for (const columna of ['nombre', 'correo', 'actualizado_en', 'ultimo_acceso_en']) {
+    assert.ok(columnas.includes(columna), `la tabla usuarios debe tener la columna ${columna}`);
+  }
+
+  // El correo es único: la migración crea su índice.
+  const indices = await query("SHOW INDEX FROM usuarios WHERE Column_name = 'correo' AND Non_unique = 0");
+  assert.ok(indices.length > 0, 'el correo debe ser único');
+}
+
+async function testMigracionDaCorreoYNombreALasCuentasExistentes() {
+  await seedDatabase();
+  const administrador = await findByUsername('admin_seed');
+  assert.strictEqual(administrador.correo, 'admin_seed@prueba.local', 'cuenta sin correo recibe uno de prueba');
+  assert.strictEqual(administrador.nombre, 'admin_seed', 'el nombre parte del usuario actual');
+  assert.ok(administrador.actualizado_en, 'actualizado_en arranca con la fecha de creación');
+
+  const sinCorreo = await query('SELECT COUNT(*) AS n FROM usuarios WHERE correo IS NULL OR nombre IS NULL');
+  assert.strictEqual(Number(sinCorreo[0].n), 0, 'ninguna cuenta queda sin correo o sin nombre');
+}
+
 describe('seed de datos maestros', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -90,4 +114,6 @@ describe('seed de datos maestros', () => {
   test('crea al menos un administrador y un contador', testSeedCreaAlmenosUnAdministradorYUnContador);
   test('las contraseñas están hasheadas con Argon2id', testSeedContraseñasEstanHasheadasConArgon2id);
   test('no duplica usuarios al ejecutarse dos veces', testSeedNoDuplicaUsuariosAlEjecutarseDosVeces);
+  test('la migración agrega nombre, correo único, actualizado_en y ultimo_acceso_en', testMigracionAgregaColumnasDeLaCuenta);
+  test('la migración da correo y nombre a las cuentas existentes', testMigracionDaCorreoYNombreALasCuentasExistentes);
 });

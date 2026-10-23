@@ -100,14 +100,14 @@ async function peticion(puerto, metodo, ruta, cuerpo, token, cabeceras) {
 /**
  * Inicia sesión con el login real y devuelve el token emitido.
  * @param {number} puerto - Puerto del servidor.
- * @param {string} usuario - Nombre de usuario.
+ * @param {string} correo - Correo de acceso.
  * @param {string} password - Contraseña en texto plano.
  * @returns {Promise<string>} Token de acceso.
  */
-async function iniciarSesion(puerto, usuario, password) {
-  const respuesta = await peticion(puerto, 'POST', '/auth/login', { usuario, password });
+async function iniciarSesion(puerto, correo, password) {
+  const respuesta = await peticion(puerto, 'POST', '/auth/login', { correo, password });
   if (respuesta.statusCode !== 200 || !respuesta.body || !respuesta.body.token) {
-    throw new Error(`No se pudo iniciar sesión con ${usuario}: estado ${respuesta.statusCode}`);
+    throw new Error(`No se pudo iniciar sesión con ${correo}: estado ${respuesta.statusCode}`);
   }
   return respuesta.body.token;
 }

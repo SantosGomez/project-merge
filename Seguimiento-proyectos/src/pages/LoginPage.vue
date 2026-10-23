@@ -102,9 +102,10 @@
               ref="usernameInput"
               v-model="form.username"
               class="login-form__control"
-              label="Usuario"
-              hint="Usuario de tu cuenta."
-              autocomplete="username"
+              label="Correo"
+              hint="Correo de tu cuenta, por ejemplo nombre@delgrow.mx."
+              type="email"
+              autocomplete="email"
               autofocus
               outlined
               :error="missing.username"
@@ -113,7 +114,7 @@
               @update:model-value="alEscribir('username')"
             >
               <template #prepend>
-                <q-icon name="person" aria-hidden="true" />
+                <q-icon name="mail" aria-hidden="true" />
               </template>
               <template #append>
                 <q-icon
@@ -121,17 +122,17 @@
                   class="login-form__help-icon"
                   tabindex="0"
                   role="img"
-                  aria-label="Ayuda sobre el campo usuario"
+                  aria-label="Ayuda sobre el campo correo"
                 >
                   <q-tooltip>
-                    Escribe el usuario de tu cuenta. Se ignoran los espacios al inicio y al final.
+                    Escribe el correo de tu cuenta. No importan las mayúsculas ni los espacios al inicio y al final.
                   </q-tooltip>
                 </q-icon>
               </template>
             </q-input>
 
             <p v-if="missing.username" id="login-username-error" class="login-form__error" role="alert">
-              Falta el usuario. Escríbelo para iniciar sesión.
+              Falta el correo. Escríbelo para iniciar sesión.
             </p>
           </div>
 
@@ -348,7 +349,7 @@ const submit = async () => {
     if (resultado.error?.estado === ESTADOS_ERROR.CREDENCIALES_INVALIDAS) {
       // Mensaje genérico: no se indica cuál de los dos datos falló (RF-04).
       errorCredenciales.value =
-        'Credenciales no válidas. Verifique el usuario y la contraseña e intente de nuevo.'
+        'Credenciales no válidas. Verifique el correo y la contraseña e intente de nuevo.'
     } else {
       // Red o servidor: mensaje de tres partes con la opción de reintentar (RF-36).
       errorConexion.value =

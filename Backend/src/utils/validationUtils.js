@@ -25,18 +25,19 @@ function validarCampoTexto(valor, nombre) {
 }
 
 /**
- * Valida los campos de inicio de sesión (usuario y contraseña).
+ * Valida un identificador (correo en el login, usuario en el alta) y una contraseña.
  * RF-02, RF-37.
- * @param {*} usuario - Nombre de usuario.
+ * @param {*} identificador - Correo o nombre de usuario.
  * @param {*} password - Contraseña.
+ * @param {string} [nombreCampo='usuario'] - Nombre del identificador en los mensajes.
  * @returns {{ valido: boolean, faltantes: string[], tipoInvalido: string[] }} Objeto con valido,
  *   campos faltantes y campos enviados con un tipo distinto de texto.
  */
-function validateLoginInput(usuario, password) {
+function validateLoginInput(identificador, password, nombreCampo = 'usuario') {
   const faltantes = [];
   const tipoInvalido = [];
 
-  for (const campo of [validarCampoTexto(usuario, 'usuario'), validarCampoTexto(password, 'contraseña')]) {
+  for (const campo of [validarCampoTexto(identificador, nombreCampo), validarCampoTexto(password, 'contraseña')]) {
     if (campo.estado === 'faltante') {
       faltantes.push(campo.campo);
     } else if (campo.estado === 'tipo_invalido') {

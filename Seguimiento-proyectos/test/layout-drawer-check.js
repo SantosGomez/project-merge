@@ -216,8 +216,8 @@ describe('Drawer sidebar — verificación estática', () => {
     )
     assert.match(
       pie,
-      /drawer-usuario__nombre[\s\S]*?\{\{\s*session\.usuario\s*\}\}/,
-      'falta el nombre de usuario en el pie',
+      /drawer-usuario__nombre[\s\S]*?\{\{\s*session\.nombreVisible\s*\}\}/,
+      'falta el nombre de la cuenta en el pie',
     )
     assert.match(
       pie,
@@ -225,7 +225,7 @@ describe('Drawer sidebar — verificación estática', () => {
       'falta el rol legible en el pie',
     )
     assert.match(pie, /aria-hidden="true"/, 'las iniciales son decorativas')
-    assert.match(src, /formatearIniciales\(session\.usuario\)/, 'faltan las iniciales de la sesión')
+    assert.match(src, /formatearIniciales\(session\.nombreVisible\)/, 'faltan las iniciales de la sesión')
     assert.match(src, /formatearRol\(session\.rol\)/, 'falta el rol legible de la sesión')
 
     const pieTag = src.match(/<div class="drawer-usuario"[^>]*>/)?.[0] ?? ''
@@ -233,7 +233,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.doesNotMatch(pieTag, /esAdministrador|esContador/, 'el pie no depende del rol')
 
     const filaTag = src.match(/<div class="drawer-usuario__fila"[^>]*>/)?.[0] ?? ''
-    assert.match(filaTag, /v-if="session\.usuario"/, 'la fila del nombre se muestra con usuario')
+    assert.match(filaTag, /v-if="session\.nombreVisible"/, 'la fila del nombre se muestra con el nombre')
     assert.doesNotMatch(filaTag, /esAdministrador|esContador/, 'la fila no depende del rol')
 
     const filaInicio = src.indexOf('<div class="drawer-usuario__fila"')
@@ -261,7 +261,7 @@ describe('Drawer sidebar — verificación estática', () => {
     const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('</q-drawer>'))
     assert.match(
       pie,
-      /<q-tooltip>\{\{\s*session\.usuario\s*\}\}<\/q-tooltip>/,
+      /<q-tooltip>\{\{\s*session\.nombreVisible\s*\}\}<\/q-tooltip>/,
       'el tooltip muestra el nombre completo',
     )
   })
@@ -665,5 +665,15 @@ describe('Alta de usuario (historia 9a) — verificación estática', () => {
       'la vuelta sale del rol de la sesión, no de «admin o contador»',
     )
     assert.match(aviso, /formatearRol\(maqueta\.session\?\.profile\)/, 'nombra el rol de la sesión')
+  })
+})
+
+describe('Pie del menú con el nombre de la cuenta (login por correo)', () => {
+  it('muestra el nombre visible y sus iniciales, no el usuario', () => {
+    const pie = src.slice(src.indexOf('<div class="drawer-usuario__fila"'), src.indexOf('<div class="drawer-usuario__salir"'))
+    assert.match(pie, /v-if="session\.nombreVisible"/, 'la fila aparece con el nombre')
+    assert.match(pie, /\{\{ session\.nombreVisible \}\}\s*<q-tooltip>\{\{ session\.nombreVisible \}\}<\/q-tooltip>/, 'nombre y su tooltip')
+    assert.doesNotMatch(pie, /session\.usuario/, 'el pie ya no muestra el usuario')
+    assert.match(src, /formatearIniciales\(session\.nombreVisible\)/, 'iniciales del nombre')
   })
 })

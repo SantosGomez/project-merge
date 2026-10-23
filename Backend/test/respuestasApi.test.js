@@ -34,7 +34,7 @@ let tokenContador;
 let tokenSistema;
 
 async function iniciarSesionDe(usuario) {
-  return iniciarSesion(servidor.puerto, usuario.usuario, usuario.password);
+  return iniciarSesion(servidor.puerto, usuario.correo, usuario.password);
 }
 
 /**
@@ -85,7 +85,7 @@ async function testLoginDevuelveIdNumerico() {
 
   for (const { etiqueta, cuenta, rol, token } of casos) {
     const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
-      usuario: cuenta.usuario,
+      correo: cuenta.correo,
       password: cuenta.password,
     });
 
@@ -155,20 +155,20 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
 
   // Inicio de sesión (éxito y errores 400/401)
   guardar('login de administrador', await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: administrador.usuario,
+    correo: administrador.correo,
     password: administrador.password,
   }));
   guardar('login de contador', await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario,
+    correo: contador.correo,
     password: contador.password,
   }));
   guardar('login de usuario de sistema', await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: usuarioSistema.usuario,
+    correo: usuarioSistema.correo,
     password: usuarioSistema.password,
   }));
   guardar('login sin credenciales', await peticion(servidor.puerto, 'POST', '/auth/login', {}));
   guardar('login con contraseña incorrecta', await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario,
+    correo: contador.correo,
     password: 'ContraseñaIncorrecta',
   }));
 

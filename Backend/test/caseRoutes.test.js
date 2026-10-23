@@ -36,7 +36,7 @@ let tokenAjeno;
 let tokenAdmin;
 
 async function iniciarSesionDe(usuario) {
-  return iniciarSesion(servidor.puerto, usuario.usuario, usuario.password);
+  return iniciarSesion(servidor.puerto, usuario.correo, usuario.password);
 }
 
 /**

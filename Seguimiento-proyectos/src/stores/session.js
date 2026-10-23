@@ -21,6 +21,7 @@ import {
 } from '../services/api.js'
 import {
   getUsuario as getUsuarioPorDefecto,
+  getNombre as getNombrePorDefecto,
   getId as getIdPorDefecto,
   getRol as getRolPorDefecto,
   getToken as getTokenPorDefecto,
@@ -100,6 +101,7 @@ const authServicePorDefecto = {
   getToken: getTokenPorDefecto,
   getRol: getRolPorDefecto,
   getUsuario: getUsuarioPorDefecto,
+  getNombre: getNombrePorDefecto,
   getId: getIdPorDefecto,
   setToken: setTokenPorDefecto,
   setSesion: setSesionPorDefecto,
@@ -140,6 +142,8 @@ export const crearSessionStore = (dependencias = {}) => {
         /** Perfil de la cuenta: administrador, contador u otro sin pantalla. */
         rol: authService.getRol(),
         usuario: authService.getUsuario(),
+        /** Nombre de la persona para el menú (login por correo); null en sesiones anteriores. */
+        nombre: authService.getNombre(),
         id: authService.getId(),
         /** Expiración del token en segundos (campo `exp`), si se puede leer. */
         exp: expiracionDeToken(token),
@@ -162,6 +166,8 @@ export const crearSessionStore = (dependencias = {}) => {
       esAdministrador: (state) => state.rol === 'administrador',
       esContador: (state) => state.rol === 'contador',
       esUsuarioSistema: (state) => state.rol === 'usuarios_de_sistema',
+      /** Nombre que se muestra: el de la cuenta o, si falta, el usuario. */
+      nombreVisible: (state) => state.nombre ?? state.usuario,
     },
 
     actions: {
@@ -170,6 +176,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.token = authService.getToken()
         this.rol = authService.getRol()
         this.usuario = authService.getUsuario()
+        this.nombre = authService.getNombre()
         this.id = authService.getId()
         this.exp = expiracionDeToken(this.token)
       },
@@ -179,6 +186,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.token = null
         this.rol = null
         this.usuario = null
+        this.nombre = null
         this.id = null
         this.exp = null
         this.ultimaActividad = null

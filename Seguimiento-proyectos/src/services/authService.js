@@ -102,21 +102,24 @@ export const crearAuthService = (opciones = {}) => {
   const getToken = () => leer(CLAVES_SESION.token)
   const getRol = () => leer(CLAVES_SESION.rol)
   const getUsuario = () => leer(CLAVES_SESION.usuario)
+  const getNombre = () => leer(CLAVES_SESION.nombre)
   const getId = () => leer(CLAVES_SESION.id)
 
   const setToken = (token) => escribir(CLAVES_SESION.token, token)
   const setRol = (rol) => escribir(CLAVES_SESION.rol, rol)
   const setUsuario = (usuario) => escribir(CLAVES_SESION.usuario, usuario)
+  const setNombre = (nombre) => escribir(CLAVES_SESION.nombre, nombre)
   const setId = (id) => escribir(CLAVES_SESION.id, id)
 
   /**
    * Guarda la sesión completa (RF-02, RF-42).
-   * @param {{ token: string, rol: string, id?: number|string, usuario: string }} sesion
+   * @param {{ token: string, rol: string, id?: number|string, usuario: string, nombre?: string|null }} sesion
    */
   const setSesion = (sesion) => {
     setToken(sesion.token)
     setRol(sesion.rol)
     setUsuario(sesion.usuario)
+    setNombre(sesion.nombre)
     setId(sesion.id)
   }
 
@@ -131,19 +134,25 @@ export const crearAuthService = (opciones = {}) => {
   }
 
   /**
-   * Inicia sesión contra POST /auth/login y guarda la sesión (RF-01 a RF-04).
-   * @param {string} usuario
+   * Inicia sesión con correo contra POST /auth/login y guarda la sesión (RF-01 a RF-04).
+   * @param {string} correo
    * @param {string} password
-   * @returns {Promise<{ token: string, rol: string, id: number, usuario: string }>}
+   * @returns {Promise<{ token: string, rol: string, id: number, usuario: string, nombre: string|null }>}
    */
-  const login = async (usuario, password) => {
-    const { data } = await api.post('/auth/login', { usuario, password })
+  const login = async (correo, password) => {
+    const { data } = await api.post('/auth/login', { correo, password })
 
     if (!data || typeof data.token !== 'string' || data.token.trim() === '') {
       throw crearErrorInesperado('el inicio de sesión')
     }
 
-    const sesion = { token: data.token, rol: data.rol, id: data.id, usuario: data.usuario }
+    const sesion = {
+      token: data.token,
+      rol: data.rol,
+      id: data.id,
+      usuario: data.usuario,
+      nombre: data.nombre ?? null,
+    }
     setSesion(sesion)
     return sesion
   }
@@ -174,6 +183,7 @@ export const crearAuthService = (opciones = {}) => {
     getToken,
     getRol,
     getUsuario,
+    getNombre,
     getId,
     setSesion,
     setToken,
@@ -193,6 +203,7 @@ export const logout = servicioPorDefecto.logout
 export const getToken = servicioPorDefecto.getToken
 export const getRol = servicioPorDefecto.getRol
 export const getUsuario = servicioPorDefecto.getUsuario
+export const getNombre = servicioPorDefecto.getNombre
 export const getId = servicioPorDefecto.getId
 export const setSesion = servicioPorDefecto.setSesion
 export const setToken = servicioPorDefecto.setToken

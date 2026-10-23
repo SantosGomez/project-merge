@@ -57,6 +57,22 @@ const DATOS_SESION = {
 
 // --- login (RF-01 a RF-04, RF-08, RF-42) -----------------------------------
 
+test('login entra con el correo y guarda también el nombre de la cuenta', async () => {
+  const datos = { ...DATOS_SESION, nombre: 'CPC. Admin Seed', correo: 'admin_seed@prueba.local' }
+  const api = crearApiFalsa({ datos })
+  const almacen = crearAlmacenFalso()
+  const servicio = crearAuthService({ api, almacen })
+
+  const sesion = await servicio.login('admin_seed@prueba.local', 'clave-falsa')
+
+  assert.deepEqual(api.llamadas, [
+    { url: '/auth/login', cuerpo: { correo: 'admin_seed@prueba.local', password: 'clave-falsa' } },
+  ])
+  assert.equal(sesion.nombre, 'CPC. Admin Seed')
+  assert.equal(almacen.getItem(CLAVES_SESION.nombre), 'CPC. Admin Seed')
+  assert.equal(servicio.getNombre(), 'CPC. Admin Seed')
+})
+
 test('login hace POST /auth/login y guarda token, rol, id y usuario en el almacén', async () => {
   const api = crearApiFalsa({ datos: DATOS_SESION })
   const almacen = crearAlmacenFalso()
@@ -65,9 +81,9 @@ test('login hace POST /auth/login y guarda token, rol, id y usuario en el almac�
   const sesion = await servicio.login('admin_seed', 'clave-falsa')
 
   assert.deepEqual(api.llamadas, [
-    { url: '/auth/login', cuerpo: { usuario: 'admin_seed', password: 'clave-falsa' } },
+    { url: '/auth/login', cuerpo: { correo: 'admin_seed', password: 'clave-falsa' } },
   ])
-  assert.deepEqual(sesion, DATOS_SESION, 'login devuelve los datos de la sesión')
+  assert.deepEqual(sesion, { ...DATOS_SESION, nombre: null },  'login devuelve los datos de la sesión')
   assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
   assert.equal(almacen.getItem(CLAVES_SESION.id), '5')

@@ -112,12 +112,14 @@ const crearAuthFalsa = ({ inicial = {}, sesionLogin, errorLogin, resultadoLogout
     getToken: () => almacen.getItem(CLAVES_SESION.token),
     getRol: () => almacen.getItem(CLAVES_SESION.rol),
     getUsuario: () => almacen.getItem(CLAVES_SESION.usuario),
+    getNombre: () => almacen.getItem(CLAVES_SESION.nombre),
     getId: () => almacen.getItem(CLAVES_SESION.id),
     setToken: (token) => escribir(almacen, CLAVES_SESION.token, token),
     setSesion: (sesion) => {
       escribir(almacen, CLAVES_SESION.token, sesion.token)
       escribir(almacen, CLAVES_SESION.rol, sesion.rol)
       escribir(almacen, CLAVES_SESION.usuario, sesion.usuario)
+      escribir(almacen, CLAVES_SESION.nombre, sesion.nombre)
       escribir(almacen, CLAVES_SESION.id, sesion.id)
     },
     limpiarSesion: () => {
@@ -439,6 +441,30 @@ test('arranque con un perfil sin pantalla: acceso denegado y sin lectura protegi
 })
 
 // --- inicio de sesión (RF-01 a RF-10) -------------------------------------
+
+test('iniciarSesion guarda el nombre de la cuenta para mostrarlo en el menú', async () => {
+  const auth = crearAuthFalsa({
+    sesionLogin: { token: tokenVigente(), rol: 'contador', id: 7, usuario: 'ana', nombre: 'Ana Karen Ramírez' },
+  })
+  const { store } = montarSesion({ auth })
+
+  await store.iniciarSesion('ana@delgrow.mx', 'clave')
+
+  assert.equal(store.nombre, 'Ana Karen Ramírez')
+  assert.equal(store.nombreVisible, 'Ana Karen Ramírez')
+})
+
+test('una sesión guardada sin nombre muestra el usuario como nombre', async () => {
+  const auth = crearAuthFalsa({
+    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 7, usuario: 'contador_seed' }),
+  })
+  const { store } = montarSesion({ auth })
+
+  store.aplicarSesionGuardada()
+
+  assert.equal(store.nombre, null)
+  assert.equal(store.nombreVisible, 'contador_seed')
+})
 
 test('iniciarSesion sin sesión previa: guarda la sesión, arranca el temporizador y devuelve la pantalla', async () => {
   const auth = crearAuthFalsa()

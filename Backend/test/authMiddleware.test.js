@@ -95,7 +95,7 @@ async function ejecutarConToken(token) {
  */
 async function iniciarSesionLimpia() {
   await query('DELETE FROM sesiones WHERE usuario_id = ?', [contador.id]);
-  return iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  return iniciarSesion(servidor.puerto, contador.correo, contador.password);
 }
 
 /**

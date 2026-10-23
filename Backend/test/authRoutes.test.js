@@ -30,7 +30,7 @@ let contador;
 // ---------- RF-01: login válido devuelve token, rol y usuario ----------
 async function testLoginValidoDevuelveToken() {
   const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario,
+    correo: contador.correo,
     password: contador.password,
   });
 
@@ -49,7 +49,7 @@ async function testLoginSinCamposRechazaCon400() {
 
   // Con campos vacíos
   const respuesta2 = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: '   ',
+    correo: '   ',
     password: '   ',
   });
   assert.strictEqual(respuesta2.statusCode, 400, 'debe responder 400 con campos vacíos');
@@ -58,8 +58,8 @@ async function testLoginSinCamposRechazaCon400() {
   // Mensaje con tres partes (RF-23)
   assert.ok(
     respuesta1.body.mensaje.includes('Faltan credenciales') &&
-      respuesta1.body.mensaje.includes('usuario y/o contraseña') &&
-      respuesta1.body.mensaje.includes('Ingrese usuario y contraseña'),
+      respuesta1.body.mensaje.includes('correo y/o contraseña') &&
+      respuesta1.body.mensaje.includes('Ingrese correo y contraseña'),
     'el mensaje de error debe tener las tres partes en español'
   );
 }
@@ -68,7 +68,7 @@ async function testLoginSinCamposRechazaCon400() {
 async function testCredencialesIncorrectasRechazanCon401() {
   // Usuario inexistente
   const respuesta1 = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: 'usuario_inexistente',
+    correo: 'usuario_inexistente@prueba.local',
     password: 'cualquiercosa123',
   });
   assert.strictEqual(respuesta1.statusCode, 401, 'debe responder 401 con usuario inexistente');
@@ -76,7 +76,7 @@ async function testCredencialesIncorrectasRechazanCon401() {
 
   // Contraseña incorrecta (usuario existe, contraseña mala)
   const respuesta2 = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario,
+    correo: contador.correo,
     password: 'ContraseñaIncorrecta',
   });
   assert.strictEqual(respuesta2.statusCode, 401, 'debe responder 401 con contraseña incorrecta');
@@ -85,7 +85,7 @@ async function testCredencialesIncorrectasRechazanCon401() {
   // Mensaje genérico que no revela cuál dato falló (RF-03)
   assert.ok(
     respuesta1.body.mensaje.includes('Credenciales no válidas') &&
-      respuesta1.body.mensaje.includes('usuario o contraseña') &&
+      respuesta1.body.mensaje.includes('correo o contraseña') &&
       respuesta1.body.mensaje.includes('Verifique sus datos e intente nuevamente'),
     'el mensaje debe ser genérico y tener las tres partes en español'
   );
@@ -101,7 +101,7 @@ async function testCredencialesIncorrectasRechazanCon401() {
 async function testLogoutRevocado() {
   // Primero hacer login para obtener un token válido
   const loginResp = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario,
+    correo: contador.correo,
     password: contador.password,
   });
   assert.strictEqual(loginResp.statusCode, 200, 'login debe ser exitoso');
@@ -125,32 +125,18 @@ async function testLogoutRevocado() {
   assert.ok(reintento.body.mensaje, 'el rechazo debe incluir un mensaje de error');
 }
 
-// ---------- RF-36, criterio 31: el login distingue mayúsculas en el nombre ----------
-async function testLoginDistingueMayusculas() {
+// ---------- Login por correo: otra capitalización entra (sustituye a RF-36 del usuario) ----------
+async function testLoginAceptaCorreoConOtraCapitalizacion() {
   const conOtraCapitalizacion = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario.toUpperCase(),
+    correo: contador.correo.toUpperCase(),
     password: contador.password,
   });
-  assert.strictEqual(
-    conOtraCapitalizacion.statusCode,
-    401,
-    'debe responder 401 si el nombre llega con otra capitalización'
-  );
-  assert.ok(
-    conOtraCapitalizacion.body.mensaje && conOtraCapitalizacion.body.mensaje.includes('Credenciales no válidas'),
-    'el rechazo debe usar el mensaje genérico'
-  );
-
-  const exacto = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario,
-    password: contador.password,
-  });
-  assert.strictEqual(exacto.statusCode, 200, 'debe responder 200 con el nombre exacto');
+  assert.strictEqual(conOtraCapitalizacion.statusCode, 200, 'el correo no distingue mayúsculas');
 }
 
 // ---------- RF-41, criterio 36: dos inicios de sesión simultáneos son independientes ----------
 async function testDosSesionesSimultaneasSonIndependientes() {
-  const credenciales = { usuario: contador.usuario, password: contador.password };
+  const credenciales = { correo: contador.correo, password: contador.password };
   const [primero, segundo] = await Promise.all([
     peticion(servidor.puerto, 'POST', '/auth/login', credenciales),
     peticion(servidor.puerto, 'POST', '/auth/login', credenciales),
@@ -175,7 +161,7 @@ async function testContrasenaDistingueMayusculas() {
   assert.notStrictEqual(otraCapitalizacion, contador.password, 'la contraseña de prueba debe tener minúsculas');
 
   const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
-    usuario: contador.usuario,
+    correo: contador.correo,
     password: otraCapitalizacion,
   });
   assert.strictEqual(respuesta.statusCode, 401, 'la contraseña con otra capitalización debe responder 401');
@@ -183,31 +169,23 @@ async function testContrasenaDistingueMayusculas() {
   assert.strictEqual(respuesta.body.token, undefined, 'no debe devolver token');
 }
 
-// ---------- RF-36, criterio 31: el nombre del seed con otra capitalización ----------
+// ---------- Login por correo: la cuenta del seed entra con su correo en mayúsculas ----------
 // Se sustituye un momento el hash de admin_seed por uno conocido y se restaura en `finally`.
-async function testSeedDistingueMayusculas() {
-  const [filas] = await pool.query('SELECT id, usuario, password_hash FROM usuarios WHERE usuario = ?', ['admin_seed']);
-  const seed = filas.find((fila) => fila.usuario === 'admin_seed');
-  assert.ok(seed, 'la cuenta admin_seed debe existir');
+async function testSeedEntraConCorreoEnMayusculas() {
+  const [filas] = await pool.query('SELECT id, correo, password_hash FROM usuarios WHERE correo = ?', ['admin_seed@prueba.local']);
+  const seed = filas[0];
+  assert.ok(seed, 'la cuenta admin_seed debe tener el correo admin_seed@prueba.local');
   const passwordConocida = 'ClaveTemporal123';
   const tokens = [];
 
   await pool.query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [await hashPassword(passwordConocida), seed.id]);
   try {
     const conMayusculas = await peticion(servidor.puerto, 'POST', '/auth/login', {
-      usuario: 'ADMIN_SEED',
+      correo: 'ADMIN_SEED@PRUEBA.LOCAL',
       password: passwordConocida,
     });
     if (conMayusculas.body.token) tokens.push(conMayusculas.body.token);
-    assert.strictEqual(conMayusculas.statusCode, 401, 'ADMIN_SEED debe responder 401');
-    assert.ok(conMayusculas.body.mensaje.includes('Credenciales no válidas'), 'el rechazo debe usar el mensaje genérico');
-
-    const exacto = await peticion(servidor.puerto, 'POST', '/auth/login', {
-      usuario: 'admin_seed',
-      password: passwordConocida,
-    });
-    if (exacto.body.token) tokens.push(exacto.body.token);
-    assert.strictEqual(exacto.statusCode, 200, 'admin_seed debe responder 200');
+    assert.strictEqual(conMayusculas.statusCode, 200, 'el correo del seed en mayúsculas debe entrar');
   } finally {
     await pool.query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [seed.password_hash, seed.id]);
     for (const token of tokens) {
@@ -218,7 +196,7 @@ async function testSeedDistingueMayusculas() {
 
 // ---------- RF-41, criterio 43: caducar una sesión por inactividad no afecta a otra ----------
 async function testCaducarUnaSesionNoAfectaAOtra() {
-  const credenciales = { usuario: contador.usuario, password: contador.password };
+  const credenciales = { correo: contador.correo, password: contador.password };
   const caducada = await peticion(servidor.puerto, 'POST', '/auth/login', credenciales);
   const vigente = await peticion(servidor.puerto, 'POST', '/auth/login', credenciales);
   assert.strictEqual(caducada.statusCode, 200, 'el primer inicio de sesión debe responder 200');
@@ -232,6 +210,49 @@ async function testCaducarUnaSesionNoAfectaAOtra() {
 
   const conVigente = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, vigente.body.token);
   assert.strictEqual(conVigente.statusCode, 200, 'la otra sesión del mismo usuario debe seguir abierta');
+}
+
+// ---------- Login por correo: nombre, correo y último acceso ----------
+async function testLoginConCorreoDevuelveNombreYCorreo() {
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    correo: contador.correo,
+    password: contador.password,
+  });
+  assert.strictEqual(respuesta.statusCode, 200, 'debe entrar con el correo');
+  assert.strictEqual(respuesta.body.correo, contador.correo, 'la respuesta trae el correo');
+  assert.strictEqual(respuesta.body.nombre, contador.usuario, 'la respuesta trae el nombre');
+}
+
+async function testLoginConCorreoSinImportarMayusculasNiEspacios() {
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    correo: `  ${contador.correo.toUpperCase()}  `,
+    password: contador.password,
+  });
+  assert.strictEqual(respuesta.statusCode, 200, 'el correo no distingue mayúsculas ni espacios extremos');
+}
+
+async function testLoginConCorreoInexistenteUsaMensajeGenerico() {
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    correo: 'nadie_zz_test@prueba.local',
+    password: contador.password,
+  });
+  assert.strictEqual(respuesta.statusCode, 401);
+  assert.ok(respuesta.body.mensaje.includes('Credenciales no válidas'), 'no revela si el correo existe');
+}
+
+async function testLoginGuardaUltimoAcceso() {
+  await pool.query('UPDATE usuarios SET ultimo_acceso_en = NULL WHERE id = ?', [contador.id]);
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    correo: contador.correo,
+    password: contador.password,
+  });
+  assert.strictEqual(respuesta.statusCode, 200);
+  const [filas] = await pool.query(
+    'SELECT ultimo_acceso_en, TIMESTAMPDIFF(SECOND, ultimo_acceso_en, NOW()) AS hace FROM usuarios WHERE id = ?',
+    [contador.id]
+  );
+  assert.ok(filas[0].ultimo_acceso_en, 'el login exitoso guarda la fecha del último acceso');
+  assert.ok(Math.abs(Number(filas[0].hace)) < 60, 'la fecha es la del inicio de sesión');
 }
 
 describe('rutas de autenticación', () => {
@@ -248,12 +269,16 @@ describe('rutas de autenticación', () => {
   });
 
   test('el login válido devuelve token, rol y usuario', testLoginValidoDevuelveToken);
+  test('el login con correo devuelve nombre y correo', testLoginConCorreoDevuelveNombreYCorreo);
+  test('el correo no distingue mayúsculas ni espacios extremos', testLoginConCorreoSinImportarMayusculasNiEspacios);
+  test('un correo inexistente recibe el mensaje genérico', testLoginConCorreoInexistenteUsaMensajeGenerico);
+  test('el login exitoso guarda ultimo_acceso_en', testLoginGuardaUltimoAcceso);
   test('el login sin campos responde 400', testLoginSinCamposRechazaCon400);
   test('las credenciales incorrectas responden 401 con mensaje genérico', testCredencialesIncorrectasRechazanCon401);
   test('el logout revoca el token y el mismo token recibe 401', testLogoutRevocado);
-  test('el login solo acepta el nombre de usuario con su capitalización exacta', testLoginDistingueMayusculas);
+  test('el login acepta el correo con otra capitalización', testLoginAceptaCorreoConOtraCapitalizacion);
   test('dos inicios de sesión simultáneos tienen tokens independientes', testDosSesionesSimultaneasSonIndependientes);
   test('la contraseña con otra capitalización responde 401', testContrasenaDistingueMayusculas);
-  test('el nombre del seed solo entra con su capitalización exacta', testSeedDistingueMayusculas);
+  test('la cuenta del seed entra con su correo en mayúsculas', testSeedEntraConCorreoEnMayusculas);
   test('caducar una sesión por inactividad no afecta a otra del mismo usuario', testCaducarUnaSesionNoAfectaAOtra);
 });

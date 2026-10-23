@@ -1,6 +1,6 @@
 const { query } = require('../config/db');
 const { hashPassword } = require('../utils/passwordUtils');
-const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
+const UserModel = require('../models/UserModel');
 
 // Credenciales placeholder del seed (cargadas desde otra base de datos posteriormente, RF-27).
 const ADMIN_USUARIO = 'admin_seed';
@@ -49,6 +49,32 @@ async function crearTablasSiNoExisten() {
 }
 
 /**
+ * Migración de la tabla usuarios al formato con nombre y correo (login por correo).
+ * Se puede correr varias veces: solo agrega lo que falta y conserva los datos.
+ * Las cuentas sin correo reciben uno de prueba (`usuario@prueba.local`) para poder entrar;
+ * la columna `usuario` se mantiene mientras el resto de la app deja de usarla.
+ */
+async function migrarUsuarios() {
+  await query(`
+    ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS nombre VARCHAR(150) NULL AFTER id,
+      ADD COLUMN IF NOT EXISTS correo VARCHAR(150) NULL AFTER nombre,
+      ADD COLUMN IF NOT EXISTS actualizado_en DATETIME NULL AFTER creado_en,
+      ADD COLUMN IF NOT EXISTS ultimo_acceso_en DATETIME NULL AFTER actualizado_en
+  `);
+
+  await query(`
+    UPDATE usuarios
+    SET correo = IF(usuario LIKE '%@%', LOWER(usuario), CONCAT(LOWER(usuario), '@prueba.local'))
+    WHERE correo IS NULL
+  `);
+  await query('UPDATE usuarios SET nombre = usuario WHERE nombre IS NULL');
+  await query('UPDATE usuarios SET actualizado_en = creado_en WHERE actualizado_en IS NULL');
+
+  await query('CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_correo ON usuarios (correo)');
+}
+
+/**
  * Verifica si ya existe un usuario con el nombre dado.
  * @param {string} usuario - Nombre de usuario.
  * @returns {Promise<boolean>} true si existe.
@@ -66,11 +92,8 @@ async function usuarioExiste(usuario) {
  */
 async function insertarUsuario(usuario, password, rol) {
   const hash = await hashPassword(password);
-  const ahora = formatLocalDate(nowLocal());
-  await query(
-    'INSERT INTO usuarios (usuario, password_hash, rol, creado_en) VALUES (?, ?, ?, ?)',
-    [usuario, hash, rol, ahora]
-  );
+  // Mismo alta que la API: la cuenta nace con nombre, correo y actualizado_en.
+  await UserModel.create(usuario, hash, rol);
 }
 
 /**
@@ -80,6 +103,7 @@ async function insertarUsuario(usuario, password, rol) {
  */
 async function seedDatabase() {
   await crearTablasSiNoExisten();
+  await migrarUsuarios();
 
   const existeAdmin = await usuarioExiste(ADMIN_USUARIO);
   if (!existeAdmin) {

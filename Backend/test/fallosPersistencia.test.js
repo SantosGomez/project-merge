@@ -106,7 +106,7 @@ async function testLoginSinRegistrarSesion() {
 
   const respuesta = await conFalloDeBd(
     (sql) => sql.startsWith('INSERT INTO sesiones'),
-    () => peticion(servidor.puerto, 'POST', '/auth/login', { usuario: contador.usuario, password: contador.password })
+    () => peticion(servidor.puerto, 'POST', '/auth/login', { correo: contador.correo, password: contador.password })
   );
 
   assert.strictEqual(respuesta.statusCode, 503, 'sin sesión registrada el login debe responder 503');
@@ -114,7 +114,7 @@ async function testLoginSinRegistrarSesion() {
   afirmarTresPartes(respuesta.body.mensaje, 'login sin sesión registrada');
 
   const siguiente = await conLimite(
-    peticion(servidor.puerto, 'POST', '/auth/login', { usuario: contador.usuario, password: contador.password })
+    peticion(servidor.puerto, 'POST', '/auth/login', { correo: contador.correo, password: contador.password })
   );
   assert.strictEqual(siguiente.statusCode, 200, 'restaurada la base de datos, la petición siguiente se atiende');
 }
@@ -122,7 +122,7 @@ async function testLoginSinRegistrarSesion() {
 // ---------- RF-39, criterio 34: si no se revoca, el cierre de sesión no se confirma ----------
 async function testLogoutSinRevocar() {
   const contador = await crearUsuarioDePrueba('contador');
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const respuesta = await conFalloDeBd(
     (sql) => sql.startsWith('UPDATE sesiones SET revocado = 1 WHERE jti'),
@@ -142,7 +142,7 @@ async function testLogoutSinRevocar() {
 // ---------- RF-40, criterio 35: un fallo al consultar la sesión no es «sesión caducada» ----------
 async function testConsultaDeSesionFalla() {
   const contador = await crearUsuarioDePrueba('contador');
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const respuesta = await conFalloDeBd(
     (sql) => sql.startsWith('SELECT * FROM sesiones'),
@@ -160,7 +160,7 @@ async function testConsultaDeSesionFalla() {
 // ---------- RF-40, RNF-4, criterio 35: un fallo al renovar la actividad no invalida la sesión ----------
 async function testRenovarActividadFalla() {
   const contador = await crearUsuarioDePrueba('contador');
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const respuesta = await conFalloDeBd(
     (sql) => sql.startsWith('UPDATE sesiones SET ultima_actividad'),
@@ -181,7 +181,7 @@ async function testLoginNoEncuentraUsuario() {
 
   const respuesta = await conFalloDeBd(
     (sql) => sql.startsWith('SELECT * FROM usuarios'),
-    () => peticion(servidor.puerto, 'POST', '/auth/login', { usuario: contador.usuario, password: contador.password })
+    () => peticion(servidor.puerto, 'POST', '/auth/login', { correo: contador.correo, password: contador.password })
   );
 
   assert.strictEqual(respuesta.statusCode, 503, 'un fallo interno en el login debe responder 503');
@@ -195,7 +195,7 @@ async function testLoginNoEncuentraUsuario() {
 // ---------- RF-47, criterio 41: fallos al leer y al guardar casos ----------
 async function testLeerYGuardarCasosFallan() {
   const contador = await crearUsuarioDePrueba('contador');
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const lectura = await conFalloDeBd(
     (sql) => sql.startsWith('SELECT * FROM casos'),
@@ -224,7 +224,7 @@ async function testLeerYGuardarCasosFallan() {
 async function testCambioDeCasoConFalloAlBuscarlo() {
   const contador = await crearUsuarioDePrueba('contador');
   const casoId = await crearCasoDePrueba(contador.id, { cliente: `zz_test_cliente_${contador.id}` });
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   let respuesta;
   try {

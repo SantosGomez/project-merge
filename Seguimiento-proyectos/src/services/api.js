@@ -34,6 +34,7 @@ export const CLAVES_SESION = Object.freeze({
   token: 'delgrow_token',
   rol: 'delgrow_rol',
   usuario: 'delgrow_usuario',
+  nombre: 'delgrow_nombre',
   id: 'delgrow_id',
 })
 

@@ -181,12 +181,12 @@
       </q-scroll-area>
 
       <div class="drawer-usuario" v-if="session.autenticado">
-        <div class="drawer-usuario__fila" v-if="session.usuario">
+        <div class="drawer-usuario__fila" v-if="session.nombreVisible">
           <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
           <div class="drawer-usuario__datos">
             <p class="drawer-usuario__nombre">
-              {{ session.usuario }}
-              <q-tooltip>{{ session.usuario }}</q-tooltip>
+              {{ session.nombreVisible }}
+              <q-tooltip>{{ session.nombreVisible }}</q-tooltip>
             </p>
             <p class="drawer-usuario__rol">{{ rolLegible }}</p>
           </div>
@@ -348,7 +348,7 @@ const backTitle = computed(() => {
   return router.resolve({ name: backRouteName.value }).meta.titulo ?? 'la pantalla anterior'
 })
 
-const iniciales = computed(() => formatearIniciales(session.usuario))
+const iniciales = computed(() => formatearIniciales(session.nombreVisible))
 const rolLegible = computed(() => formatearRol(session.rol))
 
 const abrirDialogoCierre = () => {

@@ -19,3 +19,7 @@ Thumbs.db
 # Misc
 *.tmp
 *.temp
+
+# Datos personales de cuentas reales (nombres, correos, contraseñas): nunca se suben
+*.xlsx
+*.local.json

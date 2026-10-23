@@ -9,16 +9,17 @@ const { nowLocal } = require('../utils/dateUtils');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
 /**
- * Inicio de sesión: valida credenciales, genera token JWT, registra sesión y devuelve token + rol + usuario.
+ * Inicio de sesión con correo: valida credenciales, genera token JWT, registra sesión,
+ * guarda el último acceso y devuelve token, rol, id, usuario, nombre y correo.
  * RF-01, RF-02, RF-03, RF-06.
- * @param {Object} req - Petición Express con cuerpo { usuario, password }.
+ * @param {Object} req - Petición Express con cuerpo { correo, password }.
  * @param {Object} res - Respuesta Express.
  */
 async function login(req, res) {
-  const { usuario, password } = req.body;
+  const { correo, password } = req.body;
 
   // 1. Validar credenciales (RF-02, RF-37)
-  const validacion = validateLoginInput(usuario, password);
+  const validacion = validateLoginInput(correo, password, 'correo');
   if (validacion.tipoInvalido.length > 0) {
     return res.status(400).json(
       buildError('Dato inválido', validacion.tipoInvalido.join(' y '), 'debe enviarse como texto')
@@ -26,15 +27,15 @@ async function login(req, res) {
   }
   if (!validacion.valido) {
     return res.status(400).json(
-      buildError('Faltan credenciales', 'usuario y/o contraseña', 'Ingrese usuario y contraseña')
+      buildError('Faltan credenciales', 'correo y/o contraseña', 'Ingrese correo y contraseña')
     );
   }
 
-  // 2. Buscar usuario y verificar contraseña (RF-03, mensaje genérico)
-  const cuenta = await UserModel.findByUsername(usuario);
+  // 2. Buscar la cuenta por correo y verificar contraseña (RF-03, mensaje genérico)
+  const cuenta = await UserModel.findByCorreo(correo);
   if (!cuenta || !(await verifyPassword(password, cuenta.password_hash))) {
     return res.status(401).json(
-      buildError('Credenciales no válidas', 'usuario o contraseña', 'Verifique sus datos e intente nuevamente')
+      buildError('Credenciales no válidas', 'correo o contraseña', 'Verifique sus datos e intente nuevamente')
     );
   }
 
@@ -56,8 +57,22 @@ async function login(req, res) {
     );
   }
 
-  // 5. Responder 200 con token, rol, id y usuario (RF-01, RF-06)
-  return res.status(200).json({ token, rol: cuenta.rol, id: cuenta.id, usuario: cuenta.usuario });
+  // 5. Guardar el último acceso; es informativo, así que un fallo no impide entrar.
+  try {
+    await UserModel.registrarUltimoAcceso(cuenta.id, ahora);
+  } catch (err) {
+    // La sesión ya quedó registrada: se responde igual.
+  }
+
+  // 6. Responder 200 con token, rol, id, usuario, nombre y correo (RF-01, RF-06)
+  return res.status(200).json({
+    token,
+    rol: cuenta.rol,
+    id: cuenta.id,
+    usuario: cuenta.usuario,
+    nombre: cuenta.nombre,
+    correo: cuenta.correo,
+  });
 }
 
 /**

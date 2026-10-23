@@ -45,7 +45,7 @@ async function prepararBaseDeDatos() {
 /**
  * Crea un usuario de prueba con nombre único y contraseña hasheada con Argon2id.
  * @param {string} rol - Rol del usuario (contador, administrador, usuarios_de_sistema).
- * @returns {Promise<{id: number, usuario: string, password: string}>} Datos del usuario creado.
+ * @returns {Promise<{id: number, usuario: string, correo: string, password: string}>} Datos del usuario creado.
  */
 async function crearUsuarioDePrueba(rol) {
   const sufijo = crypto.randomBytes(4).toString('hex');
@@ -53,7 +53,7 @@ async function crearUsuarioDePrueba(rol) {
   const passwordHash = await hashPassword(PASSWORD_PRUEBA);
   const id = await UserModel.create(usuario, passwordHash, rol);
   usuariosCreados.push({ id, usuario });
-  return { id, usuario, password: PASSWORD_PRUEBA };
+  return { id, usuario, correo: UserModel.correoDeTransicion(usuario), password: PASSWORD_PRUEBA };
 }
 
 /**

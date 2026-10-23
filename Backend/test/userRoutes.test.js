@@ -11,6 +11,7 @@ const {
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { pool, query } = require('../src/config/db');
 const jwt = require('jsonwebtoken');
+const { correoDeTransicion } = require('../src/models/UserModel');
 
 /**
  * Pruebas de integración de las rutas de usuarios (userRoutes).
@@ -34,11 +35,11 @@ function nombreDePrueba(prefijo) {
 }
 
 async function loginAdmin() {
-  return iniciarSesion(servidor.puerto, administrador.usuario, administrador.password);
+  return iniciarSesion(servidor.puerto, administrador.correo, administrador.password);
 }
 
 async function loginContador() {
-  return iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  return iniciarSesion(servidor.puerto, contador.correo, contador.password);
 }
 
 // ---------- RF-28: admin da de alta un usuario ----------
@@ -232,9 +233,10 @@ function restablecer(nombre, cuerpo, token) {
   );
 }
 
-// Código de estado del login con esas credenciales.
+// Código de estado del login de la cuenta con ese nombre (entra con su correo de acceso).
 async function estadoDelLogin(nombre, password) {
-  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', { usuario: nombre, password });
+  const correo = correoDeTransicion(nombre);
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', { correo, password });
   return respuesta.statusCode;
 }
 
@@ -281,8 +283,8 @@ async function conFalloDeBd(condicion, hacerPeticion) {
 async function testRestablecerContrasenaCorrecto() {
   const tokenAdmin = await loginAdmin();
   const cuenta = await crearUsuarioDePrueba('contador');
-  const sesionUno = await iniciarSesion(servidor.puerto, cuenta.usuario, cuenta.password);
-  const sesionDos = await iniciarSesion(servidor.puerto, cuenta.usuario, cuenta.password);
+  const sesionUno = await iniciarSesion(servidor.puerto, cuenta.correo, cuenta.password);
+  const sesionDos = await iniciarSesion(servidor.puerto, cuenta.correo, cuenta.password);
   const nueva = 'NuevaClave2026';
 
   const respuesta = await restablecer(cuenta.usuario, { password: nueva }, tokenAdmin);
@@ -343,7 +345,7 @@ async function testRestablecerNoEncontradoDenegadoYPropio() {
 
   // Un usuarios_de_sistema restablece su propia cuenta y entra con la nueva (criterio 44).
   const sistema = await crearUsuarioDePrueba('usuarios_de_sistema');
-  const tokenSistema = await iniciarSesion(servidor.puerto, sistema.usuario, sistema.password);
+  const tokenSistema = await iniciarSesion(servidor.puerto, sistema.correo, sistema.password);
   const propia = await restablecer(sistema.usuario, { password: nueva }, tokenSistema);
   assert.strictEqual(propia.statusCode, 200, 'usuarios_de_sistema debe poder restablecer su propia contraseña');
   assert.strictEqual(await estadoDelLogin(sistema.usuario, nueva), 200, 'debe poder entrar con la contraseña nueva');
@@ -385,7 +387,7 @@ async function testRestablecerConContrasenaInvalida() {
 async function testRestablecerAdministradorSeedYPropia() {
   const solicitante = await crearUsuarioDePrueba('administrador');
   const otroAdministrador = await crearUsuarioDePrueba('administrador');
-  const tokenSolicitante = await iniciarSesion(servidor.puerto, solicitante.usuario, solicitante.password);
+  const tokenSolicitante = await iniciarSesion(servidor.puerto, solicitante.correo, solicitante.password);
   const nueva = 'NuevaClave2026';
 
   const [seed] = (await query('SELECT id, usuario, password_hash FROM usuarios WHERE usuario = ?', ['contador_seed']))
@@ -401,7 +403,7 @@ async function testRestablecerAdministradorSeedYPropia() {
 
     const seedResp = await restablecer('contador_seed', { password: nueva }, tokenSolicitante);
     assert.strictEqual(seedResp.statusCode, 200, 'debe poder restablecerse una cuenta del seed');
-    const loginSeed = await peticion(servidor.puerto, 'POST', '/auth/login', { usuario: 'contador_seed', password: nueva });
+    const loginSeed = await peticion(servidor.puerto, 'POST', '/auth/login', { correo: 'contador_seed@prueba.local', password: nueva });
     if (loginSeed.body.token) tokensSeed.push(loginSeed.body.token);
     assert.strictEqual(loginSeed.statusCode, 200, 'contador_seed debe entrar con la nueva');
 
@@ -426,8 +428,8 @@ async function testRestablecerAdministradorSeedYPropia() {
 async function testFalloAlRevocarSesionesYReintento() {
   const tokenAdmin = await loginAdmin();
   const cuenta = await crearUsuarioDePrueba('contador');
-  const sesionUno = await iniciarSesion(servidor.puerto, cuenta.usuario, cuenta.password);
-  const sesionDos = await iniciarSesion(servidor.puerto, cuenta.usuario, cuenta.password);
+  const sesionUno = await iniciarSesion(servidor.puerto, cuenta.correo, cuenta.password);
+  const sesionDos = await iniciarSesion(servidor.puerto, cuenta.correo, cuenta.password);
   const nueva = 'NuevaClave2026';
 
   const conFallo = await conFalloDeBd(

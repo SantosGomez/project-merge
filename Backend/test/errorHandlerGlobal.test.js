@@ -144,16 +144,16 @@ async function testServidorSigueAtendiendo() {
   assert.strictEqual(respuesta.statusCode, 401, 'una petición válida sin token debe recibir 401');
 }
 
-// ---------- RF-37, criterio 32: usuario numérico con JSON bien formado → 400 ----------
+// ---------- RF-37, criterio 32: correo numérico con JSON bien formado → 400 ----------
 async function testLoginUsuarioNumerico() {
   const respuesta = await conLimite(
-    peticion(servidor.puerto, 'POST', '/auth/login', { usuario: 12345, password: 'Secreta123' })
+    peticion(servidor.puerto, 'POST', '/auth/login', { correo: 12345, password: 'Secreta123' })
   );
 
   assert.strictEqual(respuesta.statusCode, 400, 'un dato que no es texto debe responder 400');
   assert.ok(
     respuesta.body.mensaje.includes('Dato inválido') &&
-      respuesta.body.mensaje.includes('usuario') &&
+      respuesta.body.mensaje.includes('correo') &&
       respuesta.body.mensaje.includes('debe enviarse como texto'),
     'el mensaje debe tener las tres partes, indicar el dato y que debe enviarse como texto'
   );
@@ -164,9 +164,9 @@ async function testLoginUsuarioNumerico() {
 async function testLoginNombraElDatoNoTextual() {
   const noTextuales = [{ clave: 'valor' }, ['Secreta123'], true];
   const casos = [
-    { dato: 'usuario', cuerpo: (valor) => ({ usuario: valor, password: 'Secreta123' }) },
-    { dato: 'contraseña', cuerpo: (valor) => ({ usuario: 'zz_test_login', password: valor }) },
-    { dato: 'usuario y contraseña', cuerpo: (valor) => ({ usuario: valor, password: valor }) },
+    { dato: 'correo', cuerpo: (valor) => ({ correo: valor, password: 'Secreta123' }) },
+    { dato: 'contraseña', cuerpo: (valor) => ({ correo: 'zz_test_login@prueba.local', password: valor }) },
+    { dato: 'correo y contraseña', cuerpo: (valor) => ({ correo: valor, password: valor }) },
   ];
 
   for (const { dato, cuerpo } of casos) {
@@ -190,7 +190,7 @@ async function testFalloInternoEnLogin() {
   simularFalloDeBd((sql) => sql.startsWith('SELECT * FROM usuarios'), errorSimulado);
   try {
     respuesta = await conLimite(
-      peticion(servidor.puerto, 'POST', '/auth/login', { usuario: contador.usuario, password: contador.password })
+      peticion(servidor.puerto, 'POST', '/auth/login', { correo: contador.correo, password: contador.password })
     );
   } catch (error) {
     sinRespuesta = error;
@@ -213,7 +213,7 @@ async function testFalloInternoEnLogin() {
   assert.strictEqual(rechazosSinManejar.length, 0, 'con el arreglo no debe quedar ningún rechazo sin manejar');
 
   const siguiente = await conLimite(
-    peticion(servidor.puerto, 'POST', '/auth/login', { usuario: contador.usuario, password: contador.password })
+    peticion(servidor.puerto, 'POST', '/auth/login', { correo: contador.correo, password: contador.password })
   );
   assert.strictEqual(siguiente.statusCode, 200, 'restaurada la base de datos, la petición siguiente se atiende');
 }
@@ -236,7 +236,7 @@ function afirmarDatoNoTextual(respuesta, dato) {
 // ---------- RF-37, criterio 32: estado y prioridad no textuales en el cambio de caso ----------
 async function testCambioDeCasoConDatosNoTextuales() {
   const casoId = await crearCasoDePrueba(contador.id, { cliente: `zz_test_cliente_${contador.id}` });
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const conEstado = await conLimite(peticion(servidor.puerto, 'PATCH', `/casos/${casoId}`, { estado: 1 }, token));
   afirmarDatoNoTextual(conEstado, 'estado');
@@ -250,7 +250,7 @@ async function testCambioDeCasoConDatosNoTextuales() {
 // ---------- RF-37: un dato no textual no ejecuta la operación, aunque el otro sea válido ----------
 async function testCambioDeCasoNoGuardaAMedias() {
   const casoId = await crearCasoDePrueba(contador.id, { cliente: `zz_test_cliente_${contador.id}` });
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const respuesta = await conLimite(
     peticion(servidor.puerto, 'PATCH', `/casos/${casoId}`, { estado: 'Finalizado', prioridad: true }, token)
@@ -264,7 +264,7 @@ async function testCambioDeCasoNoGuardaAMedias() {
 // ---------- RF-37: rol no textual en el alta de usuario ----------
 async function testAltaConRolNoTextual() {
   const administrador = await crearUsuarioDePrueba('administrador');
-  const token = await iniciarSesion(servidor.puerto, administrador.usuario, administrador.password);
+  const token = await iniciarSesion(servidor.puerto, administrador.correo, administrador.password);
   const nombre = `zz_test_rol_${administrador.id}`;
 
   const respuesta = await conLimite(
@@ -281,7 +281,7 @@ const NO_TEXTUALES = [{ clave: 'valor' }, ['valor'], true];
 // ---------- RF-37, criterio 32: usuario o contraseña no textuales en el alta ----------
 async function testAltaConUsuarioOContrasenaNoTextuales() {
   const administrador = await crearUsuarioDePrueba('administrador');
-  const token = await iniciarSesion(servidor.puerto, administrador.usuario, administrador.password);
+  const token = await iniciarSesion(servidor.puerto, administrador.correo, administrador.password);
   const nombre = `zz_test_alta_${administrador.id}`;
 
   for (const valor of NO_TEXTUALES) {
@@ -302,7 +302,7 @@ async function testAltaConUsuarioOContrasenaNoTextuales() {
 
 // ---------- RF-37, criterio 32: cliente o prioridad no textuales al registrar un caso ----------
 async function testRegistroDeCasoConDatosNoTextuales() {
-  const token = await iniciarSesion(servidor.puerto, contador.usuario, contador.password);
+  const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
   const contarCasos = async () => {
     const [filas] = await queryOriginal('SELECT COUNT(*) AS total FROM casos WHERE contador_id = ?', [contador.id]);
     return Number(filas[0].total);
