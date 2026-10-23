@@ -4,12 +4,11 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 
 ## Estado actual
 
-- **Spec 004 (correcciones del backend): completada y fusionada en `main` (2026-10-23, sin push).** T1-T32 [x]; validación SDD final del revisor independiente: APROBADO. Backend: `node --test` desde `Backend/` 162 pruebas en 22 archivos, verificador `162 de 159` OK. Única línea de `src/` del Bloque 4: el 400 de tipo inválido del login nombra el dato (`tipoInvalido.join(' y ')`).
-- **Spec 003 (frontend funcional): implementada y validada** — T1-T10 [x], `Estado: implementada`, reviewer APROBADO (RF-01 a RF-47, RNF-01 a RNF-09, 31 criterios). `npm run build` en verde.
-- **Spec 002 (backend): implementada con salvedades**; sus pendientes se resolvieron en la 004.
-- Siguiente: reiniciar el servidor del puerto 3000 con el backend fusionado y comprobar el frontend contra él. Push solo cuando el usuario lo pida.
+- **Metodología (desde 2026-10-23): rebanadas verticales con la skill `tdd`** (rojo-verde-refactor, código mínimo, sin sobreingeniería). Se eliminó el SDD: skill `sdd`, comandos `sdd-*`, `coordinator`, `planner` y la carpeta `specs/` (siguen en el historial de git, antes del commit que los borra). Constitución sin «La spec manda» (principios renumerados 1-4).
+- Hecho hasta ahora (antes en specs 001-004): frontend funcional conectado al backend y backend con autenticación, casos, robustez, fechas locales, login exacto y restablecimiento de contraseña. Backend `node --test` 162 pruebas (verificador `162 de 159` OK); frontend 277; `npm run build` en verde.
+- Siguiente: primera rebanada (propuesta: alta de usuarios desde la interfaz; `POST /usuarios` ya existe). Push solo cuando el usuario lo pida.
 
-## Lo que trae la 004 al backend
+## Backend (lo esencial)
 
 - Robustez: `validarCampoTexto`, `asyncHandler` + handler global (400 entrada inválida / 503 fallo interno), errores de BD propagados → 503, `jti` propio por token.
 - Fechas `YYYY-MM-DD HH:mm:ss` en hora local (`conFechasLocales`); login y nombres de usuario exactos (distinguen mayúsculas); duplicados por capitalización rechazados.
@@ -24,17 +23,13 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - MariaDB con mysql2 (pool); seed idempotente. La tabla `sesiones` tiene `jti` como clave primaria.
 - `parseCounterId` acepta solo dígitos (MariaDB convierte `'2abc'` en `2`).
 - Se trabaja con las reglas de la skill `ponytail` (cambio mínimo completo); `AGENTS.md` manda sobre ella.
-- Agentes (2026-10-23): opencode = «Orion Pax» (`.opencode/agents/`), Claude Code = «D-16» con `planner`, `implementer` y `reviewer` en `.claude/agents/` (adaptados de opencode; sin `coordinator`: lo hace la sesión principal), deepseek harness = «B-127» (pendiente). `.claude/` no está en git.
-
-## Excepciones aprobadas en la 003
-
-- Aserciones ajustadas en `t9Pages.test.js` y `layout-drawer-check.js`; `counters.js` y `cases.js` con guardia de versión; `SIMULATION` eliminado; `CaseRow`, `CounterCountsRow`, `ErrorState`, `PriorityTag` adaptados.
+- Agentes: opencode = «Orion Pax», Claude Code = «D-16», DeepSeek v4.1 Flash = «B-127». `implementer` y `reviewer` (en `.claude/agents/` y `.opencode/agents/`) trabajan por rebanadas con TDD.
 
 ## Aprendizajes y errores a evitar
 
 - En Express 4 todo middleware o controlador `async` que consulte la BD va con `asyncHandler`.
 - Un archivo "pass" no basta: usar `node soporte-pruebas/verificarPruebas.js`; en rojo cuenta también el `describe` que falla.
-- Contrastar los veredictos del reviewer con la spec (hubo un «APROBADO» con requisitos pendientes).
+- Contrastar los veredictos del reviewer con lo pedido (hubo un «APROBADO» con requisitos pendientes).
 - Para simular fallos de BD hay que sustituir `pool.query`, no `db.query`.
 - `node --test` corre los archivos en paralelo: los asertos de «no se creó nada» filtran por datos propios, nunca cuentan tablas enteras.
 - Cerrar servidor y pool en `after` o `node --test` se cuelga; MariaDB en marcha (3306, XAMPP); una ejecución interrumpida deja `zz_test_*` huérfanos.
@@ -43,7 +38,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - PowerShell no soporta `&&` ni `||`; usar `npm.cmd` en vez de `npm.ps1`.
 - El MCP del navegador se puede perder: mantener servidores hasta el final de la verificación; liberar puertos 9000/3000 al terminar.
 
-## Puntos NO verificados en T10 de la 003 (justificados)
+## Puntos del frontend no verificados en navegador
 
 - Cierre de pestaña, recarga con token vigente, caducidad en carga lenta, estados vacíos y listas largas, respuesta tardía tras cierre y recorrido solo con teclado: cubiertos por pruebas unitarias o verificados estáticamente.
 

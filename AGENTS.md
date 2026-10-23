@@ -96,7 +96,7 @@ npm run build
 ## Reglas de dominio / trampas conocidas
 
 - Lo que es fácil hacer mal y el agente no puede deducir leyendo el código.
-- Lee `docs/constitution.md` y la spec activa (`specs/NNN-*/`) antes de tocar código.
+- Lee `docs/constitution.md` antes de tocar código.
 - solo aplicar los cambios o modificaciones que sean aprobadas por el usuario.
 - <Limites: que no tocar, que no agregar ni modificar sin preguntar.>
 

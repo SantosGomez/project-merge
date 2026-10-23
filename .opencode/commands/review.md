@@ -1,6 +1,6 @@
 ---
 description: Revisar que el codigo sea seguro y sintaxis correcta.
-agent: coordinator
+agent: build
 ---
 
 Revisa el código y prepárame un plan con: $ARGUMENTS

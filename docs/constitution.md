@@ -1,16 +1,14 @@
 # Constitución — DelGrow Estado Contadores
 
-Principios innegociables. Toda spec, plan y tarea debe cumplirlos.
+Principios innegociables. Todo cambio debe cumplirlos.
 
-1. **La spec manda**: nada se implementa si no está en la spec activa. Si falta una decisión, se para y se pregunta.
+1. **Tests como puerta**: la lógica se prueba con `node --test`, sin instalar paquetes. Prohibido avanzar con tests en rojo.
 
-2. **Tests como puerta**: la lógica se prueba con `node --test`, sin instalar paquetes. Prohibido avanzar con tests en rojo.
+2. **Los datos del usuario son sagrados**: localStorage con compatibilidad hacia atrás y fechas siempre en hora local. Nunca se pierde una sesión.
 
-3. **Los datos del usuario son sagrados**: localStorage con compatibilidad hacia atrás y fechas siempre en hora local. Nunca se pierde una sesión.
+3. **Idioma**: código en inglés; interfaz y documentación en español.
 
-4. **Idioma**: código en inglés; interfaz y documentación en español.
-
-5. **Seguridad de contraseñas**: Todo hash de contraseña debe utilizar Argon2id como estándar obligatorio antes de cualquier almacenamiento en base de datos.
+4. **Seguridad de contraseñas**: Todo hash de contraseña debe utilizar Argon2id como estándar obligatorio antes de cualquier almacenamiento en base de datos.
 
 ## Estándar de Arquitectura del Backend
 
