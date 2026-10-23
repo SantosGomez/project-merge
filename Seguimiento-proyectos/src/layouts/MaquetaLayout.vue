@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh Lpr lFf">
+  <q-layout view="lHh Lpr lFf">
     <q-header elevated class="bg-primary text-white">
       <div class="layout-bar">
         <div class="layout-bar__row">
@@ -49,18 +49,27 @@
       v-model="drawerOpen"
       show-if-above
       :breakpoint="1024"
-      :width="220"
-      class="bg-blue-1"
+      :width="250"
+      class="bg-primary menu-lateral"
       aria-label="Navegación principal"
       transition-show="slide-right"
       transition-hide="slide-left"
     >
-      <q-toolbar class="bg-primary text-white">
-        <q-toolbar-title>Navegación</q-toolbar-title>
-      </q-toolbar>
+      <div class="drawer-marca">
+        <img
+          class="drawer-marca__logo"
+          src="logos/PNG/DELGROW_ISOTIPO-OF_T.png"
+          alt=""
+          width="64"
+          height="64"
+        />
+        <div class="drawer-marca__textos">
+          <p class="drawer-marca__empresa">Grupo DelGrow S.C.</p>
+          <p class="drawer-marca__app">Seguimiento de Proyectos</p>
+        </div>
+      </div>
 
-      <!-- full-height: q-scrollarea colapsa a 0 sin altura (contain: size); el drawer ya gestiona el alto. -->
-      <q-scroll-area class="full-height">
+      <q-scroll-area class="drawer-nav">
         <q-list padding>
           <q-item-label header>Navegación</q-item-label>
 
@@ -68,12 +77,12 @@
             clickable
             v-ripple
             class="q-item--nav"
-            active-class="bg-primary text-white"
+            active-class="q-item--nav-activo"
             :to="{ name: 'admin-dashboard' }"
             aria-label="Ir al dashboard del administrador"
           >
             <q-item-section avatar>
-              <q-icon name="dashboard" color="primary" />
+              <q-icon name="dashboard" />
             </q-item-section>
             <q-item-section>
               <q-item-label>Dashboard admin</q-item-label>
@@ -86,12 +95,12 @@
             clickable
             v-ripple
             class="q-item--nav"
-            active-class="bg-primary text-white"
+            active-class="q-item--nav-activo"
             :to="{ name: 'admin-directorio' }"
             aria-label="Ir al directorio de contadores"
           >
             <q-item-section avatar>
-              <q-icon name="group" color="primary" />
+              <q-icon name="group" />
             </q-item-section>
             <q-item-section>
               <q-item-label>Directorio</q-item-label>
@@ -104,12 +113,12 @@
             clickable
             v-ripple
             class="q-item--nav"
-            active-class="bg-primary text-white"
+            active-class="q-item--nav-activo"
             :to="{ name: 'contador-registro' }"
             aria-label="Ir al registro de caso"
           >
             <q-item-section avatar>
-              <q-icon name="add_circle" color="primary" />
+              <q-icon name="add_circle" />
             </q-item-section>
             <q-item-section>
               <q-item-label>Registro de caso</q-item-label>
@@ -122,12 +131,12 @@
             clickable
             v-ripple
             class="q-item--nav"
-            active-class="bg-primary text-white"
+            active-class="q-item--nav-activo"
             :to="{ name: 'contador-casos' }"
             aria-label="Ir a mis casos"
           >
             <q-item-section avatar>
-              <q-icon name="list_alt" color="primary" />
+              <q-icon name="list_alt" />
             </q-item-section>
             <q-item-section>
               <q-item-label>Mis casos</q-item-label>
@@ -324,13 +333,71 @@ onBeforeUnmount(() => {
   padding: 24px 16px;
 }
 
-.q-item--nav:hover {
-  background: rgba(0, 0, 0, 0.06);
+/* La marca ocupa el alto que necesita; la lista se queda con el resto y hace su propio scroll. */
+:deep(.menu-lateral) {
+  display: flex;
+  flex-direction: column;
 }
 
-/* El ícono vuelve a blanco cuando el item está activo (active-class bg-primary). */
-.q-item--nav.bg-primary .q-icon {
-  color: #fff !important;
+.drawer-marca {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.drawer-marca__logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.drawer-marca__textos {
+  min-width: 0;
+}
+
+.drawer-marca__empresa,
+.drawer-marca__app {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.drawer-marca__empresa {
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.drawer-marca__app {
+  color: #c9cfd8;
+  font-size: 0.8rem;
+}
+
+.drawer-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.drawer-nav .q-item__label--header {
+  color: #c9cfd8;
+}
+
+.q-item--nav {
+  color: #ffffff;
+}
+
+.q-item--nav .q-icon {
+  color: var(--q-secondary);
+}
+
+.q-item--nav .q-item__label--caption {
+  color: #c9cfd8;
+}
+
+.q-item--nav-activo {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 3px 0 0 var(--q-secondary);
 }
 
 .dialogo-cierre {

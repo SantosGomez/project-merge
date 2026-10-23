@@ -11,14 +11,33 @@ const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'ut
 
 const src = read('../src/layouts/MaquetaLayout.vue')
 
+const cssRule = (selector) => {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return src.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
+}
+
+const MINIMO_WCAG = 4.5
+const luminancia = (hex) => {
+  const [r, g, b] = [1, 3, 5]
+    .map((inicio) => parseInt(hex.slice(inicio, inicio + 2), 16) / 255)
+    .map((canal) => (canal <= 0.03928 ? canal / 12.92 : ((canal + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+const contraste = (a, b) => {
+  const [claro, oscuro] = [luminancia(a), luminancia(b)].sort((x, y) => y - x)
+  return (claro + 0.05) / (oscuro + 0.05)
+}
+
 describe('Drawer sidebar — verificación estática', () => {
   it('contiene q-drawer con propiedades aprobadas', () => {
     assert.ok(src.includes('<q-drawer'), 'falta q-drawer')
+    const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
     assert.ok(src.includes('v-model="drawerOpen"'), 'falta v-model drawerOpen')
     assert.ok(src.includes('show-if-above'), 'falta show-if-above')
     assert.ok(src.includes(':breakpoint="1024"'), 'falta breakpoint 1024')
-    assert.ok(src.includes(':width="220"'), 'falta width 220')
-    assert.ok(src.includes('class="bg-blue-1"'), 'falta bg-blue-1')
+    assert.ok(drawerTag.includes(':width="250"'), 'falta width 250')
+    assert.ok(drawerTag.includes('bg-primary'), 'falta el azul marino de la marca')
+    assert.ok(!drawerTag.includes('bg-blue-1'), 'el drawer ya no usa bg-blue-1')
     assert.ok(src.includes('aria-label="Navegación principal"'), 'falta aria-label navegación')
     assert.ok(!src.includes('bordered'), 'no debe llevar bordered')
   })
@@ -28,8 +47,8 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('transition-hide="slide-left"'), 'falta transition-hide slide-left')
   })
 
-  it('layout usa view hHh (header arriba, drawer hijo)', () => {
-    assert.ok(src.includes('view="hHh Lpr lFf"'), 'falta view hHh Lpr lFf')
+  it('el menú ocupa toda la altura y la barra superior empieza a su derecha', () => {
+    assert.ok(src.includes('view="lHh Lpr lFf"'), 'falta view lHh Lpr lFf (menú a toda altura)')
   })
 
   it('contiene drawerOpen como ref en script', () => {
@@ -37,11 +56,18 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('const drawerOpen = ref(false)'), 'falta drawerOpen ref(false)')
   })
 
-  it('tiene q-toolbar con título "Navegación" al inicio del drawer', () => {
-    assert.ok(src.includes('<q-toolbar class="bg-primary text-white">'), 'falta q-toolbar drawer')
+  it('muestra el isotipo para fondo oscuro, «Grupo DelGrow S.C.» y «Seguimiento de Proyectos»', () => {
+    const logoSrc = src.match(/src="([^"]*DELGROW_ISOTIPO-OF_T\.png)"/)?.[1] ?? ''
+    assert.ok(logoSrc, 'falta el src del isotipo para fondo oscuro')
     assert.ok(
-      src.includes('<q-toolbar-title>Navegación</q-toolbar-title>'),
-      'falta q-toolbar-title Navegación',
+      !logoSrc.startsWith('/'),
+      'el src del logo no debe empezar por / (Electron usa file://)',
+    )
+    assert.ok(src.includes('Grupo DelGrow S.C.'), 'falta el nombre de la empresa')
+    assert.ok(src.includes('Seguimiento de Proyectos'), 'falta el nombre de la app')
+    assert.ok(
+      !src.includes('<q-toolbar-title>Navegación</q-toolbar-title>'),
+      'la barra Navegación debe desaparecer',
     )
   })
 
@@ -77,14 +103,55 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('Ir a mis casos'), 'falta aria-label mis casos')
   })
 
-  it('cada item tiene active-class, clase q-item--nav e icono primary', () => {
-    const activeClass = (src.match(/active-class="bg-primary text-white"/g) || []).length
+  it('las opciones tienen texto, iconos y descripciones con contraste suficiente, también en el estado activo', () => {
+    const variables = read('../src/css/quasar.variables.scss')
+    const primary = variables.match(/\$primary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    const secondary = variables.match(/\$secondary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    assert.ok(primary, 'quasar.variables.scss declara $primary')
+    assert.ok(secondary, 'quasar.variables.scss declara $secondary')
+
+    const colorHex = (selector) =>
+      cssRule(selector).match(/(?<![-\w])color:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    const colorSecundario = (selector) => {
+      assert.match(
+        cssRule(selector),
+        /color:\s*var\(--q-secondary\)/,
+        `${selector} usa var(--q-secondary)`,
+      )
+      return secondary
+    }
+
+    const colores = {
+      etiquetas: colorHex('.q-item--nav'),
+      iconos: colorSecundario('.q-item--nav .q-icon'),
+      descripciones: colorHex('.q-item--nav .q-item__label--caption'),
+    }
+
+    for (const [nombre, color] of Object.entries(colores)) {
+      assert.ok(color, `falta el color de ${nombre}`)
+      assert.ok(
+        contraste(color, primary) >= MINIMO_WCAG,
+        `contraste ${contraste(color, primary).toFixed(2)}:1 de ${nombre}`,
+      )
+    }
+
+    const activeClass = (src.match(/active-class="q-item--nav-activo"/g) || []).length
     const navClass = (src.match(/class="q-item--nav"/g) || []).length
-    const primaryIcons = (src.match(/color="primary"/g) || []).length
     assert.ok(activeClass >= 4, `se esperan 4 active-class, hay ${activeClass}`)
     assert.ok(navClass >= 4, `se esperan 4 class q-item--nav, hay ${navClass}`)
-    assert.ok(primaryIcons >= 4, `se esperan 4 iconos color primary, hay ${primaryIcons}`)
-    assert.ok(src.includes('.q-item--nav:hover'), 'falta regla hover de .q-item--nav')
+
+    const drawerBlock = src.slice(src.indexOf('<q-drawer'), src.indexOf('</q-drawer>'))
+    assert.ok(!drawerBlock.includes('color="primary"'), 'los iconos ya no usan color primary')
+    assert.match(cssRule('.q-item--nav-activo'), /background:/, 'el activo tiene fondo propio')
+    assert.match(
+      cssRule('.q-item--nav-activo'),
+      /box-shadow:[^;]*var\(--q-secondary\)/,
+      'el activo lleva barra cian',
+    )
+    assert.ok(
+      !src.includes('.q-item--nav:hover'),
+      'el hover del menú lo aporta Quasar, sin regla propia',
+    )
   })
 
   it('tiene q-tooltip en cada ítem', () => {
@@ -99,7 +166,7 @@ describe('Drawer sidebar — verificación estática', () => {
   })
 
   it('no introduce overflow horizontal a 360px (sin widths fijos en px fuera del drawer)', () => {
-    // El drawer usa :width="220" (overlay) y no hay anchos fijos adicionales que rompan.
-    assert.ok(src.includes(':width="220"'), 'drawer usa ancho 220')
+    // El drawer usa :width="250" (overlay) y no hay anchos fijos adicionales que rompan.
+    assert.ok(src.includes(':width="250"'), 'drawer usa ancho 250')
   })
 })

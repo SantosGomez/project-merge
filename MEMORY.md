@@ -6,8 +6,9 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 
 - **Metodología (desde 2026-10-23): rebanadas verticales con la skill `tdd`** (rojo-verde-refactor, código mínimo, sin sobreingeniería). Se eliminó el SDD: skill `sdd`, comandos `sdd-*`, `coordinator`, `planner` y la carpeta `specs/` (siguen en el historial de git, antes del commit que los borra). Constitución sin «La spec manda» (principios renumerados 1-4).
 - Hecho hasta ahora (antes en specs 001-004): frontend funcional conectado al backend y backend con autenticación, casos, robustez, fechas locales, login exacto y restablecimiento de contraseña. Backend `node --test` 162 pruebas (verificador `162 de 159` OK); frontend 277; `npm run build` en verde.
+- Historia #1 (menú lateral) completada y verificada en navegador por el usuario (2026-10-23): drawer oscuro de 250 px a toda altura con marca (isotipo `_T`, «Grupo DelGrow S.C.» y «Seguimiento de Proyectos»), opciones claras y activo cian. 277 pruebas, `lint:check` y `build` en verde.
 - Flujo: `/backlog` → `/story` → `/pair` (con `tdd`) → `/code-review` hecho por un modelo distinto del que condujo. D-16 hace backlog y story; B-127 conduce `/pair` en lo normal y D-16 en lo delicado.
-- Backlog aprobado (2026-10-23): 8 historias de UI/UX del layout con identidad DelGrow (drawer oscuro completo, secciones por rol —`usuarios_de_sistema` ve «Administración»—, usuario y logout al pie, sin barra superior en escritorio, barra delgada en celular, modo mini con despliegue al pasar el cursor, fijar con clic en el logo). Las historias van al tracker del usuario. Siguiente: `/story` de la #1.
+- Backlog aprobado (2026-10-23): 8 historias de UI/UX del layout con identidad DelGrow (drawer oscuro completo, secciones por rol —`usuarios_de_sistema` ve «Administración»—, usuario y logout al pie, sin barra superior en escritorio, barra delgada en celular, modo mini con despliegue al pasar el cursor, fijar con clic en el logo). Las historias están en `docs/backlog.md`. Siguiente: `/story` de la #2.
 - Pendiente aparte: pantallas de alta de usuarios y restablecer contraseña (el backend ya existe). Push solo cuando el usuario lo pida.
 
 ## Backend (lo esencial)
@@ -24,6 +25,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - Tests con `node --test`, sin paquetes extra; datos `zz_test_*` que cada archivo borra al terminar; apoyos en `Backend/soporte-pruebas/`.
 - MariaDB con mysql2 (pool); seed idempotente. La tabla `sesiones` tiene `jti` como clave primaria.
 - `parseCounterId` acepta solo dígitos (MariaDB convierte `'2abc'` en `2`).
+- Menú lateral (#1): 250 px, `bg-primary`, etiquetas blancas, iconos y barra activa con `var(--q-secondary)`, descripciones #c9cfd8; activo con velo blanco 10% (`active-class="q-item--nav-activo"`), hover lo aporta Quasar. Logo 64 px con ruta relativa `logos/...` (web y Electron `file://`), el PNG trae 25% de margen transparente; `:deep(.menu-lateral)` en columna para que la lista haga su scroll.
 - Se trabaja con las reglas de la skill `ponytail` (cambio mínimo completo); `AGENTS.md` manda sobre ella.
 - Agentes: opencode = «Orion Pax», Claude Code = «D-16», DeepSeek v4.1 Flash = «B-127». `implementer` y `reviewer` (en `.claude/agents/` y `.opencode/agents/`) trabajan por rebanadas con TDD.
 
@@ -38,6 +40,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - MariaDB local no está en modo estricto (trunca sin error): los máximos se validan en el controlador.
 - Con `String.replace` en Node, pasar el reemplazo como función («$`» duplicó `tasks.md`). Con `sed` global, revisar que no toque líneas históricas.
 - PowerShell no soporta `&&` ni `||`; usar `npm.cmd` en vez de `npm.ps1`.
+- `npm run lint:check` no falla por formato: llama a prettier sin `--check` (preexistente).
 - El MCP del navegador se puede perder: mantener servidores hasta el final de la verificación; liberar puertos 9000/3000 al terminar.
 
 ## Puntos del frontend no verificados en navegador
