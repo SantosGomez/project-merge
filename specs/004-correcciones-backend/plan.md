@@ -222,7 +222,7 @@ En cada prueba que necesita el fallo se usa además `try { simularFalloDeBd(...)
 | Cerrar sesión no revoca (criterio 34) | `sql.startsWith('UPDATE sesiones SET revocado = 1 WHERE jti')` | `revocar`: `UPDATE sesiones SET revocado = 1 WHERE jti = ?` | 503 sin confirmar el cierre; al restaurar, el reintento confirma y el token queda rechazado. La condición es más específica que `UPDATE sesiones` a propósito: `tocarActividad` comparte ese prefijo y debe seguir funcionando para que el fallo ocurra en el revocado. |
 | Leer casos (criterio 41) | `sql.startsWith('SELECT * FROM casos')` | `findByCounter`: `SELECT * FROM casos WHERE contador_id = ? ORDER BY id DESC` | 503 con tres partes y la petición siguiente atendida. |
 | Guardar un caso (criterio 41) | `sql.startsWith('INSERT INTO casos')` | `CaseModel.create`: `INSERT INTO casos (contador_id, cliente, ...) VALUES (...)` (plantilla multilínea; el texto empieza por `INSERT INTO casos`) | 503 y el caso no queda guardado; `POST /casos` no confirma creación. |
-| Restablecer no cambia la clave (3B, criterio 41/43) | `sql.startsWith('UPDATE usuarios SET password_hash')` o `sql.startsWith('UPDATE sesiones SET revocado = 1 WHERE usuario_id')` | `updatePassword`: `UPDATE usuarios SET password_hash = ? WHERE id = ?`; `revocarSesionesDeUsuario`: `UPDATE sesiones SET revocado = 1 WHERE usuario_id = ?` | 503 y ningún cambio a medias; la contraseña anterior sigue sirviendo. |
+| Restablecer no cambia la clave (3B, criterio 41/43) | `sql.startsWith('UPDATE usuarios SET password_hash')` o `sql.startsWith('UPDATE sesiones SET revocado = 1 WHERE usuario_id')` | `updatePassword`: `UPDATE usuarios SET password_hash = ? WHERE id = ?`; `revocarSesionesDeUsuario`: `UPDATE sesiones SET revocado = 1 WHERE usuario_id = ?` | Si falla `updatePassword`: 503 y ningún cambio; la contraseña anterior sigue sirviendo. Si falla `revocarSesionesDeUsuario`: 503 y el restablecimiento queda a medias (la contraseña ya cambió y los tokens anteriores siguen sirviendo); el reintento del mismo restablecimiento lo completa. Es el riesgo conocido aceptado por el usuario en T16 (corregido en el Cambio 1, 10.7). |
 
 Como la condición recibe la sentencia (no los parámetros), donde dos operaciones comparten prefijo se usa el prefijo más largo que las distingue (caso de `tocarActividad` frente a `revocar`).
 
@@ -386,6 +386,23 @@ Alternativa descartada: poner la comprobación de rol dentro de `checkCaseOwners
 | criterio 44 (RF-42/27/RNF-3) | 3B | G | T15, T16, T23 |
 
 Cada RF/RNF/criterio nuevo o reescrito de la spec 004 aparece arriba con su bloque y su área, y con las tareas de `tasks.md` que lo cubren.
+
+### 10.7 Cambio 1 — Bloque 4: hallazgos de la validación SDD
+
+La validación SDD de la spec 004 (revisor independiente, después de T23) dio CAMBIOS NECESARIOS: un defecto de código y siete huecos de cobertura de requisitos que la spec ya exige. **La spec no cambia**: los requisitos y criterios ya piden todo esto. Decisiones del usuario: se hace como Bloque 4 dentro de esta spec; el criterio 44 se prueba sobre una cuenta del seed restaurando su hash al terminar; la fila «Restablecer no cambia la clave» de 10.3.3 se corrige para reflejar el riesgo aceptado en T16; las mejoras opcionales (cuerpo grande → 503, 503 en el barrido y el texto «registrar casos» de `requireContador`) no entran.
+
+| Área | Hallazgo | Requisitos | Qué se hace |
+|---|---|---|---|
+| K | El 400 de tipo inválido del login dice siempre «usuario o contraseña» y no indica qué dato es inválido. | RF-37, criterio 32 | `login` nombra el campo concreto con `validacion.tipoInvalido.join(' y ')`, igual que `createUser`. Primero la prueba en rojo. |
+| L | Faltan pruebas de extremo a extremo de datos no textuales y de JSON mal formado. | RF-37, RNF-8, criterio 32 | Login con objeto, lista o booleano en usuario y contraseña; alta con usuario o contraseña no textuales; registro de caso con cliente o prioridad no textuales; JSON mal formado en `POST /casos`, `PATCH /casos/:id` y el restablecimiento. |
+| M | No se prueba la contraseña con otra capitalización ni el nombre del seed en otra capitalización. | RF-36, criterio 31 | Prueba de la contraseña con otra capitalización → 401 genérico. Para el seed, la prueba sustituye temporalmente el hash de `admin_seed` por uno conocido, comprueba `ADMIN_SEED` → 401 y `admin_seed` → 200, y en `finally` restaura el hash original y el estado `revocado` de sus sesiones ajenas, y borra las que abrió. `seed.js` no se toca. |
+| N | Falta `usuarios_de_sistema` registrando un caso y el cambio de prioridad por un perfil que no es contador. | RF-46, criterios 13 y 37 | Asertos nuevos dentro de la prueba existente de perfil antes del caso. |
+| O | Las fechas de `GET /casos/mis-casos` no se prueban. | RF-48, RNF-2, criterio 23 | El aserto de formato y coincidencia con la fila se aplica también a los casos propios, dentro de la prueba de fechas existente. |
+| P | No se prueba que caducar una sesión por inactividad no afecte a otra del mismo usuario. | RF-41, criterio 43 | Dos sesiones; `envejecerSesion` sobre una (31 minutos) → 401 «Sesión caducada»; la otra → 200. |
+| Q | El restablecimiento no se prueba sobre la cuenta propia del administrador, sobre una cuenta de administrador ni sobre una cuenta del seed. | RF-42, criterio 44 | Prueba nueva con los tres casos. La cuenta del seed (`contador_seed`) se restaura como en M. |
+| R | No se comprueba el 201 del alta por `usuarios_de_sistema`; tampoco hay prueba del fallo de la revocación en el restablecimiento. | Criterio 9; RF-42, criterio 43 | Aserto del 201 en `respuestasApi.test.js`. Prueba nueva del fallo de `UPDATE sesiones SET revocado = 1 WHERE usuario_id`: 503 de tres partes y, con el pool restaurado, el reintento deja los tokens anteriores en 401. |
+
+Archivos tocados: `src/controllers/AuthController.js` (solo el mensaje de K) y las pruebas `errorHandlerGlobal.test.js`, `authRoutes.test.js`, `caseRoutes.test.js`, `userRoutes.test.js` y `respuestasApi.test.js`, más `MINIMOS`. No se tocan `seed.js`, `roleMiddleware.js`, el esquema ni `soporte-pruebas/bd.js`. Las áreas L a R son de cobertura: el comportamiento ya está implementado, así que se espera que pasen en verde (como el barrido de T21); si alguna destapa un fallo, ese es su rojo y se corrige solo lo que falla, con aprobación.
 
 ### Nota sobre el frontend (spec 003, no se modifica en este plan)
 
