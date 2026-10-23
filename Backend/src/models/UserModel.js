@@ -3,13 +3,24 @@ const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 
 /**
  * Busca un usuario por su nombre de usuario (distingue mayúsculas/minúsculas).
- * RF-01, RF-03.
+ * RF-01, RF-03, RF-36.
  * @param {string} usuario - Nombre de usuario.
  * @returns {Promise<Object|null>} El usuario encontrado o null.
  */
 async function findByUsername(usuario) {
   const rows = await query('SELECT * FROM usuarios WHERE usuario = ?', [usuario]);
-  return rows.length > 0 ? rows[0] : null;
+  // La colación de la tabla no distingue mayúsculas: la coincidencia exacta se exige aquí (RF-36)
+  return rows.find((fila) => fila.usuario === usuario) || null;
+}
+
+/**
+ * Indica si ya existe un usuario con ese nombre sin distinguir mayúsculas (RF-45).
+ * @param {string} usuario - Nombre de usuario.
+ * @returns {Promise<boolean>} true si existe una cuenta con ese nombre.
+ */
+async function usuarioExisteIgnoreCase(usuario) {
+  const rows = await query('SELECT id FROM usuarios WHERE LOWER(usuario) = LOWER(?) LIMIT 1', [usuario]);
+  return rows.length > 0;
 }
 
 /**
@@ -76,4 +87,22 @@ async function findCounterById(id) {
   return rows.length > 0 ? rows[0] : null;
 }
 
-module.exports = { findByUsername, create, findById, findAll, findCountersPublic, findCounterById };
+/**
+ * Guarda la contraseña nueva (ya hasheada) de un usuario (RF-42).
+ * @param {number} id - ID del usuario.
+ * @param {string} hash - Contraseña hasheada con Argon2id.
+ */
+async function updatePassword(id, hash) {
+  await query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [hash, id]);
+}
+
+module.exports = {
+  findByUsername,
+  usuarioExisteIgnoreCase,
+  updatePassword,
+  create,
+  findById,
+  findAll,
+  findCountersPublic,
+  findCounterById,
+};

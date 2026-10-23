@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const jwt = require('jsonwebtoken');
 const { pool, query } = require('../src/config/db');
 const { seedDatabase } = require('../src/utils/seed');
 const UserModel = require('../src/models/UserModel');
@@ -86,14 +87,15 @@ async function crearCasoDePrueba(
 
 /**
  * Envejece la última actividad de una sesión para probar la inactividad (RF-25).
- * @param {string} token - JTI de la sesión.
+ * La sesión se identifica por el jti propio del token (RF-41).
+ * @param {string} token - Token de acceso emitido por el login.
  * @param {number} minutos - Minutos a restar.
  * @returns {Promise<void>}
  */
 async function envejecerSesion(token, minutos) {
   await query(
     'UPDATE sesiones SET ultima_actividad = DATE_SUB(ultima_actividad, INTERVAL ? MINUTE) WHERE jti = ?',
-    [minutos, token]
+    [minutos, jwt.decode(token).jti]
   );
 }
 

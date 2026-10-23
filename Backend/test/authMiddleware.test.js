@@ -87,10 +87,10 @@ async function ejecutarConToken(token) {
 /**
  * Inicia sesión con el contador propio dejando una sesión limpia para la prueba.
  *
- * Dos logins dentro del mismo segundo producen exactamente el mismo JWT (mismo
- * payload y mismo `iat`), y `jti` es clave primaria de `sesiones`. Para que cada
- * prueba tenga su propia sesión, se borran antes las sesiones de este usuario
- * (solo las de este proceso) y el login real vuelve a registrar la suya.
+ * Cada login emite un token con su propio `jti` (RF-41), que es la clave primaria
+ * de `sesiones`. Para que cada prueba parta solo de su propia sesión, se borran
+ * antes las sesiones de este usuario (solo las de este proceso) y el login real
+ * vuelve a registrar la suya.
  * @returns {Promise<string>} Token emitido por el login.
  */
 async function iniciarSesionLimpia() {
@@ -270,7 +270,7 @@ async function testSesionDe29MinutosSigueValidaYRenuevaActividad() {
   const token = await iniciarSesionLimpia();
   await envejecerSesion(token, 29);
 
-  const antes = await query('SELECT ultima_actividad FROM sesiones WHERE jti = ?', [token]);
+  const antes = await query('SELECT ultima_actividad FROM sesiones WHERE jti = ?', [jwt.decode(token).jti]);
   assert.strictEqual(antes.length, 1, 'la sesión del login debe existir en la tabla');
 
   const resultado = await ejecutarConToken(token);
@@ -281,7 +281,7 @@ async function testSesionDe29MinutosSigueValidaYRenuevaActividad() {
   );
   assert.strictEqual(resultado.req.user.id, contador.id, 'debe adjuntar el usuario de la sesión');
 
-  const despues = await query('SELECT ultima_actividad FROM sesiones WHERE jti = ?', [token]);
+  const despues = await query('SELECT ultima_actividad FROM sesiones WHERE jti = ?', [jwt.decode(token).jti]);
   const minutosRenovados =
     (despues[0].ultima_actividad.getTime() - antes[0].ultima_actividad.getTime()) / 60000;
   assert.ok(

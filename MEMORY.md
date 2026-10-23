@@ -4,47 +4,46 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 
 ## Estado actual
 
-- **Spec 003 (frontend funcional): implementada y validada — T1-T10 [x] en `specs/003-frontend-funcional/tasks.md` y `Estado: implementada` en la spec.** `node --test`: 277 pruebas (solo frontend, desde `Seguimiento-proyectos/`) y 396 (277 frontend + 119 backend, desde la raíz del repo), 0 fail. `npm run build` en verde. T10 verificó 31 criterios en navegador real (Chrome DevTools) con frontend (9000) y backend (3000) en marcha; MaríaDB arriba.
-- **Reviewer: APROBADO** (RF-01 a RF-47, RNF-01 a RNF-09 y los 31 criterios). No queda nada pendiente en la 003; cambios de la 003 commiteados y empujados a `main`.
-- **Spec 002 (backend): implementada con salvedades** — T1-T29 [x]; 119 pruebas; verificador OK. Pendientes pasaron a la 004.
-- **Spec 004 (correcciones backend):** en curso en worktree `.claude/worktrees/spec-004` (rama `worktree-spec-004`), solo toca `Backend/` y `specs/004`; T1-T3 hechas, sin merge a `main`.
+- **Spec 004 (correcciones del backend): completada y fusionada en `main` (2026-10-23, sin push).** T1-T32 [x]; validación SDD final del revisor independiente: APROBADO. Backend: `node --test` desde `Backend/` 162 pruebas en 22 archivos, verificador `162 de 159` OK. Única línea de `src/` del Bloque 4: el 400 de tipo inválido del login nombra el dato (`tipoInvalido.join(' y ')`).
+- **Spec 003 (frontend funcional): implementada y validada** — T1-T10 [x], `Estado: implementada`, reviewer APROBADO (RF-01 a RF-47, RNF-01 a RNF-09, 31 criterios). `npm run build` en verde.
+- **Spec 002 (backend): implementada con salvedades**; sus pendientes se resolvieron en la 004.
+- Siguiente: reiniciar el servidor del puerto 3000 con el backend fusionado y comprobar el frontend contra él. Push solo cuando el usuario lo pida.
 
-## Lo que se hizo en la 003 (resumen)
+## Lo que trae la 004 al backend
 
-- Servicios axios (api/auth/counter/case) con timeout 15 s e interceptores; stores session/counters/cases; P-1 a P-5 con carga/vacío/error/acceso denegado/caducidad; tooltips; responsive; cierre voluntario con diálogo (RF-45/46/47); eliminación de `SimulationControls.vue` y `SIMULATION`. Caducidad 30 min medida en cliente; token en sessionStorage; recarga valida con petición protegida según rol.
+- Robustez: `validarCampoTexto`, `asyncHandler` + handler global (400 entrada inválida / 503 fallo interno), errores de BD propagados → 503, `jti` propio por token.
+- Fechas `YYYY-MM-DD HH:mm:ss` en hora local (`conFechasLocales`); login y nombres de usuario exactos (distinguen mayúsculas); duplicados por capitalización rechazados.
+- `PATCH /usuarios/:usuario/restablecer-contrasena` (revoca todas las sesiones; riesgo aceptado: si falla la revocación responde 503 y el reintento lo completa); `requireContador` antes de `checkCaseOwnership`; máximo de 100 en el alta.
+- Impacto en el frontend: el login ya no normaliza mayúsculas en el servidor; las fechas llegan como texto local, no ISO UTC.
 
 ## Decisiones (y por qué)
 
-- Token en sessionStorage (sobrevive a recarga, se limpia al cerrar pestaña; independiente por pestaña). Caducidad medida en cliente, 30 min, cada petición válida reinicia.
-- Mensajes de error con tres partes (RNF-01); `construirError` solo si no llega respuesta.
-- axios `^1.20.0` (instancia en `src/services/api.js`, timeout 15 s, sin boot).
-- `validators.js` usa claves `username`/`password` (coinciden con P-1).
-- Prioridad de P-4 se traduce con `prioridadABackend` antes de `validarPrioridad`.
-- `traduccionBackend.js`: `…DeBackend` = backend→interno; `…ABackend` = interno→backend.
-- `session.js` nuevo store de sesión.
+- Frontend: token en sessionStorage (sobrevive a recarga, independiente por pestaña); caducidad 30 min medida en cliente; axios `^1.20.0` (instancia en `src/services/api.js`, timeout 15 s); `traduccionBackend.js`: `…DeBackend` = backend→interno, `…ABackend` = interno→backend.
+- Mensajes de error con tres partes en español (RNF-01 del frontend; RF-23, RNF-5, RNF-6 del backend).
+- Tests con `node --test`, sin paquetes extra; datos `zz_test_*` que cada archivo borra al terminar; apoyos en `Backend/soporte-pruebas/`.
+- MariaDB con mysql2 (pool); seed idempotente. La tabla `sesiones` tiene `jti` como clave primaria.
+- `parseCounterId` acepta solo dígitos (MariaDB convierte `'2abc'` en `2`).
+- Se trabaja con las reglas de la skill `ponytail` (cambio mínimo completo); `AGENTS.md` manda sobre ella.
 
-## Excepciones aprobadas (T1-T10)
+## Excepciones aprobadas en la 003
 
-- `test/t9Pages.test.js`: aserción `maqueta.registerCase(` → `cases.crearCaso(` (T8). `test/layout-drawer-check.js`: aserción `ref(true)` → `ref(false)` (T9, arreglo del menú lateral).
-- `counters.js` y `cases.js` modificados en T9 (guardia de versión contra respuestas tardías), aunque tasks.md no los listaba.
-- `constants.js` perdió `SIMULATION` en T7 junto con su componente y las aserciones de `exampleData.test.js`.
-- `CaseRow.vue`, `CounterCountsRow.vue`, `ErrorState.vue`, `PriorityTag.vue` adaptados en T6/T9 (tooltips, foco, texto de error).
+- Aserciones ajustadas en `t9Pages.test.js` y `layout-drawer-check.js`; `counters.js` y `cases.js` con guardia de versión; `SIMULATION` eliminado; `CaseRow`, `CounterCountsRow`, `ErrorState`, `PriorityTag` adaptados.
 
 ## Aprendizajes y errores a evitar
 
-- PowerShell no soporta `&&` ni `||`: usar comandos separados; `npm.cmd` en vez de `npm.ps1` (bloqueado).
-- El MCP del navegador se puede perder: mantener servidores hasta el final de la verificación.
-- `node --test`: desde `Seguimiento-proyectos/` son 277 pruebas (solo frontend); desde la raíz del repo son 396 (277 frontend + 119 backend).
-- Base `delgrow_contadores`: partida 2 usuarios y 2 casos; limpiar `zz_test_*` al final (script con `pool.end()`). Cerrar backend/frontend y liberar puertos 9000/3000 al terminar.
+- En Express 4 todo middleware o controlador `async` que consulte la BD va con `asyncHandler`.
+- Un archivo "pass" no basta: usar `node soporte-pruebas/verificarPruebas.js`; en rojo cuenta también el `describe` que falla.
+- Contrastar los veredictos del reviewer con la spec (hubo un «APROBADO» con requisitos pendientes).
+- Para simular fallos de BD hay que sustituir `pool.query`, no `db.query`.
+- `node --test` corre los archivos en paralelo: los asertos de «no se creó nada» filtran por datos propios, nunca cuentan tablas enteras.
+- Cerrar servidor y pool en `after` o `node --test` se cuelga; MariaDB en marcha (3306, XAMPP); una ejecución interrumpida deja `zz_test_*` huérfanos.
+- MariaDB local no está en modo estricto (trunca sin error): los máximos se validan en el controlador.
+- Con `String.replace` en Node, pasar el reemplazo como función («$`» duplicó `tasks.md`). Con `sed` global, revisar que no toque líneas históricas.
+- PowerShell no soporta `&&` ni `||`; usar `npm.cmd` en vez de `npm.ps1`.
+- El MCP del navegador se puede perder: mantener servidores hasta el final de la verificación; liberar puertos 9000/3000 al terminar.
 
-## Dependencias
+## Puntos NO verificados en T10 de la 003 (justificados)
 
-- Spec 004: el login no distingue mayúsculas hasta T12-T13 de la 004 (colación `utf8mb4_general_ci`); el frontend envía credenciales tal cual y trata cualquier 401 como inválida.
+- Cierre de pestaña, recarga con token vigente, caducidad en carga lenta, estados vacíos y listas largas, respuesta tardía tras cierre y recorrido solo con teclado: cubiertos por pruebas unitarias o verificados estáticamente.
 
-## Puntos NO verificados en T10 (justificados)
-
-- Cierre de pestaña, otra pestaña sin sesión, recarga con token vigente, caducidad durante carga lenta y formulario P-4 a medio llenar: cubiertos por unit tests/`sessionStorage`/store; no observados.
-- Estados vacíos de P-5/detalle sin casos, nombres largos y listas largas con scroll: sin datos en el seed; cubierto por tests de store/`exampleData`/componentes.
-- Respuesta tardía tras cierre y reemplazo de sesión (RF-10) y recorrido completo solo con teclado: cubierto por tests de store / verificado estáticamente.
-
-Nada sensible en esta memoria. Los cambios de la 003 quedaron en `main` con commit y push.
+Nada sensible en esta memoria.

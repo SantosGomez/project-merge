@@ -52,7 +52,18 @@ async function authenticateToken(req, res, next) {
 
   // 3. La sesión debe existir en la tabla `sesiones` y no estar revocada
   //    (RF-04, RF-07): solo el inicio de sesión registra sesiones.
-  const sesion = await SessionModel.obtenerSesion(token);
+  //    Un fallo de la base de datos no es «sesión caducada» ni invalida la sesión (RF-40, RNF-4).
+  //    La sesión se identifica por el jti propio del token (RF-41).
+  const { jti } = resultado.payload;
+  let sesion;
+  try {
+    sesion = await SessionModel.obtenerSesion(jti);
+  } catch (err) {
+    res.status(503).json(
+      buildError('Fallo interno al consultar la sesión', 'token de acceso', 'Inténtelo nuevamente en unos momentos')
+    );
+    return;
+  }
   if (!sesion || sesion.revocado) {
     res.status(401).json(
       buildError('Sesión caducada', 'token de acceso', 'Inicie sesión nuevamente')
@@ -63,15 +74,29 @@ async function authenticateToken(req, res, next) {
   // 4. Verificar inactividad de la sesión (RF-25)
   const ahora = new Date();
   if (isSessionInactive(sesion.ultima_actividad, ahora, INACTIVIDAD_MINUTOS)) {
-    await SessionModel.revocar(token);
+    try {
+      await SessionModel.revocar(jti);
+    } catch (err) {
+      res.status(503).json(
+        buildError('Fallo interno al cerrar la sesión inactiva', 'token de acceso', 'Inténtelo nuevamente en unos momentos')
+      );
+      return;
+    }
     res.status(401).json(
       buildError('Sesión caducada por inactividad', 'última actividad', 'Inicie sesión nuevamente')
     );
     return;
   }
 
-  // 5. Actualizar última actividad en cada petición válida (RF-25)
-  await SessionModel.tocarActividad(token, ahora);
+  // 5. Actualizar última actividad en cada petición válida (RF-25); un fallo no invalida la sesión (RF-40)
+  try {
+    await SessionModel.tocarActividad(jti, ahora);
+  } catch (err) {
+    res.status(503).json(
+      buildError('Fallo interno al renovar la sesión', 'token de acceso', 'Inténtelo nuevamente en unos momentos')
+    );
+    return;
+  }
 
   // 6. Adjuntar datos del usuario al request
   req.user = {
@@ -79,6 +104,8 @@ async function authenticateToken(req, res, next) {
     usuario: resultado.payload.usuario,
     rol: resultado.payload.rol,
   };
+  // jti de la sesión, disponible para el cierre de sesión (RF-41)
+  req.jti = jti;
 
   // 7. Continuar al siguiente middleware o controlador
   next();

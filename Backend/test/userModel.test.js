@@ -8,16 +8,13 @@ const {
   limpiarDatosDePrueba,
   cerrarBaseDeDatos,
 } = require('../soporte-pruebas/bd');
-const {
-  findByUsername,
-  create,
-  findById,
-  findAll,
-} = require('../src/models/UserModel');
+const UserModel = require('../src/models/UserModel');
+
+const { findByUsername, create, findById, findAll } = UserModel;
 
 /**
  * Pruebas del modelo de usuarios (consultas SQL contra MariaDB).
- * RF-01, RF-03, RF-27, RF-28, RF-29, RF-30.
+ * RF-01, RF-03, RF-27, RF-28, RF-29, RF-30, RF-36, RF-45.
  *
  * Requieren que exista `src/models/UserModel.js` (tarea T6) y una base de
  * datos MariaDB de prueba configurada en `src/config/db.js`.
@@ -118,6 +115,48 @@ async function testFindAllPorRolContadorSoloDevuelveContadores() {
   });
 }
 
+// ---------- RF-36, criterio 31: findByUsername distingue mayúsculas ----------
+async function testFindByUsernameDistingueMayusculas() {
+  const nombre = nombreDePrueba('ana');
+  await create(nombre, 'hash_prueba_t12', 'contador');
+  registrarUsuarioCreado(nombre);
+
+  const conOtraCapitalizacion = await findByUsername(nombre.toUpperCase());
+  assert.strictEqual(
+    conOtraCapitalizacion,
+    null,
+    'findByUsername debe devolver null si el nombre solo coincide sin distinguir mayúsculas'
+  );
+
+  const exacto = await findByUsername(nombre);
+  assert.ok(exacto, 'findByUsername debe devolver la cuenta con el nombre exacto');
+  assert.strictEqual(exacto.usuario, nombre, 'la cuenta devuelta debe tener el nombre exacto');
+}
+
+// ---------- RF-45, criterio 40: duplicados sin distinguir mayúsculas ----------
+async function testUsuarioExisteIgnoreCase() {
+  assert.strictEqual(
+    typeof UserModel.usuarioExisteIgnoreCase,
+    'function',
+    'UserModel debe exponer usuarioExisteIgnoreCase'
+  );
+
+  const nombre = nombreDePrueba('ana');
+  await create(nombre, 'hash_prueba_t12', 'contador');
+  registrarUsuarioCreado(nombre);
+
+  assert.strictEqual(
+    await UserModel.usuarioExisteIgnoreCase(nombre.toUpperCase()),
+    true,
+    'debe encontrar la cuenta aunque el nombre llegue con otra capitalización'
+  );
+  assert.strictEqual(
+    await UserModel.usuarioExisteIgnoreCase(nombreDePrueba('no_existe')),
+    false,
+    'debe devolver false con un nombre que no existe'
+  );
+}
+
 describe('UserModel', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -135,4 +174,6 @@ describe('UserModel', () => {
   test('findById devuelve null cuando no existe', testFindByIdDevuelveNullCuandoNoExiste);
   test('findAll devuelve un array de usuarios', testFindAllDevuelveArray);
   test('findAll por rol contador solo devuelve contadores', testFindAllPorRolContadorSoloDevuelveContadores);
+  test('findByUsername solo devuelve la cuenta con el nombre exacto', testFindByUsernameDistingueMayusculas);
+  test('usuarioExisteIgnoreCase encuentra el nombre sin distinguir mayúsculas', testUsuarioExisteIgnoreCase);
 });

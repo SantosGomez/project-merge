@@ -20,12 +20,14 @@ const { run } = require('node:test');
 const MINIMOS = {
   'appCors.test.js': 4,
   'authMiddleware.test.js': 13,
-  'authRoutes.test.js': 4,
+  'authRoutes.test.js': 9,
   'caseModel.test.js': 8,
-  'caseRoutes.test.js': 7,
-  'counterRoutes.test.js': 5,
+  'caseRoutes.test.js': 9,
+  'counterRoutes.test.js': 6,
   'dateUtils.test.js': 4,
+  'errorHandlerGlobal.test.js': 12,
   'errorUtils.test.js': 2,
+  'fallosPersistencia.test.js': 7,
   'idsContador.test.js': 6,
   'originMiddleware.test.js': 3,
   'originUtils.test.js': 7,
@@ -34,10 +36,10 @@ const MINIMOS = {
   'respuestasApi.test.js': 3,
   'roleMiddleware.test.js': 8,
   'seed.test.js': 3,
-  'tokenUtils.test.js': 5,
-  'userModel.test.js': 7,
-  'userRoutes.test.js': 3,
-  'validationUtils.test.js': 16,
+  'tokenUtils.test.js': 6,
+  'userModel.test.js': 9,
+  'userRoutes.test.js': 10,
+  'validationUtils.test.js': 22,
 };
 
 const TESTS_DIR = path.join(__dirname, '..', 'test');

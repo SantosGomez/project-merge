@@ -4,47 +4,78 @@ const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema'];
 const LONGITUD_MAX_CLIENTE = 80;
 
 /**
+ * Clasifica un campo de texto recibido en el cuerpo de una petición sin llamar
+ * nunca a `.trim()` sobre un valor que no sea texto.
+ * RF-37 (y RF-02, RF-19, RF-20, RF-30 para el dato que falta).
+ * @param {*} valor - Valor recibido.
+ * @param {string} nombre - Nombre del campo, para indicarlo en el error.
+ * @returns {{ estado: 'faltante' | 'tipo_invalido' | 'valido', campo: string, valor?: string }}
+ */
+function validarCampoTexto(valor, nombre) {
+  if (valor === null || valor === undefined) {
+    return { estado: 'faltante', campo: nombre };
+  }
+  if (typeof valor !== 'string') {
+    return { estado: 'tipo_invalido', campo: nombre };
+  }
+  if (valor.trim() === '') {
+    return { estado: 'faltante', campo: nombre };
+  }
+  return { estado: 'valido', campo: nombre, valor: valor.trim() };
+}
+
+/**
  * Valida los campos de inicio de sesión (usuario y contraseña).
- * RF-02.
- * @param {string} usuario - Nombre de usuario.
- * @param {string} password - Contraseña.
- * @returns {{ valido: boolean, faltantes: string[] }} Objeto con valido y lista de campos faltantes.
+ * RF-02, RF-37.
+ * @param {*} usuario - Nombre de usuario.
+ * @param {*} password - Contraseña.
+ * @returns {{ valido: boolean, faltantes: string[], tipoInvalido: string[] }} Objeto con valido,
+ *   campos faltantes y campos enviados con un tipo distinto de texto.
  */
 function validateLoginInput(usuario, password) {
   const faltantes = [];
+  const tipoInvalido = [];
 
-  if (!usuario || usuario.trim() === '') {
-    faltantes.push('usuario');
+  for (const campo of [validarCampoTexto(usuario, 'usuario'), validarCampoTexto(password, 'contraseña')]) {
+    if (campo.estado === 'faltante') {
+      faltantes.push(campo.campo);
+    } else if (campo.estado === 'tipo_invalido') {
+      tipoInvalido.push(campo.campo);
+    }
   }
 
-  if (!password || password.trim() === '') {
-    faltantes.push('contraseña');
-  }
-
-  return { valido: faltantes.length === 0, faltantes };
+  return { valido: faltantes.length === 0 && tipoInvalido.length === 0, faltantes, tipoInvalido };
 }
 
 /**
  * Valida los datos de entrada para registrar un nuevo caso.
- * RF-19, RF-20, RF-21.
- * @param {string} cliente - Nombre del cliente.
- * @param {string} prioridad - Prioridad del caso (Alta, Media, Baja).
+ * RF-19, RF-20, RF-21, RF-37.
+ * @param {*} cliente - Nombre del cliente.
+ * @param {*} prioridad - Prioridad del caso (Alta, Media, Baja).
  * @returns {{ valido: boolean, error: string | null }} Objeto con valido y código de error.
  */
 function validateNewCaseInput(cliente, prioridad) {
-  if (!cliente || cliente.trim() === '') {
+  const campoCliente = validarCampoTexto(cliente, 'cliente');
+  if (campoCliente.estado === 'faltante') {
     return { valido: false, error: 'cliente_requerido' };
   }
+  if (campoCliente.estado === 'tipo_invalido') {
+    return { valido: false, error: 'cliente_tipo_invalido' };
+  }
 
-  if (cliente.trim().length > LONGITUD_MAX_CLIENTE) {
+  if (campoCliente.valor.length > LONGITUD_MAX_CLIENTE) {
     return { valido: false, error: 'cliente_demasiado_largo' };
   }
 
-  if (!prioridad || prioridad.trim() === '') {
+  const campoPrioridad = validarCampoTexto(prioridad, 'prioridad');
+  if (campoPrioridad.estado === 'faltante') {
     return { valido: false, error: 'prioridad_requerida' };
   }
+  if (campoPrioridad.estado === 'tipo_invalido') {
+    return { valido: false, error: 'prioridad_tipo_invalida' };
+  }
 
-  if (!PRIORIDADES_VALIDAS.includes(prioridad.trim())) {
+  if (!PRIORIDADES_VALIDAS.includes(campoPrioridad.valor)) {
     return { valido: false, error: 'prioridad_invalida' };
   }
 
@@ -57,7 +88,7 @@ function validateNewCaseInput(cliente, prioridad) {
  * @returns {boolean} true si es válido, false en caso contrario.
  */
 function validateStatus(estado) {
-  return ESTADOS_VALIDOS.includes(estado);
+  return typeof estado === 'string' && ESTADOS_VALIDOS.includes(estado);
 }
 
 /**
@@ -66,7 +97,7 @@ function validateStatus(estado) {
  * @returns {boolean} true si es válida, false en caso contrario.
  */
 function validatePriority(prioridad) {
-  return PRIORIDADES_VALIDAS.includes(prioridad);
+  return typeof prioridad === 'string' && PRIORIDADES_VALIDAS.includes(prioridad);
 }
 
 /**
@@ -76,7 +107,7 @@ function validatePriority(prioridad) {
  * @returns {boolean} true si es válido, false en caso contrario.
  */
 function validateRol(rol) {
-  return ROLES_VALIDOS.includes(rol);
+  return typeof rol === 'string' && ROLES_VALIDOS.includes(rol);
 }
 
 /**
@@ -106,6 +137,7 @@ function parseCounterId(valor) {
 }
 
 module.exports = {
+  validarCampoTexto,
   validateLoginInput,
   validateNewCaseInput,
   validateStatus,

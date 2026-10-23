@@ -14,7 +14,7 @@ const { query } = require('../src/config/db');
 
 /**
  * Pruebas de integración de las respuestas de la API.
- * RF-01, RF-12, RF-32, RF-33, RNF-7, criterios 1, 26 y 27.
+ * RF-01, RF-12, RF-32, RF-33, RF-42, RNF-7, criterios 1, 26 y 27.
  *
  * Levanta la aplicación real en un puerto libre y hace peticiones HTTP reales.
  * Requiere MariaDB en marcha (XAMPP, puerto 3306, base delgrow_contadores).
@@ -242,6 +242,7 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
   // Se registra aunque un aserto falle después, para que la limpieza lo borre.
   registrarUsuarioCreado(nombreNuevo);
   guardar('alta de usuario', altaUsuario);
+  assert.strictEqual(altaUsuario.statusCode, 201, 'usuarios_de_sistema debe poder dar de alta usuarios (criterio 9)');
   guardar(
     'alta de usuario con rol inválido',
     await peticion(
@@ -252,6 +253,40 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
       tokenAdmin
     )
   );
+
+  // Restablecimiento de contraseña: éxito, contraseña inválida (400), contador (403) y cuenta inexistente (404).
+  // Se usa una cuenta propia para no invalidar las sesiones que usa el resto del barrido (RF-42).
+  const cuentaRestablecer = await crearUsuarioDePrueba('contador');
+  const rutaRestablecer = (nombre) => `/usuarios/${encodeURIComponent(nombre)}/restablecer-contrasena`;
+  const restablecimiento = guardar(
+    'restablecimiento de contraseña',
+    await peticion(servidor.puerto, 'PATCH', rutaRestablecer(cuentaRestablecer.usuario), { password: 'ClaveBarrido2026' }, tokenAdmin)
+  );
+  guardar(
+    'restablecimiento con contraseña inválida',
+    await peticion(servidor.puerto, 'PATCH', rutaRestablecer(cuentaRestablecer.usuario), { password: 'corta' }, tokenAdmin)
+  );
+  guardar(
+    'restablecimiento como contador',
+    await peticion(servidor.puerto, 'PATCH', rutaRestablecer(cuentaRestablecer.usuario), { password: 'ClaveBarrido2026' }, tokenContador)
+  );
+  guardar(
+    'restablecimiento de una cuenta inexistente',
+    await peticion(
+      servidor.puerto,
+      'PATCH',
+      rutaRestablecer(`zz_test_no_existe_${crypto.randomBytes(4).toString('hex')}`),
+      { password: 'ClaveBarrido2026' },
+      tokenAdmin
+    )
+  );
+
+  // La respuesta de éxito del restablecimiento no trae ningún dato de acceso (RF-42, RF-33).
+  assert.strictEqual(restablecimiento.statusCode, 200, 'el restablecimiento del barrido debe responder 200');
+  const textoRestablecimiento = JSON.stringify(restablecimiento.body);
+  for (const dato of ['token', 'password']) {
+    assert.ok(!textoRestablecimiento.includes(dato), `el restablecimiento no debe incluir «${dato}»`);
+  }
 
   // Ruta inexistente (404 del servidor).
   guardar('ruta inexistente', await peticion(servidor.puerto, 'GET', '/ruta-que-no-existe', null, tokenAdmin));

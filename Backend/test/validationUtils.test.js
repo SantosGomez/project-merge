@@ -128,6 +128,54 @@ function testPrioridadesInvalidas() {
   assert.strictEqual(validatePriority('alta'), false); // distingue mayúsculas
 }
 
+// RF-37: ejecuta la validación y hace fallar la prueba si la función lanza
+function ejecutarSinLanzar(validar) {
+  let resultado;
+  assert.doesNotThrow(() => {
+    resultado = validar();
+  }, 'la validación no debe lanzar con un dato que no es texto');
+  return resultado;
+}
+
+// RF-37: usuario numérico -> tipo inválido en usuario
+function testLoginInputUsuarioNoTexto() {
+  const resultado = ejecutarSinLanzar(() => validateLoginInput(123, 'Secreta123'));
+  assert.strictEqual(resultado.valido, false);
+  assert.deepStrictEqual(resultado.tipoInvalido, ['usuario']);
+}
+
+// RF-37: contraseña numérica -> tipo inválido en contraseña
+function testLoginInputContrasenaNoTexto() {
+  const resultado = ejecutarSinLanzar(() => validateLoginInput('ana', 12345));
+  assert.strictEqual(resultado.valido, false);
+  assert.deepStrictEqual(resultado.tipoInvalido, ['contraseña']);
+}
+
+// RF-37: usuario y contraseña como objetos -> tipo inválido en ambos
+function testLoginInputAmbosObjetos() {
+  const resultado = ejecutarSinLanzar(() => validateLoginInput({}, {}));
+  assert.strictEqual(resultado.valido, false);
+  assert.deepStrictEqual(resultado.tipoInvalido, ['usuario', 'contraseña']);
+}
+
+// RF-37: cliente como lista -> cliente_tipo_invalido
+function testNuevoCasoClienteLista() {
+  const resultado = ejecutarSinLanzar(() => validateNewCaseInput(['Cliente'], 'Alta'));
+  assert.deepStrictEqual(resultado, { valido: false, error: 'cliente_tipo_invalido' });
+}
+
+// RF-37: prioridad booleana -> prioridad_tipo_invalida
+function testNuevoCasoPrioridadBooleana() {
+  const resultado = ejecutarSinLanzar(() => validateNewCaseInput('Cliente', true));
+  assert.deepStrictEqual(resultado, { valido: false, error: 'prioridad_tipo_invalida' });
+}
+
+// RF-37: cliente como objeto -> cliente_tipo_invalido
+function testNuevoCasoClienteObjeto() {
+  const resultado = ejecutarSinLanzar(() => validateNewCaseInput({}, 'Alta'));
+  assert.deepStrictEqual(resultado, { valido: false, error: 'cliente_tipo_invalido' });
+}
+
 describe('validationUtils', () => {
   test('testLoginInputCamposVacios', testLoginInputCamposVacios);
   test('testLoginInputSoloEspacios', testLoginInputSoloEspacios);
@@ -145,4 +193,10 @@ describe('validationUtils', () => {
   test('testStatusInvalidos', testStatusInvalidos);
   test('testPrioridadesValidas', testPrioridadesValidas);
   test('testPrioridadesInvalidas', testPrioridadesInvalidas);
+  test('testLoginInputUsuarioNoTexto', testLoginInputUsuarioNoTexto);
+  test('testLoginInputContrasenaNoTexto', testLoginInputContrasenaNoTexto);
+  test('testLoginInputAmbosObjetos', testLoginInputAmbosObjetos);
+  test('testNuevoCasoClienteLista', testNuevoCasoClienteLista);
+  test('testNuevoCasoPrioridadBooleana', testNuevoCasoPrioridadBooleana);
+  test('testNuevoCasoClienteObjeto', testNuevoCasoClienteObjeto);
 });
