@@ -611,3 +611,59 @@ describe('Drawer compacto — verificación estática', () => {
     assert.match(alternar, /if \(!esEscritorio\.value\) return/, 'en móvil el clic no hace nada')
   })
 })
+
+describe('Alta de usuario (historia 9a) — verificación estática', () => {
+  const rutas = read('../src/router/index.js')
+  const aviso = read('../src/components/AccessDenied.vue')
+
+  it('la ruta del alta es solo del usuario de sistema y sin «Volver»', () => {
+    const inicio = rutas.indexOf("name: 'usuarios-alta'")
+    assert.ok(inicio >= 0, 'falta la ruta usuarios-alta')
+    const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
+
+    assert.match(ruta, /path: 'usuarios\/alta'/, 'coincide con la pantalla principal del rol')
+    assert.match(ruta, /component: NewUserPage/, 'abre la pantalla de alta')
+    assert.match(ruta, /perfil: PROFILES\.sistema/, 'solo el usuario de sistema')
+    assert.match(ruta, /titulo: 'Alta de usuario'/, 'título de la pantalla')
+    assert.doesNotMatch(ruta, /volverA:/, 'es su única pantalla: no hay a dónde volver')
+  })
+
+  it('el menú muestra la sección «Usuarios» solo al usuario de sistema', () => {
+    const inicio = src.indexOf('<template v-if="session.esUsuarioSistema">')
+    assert.ok(inicio >= 0, 'falta la sección del usuario de sistema')
+    const seccion = src.slice(inicio, src.indexOf('</template>', inicio))
+
+    assert.match(seccion, /<q-item-label header>Usuarios<\/q-item-label>/, 'título de sección')
+    assert.match(seccion, /:to="\{ name: 'usuarios-alta' \}"/, 'lleva al alta')
+    assert.match(seccion, /<q-item-label>Alta de usuario<\/q-item-label>/, 'nombre de la opción')
+    assert.match(seccion, /<q-tooltip>Ir al alta de usuario<\/q-tooltip>/, 'tooltip de la opción')
+    assert.match(seccion, /aria-label="Ir al alta de usuario"/, 'nombre accesible')
+  })
+
+  it('la pantalla de alta no apunta a ids inexistentes y oculta el éxito al editar', () => {
+    const pagina = read('../src/pages/NewUserPage.vue')
+
+    // Cada id que nombra aria-describedby debe existir en la pantalla.
+    const referidos = [...pagina.matchAll(/aria-describedby="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/))
+    for (const id of referidos) {
+      assert.match(pagina, new RegExp(`\\sid="${id}"`), `falta el elemento con id «${id}»`)
+    }
+
+    // Al editar cualquier campo se oculta el aviso de la alta anterior.
+    const limpiar = pagina.slice(pagina.indexOf('const alEditar'), pagina.indexOf('\nconst ', pagina.indexOf('const alEditar') + 1))
+    assert.match(limpiar, /mensajeExito\.value = ''/, 'el aviso de éxito se oculta')
+    assert.match(limpiar, /errores\[campo\] = null/, 'se limpia el error del campo editado')
+    for (const campo of ['usuario', 'password', 'rol']) {
+      assert.ok(pagina.includes(`@update:model-value="alEditar('${campo}')"`), `${campo} usa alEditar`)
+    }
+  })
+
+  it('el aviso de acceso denegado lleva a la pantalla principal de cualquier rol', () => {
+    assert.match(
+      aviso,
+      /PANTALLA_PRINCIPAL_POR_ROL\[maqueta\.session\?\.profile\]/,
+      'la vuelta sale del rol de la sesión, no de «admin o contador»',
+    )
+    assert.match(aviso, /formatearRol\(maqueta\.session\?\.profile\)/, 'nombra el rol de la sesión')
+  })
+})

@@ -40,7 +40,11 @@ test('constants.js reúne los valores únicos del dominio', () => {
   })
   assert.deepEqual(PRIORITY_LABELS, { alta: 'Alta', media: 'Media', baja: 'Baja' })
   assert.deepEqual(PRIORITY_COLORS, { alta: 'red', media: 'amber', baja: 'green' })
-  assert.deepEqual(PROFILES, { administrador: 'administrador', contador: 'contador' })
+  assert.deepEqual(PROFILES, {
+    administrador: 'administrador',
+    contador: 'contador',
+    sistema: 'usuarios_de_sistema',
+  })
   assert.equal(MAX_CLIENT_LENGTH, 80)
 })
 

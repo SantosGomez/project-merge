@@ -1,7 +1,12 @@
 // Validaciones puras de los formularios de P-1 y P-4.
 // Síncronas, sin Vue, sin navegador y sin efectos secundarios (RF-03, RF-21, RF-22, RF-23).
 
-import { MAX_CLIENT_LENGTH } from './constants.js'
+import {
+  MAX_CLIENT_LENGTH,
+  MAX_USERNAME_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  PROFILES,
+} from './constants.js'
 
 /** Claves de los campos de P-1, las mismas que usa `LoginPage.vue` (RF-03). */
 const LOGIN_FIELDS = {
@@ -67,4 +72,32 @@ export const validarPrioridad = (prioridad) => {
   }
 
   return { valido: true, error: null }
+}
+
+/**
+ * Valida el alta de una cuenta de usuario (historia 9a).
+ * Mismas reglas que el backend: usuario de hasta 100 caracteres, contraseña de
+ * al menos 8 y uno de los tres roles.
+ * @returns {{ valido: boolean, errores: { usuario: string|null, password: string|null, rol: string|null } }}
+ */
+export const validarAltaUsuario = (usuario, password, rol) => {
+  const requeridos = validarCredenciales(usuario, password)
+
+  const errores = {
+    usuario: requeridos.faltantes.includes('username') ? 'usuario_requerido' : null,
+    password: requeridos.faltantes.includes('password') ? 'password_requerida' : null,
+    rol: Object.values(PROFILES).includes(rol) ? null : 'rol_requerido',
+  }
+
+  // Igual que en el cliente, los espacios extremos no cuentan para el límite.
+  if (errores.usuario === null && normalizar(usuario).length > MAX_USERNAME_LENGTH) {
+    errores.usuario = 'usuario_demasiado_largo'
+  }
+
+  // El login recorta la contraseña antes de enviarla, así que el mínimo se mide igual.
+  if (errores.password === null && normalizar(password).length < MIN_PASSWORD_LENGTH) {
+    errores.password = 'password_corta'
+  }
+
+  return { valido: Object.values(errores).every((error) => error === null), errores }
 }

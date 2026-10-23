@@ -46,6 +46,7 @@ export const INTERVALO_INACTIVIDAD_MS = 60 * 1000
 export const PANTALLA_PRINCIPAL = Object.freeze({
   administrador: '/admin/dashboard',
   contador: '/contador/casos',
+  usuarios_de_sistema: '/usuarios/alta',
 })
 
 /** Tipos de aviso persistente de cierre (RF-46 con revocación, RF-47 sin ella). */
@@ -160,6 +161,7 @@ export const crearSessionStore = (dependencias = {}) => {
       pantallaPrincipal: (state) => PANTALLA_PRINCIPAL[state.rol] ?? null,
       esAdministrador: (state) => state.rol === 'administrador',
       esContador: (state) => state.rol === 'contador',
+      esUsuarioSistema: (state) => state.rol === 'usuarios_de_sistema',
     },
 
     actions: {
@@ -301,6 +303,8 @@ export const crearSessionStore = (dependencias = {}) => {
           if (this.rol === 'administrador') {
             await contadores.listCounters()
           } else {
+            // El usuario de sistema no tiene lectura propia: «mis casos» acepta cualquier
+            // sesión, así que sirve para comprobar el token (su lista vacía no se muestra).
             await casos.getMisCasos()
           }
         } catch (error) {

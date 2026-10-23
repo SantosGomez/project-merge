@@ -5,7 +5,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { MAX_CLIENT_LENGTH } from '../src/utils/constants.js'
-import { validarCliente, validarCredenciales, validarPrioridad } from '../src/utils/validators.js'
+import {
+  validarAltaUsuario,
+  validarCliente,
+  validarCredenciales,
+  validarPrioridad,
+} from '../src/utils/validators.js'
 
 // --- validarCredenciales ---------------------------------------------------
 
@@ -162,3 +167,64 @@ test('validarPrioridad rechaza valores fuera de la lista y las minúsculas', () 
     )
   }
 })
+
+// --- validarAltaUsuario (historia 9a) -------------------------------------
+
+test('validarAltaUsuario exige usuario y contraseña', () => {
+  const sinUsuario = validarAltaUsuario('', 'clave1234', 'contador')
+  assert.equal(sinUsuario.valido, false)
+  assert.equal(sinUsuario.errores.usuario, 'usuario_requerido')
+  assert.equal(sinUsuario.errores.password, null)
+
+  const sinPassword = validarAltaUsuario('nuevo', '', 'contador')
+  assert.equal(sinPassword.valido, false)
+  assert.equal(sinPassword.errores.usuario, null)
+  assert.equal(sinPassword.errores.password, 'password_requerida')
+
+  const soloEspacios = validarAltaUsuario('   ', '   ', 'contador')
+  assert.equal(soloEspacios.valido, false)
+  assert.equal(soloEspacios.errores.usuario, 'usuario_requerido')
+  assert.equal(soloEspacios.errores.password, 'password_requerida')
+})
+
+test('validarAltaUsuario exige una contraseña de al menos 8 caracteres', () => {
+  const corta = validarAltaUsuario('nuevo', '1234567', 'contador')
+  assert.equal(corta.valido, false)
+  assert.equal(corta.errores.password, 'password_corta')
+
+  const justa = validarAltaUsuario('nuevo', '12345678', 'contador')
+  assert.equal(justa.errores.password, null)
+  assert.equal(justa.valido, true, 'con 8 caracteres la contraseña es válida')
+
+  // El login recorta la contraseña: los espacios extremos no cuentan para el mínimo.
+  const conEspacio = validarAltaUsuario('nuevo', ' 1234567 ', 'contador')
+  assert.equal(conEspacio.errores.password, 'password_corta', 'quedan 7 caracteres al recortar')
+})
+
+test('validarAltaUsuario admite hasta 100 caracteres de usuario', () => {
+  const justo = validarAltaUsuario(`${'a'.repeat(100)}`, '12345678', 'contador')
+  assert.equal(justo.errores.usuario, null)
+  assert.equal(justo.valido, true, '100 caracteres se aceptan')
+
+  const deMas = validarAltaUsuario('a'.repeat(101), '12345678', 'contador')
+  assert.equal(deMas.errores.usuario, 'usuario_demasiado_largo')
+  assert.equal(deMas.valido, false, '101 caracteres no se aceptan')
+
+  const conEspacios = validarAltaUsuario(`   ${'a'.repeat(100)}   `, '12345678', 'contador')
+  assert.equal(conEspacios.errores.usuario, null, 'los espacios extremos no cuentan')
+})
+
+test('validarAltaUsuario exige elegir uno de los tres roles', () => {
+  for (const rol of ['administrador', 'contador', 'usuarios_de_sistema']) {
+    const conRol = validarAltaUsuario('nuevo', '12345678', rol)
+    assert.equal(conRol.errores.rol, null, `«${rol}» es un rol válido`)
+    assert.equal(conRol.valido, true)
+  }
+
+  for (const rol of [null, undefined, '', 'Administrador', 'invitado']) {
+    const sinRol = validarAltaUsuario('nuevo', '12345678', rol)
+    assert.equal(sinRol.errores.rol, 'rol_requerido', `«${rol}» no es un rol válido`)
+    assert.equal(sinRol.valido, false)
+  }
+})
+

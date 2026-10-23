@@ -11,6 +11,7 @@ import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
 import NewCasePage from '../pages/NewCasePage.vue'
+import NewUserPage from '../pages/NewUserPage.vue'
 import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
@@ -90,6 +91,16 @@ const routes = [
           screenId: SCREEN_IDS.myCases,
           titulo: 'Mis casos',
           volverA: 'contador-registro',
+        },
+      },
+      {
+        path: 'usuarios/alta',
+        name: 'usuarios-alta',
+        component: NewUserPage,
+        meta: {
+          requiereSesion: true,
+          perfil: PROFILES.sistema,
+          titulo: 'Alta de usuario',
         },
       },
     ],

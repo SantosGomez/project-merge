@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { exampleAccounts } from '../src/services/exampleData.js'
 import {
+  PANTALLA_PRINCIPAL_POR_ROL,
   decidirAcceso,
   normalizeCredential,
   resolveProfile,
@@ -220,8 +221,47 @@ test('decidirAcceso deniega al administrador las pantallas de contador (RF-06)',
   }
 })
 
+const RUTA_USUARIOS_ALTA = { requiereSesion: true, perfil: 'usuarios_de_sistema' }
+
+test('decidirAcceso deja entrar al usuario de sistema a «Alta de usuario» (historia 9a)', () => {
+  const sistema = { autenticado: true, rol: 'usuarios_de_sistema' }
+  assert.deepEqual(decidirAcceso({ ruta: RUTA_USUARIOS_ALTA, sesion: sistema }), {
+    accion: 'permitir',
+  })
+  assert.equal(PANTALLA_PRINCIPAL_POR_ROL.usuarios_de_sistema, 'usuarios-alta')
+})
+
+test('decidirAcceso deniega al usuario de sistema las pantallas de administrador y contador', () => {
+  const sistema = { autenticado: true, rol: 'usuarios_de_sistema' }
+
+  for (const ruta of [
+    RUTA_ADMIN_DASHBOARD,
+    RUTA_ADMIN_DIRECTORIO,
+    RUTA_CONTADOR_REGISTRO,
+    RUTA_CONTADOR_CASOS,
+  ]) {
+    assert.deepEqual(decidirAcceso({ ruta, sesion: sistema }), {
+      accion: 'denegar',
+      motivo: 'perfil',
+      destino: 'usuarios-alta',
+    })
+  }
+})
+
+test('decidirAcceso deniega a administrador y contador el alta de usuarios', () => {
+  for (const [rol, destino] of [
+    ['administrador', 'admin-dashboard'],
+    ['contador', 'contador-casos'],
+  ]) {
+    assert.deepEqual(
+      decidirAcceso({ ruta: RUTA_USUARIOS_ALTA, sesion: { autenticado: true, rol } }),
+      { accion: 'denegar', motivo: 'perfil', destino },
+    )
+  }
+})
+
 test('decidirAcceso deniega un perfil sin pantalla asignada y ofrece volver a P-1', () => {
-  const sesion = { autenticado: true, rol: 'usuarios_de_sistema' }
+  const sesion = { autenticado: true, rol: 'invitado' }
 
   for (const ruta of [
     RUTA_ADMIN_DASHBOARD,

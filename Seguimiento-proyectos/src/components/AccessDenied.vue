@@ -45,7 +45,8 @@
 import { computed, useId } from 'vue'
 
 import { useMaquetaStore } from '../stores/maqueta.js'
-import { PROFILES } from '../utils/constants.js'
+import { PANTALLA_PRINCIPAL_POR_ROL } from '../utils/accessRules.js'
+import { formatearRol } from '../utils/formateadores.js'
 
 /*
  * Aviso de acceso denegado (RF-6): se muestra en la dirección solicitada, sin cambiar de pantalla,
@@ -54,12 +55,12 @@ import { PROFILES } from '../utils/constants.js'
 const maqueta = useMaquetaStore()
 
 /** Pantalla principal del perfil conectado (Definiciones: pantalla principal del perfil). */
-const homeRouteName = computed(() => (maqueta.isAdmin ? 'admin-dashboard' : 'contador-casos'))
-
-/** Perfil de la sesión actual, con el nombre de las constantes. */
-const profileLabel = computed(() =>
-  maqueta.session?.profile === PROFILES.contador ? 'contador' : 'administrador',
+const homeRouteName = computed(
+  () => PANTALLA_PRINCIPAL_POR_ROL[maqueta.session?.profile] ?? 'admin-dashboard',
 )
+
+/** Perfil de la sesión actual, con su nombre legible en minúsculas. */
+const profileLabel = computed(() => formatearRol(maqueta.session?.profile).toLowerCase())
 
 const titleId = useId()
 </script>

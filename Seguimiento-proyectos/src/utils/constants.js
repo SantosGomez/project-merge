@@ -28,11 +28,18 @@ export const PRIORITY_COLORS = {
   baja: 'green',
 }
 
-/** Perfiles existentes en la maqueta: solo administrador y contador. */
+/** Perfiles de la app; el usuario de sistema solo da de alta cuentas (historia 9a). */
 export const PROFILES = {
   administrador: 'administrador',
   contador: 'contador',
+  sistema: 'usuarios_de_sistema',
 }
 
 /** Máximo de caracteres visibles del nombre del cliente: 80 se aceptan, 81 no. */
 export const MAX_CLIENT_LENGTH = 80
+
+/** Mínimo de caracteres de la contraseña en el alta de usuario (historia 9a). */
+export const MIN_PASSWORD_LENGTH = 8
+
+/** Máximo de caracteres del nombre de usuario en el alta (historia 9a). */
+export const MAX_USERNAME_LENGTH = 100

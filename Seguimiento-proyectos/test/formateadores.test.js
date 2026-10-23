@@ -33,8 +33,9 @@ test('formatearIniciales devuelve las dos primeras letras del usuario en mayúsc
 test('formatearRol devuelve el nombre legible del rol', () => {
   assert.equal(formatearRol('administrador'), 'Administrador')
   assert.equal(formatearRol('contador'), 'Contador')
+  assert.equal(formatearRol('usuarios_de_sistema'), 'Usuario de sistema')
   assert.equal(formatearRol(null), '')
-  assert.equal(formatearRol('usuarios_de_sistema'), '')
+  assert.equal(formatearRol('invitado'), '')
 })
 
 test('formatearEstado devuelve el texto en español de cada estado', () => {

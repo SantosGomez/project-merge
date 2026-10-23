@@ -15,11 +15,12 @@ const KNOWN_PROFILES = Object.values(PROFILES)
 
 /**
  * Pantalla principal de cada perfil con pantalla, como nombre de ruta (Definiciones).
- * Un perfil que no está aquí (usuarios_de_sistema) no tiene pantalla asignada.
+ * Un perfil que no está aquí no tiene pantalla asignada.
  */
 export const PANTALLA_PRINCIPAL_POR_ROL = Object.freeze({
   [PROFILES.administrador]: 'admin-dashboard',
   [PROFILES.contador]: 'contador-casos',
+  [PROFILES.sistema]: 'usuarios-alta',
 })
 
 /** Quita los espacios al inicio y al final: un valor formado solo por espacios queda vacío (RF-3). */

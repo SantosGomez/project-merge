@@ -390,7 +390,7 @@ test('arranque con error del servidor: error recuperable y sin borrar el token',
   assert.equal(store.sesionCaducada, false)
 })
 
-test('arranque con un perfil sin pantalla: acceso denegado y sin lectura protegida', async () => {
+test('arranque del usuario de sistema: valida con «mis casos» y abre el alta de usuarios (9a)', async () => {
   const auth = crearAuthFalsa({
     inicial: almacenConSesion({
       token: tokenVigente(),
@@ -400,13 +400,37 @@ test('arranque con un perfil sin pantalla: acceso denegado y sin lectura protegi
     }),
   })
   const contadores = crearContadoresFalsos()
+  const casos = crearCasosFalsos({ casos: [] })
+  const { store, programador } = montarSesion({ auth, contadores, casos })
+
+  const resultado = await store.restaurarSesion()
+
+  assert.equal(resultado.estado, 'valida')
+  assert.equal(resultado.pantallaPrincipal, '/usuarios/alta')
+  // No tiene lectura propia: «mis casos» acepta cualquier sesión y solo comprueba el token.
+  assert.equal(casos.llamadas.length, 1)
+  assert.equal(contadores.llamadas.length, 0)
+  assert.equal(store.esUsuarioSistema, true)
+  assert.equal(programador.activo, true)
+})
+
+test('arranque con un perfil sin pantalla: acceso denegado y sin lectura protegida', async () => {
+  const auth = crearAuthFalsa({
+    inicial: almacenConSesion({
+      token: tokenVigente(),
+      rol: 'invitado',
+      id: 8,
+      usuario: 'invitado',
+    }),
+  })
+  const contadores = crearContadoresFalsos()
   const casos = crearCasosFalsos()
   const { store, programador } = montarSesion({ auth, contadores, casos })
 
   const resultado = await store.restaurarSesion()
 
   assert.equal(resultado.estado, 'acceso_denegado')
-  assert.equal(resultado.rol, 'usuarios_de_sistema')
+  assert.equal(resultado.rol, 'invitado')
   assert.equal(contadores.llamadas.length, 0)
   assert.equal(casos.llamadas.length, 0)
   assert.equal(store.tienePantalla, false)
@@ -504,13 +528,30 @@ test('iniciarSesion con credenciales inválidas conserva la sesión previa y no 
   assert.equal(store.rol, 'contador')
 })
 
-test('iniciarSesion con un perfil sin pantalla devuelve acceso denegado y no arranca el temporizador', async () => {
+test('iniciarSesion del usuario de sistema lleva al alta de usuarios y arranca el temporizador (9a)', async () => {
   const auth = crearAuthFalsa({
     sesionLogin: { token: tokenVigente(), rol: 'usuarios_de_sistema', id: 8, usuario: 'sistema' },
   })
   const { store, programador } = montarSesion({ auth })
 
   const resultado = await store.iniciarSesion('sistema', 'clave')
+
+  assert.equal(resultado.ok, true)
+  assert.equal(resultado.accesoDenegado, false)
+  assert.equal(resultado.pantallaPrincipal, '/usuarios/alta')
+  assert.equal(store.esUsuarioSistema, true)
+  assert.equal(store.esAdministrador, false)
+  assert.equal(store.esContador, false)
+  assert.equal(programador.activo, true)
+})
+
+test('iniciarSesion con un perfil sin pantalla devuelve acceso denegado y no arranca el temporizador', async () => {
+  const auth = crearAuthFalsa({
+    sesionLogin: { token: tokenVigente(), rol: 'invitado', id: 8, usuario: 'invitado' },
+  })
+  const { store, programador } = montarSesion({ auth })
+
+  const resultado = await store.iniciarSesion('invitado', 'clave')
 
   assert.equal(resultado.ok, true)
   assert.equal(resultado.accesoDenegado, true)

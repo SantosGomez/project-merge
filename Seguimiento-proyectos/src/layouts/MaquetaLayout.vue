@@ -155,6 +155,28 @@
               <q-tooltip>Ir a mis casos</q-tooltip>
             </q-item>
           </template>
+
+          <template v-if="session.esUsuarioSistema">
+            <q-item-label header>Usuarios</q-item-label>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'usuarios-alta' }"
+              aria-label="Ir al alta de usuario"
+            >
+              <q-item-section avatar>
+                <q-icon name="person_add" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Alta de usuario</q-item-label>
+                <q-item-label caption>Crear una cuenta</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir al alta de usuario</q-tooltip>
+            </q-item>
+          </template>
         </q-list>
       </q-scroll-area>
 
