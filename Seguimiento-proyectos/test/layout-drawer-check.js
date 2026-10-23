@@ -189,6 +189,98 @@ describe('Drawer sidebar — verificación estática', () => {
     )
   })
 
+  it('el pie del menú muestra las iniciales, el nombre y el rol después de la lista', () => {
+    const cierreLista = src.indexOf('</q-scroll-area>')
+    const inicioPie = src.indexOf('class="drawer-usuario"')
+    const cierreDrawer = src.indexOf('</q-drawer>')
+    assert.ok(cierreLista >= 0, 'falta el cierre de la lista')
+    assert.ok(inicioPie > cierreLista, 'el pie va después de la lista')
+    assert.ok(inicioPie < cierreDrawer, 'el pie va dentro del drawer')
+
+    const pie = src.slice(inicioPie, cierreDrawer)
+    assert.match(
+      pie,
+      /drawer-usuario__avatar[\s\S]*?\{\{\s*iniciales\s*\}\}/,
+      'faltan las iniciales en el pie',
+    )
+    assert.match(
+      pie,
+      /drawer-usuario__nombre[\s\S]*?\{\{\s*session\.usuario\s*\}\}/,
+      'falta el nombre de usuario en el pie',
+    )
+    assert.match(
+      pie,
+      /drawer-usuario__rol[\s\S]*?\{\{\s*rolLegible\s*\}\}/,
+      'falta el rol legible en el pie',
+    )
+    assert.match(pie, /aria-hidden="true"/, 'las iniciales son decorativas')
+    assert.match(src, /formatearIniciales\(session\.usuario\)/, 'faltan las iniciales de la sesión')
+    assert.match(src, /formatearRol\(session\.rol\)/, 'falta el rol legible de la sesión')
+
+    const pieTag = src.match(/<div class="drawer-usuario"[^>]*>/)?.[0] ?? ''
+    assert.match(pieTag, /v-if="session\.usuario"/, 'el pie se muestra solo cuando hay usuario')
+    assert.doesNotMatch(pieTag, /esAdministrador|esContador/, 'el pie no depende del rol')
+  })
+
+  it('el nombre del pie se recorta en una línea y el tooltip muestra el nombre completo', () => {
+    const nombre = cssRule('.drawer-usuario__nombre')
+    assert.match(nombre, /white-space:\s*nowrap/, 'el nombre no hace saltos de línea')
+    assert.match(nombre, /overflow:\s*hidden/, 'el nombre se recorta')
+    assert.match(nombre, /text-overflow:\s*ellipsis/, 'el nombre muestra puntos suspensivos')
+    assert.doesNotMatch(
+      nombre,
+      /overflow-wrap:\s*anywhere/,
+      'el nombre no se parte en varias líneas',
+    )
+
+    const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('</q-drawer>'))
+    assert.match(
+      pie,
+      /<q-tooltip>\{\{\s*session\.usuario\s*\}\}<\/q-tooltip>/,
+      'el tooltip muestra el nombre completo',
+    )
+  })
+
+  it('el pie del menú tiene contraste suficiente y queda fijo sin tapar la lista', () => {
+    const variables = read('../src/css/quasar.variables.scss')
+    const primary = variables.match(/\$primary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    const secondary = variables.match(/\$secondary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    assert.ok(primary && secondary, 'quasar.variables.scss declara $primary y $secondary')
+
+    const avatar = cssRule('.drawer-usuario__avatar')
+    assert.match(avatar, /background:\s*var\(--q-secondary\)/, 'el círculo usa el azul claro')
+    assert.match(avatar, /color:\s*var\(--q-primary\)/, 'las iniciales usan el azul marino')
+    assert.match(avatar, /border-radius:\s*50%/, 'el avatar es un círculo')
+    const ancho = avatar.match(/width:\s*(\d+)px/)?.[1]
+    const alto = avatar.match(/height:\s*(\d+)px/)?.[1]
+    assert.ok(ancho && ancho === alto, 'el avatar es cuadrado')
+    assert.ok(
+      contraste(secondary, primary) >= MINIMO_WCAG,
+      `contraste del cian (iniciales y rol): ${contraste(secondary, primary).toFixed(2)}:1`,
+    )
+
+    assert.match(cssRule('.drawer-usuario__nombre'), /color:\s*#ffffff/i, 'el nombre es blanco')
+    assert.ok(
+      contraste('#ffffff', primary) >= MINIMO_WCAG,
+      `contraste del nombre: ${contraste('#ffffff', primary).toFixed(2)}:1`,
+    )
+
+    assert.match(
+      cssRule('.drawer-usuario__rol'),
+      /color:\s*var\(--q-secondary\)/,
+      'el rol usa el cian de la marca',
+    )
+
+    const pie = cssRule('.drawer-usuario')
+    assert.match(pie, /flex:\s*0 0 auto/, 'el pie no se estira')
+    assert.match(pie, /border-top:/, 'el pie lleva línea de separación')
+    assert.doesNotMatch(pie, /position:\s*absolute/, 'el pie no se superpone a la lista')
+
+    const nav = cssRule('.drawer-nav')
+    assert.match(nav, /flex:\s*1 1 auto/, 'la lista ocupa el espacio libre')
+    assert.match(nav, /min-height:\s*0/, 'la lista puede encogerse y hacer scroll')
+  })
+
   it('tiene los 4 links internos con rutas aprobadas', () => {
     const routes = ['admin-dashboard', 'admin-directorio', 'contador-registro', 'contador-casos']
     for (const r of routes) {

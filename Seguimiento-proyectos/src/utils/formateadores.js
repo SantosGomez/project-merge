@@ -34,6 +34,12 @@ const ESTADOS = new Map([
   ],
 ])
 
+/** Nombre legible de cada rol con pantalla. */
+const ROLES = new Map([
+  ['administrador', 'Administrador'],
+  ['contador', 'Contador'],
+])
+
 /** Ayuda contextual de cada prioridad, en su código interno. */
 const TOOLTIPS_PRIORIDAD = {
   alta: 'Prioridad alta: el caso es urgente y debe atenderse primero.',
@@ -46,6 +52,21 @@ const TOOLTIPS_PRIORIDAD = {
  * Un estado desconocido devuelve `null`: no se inventa una etiqueta.
  */
 export const formatearEstado = (estado) => ESTADOS.get(estado) ?? null
+
+/**
+ * Dos primeras letras del nombre de usuario, en mayúsculas.
+ * `contador_seed` → «CO»; un usuario vacío devuelve una cadena vacía.
+ */
+export const formatearIniciales = (usuario) =>
+  String(usuario ?? '')
+    .trim()
+    .slice(0, 2)
+    .toUpperCase()
+
+/**
+ * Nombre legible del rol. Un rol sin etiqueta devuelve una cadena vacía.
+ */
+export const formatearRol = (rol) => ROLES.get(rol) ?? ''
 
 /**
  * Etiqueta de una prioridad del backend.

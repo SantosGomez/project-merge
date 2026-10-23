@@ -152,6 +152,17 @@
           </template>
         </q-list>
       </q-scroll-area>
+
+      <div class="drawer-usuario" v-if="session.usuario">
+        <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
+        <div class="drawer-usuario__datos">
+          <p class="drawer-usuario__nombre">
+            {{ session.usuario }}
+            <q-tooltip>{{ session.usuario }}</q-tooltip>
+          </p>
+          <p class="drawer-usuario__rol">{{ rolLegible }}</p>
+        </div>
+      </div>
     </q-drawer>
 
     <q-page-container>
@@ -215,6 +226,7 @@ import { accessDenied } from '../router/accessState.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
+import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -236,6 +248,9 @@ const backTitle = computed(() => {
 
   return router.resolve({ name: backRouteName.value }).meta.titulo ?? 'la pantalla anterior'
 })
+
+const iniciales = computed(() => formatearIniciales(session.usuario))
+const rolLegible = computed(() => formatearRol(session.rol))
 
 const abrirDialogoCierre = () => {
   dialogoCierreAbierto.value = true
@@ -383,6 +398,55 @@ onBeforeUnmount(() => {
 .drawer-nav {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+.drawer-usuario {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.drawer-usuario__avatar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--q-secondary);
+  color: var(--q-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.drawer-usuario__datos {
+  min-width: 0;
+}
+
+.drawer-usuario__nombre {
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-usuario__rol {
+  color: var(--q-secondary);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.drawer-usuario__nombre,
+.drawer-usuario__rol {
+  margin: 0;
+  line-height: 1.2;
 }
 
 .drawer-nav .q-item__label--header {
