@@ -231,16 +231,16 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
   );
 
   // Alta de usuario: éxito (con usuario de sistema) y datos inválidos (400).
-  const nombreNuevo = `zz_test_alta_${crypto.randomBytes(4).toString('hex')}`;
+  const correoNuevo = `zz_test_alta_${crypto.randomBytes(4).toString('hex')}@prueba.local`;
   const altaUsuario = await peticion(
     servidor.puerto,
     'POST',
     '/usuarios',
-    { usuario: nombreNuevo, password: 'NuevoPass1234', rol: 'contador' },
+    { nombre: 'Cuenta nueva', correo: correoNuevo, password: 'NuevoPass1234', rol: 'contador' },
     tokenSistema
   );
   // Se registra aunque un aserto falle después, para que la limpieza lo borre.
-  registrarUsuarioCreado(nombreNuevo);
+  registrarUsuarioCreado(correoNuevo);
   guardar('alta de usuario', altaUsuario);
   assert.strictEqual(altaUsuario.statusCode, 201, 'usuarios_de_sistema debe poder dar de alta usuarios (criterio 9)');
   guardar(
@@ -249,7 +249,12 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
       servidor.puerto,
       'POST',
       '/usuarios',
-      { usuario: `zz_test_rol_${crypto.randomBytes(4).toString('hex')}`, password: 'NuevoPass1234', rol: 'invitado' },
+      {
+        nombre: 'Rol inválido',
+        correo: `zz_test_rol_${crypto.randomBytes(4).toString('hex')}@prueba.local`,
+        password: 'NuevoPass1234',
+        rol: 'invitado',
+      },
       tokenAdmin
     )
   );

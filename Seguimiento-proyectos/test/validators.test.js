@@ -168,63 +168,53 @@ test('validarPrioridad rechaza valores fuera de la lista y las minúsculas', () 
   }
 })
 
-// --- validarAltaUsuario (historia 9a) -------------------------------------
+// --- validarAltaUsuario (historia 9a, con nombre y correo) ----------------
 
-test('validarAltaUsuario exige usuario y contraseña', () => {
-  const sinUsuario = validarAltaUsuario('', 'clave1234', 'contador')
-  assert.equal(sinUsuario.valido, false)
-  assert.equal(sinUsuario.errores.usuario, 'usuario_requerido')
-  assert.equal(sinUsuario.errores.password, null)
+const ALTA = { nombre: 'Ana Karen Ramírez', correo: 'kramirez@delgrow.mx', password: '12345678', rol: 'contador' }
+const validarAlta = (cambios = {}) => {
+  const datos = { ...ALTA, ...cambios }
+  return validarAltaUsuario(datos.nombre, datos.correo, datos.password, datos.rol)
+}
 
-  const sinPassword = validarAltaUsuario('nuevo', '', 'contador')
-  assert.equal(sinPassword.valido, false)
-  assert.equal(sinPassword.errores.usuario, null)
-  assert.equal(sinPassword.errores.password, 'password_requerida')
-
-  const soloEspacios = validarAltaUsuario('   ', '   ', 'contador')
-  assert.equal(soloEspacios.valido, false)
-  assert.equal(soloEspacios.errores.usuario, 'usuario_requerido')
-  assert.equal(soloEspacios.errores.password, 'password_requerida')
+test('validarAltaUsuario acepta nombre, correo, contraseña de 8 y un rol válido', () => {
+  const resultado = validarAlta()
+  assert.equal(resultado.valido, true)
+  assert.deepEqual(resultado.errores, { nombre: null, correo: null, password: null, rol: null })
 })
 
-test('validarAltaUsuario exige una contraseña de al menos 8 caracteres', () => {
-  const corta = validarAltaUsuario('nuevo', '1234567', 'contador')
-  assert.equal(corta.valido, false)
-  assert.equal(corta.errores.password, 'password_corta')
+test('validarAltaUsuario exige nombre y correo, sin contar espacios', () => {
+  assert.equal(validarAlta({ nombre: '   ' }).errores.nombre, 'nombre_requerido')
+  assert.equal(validarAlta({ correo: '' }).errores.correo, 'correo_requerido')
+  assert.equal(validarAlta({ correo: '   ' }).valido, false)
+})
 
-  const justa = validarAltaUsuario('nuevo', '12345678', 'contador')
-  assert.equal(justa.errores.password, null)
-  assert.equal(justa.valido, true, 'con 8 caracteres la contraseña es válida')
+test('validarAltaUsuario pide un correo con forma de correo', () => {
+  for (const correo of ['kramirez', 'kramirez@delgrow', 'k ramirez@delgrow.mx', '@delgrow.mx']) {
+    assert.equal(validarAlta({ correo }).errores.correo, 'correo_invalido', `«${correo}» no es un correo`)
+  }
+  assert.equal(validarAlta({ correo: '  KRamirez@DelGrow.MX  ' }).errores.correo, null, 'mayúsculas y espacios no importan')
+})
 
+test('validarAltaUsuario admite hasta 150 caracteres en nombre y correo', () => {
+  const correoDe = (largo) => 'a'.repeat(largo - '@delgrow.mx'.length) + '@delgrow.mx'
+  assert.equal(validarAlta({ nombre: 'N'.repeat(150) }).errores.nombre, null)
+  assert.equal(validarAlta({ nombre: 'N'.repeat(151) }).errores.nombre, 'nombre_demasiado_largo')
+  assert.equal(validarAlta({ correo: correoDe(150) }).errores.correo, null)
+  assert.equal(validarAlta({ correo: correoDe(151) }).errores.correo, 'correo_demasiado_largo')
+})
+
+test('validarAltaUsuario exige una contraseña de al menos 8 caracteres sin contar espacios', () => {
+  assert.equal(validarAlta({ password: '' }).errores.password, 'password_requerida')
+  assert.equal(validarAlta({ password: '1234567' }).errores.password, 'password_corta')
   // El login recorta la contraseña: los espacios extremos no cuentan para el mínimo.
-  const conEspacio = validarAltaUsuario('nuevo', ' 1234567 ', 'contador')
-  assert.equal(conEspacio.errores.password, 'password_corta', 'quedan 7 caracteres al recortar')
-})
-
-test('validarAltaUsuario admite hasta 100 caracteres de usuario', () => {
-  const justo = validarAltaUsuario(`${'a'.repeat(100)}`, '12345678', 'contador')
-  assert.equal(justo.errores.usuario, null)
-  assert.equal(justo.valido, true, '100 caracteres se aceptan')
-
-  const deMas = validarAltaUsuario('a'.repeat(101), '12345678', 'contador')
-  assert.equal(deMas.errores.usuario, 'usuario_demasiado_largo')
-  assert.equal(deMas.valido, false, '101 caracteres no se aceptan')
-
-  const conEspacios = validarAltaUsuario(`   ${'a'.repeat(100)}   `, '12345678', 'contador')
-  assert.equal(conEspacios.errores.usuario, null, 'los espacios extremos no cuentan')
+  assert.equal(validarAlta({ password: ' 1234567 ' }).errores.password, 'password_corta')
 })
 
 test('validarAltaUsuario exige elegir uno de los tres roles', () => {
   for (const rol of ['administrador', 'contador', 'usuarios_de_sistema']) {
-    const conRol = validarAltaUsuario('nuevo', '12345678', rol)
-    assert.equal(conRol.errores.rol, null, `«${rol}» es un rol válido`)
-    assert.equal(conRol.valido, true)
+    assert.equal(validarAlta({ rol }).errores.rol, null, `«${rol}» es un rol válido`)
   }
-
   for (const rol of [null, undefined, '', 'Administrador', 'invitado']) {
-    const sinRol = validarAltaUsuario('nuevo', '12345678', rol)
-    assert.equal(sinRol.errores.rol, 'rol_requerido', `«${rol}» no es un rol válido`)
-    assert.equal(sinRol.valido, false)
+    assert.equal(validarAlta({ rol }).errores.rol, 'rol_requerido', `«${rol}» no es un rol válido`)
   }
 })
-

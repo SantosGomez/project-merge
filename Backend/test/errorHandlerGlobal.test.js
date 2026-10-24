@@ -265,38 +265,40 @@ async function testCambioDeCasoNoGuardaAMedias() {
 async function testAltaConRolNoTextual() {
   const administrador = await crearUsuarioDePrueba('administrador');
   const token = await iniciarSesion(servidor.puerto, administrador.correo, administrador.password);
-  const nombre = `zz_test_rol_${administrador.id}`;
+  const correo = `zz_test_rol_${administrador.id}@prueba.local`;
 
   const respuesta = await conLimite(
-    peticion(servidor.puerto, 'POST', '/usuarios', { usuario: nombre, password: 'Secreta123', rol: 5 }, token)
+    peticion(servidor.puerto, 'POST', '/usuarios', { nombre: 'Rol no textual', correo, password: 'Secreta123', rol: 5 }, token)
   );
   afirmarDatoNoTextual(respuesta, 'rol');
 
-  const [filas] = await queryOriginal('SELECT COUNT(*) AS total FROM usuarios WHERE usuario = ?', [nombre]);
+  const [filas] = await queryOriginal('SELECT COUNT(*) AS total FROM usuarios WHERE correo = ?', [correo]);
   assert.strictEqual(Number(filas[0].total), 0, 'con un rol inválido no debe crearse la cuenta');
 }
 
 const NO_TEXTUALES = [{ clave: 'valor' }, ['valor'], true];
 
-// ---------- RF-37, criterio 32: usuario o contraseña no textuales en el alta ----------
+// ---------- RF-37, criterio 32: nombre, correo o contraseña no textuales en el alta ----------
 async function testAltaConUsuarioOContrasenaNoTextuales() {
   const administrador = await crearUsuarioDePrueba('administrador');
   const token = await iniciarSesion(servidor.puerto, administrador.correo, administrador.password);
-  const nombre = `zz_test_alta_${administrador.id}`;
+  const correo = `zz_test_alta_${administrador.id}@prueba.local`;
+  const base = { nombre: 'Dato no textual', correo, password: 'Secreta123', rol: 'contador' };
 
   for (const valor of NO_TEXTUALES) {
-    const conUsuario = await conLimite(
-      peticion(servidor.puerto, 'POST', '/usuarios', { usuario: valor, password: 'Secreta123', rol: 'contador' }, token)
-    );
-    afirmarDatoNoTextual(conUsuario, 'usuario');
+    const conNombre = await conLimite(peticion(servidor.puerto, 'POST', '/usuarios', { ...base, nombre: valor }, token));
+    afirmarDatoNoTextual(conNombre, 'nombre');
+
+    const conCorreo = await conLimite(peticion(servidor.puerto, 'POST', '/usuarios', { ...base, correo: valor }, token));
+    afirmarDatoNoTextual(conCorreo, 'correo');
 
     const conContrasena = await conLimite(
-      peticion(servidor.puerto, 'POST', '/usuarios', { usuario: nombre, password: valor, rol: 'contador' }, token)
+      peticion(servidor.puerto, 'POST', '/usuarios', { ...base, password: valor }, token)
     );
     afirmarDatoNoTextual(conContrasena, 'contraseña');
   }
 
-  const [filas] = await queryOriginal('SELECT COUNT(*) AS total FROM usuarios WHERE usuario = ?', [nombre]);
+  const [filas] = await queryOriginal('SELECT COUNT(*) AS total FROM usuarios WHERE correo = ?', [correo]);
   assert.strictEqual(Number(filas[0].total), 0, 'con una contraseña no textual no debe crearse la cuenta');
 }
 
@@ -371,7 +373,7 @@ describe('manejo global de errores', () => {
   test('el cambio de caso con estado o prioridad no textuales responde 400 que indica el dato', testCambioDeCasoConDatosNoTextuales);
   test('el cambio de caso con un dato no textual no guarda nada', testCambioDeCasoNoGuardaAMedias);
   test('el alta con un rol no textual responde 400 que indica el dato', testAltaConRolNoTextual);
-  test('el alta con usuario o contraseña no textuales responde 400 y no crea la cuenta', testAltaConUsuarioOContrasenaNoTextuales);
+  test('el alta con nombre, correo o contraseña no textuales responde 400 y no crea la cuenta', testAltaConUsuarioOContrasenaNoTextuales);
   test('registrar un caso con cliente o prioridad no textuales responde 400 y no lo crea', testRegistroDeCasoConDatosNoTextuales);
   test('el JSON mal formado en casos y en el restablecimiento responde 400 de tres partes', { timeout: 5000 }, testCasosYRestablecimientoJsonMalFormado);
 });

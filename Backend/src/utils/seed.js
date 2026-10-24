@@ -62,6 +62,8 @@ async function migrarUsuarios() {
       ADD COLUMN IF NOT EXISTS actualizado_en DATETIME NULL AFTER creado_en,
       ADD COLUMN IF NOT EXISTS ultimo_acceso_en DATETIME NULL AFTER actualizado_en
   `);
+  // Mientras exista, `usuario` guarda el correo de las cuentas nuevas: debe admitir sus 150 caracteres.
+  await query('ALTER TABLE usuarios MODIFY usuario VARCHAR(150) NOT NULL');
 
   await query(`
     UPDATE usuarios

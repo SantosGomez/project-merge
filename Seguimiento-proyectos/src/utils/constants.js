@@ -41,5 +41,5 @@ export const MAX_CLIENT_LENGTH = 80
 /** Mínimo de caracteres de la contraseña en el alta de usuario (historia 9a). */
 export const MIN_PASSWORD_LENGTH = 8
 
-/** Máximo de caracteres del nombre de usuario en el alta (historia 9a). */
-export const MAX_USERNAME_LENGTH = 100
+/** Máximo de caracteres del nombre y del correo de una cuenta (columnas de 150 en la base). */
+export const MAX_NOMBRE_CORREO_LENGTH = 150

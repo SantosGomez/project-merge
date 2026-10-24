@@ -1,36 +1,54 @@
-const { validarCampoTexto, validateLoginInput, validateRol } = require('../utils/validationUtils');
+const { esCorreoValido, validarCampoTexto, validateRol } = require('../utils/validationUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 
+/** Máximo de caracteres del nombre y del correo (columnas VARCHAR(150)). */
+const MAX_NOMBRE_Y_CORREO = 150;
+
 /**
- * Alta de usuario protegida (solo administrador o usuarios_de_sistema).
+ * Alta de cuenta protegida (solo administrador o usuarios_de_sistema), con nombre y correo.
  * RF-28, RF-29, RF-30.
- * @param {Object} req - Petición Express con cuerpo { usuario, password, rol }.
+ * @param {Object} req - Petición Express con cuerpo { nombre, correo, password, rol }.
  * @param {Object} res - Respuesta Express.
  */
 async function createUser(req, res) {
-  const { usuario, password, rol } = req.body;
+  const { nombre, correo, password, rol } = req.body;
 
-  // 1. Validar campos con validateLoginInput y contraseña >= 8 caracteres (RF-30)
-  const validacion = validateLoginInput(usuario, password);
-  if (validacion.tipoInvalido.length > 0) {
-    // RF-37: se indica el dato enviado con un tipo distinto de texto
-    return res.status(400).json(
-      buildError('Dato inválido', validacion.tipoInvalido.join(' y '), 'debe enviarse como texto')
-    );
-  }
-  if (!validacion.valido) {
-    return res.status(400).json(
-      buildError('Datos inválidos', 'usuario/contraseña', 'Corrija el dato indicado e intente nuevamente')
-    );
+  // 1. RF-37: se indica cada dato enviado con un tipo distinto de texto
+  const campos = [
+    validarCampoTexto(nombre, 'nombre'),
+    validarCampoTexto(correo, 'correo'),
+    validarCampoTexto(password, 'contraseña'),
+  ];
+  const tipoInvalido = campos.filter((campo) => campo.estado === 'tipo_invalido').map((campo) => campo.campo);
+  if (tipoInvalido.length > 0) {
+    return res.status(400).json(buildError('Dato inválido', tipoInvalido.join(' y '), 'debe enviarse como texto'));
   }
 
-  // RF-30: el máximo se comprueba aquí para que la base de datos nunca reciba un nombre más largo
-  if (usuario.length > 100) {
+  // 2. Nombre y correo obligatorios, con su máximo; el correo se guarda recortado y en minúsculas
+  const nombreLimpio = (nombre ?? '').trim();
+  const correoLimpio = (correo ?? '').trim().toLowerCase();
+  if (!nombreLimpio) {
+    return res.status(400).json(buildError('Falta el nombre', 'nombre', 'Escriba el nombre de la persona'));
+  }
+  if (!correoLimpio) {
+    return res.status(400).json(buildError('Falta el correo', 'correo', 'Escriba el correo de la cuenta'));
+  }
+  if (nombreLimpio.length > MAX_NOMBRE_Y_CORREO) {
     return res.status(400).json(
-      buildError('El usuario supera el máximo de caracteres', 'usuario', 'El usuario debe tener máximo 100 caracteres')
+      buildError('El nombre supera el máximo de caracteres', 'nombre', 'El nombre debe tener máximo 150 caracteres')
+    );
+  }
+  if (correoLimpio.length > MAX_NOMBRE_Y_CORREO) {
+    return res.status(400).json(
+      buildError('El correo supera el máximo de caracteres', 'correo', 'El correo debe tener máximo 150 caracteres')
+    );
+  }
+  if (!esCorreoValido(correoLimpio)) {
+    return res.status(400).json(
+      buildError('Correo no válido', 'correo', 'Escriba un correo como nombre@delgrow.mx')
     );
   }
 
@@ -52,19 +70,16 @@ async function createUser(req, res) {
     );
   }
 
-  // 2. Verificar que no exista un usuario con ese nombre, sin distinguir mayúsculas (RF-30, RF-45)
-  const existe = await UserModel.usuarioExisteIgnoreCase(usuario);
-  if (existe) {
+  // 3. Verificar que no exista otra cuenta con ese correo, sin distinguir mayúsculas (RF-30, RF-45)
+  if (await UserModel.findByCorreo(correoLimpio)) {
     return res.status(400).json(
-      buildError('El usuario ya existe', 'usuario', 'Elija otro nombre de usuario')
+      buildError('El correo ya existe', 'correo', 'Use otro correo o restablezca la contraseña de esa cuenta')
     );
   }
 
-  // 3. Hashear contraseña con Argon2id (RNF-1)
-  const hash = await hashPassword(password);
-
-  // 4. Crear usuario (RF-28)
-  await UserModel.create(usuario, hash, rol);
+  // 4. Hashear contraseña con Argon2id (RNF-1) y crear la cuenta (RF-28)
+  const passwordHash = await hashPassword(password);
+  await UserModel.createConCorreo({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol });
 
   // 5. Responder 201 con mensaje de alta exitosa (RF-28)
   return res.status(201).json({ mensaje: 'Usuario dado de alta correctamente' });

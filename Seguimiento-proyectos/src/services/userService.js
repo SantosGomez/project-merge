@@ -16,17 +16,16 @@ export const crearUserService = (opciones = {}) => {
   const api = opciones.api ?? apiPorDefecto
 
   /**
-   * POST /usuarios: da de alta una cuenta (RF-28 a RF-30).
-   * Usuario y contraseña se envían sin espacios extremos, como en el login: si no,
+   * POST /usuarios: da de alta una cuenta con nombre y correo (RF-28 a RF-30).
+   * Todo se envía sin espacios extremos y el correo en minúsculas, como en el login: si no,
    * una contraseña con espacios quedaría guardada así y la cuenta no podría entrar.
-   * @param {string} usuario - nombre de la cuenta nueva.
-   * @param {string} password - contraseña de al menos 8 caracteres.
-   * @param {string} rol - administrador, contador o usuarios_de_sistema.
+   * @param {{ nombre: string, correo: string, password: string, rol: string }} cuenta
    * @returns {Promise<string>} mensaje de alta del backend.
    */
-  const crearUsuario = async (usuario, password, rol) => {
+  const crearUsuario = async ({ nombre, correo, password, rol }) => {
     const { data } = await api.post('/usuarios', {
-      usuario: usuario.trim(),
+      nombre: nombre.trim(),
+      correo: correo.trim().toLowerCase(),
       password: password.trim(),
       rol,
     })

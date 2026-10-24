@@ -42,175 +42,133 @@ async function loginContador() {
   return iniciarSesion(servidor.puerto, contador.correo, contador.password);
 }
 
-// ---------- RF-28: admin da de alta un usuario ----------
-async function testAltaUsuarioComoAdmin() {
-  const token = await loginAdmin();
-  const nombre = nombreDePrueba('alta');
-
-  const respuesta = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: nombre, password: 'NuevoPass1234', rol: 'contador' },
-    token
-  );
-  // El usuario queda registrado para que la limpieza lo borre, aunque falle un aserto.
-  registrarUsuarioCreado(nombre);
-
-  assert.strictEqual(respuesta.statusCode, 201, 'debe responder 201 al dar de alta usuario');
-  assert.ok(
-    respuesta.body.mensaje.includes('Usuario dado de alta correctamente'),
-    'mensaje debe indicar alta exitosa'
-  );
-
-  // El alta deja una sola fila con ese nombre, con la contraseña hasheada con Argon2id (RF-28, RNF-1).
-  const filas = await query(
-    'SELECT id, usuario, password_hash, rol FROM usuarios WHERE usuario = ?',
-    [nombre]
-  );
-  assert.strictEqual(filas.length, 1, 'debe existir una sola fila con el nombre dado de alta');
-  assert.strictEqual(filas[0].usuario, nombre, 'la fila debe tener el nombre dado de alta');
-  assert.ok(
-    filas[0].password_hash.startsWith('$argon2id$'),
-    'la contraseña debe estar hasheada con Argon2id'
-  );
-  assert.strictEqual(filas[0].rol, 'contador', 'la fila debe tener el rol indicado en el alta');
+// Correo único de prueba (en minúsculas); se registra para que la limpieza borre la cuenta.
+function correoDePrueba(prefijo) {
+  const correo = `${nombreDePrueba(prefijo)}@prueba.local`;
+  registrarUsuarioCreado(correo);
+  return correo;
 }
 
-// ---------- RF-29: contador no puede dar de alta usuarios (acceso denegado) ----------
-async function testAltaUsuarioComoContadorEsDenegado() {
-  const token = await loginContador();
-  const nombre = nombreDePrueba('denegado');
+// Alta por la API con el token dado.
+function altaPorApi(cuerpo, token) {
+  return peticion(servidor.puerto, 'POST', '/usuarios', cuerpo, token);
+}
 
-  const respuesta = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: nombre, password: 'OtroPass1234', rol: 'contador' },
+// ---------- RF-28: admin da de alta una cuenta con nombre y correo ----------
+async function testAltaUsuarioComoAdmin() {
+  const token = await loginAdmin();
+  const correo = correoDePrueba('alta');
+
+  const respuesta = await altaPorApi(
+    { nombre: '  Ana Karen Ramírez  ', correo: `  ${correo.toUpperCase()}  `, password: 'NuevoPass1234', rol: 'contador' },
     token
   );
+
+  assert.strictEqual(respuesta.statusCode, 201, 'debe responder 201 al dar de alta la cuenta');
+  assert.ok(respuesta.body.mensaje.includes('Usuario dado de alta correctamente'), 'mensaje de alta exitosa');
+
+  // Una sola fila, con el correo recortado y en minúsculas y la contraseña con Argon2id (RF-28, RNF-1).
+  const filas = await query('SELECT nombre, correo, password_hash, rol FROM usuarios WHERE correo = ?', [correo]);
+  assert.strictEqual(filas.length, 1, 'debe existir una sola cuenta con ese correo');
+  assert.strictEqual(filas[0].nombre, 'Ana Karen Ramírez', 'el nombre se guarda sin espacios extremos');
+  assert.ok(filas[0].password_hash.startsWith('$argon2id$'), 'la contraseña debe estar hasheada con Argon2id');
+  assert.strictEqual(filas[0].rol, 'contador', 'la cuenta tiene el rol indicado');
+
+  const entra = await peticion(servidor.puerto, 'POST', '/auth/login', { correo, password: 'NuevoPass1234' });
+  assert.strictEqual(entra.statusCode, 200, 'la cuenta nueva entra con su correo');
+}
+
+// ---------- RF-29: contador no puede dar de alta cuentas (acceso denegado) ----------
+async function testAltaUsuarioComoContadorEsDenegado() {
+  const token = await loginContador();
+  const correo = correoDePrueba('denegado');
+
+  const respuesta = await altaPorApi({ nombre: 'Denegado', correo, password: 'OtroPass1234', rol: 'contador' }, token);
   assert.strictEqual(respuesta.statusCode, 403, 'debe responder 403 para contador');
   assert.ok(
     respuesta.body.mensaje.includes('Acceso denegado') || respuesta.body.mensaje.includes('Rol insuficiente'),
     'mensaje debe ser de acceso denegado'
   );
 
-  // El contador no dio de alta a nadie: no debe existir ninguna fila con ese nombre.
-  const filas = await query('SELECT id FROM usuarios WHERE usuario = ?', [nombre]);
-  assert.strictEqual(filas.length, 0, 'el contador no debe poder crear usuarios');
+  const filas = await query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
+  assert.strictEqual(filas.length, 0, 'el contador no debe poder crear cuentas');
 }
 
 // ---------- RF-30: datos inválidos al dar de alta ----------
 async function testAltaUsuarioDatosInvalidos() {
   const token = await loginAdmin();
+  const valida = { nombre: 'Cuenta de prueba', password: 'Pass1234', rol: 'contador' };
 
-  // Usuario vacío
-  const r1 = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: '', password: 'Pass1234', rol: 'contador' },
-    token
-  );
-  assert.strictEqual(r1.statusCode, 400, 'debe responder 400 con usuario vacío');
+  const sinNombre = await altaPorApi({ ...valida, nombre: '   ', correo: correoDePrueba('sin_nombre') }, token);
+  assert.strictEqual(sinNombre.statusCode, 400, 'debe responder 400 sin nombre');
+  assert.ok(sinNombre.body.mensaje.includes('nombre'), 'el mensaje debe mencionar el nombre');
 
-  // Contraseña corta (< 8 caracteres)
-  const r2 = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: nombreDePrueba('clave_corta'), password: 'corto', rol: 'contador' },
-    token
-  );
-  assert.strictEqual(r2.statusCode, 400, 'debe responder 400 con contraseña corta');
-  assert.ok(r2.body.mensaje.includes('contraseña'), 'mensaje debe mencionar contraseña');
+  const sinCorreo = await altaPorApi({ ...valida, correo: '' }, token);
+  assert.strictEqual(sinCorreo.statusCode, 400, 'debe responder 400 sin correo');
+  assert.ok(sinCorreo.body.mensaje.includes('correo'), 'el mensaje debe mencionar el correo');
 
-  // Rol no permitido
-  const r3 = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: nombreDePrueba('rol_invalido'), password: 'Pass1234', rol: 'invitado' },
-    token
-  );
-  assert.strictEqual(r3.statusCode, 400, 'debe responder 400 con rol inválido');
-  assert.ok(r3.body.mensaje.includes('rol'), 'mensaje debe mencionar rol');
+  registrarUsuarioCreado('sin-arroba.delgrow.mx');
+  const correoRaro = await altaPorApi({ ...valida, correo: 'sin-arroba.delgrow.mx' }, token);
+  assert.strictEqual(correoRaro.statusCode, 400, 'debe responder 400 con un correo no válido');
+  assert.ok(correoRaro.body.mensaje.includes('correo'), 'el mensaje debe mencionar el correo');
 
-  // Usuario ya existe (el administrador propio de esta prueba)
-  const r4 = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: administrador.usuario, password: 'Pass1234', rol: 'contador' },
-    token
-  );
-  assert.strictEqual(r4.statusCode, 400, 'debe responder 400 si el usuario ya existe');
-  assert.ok(r4.body.mensaje.includes('usuario ya existe'), 'mensaje debe indicar que el usuario ya existe');
+  const corta = await altaPorApi({ ...valida, correo: correoDePrueba('clave_corta'), password: 'corto' }, token);
+  assert.strictEqual(corta.statusCode, 400, 'debe responder 400 con contraseña corta');
+  assert.ok(corta.body.mensaje.includes('contraseña'), 'mensaje debe mencionar contraseña');
+
+  const rol = await altaPorApi({ ...valida, correo: correoDePrueba('rol_invalido'), rol: 'invitado' }, token);
+  assert.strictEqual(rol.statusCode, 400, 'debe responder 400 con rol inválido');
+  assert.ok(rol.body.mensaje.includes('rol'), 'mensaje debe mencionar rol');
+
+  const repetido = await altaPorApi({ ...valida, correo: administrador.correo }, token);
+  assert.strictEqual(repetido.statusCode, 400, 'debe responder 400 si el correo ya existe');
+  assert.ok(repetido.body.mensaje.includes('correo ya existe'), 'mensaje debe indicar que el correo ya existe');
 }
 
-// ---------- RF-45, criterio 40: duplicado que solo difiere en mayúsculas ----------
+// ---------- RF-45, criterio 40: correo repetido que solo difiere en mayúsculas ----------
 async function testAltaDuplicadaConOtraCapitalizacionRechaza() {
   const token = await loginAdmin();
-  const nombreEnMayusculas = contador.usuario.toUpperCase();
 
-  const respuesta = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: nombreEnMayusculas, password: 'Pass1234', rol: 'contador' },
+  const respuesta = await altaPorApi(
+    { nombre: 'Duplicado', correo: contador.correo.toUpperCase(), password: 'Pass1234', rol: 'contador' },
     token
   );
-  // Por si el alta llegara a crearse, la limpieza la borra.
-  registrarUsuarioCreado(nombreEnMayusculas);
 
-  assert.strictEqual(respuesta.statusCode, 400, 'debe responder 400 si el nombre solo difiere en mayúsculas');
-  assert.ok(respuesta.body.mensaje.includes('usuario ya existe'), 'mensaje debe indicar que el usuario ya existe');
+  assert.strictEqual(respuesta.statusCode, 400, 'debe responder 400 si el correo solo difiere en mayúsculas');
+  assert.ok(respuesta.body.mensaje.includes('correo ya existe'), 'mensaje debe indicar que el correo ya existe');
 
-  const filas = await query('SELECT id FROM usuarios WHERE LOWER(usuario) = LOWER(?)', [contador.usuario]);
-  assert.strictEqual(filas.length, 1, 'no debe crearse una segunda cuenta con el mismo nombre');
+  const filas = await query('SELECT id FROM usuarios WHERE correo = ?', [contador.correo]);
+  assert.strictEqual(filas.length, 1, 'no debe crearse una segunda cuenta con el mismo correo');
 }
 
-// Nombre de prueba de la longitud exacta indicada, con el prefijo `zz_test_`.
-function nombreDeLongitud(longitud) {
+// Correo de prueba de la longitud exacta indicada (termina en @prueba.local).
+function correoDeLongitud(longitud) {
+  const dominio = '@prueba.local';
   const base = nombreDePrueba('largo');
-  return (base + 'x'.repeat(longitud)).slice(0, longitud);
+  const correo = (base + 'x'.repeat(longitud)).slice(0, longitud - dominio.length) + dominio;
+  registrarUsuarioCreado(correo);
+  return correo;
 }
 
-// ---------- RF-30, criterio 42: máximo de 100 caracteres del nombre de usuario ----------
+// ---------- RF-30: máximo de 150 caracteres del nombre y del correo ----------
 async function testAltaConNombreDemasiadoLargoRechaza() {
   const token = await loginAdmin();
+  const base = { password: 'Pass12345', rol: 'contador' };
 
-  const nombreLargo = nombreDeLongitud(101);
-  // Si la base de datos truncara el nombre, la fila tendría sus primeros 100 caracteres.
-  const truncado = nombreLargo.slice(0, 100);
-  const largo = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: nombreLargo, password: 'Pass12345', rol: 'contador' },
-    token
-  );
-  registrarUsuarioCreado(nombreLargo);
-  registrarUsuarioCreado(truncado);
+  const correoLargo = correoDeLongitud(151);
+  const largo = await altaPorApi({ ...base, nombre: 'Correo largo', correo: correoLargo }, token);
+  assert.strictEqual(largo.statusCode, 400, 'un correo de 151 caracteres debe responder 400');
+  assert.ok(String(largo.body.mensaje).includes('150'), 'el mensaje debe indicar el máximo de 150 caracteres');
 
-  assert.strictEqual(largo.statusCode, 400, 'un nombre de 101 caracteres debe responder 400');
-  assert.ok(String(largo.body.mensaje).includes('100'), 'el mensaje debe indicar el máximo de 100 caracteres');
-  const filasLargo = await query('SELECT id FROM usuarios WHERE usuario IN (?, ?)', [nombreLargo, truncado]);
-  assert.strictEqual(filasLargo.length, 0, 'no debe crearse ninguna cuenta con el nombre largo');
+  const nombreLargo = await altaPorApi({ ...base, nombre: 'N'.repeat(151), correo: correoDePrueba('nombre_largo') }, token);
+  assert.strictEqual(nombreLargo.statusCode, 400, 'un nombre de 151 caracteres debe responder 400');
+  assert.ok(String(nombreLargo.body.mensaje).includes('150'), 'el mensaje debe indicar el máximo de 150 caracteres');
 
-  const nombreJusto = nombreDeLongitud(100);
-  const justo = await peticion(
-    servidor.puerto,
-    'POST',
-    '/usuarios',
-    { usuario: nombreJusto, password: 'Pass12345', rol: 'contador' },
-    token
-  );
-  registrarUsuarioCreado(nombreJusto);
-
-  assert.strictEqual(justo.statusCode, 201, 'un nombre de exactamente 100 caracteres debe aceptarse');
-  const filasJusto = await query('SELECT id FROM usuarios WHERE usuario = ?', [nombreJusto]);
-  assert.strictEqual(filasJusto.length, 1, 'la cuenta de 100 caracteres debe existir');
+  const correoJusto = correoDeLongitud(150);
+  const justo = await altaPorApi({ ...base, nombre: 'N'.repeat(150), correo: correoJusto }, token);
+  assert.strictEqual(justo.statusCode, 201, 'nombre y correo de exactamente 150 caracteres se aceptan');
+  const filas = await query('SELECT id FROM usuarios WHERE correo = ?', [correoJusto]);
+  assert.strictEqual(filas.length, 1, 'la cuenta de 150 caracteres debe existir');
 }
 
 // ---------- Apoyos del restablecimiento de contraseña (RF-42 a RF-44) ----------
@@ -459,14 +417,14 @@ describe('rutas de usuarios', () => {
     await cerrarBaseDeDatos();
   });
 
-  test('el administrador da de alta un usuario con contraseña Argon2id', testAltaUsuarioComoAdmin);
+  test('el administrador da de alta una cuenta con nombre y correo', testAltaUsuarioComoAdmin);
   test('el contador no puede dar de alta usuarios', testAltaUsuarioComoContadorEsDenegado);
   test('los datos inválidos de alta responden 400', testAltaUsuarioDatosInvalidos);
-  test('el alta con un nombre que solo difiere en mayúsculas responde 400', testAltaDuplicadaConOtraCapitalizacionRechaza);
+  test('el alta con un correo que solo difiere en mayúsculas responde 400', testAltaDuplicadaConOtraCapitalizacionRechaza);
   test('restablecer la contraseña la cambia con Argon2id e invalida todas las sesiones', testRestablecerContrasenaCorrecto);
   test('restablecer una cuenta inexistente responde 404, un contador recibe 403 y se puede restablecer la propia', testRestablecerNoEncontradoDenegadoYPropio);
   test('restablecer con una contraseña nueva inválida responde 400 sin cambiarla', testRestablecerConContrasenaInvalida);
-  test('el alta con un nombre de más de 100 caracteres responde 400 y con 100 se acepta', testAltaConNombreDemasiadoLargoRechaza);
+  test('el alta con nombre o correo de más de 150 caracteres responde 400 y con 150 se acepta', testAltaConNombreDemasiadoLargoRechaza);
   test('se restablece una cuenta de administrador, una del seed y la propia del administrador', testRestablecerAdministradorSeedYPropia);
   test('si falla la revocación de sesiones responde 503 y el reintento las revoca', testFalloAlRevocarSesionesYReintento);
 });

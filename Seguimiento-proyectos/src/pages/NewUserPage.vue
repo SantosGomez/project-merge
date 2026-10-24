@@ -2,7 +2,7 @@
   <q-page class="new-user-page">
     <div class="new-user-page__head">
       <p class="new-user-page__lead">
-        Da de alta una cuenta nueva. La persona entrará con este usuario y esta contraseña, y verá
+        Da de alta una cuenta nueva. La persona entrará con este correo y esta contraseña, y verá
         las pantallas del rol que elijas.
       </p>
     </div>
@@ -20,27 +20,51 @@
         @submit.prevent="darDeAlta"
       >
         <div class="form-group">
-          <label for="user-field" class="form-label"
-            >Usuario <span aria-label="obligatorio" class="required-mark">*</span></label
+          <label for="name-field" class="form-label"
+            >Nombre <span aria-label="obligatorio" class="required-mark">*</span></label
           >
           <q-input
-            for="user-field"
-            v-model="usuario"
+            for="name-field"
+            v-model="nombre"
             type="text"
-            placeholder="Nombre con el que entrará"
-            maxlength="101"
+            placeholder="Nombre completo de la persona"
+            maxlength="151"
             autocomplete="off"
             outlined
             dense
             aria-required="true"
-            aria-describedby="user-help"
-            :error="!!errores.usuario"
-            :error-message="errores.usuario"
-            @update:model-value="alEditar('usuario')"
+            aria-describedby="name-help"
+            :error="!!errores.nombre"
+            :error-message="errores.nombre"
+            @update:model-value="alEditar('nombre')"
           >
-            <q-tooltip>Nombre de usuario de la cuenta nueva; no puede repetir uno existente.</q-tooltip>
+            <q-tooltip>Nombre que se verá en el menú y en el directorio; sin títulos como Lic. o Ing.</q-tooltip>
           </q-input>
-          <p id="user-help" class="form-help">Máximo 100 caracteres. No puede estar ya en uso.</p>
+          <p id="name-help" class="form-help">Máximo 150 caracteres.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="email-field" class="form-label"
+            >Correo <span aria-label="obligatorio" class="required-mark">*</span></label
+          >
+          <q-input
+            for="email-field"
+            v-model="correo"
+            type="email"
+            placeholder="nombre@delgrow.mx"
+            maxlength="151"
+            autocomplete="off"
+            outlined
+            dense
+            aria-required="true"
+            aria-describedby="email-help"
+            :error="!!errores.correo"
+            :error-message="errores.correo"
+            @update:model-value="alEditar('correo')"
+          >
+            <q-tooltip>Correo con el que la persona iniciará sesión; no puede repetir uno existente.</q-tooltip>
+          </q-input>
+          <p id="email-help" class="form-help">Máximo 150 caracteres. No puede estar ya en uso.</p>
         </div>
 
         <div class="form-group">
@@ -133,8 +157,11 @@ import { validarAltaUsuario } from '../utils/validators.js'
 
 /** Texto de cada código de `validarAltaUsuario`. */
 const MENSAJES = {
-  usuario_requerido: 'El usuario es obligatorio.',
-  usuario_demasiado_largo: 'El usuario supera los 100 caracteres permitidos.',
+  nombre_requerido: 'El nombre es obligatorio.',
+  nombre_demasiado_largo: 'El nombre supera los 150 caracteres permitidos.',
+  correo_requerido: 'El correo es obligatorio.',
+  correo_demasiado_largo: 'El correo supera los 150 caracteres permitidos.',
+  correo_invalido: 'Escribe un correo válido, por ejemplo nombre@delgrow.mx.',
   password_requerida: 'La contraseña es obligatoria.',
   password_corta: 'La contraseña debe tener al menos 8 caracteres.',
   rol_requerido: 'Elige el rol de la cuenta.',
@@ -145,10 +172,11 @@ const opcionesRol = Object.values(PROFILES).map((valor) => ({
   value: valor,
 }))
 
-const usuario = ref('')
+const nombre = ref('')
+const correo = ref('')
 const password = ref('')
 const rol = ref(null)
-const errores = reactive({ usuario: null, password: null, rol: null })
+const errores = reactive({ nombre: null, correo: null, password: null, rol: null })
 const errorGeneral = ref('')
 const mensajeExito = ref('')
 const guardando = ref(false)
@@ -165,7 +193,7 @@ const darDeAlta = async () => {
   errorGeneral.value = ''
   mensajeExito.value = ''
 
-  const validacion = validarAltaUsuario(usuario.value, password.value, rol.value)
+  const validacion = validarAltaUsuario(nombre.value, correo.value, password.value, rol.value)
   for (const campo of Object.keys(errores)) {
     const codigo = validacion.errores[campo]
     errores[campo] = codigo ? MENSAJES[codigo] : null
@@ -174,14 +202,20 @@ const darDeAlta = async () => {
 
   guardando.value = true
   try {
-    mensajeExito.value = await crearUsuario(usuario.value, password.value, rol.value)
-    usuario.value = ''
+    mensajeExito.value = await crearUsuario({
+      nombre: nombre.value,
+      correo: correo.value,
+      password: password.value,
+      rol: rol.value,
+    })
+    nombre.value = ''
+    correo.value = ''
     password.value = ''
     rol.value = null
   } catch (error) {
-    // Con las validaciones previas, el único 400 posible es el usuario repetido.
+    // Con las validaciones previas, el único 400 posible es el correo repetido.
     if (error?.codigoHttp === 400) {
-      errores.usuario = error.mensaje
+      errores.correo = error.mensaje
     } else {
       errorGeneral.value = error?.mensaje ?? 'No se pudo dar de alta la cuenta. Intenta de nuevo.'
     }

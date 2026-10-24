@@ -3,7 +3,7 @@
 
 import {
   MAX_CLIENT_LENGTH,
-  MAX_USERNAME_LENGTH,
+  MAX_NOMBRE_CORREO_LENGTH,
   MIN_PASSWORD_LENGTH,
   PROFILES,
 } from './constants.js'
@@ -74,24 +74,36 @@ export const validarPrioridad = (prioridad) => {
   return { valido: true, error: null }
 }
 
-/**
- * Valida el alta de una cuenta de usuario (historia 9a).
- * Mismas reglas que el backend: usuario de hasta 100 caracteres, contraseña de
- * al menos 8 y uno de los tres roles.
- * @returns {{ valido: boolean, errores: { usuario: string|null, password: string|null, rol: string|null } }}
- */
-export const validarAltaUsuario = (usuario, password, rol) => {
-  const requeridos = validarCredenciales(usuario, password)
+/** Forma de un correo: algo@dominio.ext, sin espacios (la misma regla que el backend). */
+const FORMA_DE_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/**
+ * Error de un texto obligatorio con máximo, o null si es válido. Los espacios extremos no cuentan.
+ * @returns {string|null} `<campo>_requerido`, `<campo>_demasiado_largo` o null.
+ */
+const errorDeTextoObligatorio = (valor, campo) => {
+  const limpio = normalizar(valor)
+  if (limpio.length === 0) return `${campo}_requerido`
+  if (limpio.length > MAX_NOMBRE_CORREO_LENGTH) return `${campo}_demasiado_largo`
+  return null
+}
+
+/**
+ * Valida el alta de una cuenta (historia 9a, con nombre y correo).
+ * Mismas reglas que el backend: nombre y correo de hasta 150 caracteres, correo con forma
+ * de correo, contraseña de al menos 8 y uno de los tres roles.
+ * @returns {{ valido: boolean, errores: { nombre: string|null, correo: string|null, password: string|null, rol: string|null } }}
+ */
+export const validarAltaUsuario = (nombre, correo, password, rol) => {
   const errores = {
-    usuario: requeridos.faltantes.includes('username') ? 'usuario_requerido' : null,
-    password: requeridos.faltantes.includes('password') ? 'password_requerida' : null,
+    nombre: errorDeTextoObligatorio(nombre, 'nombre'),
+    correo: errorDeTextoObligatorio(correo, 'correo'),
+    password: normalizar(password).length === 0 ? 'password_requerida' : null,
     rol: Object.values(PROFILES).includes(rol) ? null : 'rol_requerido',
   }
 
-  // Igual que en el cliente, los espacios extremos no cuentan para el límite.
-  if (errores.usuario === null && normalizar(usuario).length > MAX_USERNAME_LENGTH) {
-    errores.usuario = 'usuario_demasiado_largo'
+  if (errores.correo === null && !FORMA_DE_CORREO.test(normalizar(correo))) {
+    errores.correo = 'correo_invalido'
   }
 
   // El login recorta la contraseña antes de enviarla, así que el mínimo se mide igual.

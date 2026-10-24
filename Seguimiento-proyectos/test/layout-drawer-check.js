@@ -653,9 +653,18 @@ describe('Alta de usuario (historia 9a) — verificación estática', () => {
     const limpiar = pagina.slice(pagina.indexOf('const alEditar'), pagina.indexOf('\nconst ', pagina.indexOf('const alEditar') + 1))
     assert.match(limpiar, /mensajeExito\.value = ''/, 'el aviso de éxito se oculta')
     assert.match(limpiar, /errores\[campo\] = null/, 'se limpia el error del campo editado')
-    for (const campo of ['usuario', 'password', 'rol']) {
+    for (const campo of ['nombre', 'correo', 'password', 'rol']) {
       assert.ok(pagina.includes(`@update:model-value="alEditar('${campo}')"`), `${campo} usa alEditar`)
     }
+  })
+
+  it('la pantalla de alta pide nombre y correo (no usuario) y el correo repetido sale bajo Correo', () => {
+    const pagina = read('../src/pages/NewUserPage.vue')
+    const etiquetas = [...pagina.matchAll(/class="form-label"\s*>([^<]+)</g)].map((m) => m[1].trim())
+    assert.deepEqual(etiquetas, ['Nombre', 'Correo', 'Contraseña', 'Rol'], 'campos de la tabla usuarios, en orden')
+    assert.match(pagina, /v-model="correo"[\s\S]*?type="email"/, 'el correo abre el teclado de correo')
+    assert.match(pagina, /errores\.correo = error\.mensaje/, 'el 400 del backend (correo repetido) va bajo Correo')
+    assert.match(pagina, /crearUsuario\(\{\s*nombre: nombre\.value,\s*correo: correo\.value,/, 'envía nombre y correo')
   })
 
   it('el aviso de acceso denegado lleva a la pantalla principal de cualquier rol', () => {

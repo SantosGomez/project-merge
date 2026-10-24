@@ -112,6 +112,16 @@ function validateRol(rol) {
 }
 
 /**
+ * Indica si un texto tiene forma de correo (algo@dominio.ext, sin espacios).
+ * Se usa en el alta de cuentas y en la importación desde el Excel.
+ * @param {string} correo - Correo ya recortado.
+ * @returns {boolean} true si tiene forma de correo.
+ */
+function esCorreoValido(correo) {
+  return typeof correo === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+}
+
+/**
  * Convierte un identificador de contador en un entero positivo.
  * RF-35.
  * Solo acepta valores formados exclusivamente por dígitos ('12' -> 12);
@@ -144,5 +154,6 @@ module.exports = {
   validateStatus,
   validatePriority,
   validateRol,
+  esCorreoValido,
   parseCounterId,
 };
