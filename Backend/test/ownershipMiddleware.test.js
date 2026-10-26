@@ -69,6 +69,28 @@ async function testCheckCaseOwnershipPermiteCasoPropio() {
   assert.strictEqual(res.statusCode, 200, 'no debe establecer código de error');
 }
 
+// ---------- El middleware deja el caso en req.caso para el controlador ----------
+async function testCheckCaseOwnershipDejaCasoEnReq() {
+  const req = reqConUsuarioYParam(contadorPropietario.id, String(casoPropio));
+  const res = crearRes();
+  const next = crearNext();
+  await checkCaseOwnership(req, res, next);
+  assert.strictEqual(next.llamado(), true, 'debe llamar a next con un caso propio');
+  assert.ok(req.caso, 'debe dejar el caso en req.caso');
+  assert.strictEqual(req.caso.id, casoPropio, 'req.caso debe ser el caso solicitado');
+}
+
+// ---------- RF-16, RF-35: un id con letras no se convierte en otro caso ----------
+async function testCheckCaseOwnershipRechazaIdNoNumerico() {
+  // MariaDB convierte '123abc' en 123: sin validar, se abriría el caso 123.
+  const req = reqConUsuarioYParam(contadorPropietario.id, `${casoPropio}abc`);
+  const res = crearRes();
+  const next = crearNext();
+  await checkCaseOwnership(req, res, next);
+  assert.strictEqual(res.statusCode, 404, 'un id que no es solo dígitos debe responder 404');
+  assert.strictEqual(next.llamado(), false, 'no debe llamar a next con un id inválido');
+}
+
 // ---------- RF-16: caso inexistente ----------
 async function testCheckCaseOwnershipRechazaCasoInexistente() {
   const req = reqConUsuarioYParam(contadorPropietario.id, casoEliminado);
@@ -143,4 +165,6 @@ describe('middleware de propiedad del caso', () => {
   test('rechaza con 404 un caso inexistente', testCheckCaseOwnershipRechazaCasoInexistente);
   test('rechaza con 403 un caso de otro contador', testCheckCaseOwnershipRechazaCasoAjeno);
   test('rechaza sin usuario autenticado', testCheckCaseOwnershipRechazaSinUsuario);
+  test('deja el caso propio en req.caso', testCheckCaseOwnershipDejaCasoEnReq);
+  test('rechaza con 404 un id que no es solo dígitos', testCheckCaseOwnershipRechazaIdNoNumerico);
 });

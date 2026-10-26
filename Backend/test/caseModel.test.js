@@ -13,7 +13,9 @@ const {
   create,
   updateStatus,
   updatePriority,
+  updatePatch,
 } = require('../src/models/CaseModel');
+const { formatearFechaISO } = require('../src/utils/dateUtils');
 
 /**
  * Pruebas del modelo de casos (consultas SQL contra MariaDB).
@@ -172,6 +174,38 @@ async function testUpdatePriorityActualizaPrioridad() {
   assert.strictEqual(caso.prioridad, 'Alta', 'updatePriority debe cambiar la prioridad');
 }
 
+async function testUpdatePatchActualizaVariosCamposALaVez() {
+  const contador = await crearUsuarioDePrueba('contador');
+  const casoId = await create({
+    contador_id: contador.id,
+    cliente: 'Cliente Patch',
+    estado: 'Pendiente',
+    prioridad: 'Media',
+    fecha_inicio: '2026-12-31',
+    fecha_vencimiento: '2027-01-14',
+  });
+  await updatePatch(casoId, { estado: 'En proceso', prioridad: 'Alta', fecha_vencimiento: '2027-01-07' });
+  const caso = await findById(casoId);
+  assert.strictEqual(caso.estado, 'En proceso', 'updatePatch debe cambiar el estado');
+  assert.strictEqual(caso.prioridad, 'Alta', 'updatePatch debe cambiar la prioridad');
+  assert.strictEqual(formatearFechaISO(caso.fecha_vencimiento), '2027-01-07', 'updatePatch debe cambiar el vencimiento');
+  assert.strictEqual(formatearFechaISO(caso.fecha_inicio), '2026-12-31', 'la fecha de inicio no debe cambiar');
+}
+
+async function testUpdatePatchConUnSoloCampo() {
+  const contador = await crearUsuarioDePrueba('contador');
+  const casoId = await create({
+    contador_id: contador.id,
+    cliente: 'Cliente Patch Uno',
+    estado: 'Pendiente',
+    prioridad: 'Baja',
+  });
+  await updatePatch(casoId, { estado: 'Finalizado' });
+  const caso = await findById(casoId);
+  assert.strictEqual(caso.estado, 'Finalizado', 'updatePatch con un solo campo debe guardarlo');
+  assert.strictEqual(caso.prioridad, 'Baja', 'los campos no enviados no cambian');
+}
+
 describe('CaseModel', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -190,4 +224,6 @@ describe('CaseModel', () => {
   test('create crea el caso con estado Pendiente', testCreateCreaCasoConEstadoPendiente);
   test('updateStatus actualiza el estado', testUpdateStatusActualizaEstado);
   test('updatePriority actualiza la prioridad', testUpdatePriorityActualizaPrioridad);
+  test('updatePatch actualiza estado, prioridad y vencimiento a la vez', testUpdatePatchActualizaVariosCamposALaVez);
+  test('updatePatch con un solo campo lo guarda', testUpdatePatchConUnSoloCampo);
 });

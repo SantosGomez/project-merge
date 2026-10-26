@@ -22,6 +22,7 @@ import {
   prioridadABackend,
   prioridadDeBackend,
 } from '../utils/traduccionBackend.js'
+import { fechaADominioBackend } from '../utils/fechasCaso.js'
 
 // Acepta el código interno y la forma del backend; null si no es válido.
 const aFormaBackend = (valor, aBackend, deBackend) => {
@@ -62,6 +63,14 @@ const errorDeEstadoInvalido = () =>
     'Use uno de los siguientes: Pendiente, En proceso, Finalizado',
   )
 
+const errorDeFechaInvalida = () =>
+  crearErrorFrontend(
+    ESTADOS_ERROR.DATOS_INVALIDOS,
+    'La fecha de inicio no es válida',
+    'la fecha de inicio del caso',
+    'Use una fecha real con formato DD-MM-AAAA',
+  )
+
 /**
  * Crea el servicio de casos con api inyectable.
  * @param {Object} [opciones] - inyección para pruebas.
@@ -97,13 +106,28 @@ export const crearCaseService = (opciones = {}) => {
    * @param {string} prioridad - código interno (`alta`) o forma del backend (`Alta`).
    * @returns {Promise<Object>} caso registrado con estado `pendiente`.
    */
-  const crearCaso = async (cliente, prioridad) => {
+  const crearCaso = async (cliente, prioridad, fechaInicio, descripcion, observaciones) => {
     const prioridadBackend = prioridadParaEnviar(prioridad)
     if (prioridadBackend === null) {
       throw errorDePrioridadInvalida()
     }
 
-    const { data } = await api.post('/casos', { cliente, prioridad: prioridadBackend })
+    // Cuerpo base: cliente y prioridad (siempre enviados)
+    const cuerpo = { cliente, prioridad: prioridadBackend }
+
+    // Campos opcionales: solo se envían si vienen definidos.
+    // La fecha se traduce aquí (único lugar): el formulario usa DD-MM-AAAA y la API AAAA-MM-DD.
+    if (fechaInicio !== undefined) {
+      const fechaBackend = fechaADominioBackend(fechaInicio)
+      if (fechaBackend === null) {
+        throw errorDeFechaInvalida()
+      }
+      cuerpo.fecha_inicio = fechaBackend
+    }
+    if (descripcion !== undefined) cuerpo.descripcion = descripcion
+    if (observaciones !== undefined) cuerpo.observaciones = observaciones
+
+    const { data } = await api.post('/casos', cuerpo)
     return leerCaso(data, 'el caso registrado')
   }
 

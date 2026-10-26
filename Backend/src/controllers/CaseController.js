@@ -1,21 +1,24 @@
 const CaseModel = require('../models/CaseModel');
 const {
   validarCampoTexto,
+  validarTextoOpcional,
   validateNewCaseInput,
   validateStatus,
   validatePriority,
 } = require('../utils/validationUtils');
 const { buildError } = require('../utils/errorUtils');
-const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
+const {
+  nowLocal,
+  formatLocalDate,
+  formatearFechaISO,
+  parseFechaInicio,
+  calcularFechaVencimiento,
+  casoConFechasLocales,
+} = require('../utils/dateUtils');
 
 // Devuelve el caso con sus fechas como texto en hora local YYYY-MM-DD HH:mm:ss (RF-48, RNF-2).
-function conFechasLocales(caso) {
-  return {
-    ...caso,
-    creado_en: formatLocalDate(caso.creado_en),
-    actualizado_en: formatLocalDate(caso.actualizado_en),
-  };
-}
+// Serializador compartido de dateUtils (mismo que usa CounterController).
+const conFechasLocales = casoConFechasLocales;
 
 /**
  * Registra un nuevo caso (solo contador autenticado).
@@ -60,12 +63,61 @@ async function createCase(req, res) {
     return res.status(400).json(buildError(queOcurrio, sobreQue, queHacer));
   }
 
+  // Descripción y observaciones son opcionales: ausente se guarda como null.
+  // Si vienen, validan tipo y longitud máxima (RF-21).
+  const descripcionValidacion = validarTextoOpcional(req.body.descripcion, 'descripción', 1000);
+  if (descripcionValidacion.estado === 'tipo_invalido') {
+    return res.status(400).json(buildError('Dato inválido', 'descripción', 'La descripción debe enviarse como texto'));
+  }
+  if (descripcionValidacion.estado === 'demasiado_largo') {
+    return res.status(400).json(
+      buildError('La descripción supera el máximo de caracteres permitidos', 'descripción', 'La descripción debe tener máximo 1000 caracteres')
+    );
+  }
+  const descripcion = descripcionValidacion.estado === 'valido' ? descripcionValidacion.valor : null;
+
+  const observacionesValidacion = validarTextoOpcional(req.body.observaciones, 'observaciones', 2000);
+  if (observacionesValidacion.estado === 'tipo_invalido') {
+    return res.status(400).json(buildError('Dato inválido', 'observaciones', 'Las observaciones deben enviarse como texto'));
+  }
+  if (observacionesValidacion.estado === 'demasiado_largo') {
+    return res.status(400).json(
+      buildError('Las observaciones superan el máximo de caracteres permitidos', 'observaciones', 'Las observaciones deben tener máximo 2000 caracteres')
+    );
+  }
+  const observaciones = observacionesValidacion.estado === 'valido' ? observacionesValidacion.valor : null;
+
   const ahora = formatLocalDate(nowLocal());
+
+  // Fecha de inicio: si el frontend la envía, se interpreta sin desplazar el día;
+  // si no viene (o viene vacía), hoy. Una fecha inválida se rechaza antes de tocar la BD:
+  // el cálculo de días hábiles no puede recibir un Invalid Date (antes colgaba el servidor).
+  const fechaRecibida = req.body.fecha_inicio;
+  const sinFecha = fechaRecibida === undefined || fechaRecibida === null || fechaRecibida === '';
+  const fechaInicioFecha = sinFecha ? nowLocal() : parseFechaInicio(fechaRecibida);
+  if (!fechaInicioFecha) {
+    return res.status(400).json(
+      buildError(
+        'Fecha de inicio no válida',
+        'fecha_inicio',
+        'Use una fecha real con formato DD-MM-AAAA o AAAA-MM-DD'
+      )
+    );
+  }
+
+  const fechaInicio = formatearFechaISO(fechaInicioFecha);
+  // Vencimiento automático según prioridad (días hábiles: Alta=5, Media=10, Baja=15)
+  const fechaVencimiento = calcularFechaVencimiento(fechaInicioFecha, prioridad);
+
   const casoId = await CaseModel.create({
     contador_id: req.user.id, // Asigna al contador autenticado (RF-17)
     cliente: cliente.trim(),
     estado: 'Pendiente', // Siempre Pendiente, no se elige (RF-18)
     prioridad,
+    descripcion,
+    observaciones,
+    fecha_inicio: fechaInicio,
+    fecha_vencimiento: fechaVencimiento,
     creado_en: ahora,
     actualizado_en: ahora,
   });
@@ -81,11 +133,10 @@ async function createCase(req, res) {
 /**
  * Cambia el estado y/o la prioridad de un caso propio (solo contador autenticado, checkCaseOwnership ya verificado).
  * RF-22. El campo cliente no es editable.
- * @param {Object} req - Petición Express con params.id del caso y cuerpo { estado, prioridad } opcionales.
+ * @param {Object} req - Petición Express con req.caso (puesto por checkCaseOwnership) y cuerpo { estado, prioridad } opcionales.
  * @param {Object} res - Respuesta Express.
  */
 async function updateCase(req, res) {
-  const { id } = req.params;
   const { estado, prioridad } = req.body;
 
   // RF-37: un dato no textual se rechaza antes de guardar nada, para no dejar cambios a medias
@@ -98,28 +149,36 @@ async function updateCase(req, res) {
     }
   }
 
-  // Si se envía estado, validar y actualizar (RF-22)
+  // Si se envía estado, validarlo (RF-22)
   if (estado !== undefined) {
     if (!validateStatus(estado)) {
       return res.status(400).json(
         buildError('Estado no válido', 'estado', 'Use uno de los siguientes: Pendiente, En proceso, Finalizado')
       );
     }
-    await CaseModel.updateStatus(id, estado);
   }
 
-  // Si se envía prioridad, validar y actualizar (RF-22)
+  // Si se envía prioridad, validarla (RF-22)
   if (prioridad !== undefined) {
     if (!validatePriority(prioridad)) {
       return res.status(400).json(
         buildError('Prioridad no válida', 'prioridad', 'Use una de las siguientes: Alta, Media, Baja')
       );
     }
-    await CaseModel.updatePriority(id, prioridad);
   }
 
-  // Obtener el caso actualizado para devolverlo
-  const caso = await CaseModel.findById(id);
+  // El vencimiento solo se recalcula si la prioridad cambia, contando desde la fecha de
+  // inicio guardada (que no se modifica); cambiar solo el estado no lo toca.
+  const casoActual = req.caso;
+  const cambiaPrioridad = prioridad !== undefined && prioridad !== casoActual.prioridad;
+  const fechaVencimiento = cambiaPrioridad
+    ? calcularFechaVencimiento(casoActual.fecha_inicio || nowLocal(), prioridad)
+    : undefined;
+
+  // Un solo UPDATE: estado, prioridad y vencimiento se guardan juntos o no se guarda nada.
+  await CaseModel.updatePatch(casoActual.id, { estado, prioridad, fecha_vencimiento: fechaVencimiento });
+
+  const caso = await CaseModel.findById(casoActual.id);
 
   return res.status(200).json({
     mensaje: 'Caso actualizado correctamente',

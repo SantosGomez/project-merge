@@ -110,13 +110,24 @@ export const crearCasesStore = (dependencias = {}) => {
        * @param {string} prioridad - código interno o forma del backend.
        * @returns {Promise<{ ok: boolean, caso?: Object, error?: Object }>}
        */
-      async crearCaso(cliente, prioridad) {
+      /**
+   * Registra un caso propio y lo agrega a la lista local (RF-18 a RF-24).
+   * El error de registro se devuelve para que P-4 muestre el ErrorState; no
+   * se guarda como error de lectura de P-5.
+   * @param {string} cliente - cliente ya recortado por P-4.
+   * @param {string} prioridad - código interno (`alta`) o forma del backend.
+   * @param {string} [fechaInicio] - fecha de inicio en DD-MM-YYYY (opcional, hoy por defecto).
+   * @param {string} [descripcion] - descripción del caso (opcional, máx. 1000 chars).
+   * @param {string} [observaciones] - observaciones del caso (opcional, máx. 2000 chars).
+   * @returns {Promise<{ ok: boolean, caso?: Object, error?: Object }>}
+   */
+      async crearCaso(cliente, prioridad, fechaInicio, descripcion, observaciones) {
         const versionActual = ++version
 
         this.guardando = true
 
         try {
-          const caso = await servicio.crearCaso(cliente, prioridad)
+          const caso = await servicio.crearCaso(cliente, prioridad, fechaInicio, descripcion, observaciones)
 
           if (versionActual !== version) {
             return { ok: false, descartado: true }

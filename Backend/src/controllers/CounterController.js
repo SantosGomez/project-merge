@@ -2,16 +2,11 @@ const UserModel = require('../models/UserModel');
 const CaseModel = require('../models/CaseModel');
 const { buildError } = require('../utils/errorUtils');
 const { parseCounterId } = require('../utils/validationUtils');
-const { formatLocalDate } = require('../utils/dateUtils');
+const { casoConFechasLocales } = require('../utils/dateUtils');
 
 // Devuelve el caso con sus fechas como texto en hora local YYYY-MM-DD HH:mm:ss (RF-48, RNF-2).
-function conFechasLocales(caso) {
-  return {
-    ...caso,
-    creado_en: formatLocalDate(caso.creado_en),
-    actualizado_en: formatLocalDate(caso.actualizado_en),
-  };
-}
+// Serializador compartido de dateUtils (mismo que usa CaseController).
+const conFechasLocales = casoConFechasLocales;
 
 /**
  * Lista todos los contadores registrados (solo administrador).

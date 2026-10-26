@@ -1,5 +1,6 @@
 const CaseModel = require('../models/CaseModel');
 const { buildError } = require('../utils/errorUtils');
+const { parseCounterId } = require('../utils/validationUtils');
 
 /**
  * Middleware que verifica que el caso exista y pertenezca al contador autenticado.
@@ -17,10 +18,11 @@ async function checkCaseOwnership(req, res, next) {
     return;
   }
 
-  const casoId = req.params && req.params.id;
-  const caso = await CaseModel.findById(casoId);
+  // Solo ids de dígitos: MariaDB convertiría '12abc' en 12 y abriría otro caso (RF-35)
+  const casoId = parseCounterId(req.params && req.params.id);
+  const caso = casoId ? await CaseModel.findById(casoId) : null;
 
-  // Caso inexistente
+  // Caso inexistente o id inválido
   if (!caso) {
     res.status(404).json(
       buildError('No se encontró el caso', 'ID del caso', 'Verifique que el ID del caso sea correcto')
@@ -36,6 +38,8 @@ async function checkCaseOwnership(req, res, next) {
     return;
   }
 
+  // El controlador usa este caso sin volver a consultarlo
+  req.caso = caso;
   next();
 }
 

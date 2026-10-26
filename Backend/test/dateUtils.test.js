@@ -4,6 +4,11 @@ const {
   nowLocal,
   formatLocalDate,
   isSessionInactive,
+  parseFechaDDMMYYYY,
+  parseFechaInicio,
+  formatearFechaISO,
+  calcularFechaVencimiento,
+  casoConFechasLocales,
 } = require('../src/utils/dateUtils');
 
 /**
@@ -49,9 +54,129 @@ function testIsSessionInactiveActiva() {
   );
 }
 
+// --- Fechas de los casos (RF-48, RNF-2): sin desplazamientos de zona horaria ---
+
+// parseFechaDDMMYYYY interpreta el texto del formulario como hora local.
+function testParseFechaDDMMYYYY() {
+  const fecha = parseFechaDDMMYYYY('31-12-2026');
+  assert.ok(fecha instanceof Date, 'debe devolver una fecha');
+  assert.strictEqual(fecha.getFullYear(), 2026);
+  assert.strictEqual(fecha.getMonth(), 11, 'diciembre es el mes 11');
+  assert.strictEqual(fecha.getDate(), 31, 'no debe desplazarse al día anterior');
+}
+
+// parseFechaDDMMYYYY no inventa fechas ni acepta otros formatos.
+function testParseFechaDDMMYYYYInvalida() {
+  for (const texto of ['31-02-2026', '2026-12-31', '31/12/2026', '', 'basura', null, 42]) {
+    assert.strictEqual(
+      parseFechaDDMMYYYY(texto),
+      null,
+      `"${texto}" no debe interpretarse como una fecha DD-MM-AAAA`
+    );
+  }
+}
+
+// Una fecha ISO se lee en hora local: `new Date('2026-12-31')` daría el día 30 en GMT-6.
+function testParseFechaInicioISO() {
+  const fecha = parseFechaInicio('2026-12-31');
+  assert.ok(fecha instanceof Date, 'debe devolver una fecha');
+  assert.strictEqual(fecha.getDate(), 31, 'el día debe ser el 31, no el 30');
+  assert.strictEqual(fecha.getMonth(), 11);
+  assert.strictEqual(fecha.getFullYear(), 2026);
+
+  const conHora = parseFechaInicio('2026-12-31 08:30:00');
+  assert.strictEqual(conHora.getDate(), 31, 'la parte de hora no cambia el día');
+}
+
+// Texto que no es una fecha real devuelve null (nunca un Invalid Date).
+function testParseFechaInicioBasura() {
+  for (const texto of ['no es fecha', '2026-13-01', '', null, undefined, {}]) {
+    assert.strictEqual(parseFechaInicio(texto), null, `"${texto}" no debe ser una fecha válida`);
+  }
+  assert.strictEqual(parseFechaInicio(new Date('invalid')), null, 'un Date inválido tampoco vale');
+}
+
+// formatearFechaISO no incluye hora ni zona horaria.
+function testFormatearFechaISO() {
+  assert.strictEqual(formatearFechaISO(new Date(2026, 0, 5, 23, 59, 59)), '2026-01-05');
+  assert.strictEqual(formatearFechaISO(new Date('invalid')), null);
+}
+
+// El vencimiento se cuenta en días hábiles desde la fecha de inicio (31-12-2026 es jueves).
+function testCalcularFechaVencimiento() {
+  assert.strictEqual(calcularFechaVencimiento('31-12-2026', 'Alta'), '2027-01-07');
+  assert.strictEqual(calcularFechaVencimiento('31-12-2026', 'Media'), '2027-01-14');
+  assert.strictEqual(calcularFechaVencimiento('31-12-2026', 'Baja'), '2027-01-21');
+  assert.strictEqual(
+    calcularFechaVencimiento('2026-12-31', 'Alta'),
+    '2027-01-07',
+    'la fecha ISO se interpreta en hora local y da el mismo resultado'
+  );
+}
+
+// Con una fecha inválida devuelve null de inmediato: el bucle no puede colgarse.
+function testCalcularFechaVencimientoInvalida() {
+  const inicio = Date.now();
+  assert.notStrictEqual(
+    calcularFechaVencimiento('31-12-2026', 'Alta'),
+    null,
+    'control: una fecha válida sí calcula'
+  );
+  assert.strictEqual(calcularFechaVencimiento('basura', 'Alta'), null);
+  assert.strictEqual(calcularFechaVencimiento('', 'Media'), null);
+  assert.ok(Date.now() - inicio < 1000, 'no debe quedarse iterando');
+}
+
+// El serializador compartido formatea todas las fechas del caso en hora local,
+// incluidas fecha_inicio y fecha_vencimiento (que en CaseController ya lo hace
+// y en CounterController debe empezar a hacerlo).
+function testCasoConFechasLocalesFormateaTodasLasFechas() {
+  const caso = {
+    id: 7,
+    cliente: 'Cliente X',
+    creado_en: new Date(2026, 11, 31, 8, 30, 0),
+    actualizado_en: new Date(2026, 11, 31, 9, 0, 0),
+    fecha_inicio: new Date(2026, 11, 31),
+    fecha_vencimiento: new Date(2027, 0, 7),
+  };
+
+  const formateado = casoConFechasLocales(caso);
+
+  assert.strictEqual(formateado.creado_en, formatLocalDate(caso.creado_en));
+  assert.strictEqual(formateado.actualizado_en, formatLocalDate(caso.actualizado_en));
+  assert.strictEqual(formateado.fecha_inicio, formatLocalDate(caso.fecha_inicio));
+  assert.strictEqual(formateado.fecha_vencimiento, formatLocalDate(caso.fecha_vencimiento));
+  // Los demás campos se conservan tal cual.
+  assert.strictEqual(formateado.id, 7);
+  assert.strictEqual(formateado.cliente, 'Cliente X');
+}
+
+function testCasoConFechasLocalesFechaInicioYVencimientoNulos() {
+  const caso = {
+    id: 9,
+    creado_en: new Date(2026, 0, 1),
+    actualizado_en: new Date(2026, 0, 1),
+    fecha_inicio: null,
+    fecha_vencimiento: null,
+  };
+
+  const formateado = casoConFechasLocales(caso);
+  assert.strictEqual(formateado.fecha_inicio, null);
+  assert.strictEqual(formateado.fecha_vencimiento, null);
+}
+
 describe('dateUtils', () => {
   test('testNowLocalDevuelveDate', testNowLocalDevuelveDate);
   test('testFormatLocalDateFormato', testFormatLocalDateFormato);
   test('testIsSessionInactiveInactiva', testIsSessionInactiveInactiva);
   test('testIsSessionInactiveActiva', testIsSessionInactiveActiva);
+  test('parseFechaDDMMYYYY lee la fecha como hora local', testParseFechaDDMMYYYY);
+  test('parseFechaDDMMYYYY rechaza fechas imposibles y formatos ajenos', testParseFechaDDMMYYYYInvalida);
+  test('parseFechaInicio no desplaza un día las fechas ISO', testParseFechaInicioISO);
+  test('parseFechaInicio devuelve null con texto inválido', testParseFechaInicioBasura);
+  test('formatearFechaISO devuelve solo la fecha local', testFormatearFechaISO);
+  test('calcularFechaVencimiento suma días hábiles', testCalcularFechaVencimiento);
+  test('calcularFechaVencimiento no se cuelga con una fecha inválida', testCalcularFechaVencimientoInvalida);
+  test('casoConFechasLocales formatea todas las fechas del caso', testCasoConFechasLocalesFormateaTodasLasFechas);
+  test('casoConFechasLocales fecha_inicio y fecha_vencimiento nulos', testCasoConFechasLocalesFechaInicioYVencimientoNulos);
 });

@@ -20,8 +20,7 @@ const PRIORIDADES_BACKEND = ['Alta', 'Media', 'Baja']
 /** Quita los espacios al inicio y al final; cualquier valor que no sea texto cuenta como vacío. */
 const normalizar = (valor) => (typeof valor === 'string' ? valor.trim() : '')
 
-/**
- * Comprueba que usuario y contraseña estén completos (RF-03).
+/** Comprueba que usuario y contraseña estén completos (RF-03).
  * Señala cada campo faltante por separado y en el orden de P-1.
  */
 export const validarCredenciales = (usuario, password) => {
@@ -38,8 +37,7 @@ export const validarCredenciales = (usuario, password) => {
   return { valido: faltantes.length === 0, faltantes }
 }
 
-/**
- * Valida el cliente de un caso nuevo (RF-21, RF-23).
+/** Valida el cliente de un caso nuevo (RF-21, RF-23).
  * Los espacios extremos no cuentan ni para la obligatoriedad ni para el límite de 80.
  */
 export const validarCliente = (cliente) => {
@@ -56,8 +54,7 @@ export const validarCliente = (cliente) => {
   return { valido: true, error: null }
 }
 
-/**
- * Valida la prioridad de un caso nuevo (RF-22).
+/** Valida la prioridad de un caso nuevo (RF-22).
  * Recibe la forma del backend ('Alta', 'Media', 'Baja'): P-4 traduce antes de validar.
  */
 export const validarPrioridad = (prioridad) => {
@@ -74,11 +71,33 @@ export const validarPrioridad = (prioridad) => {
   return { valido: true, error: null }
 }
 
+/** Valida un campo de texto opcional (descripción u observaciones): vacío es válido
+ * (se guarda como null), pero si se envía debe ser texto y respetar el máximo.
+ * Los espacios extremos no cuentan para el límite.
+ * @param {*} valor - valor recibido del formulario.
+ * @param {string} campo - nombre del campo, para el código de error.
+ * @param {number} maximo - longitud máxima permitida.
+ * @returns {{ valido: boolean, error: string|null }}
+ */
+export const validarTextoOpcional = (valor, campo, maximo) => {
+  if (valor === null || valor === undefined) return { valido: true, error: null }
+  if (typeof valor !== 'string') {
+    return { valido: false, error: `${campo}_tipo_invalido` }
+  }
+
+  const limpio = normalizar(valor)
+  if (limpio.length === 0) return { valido: true, error: null }
+  if (limpio.length > maximo) {
+    return { valido: false, error: `${campo}_demasiado_largo` }
+  }
+
+  return { valido: true, error: null }
+}
+
 /** Forma de un correo: algo@dominio.ext, sin espacios (la misma regla que el backend). */
 const FORMA_DE_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-/**
- * Error de un texto obligatorio con máximo, o null si es válido. Los espacios extremos no cuentan.
+/** Error de un texto obligatorio con máximo, o null si es válido. Los espacios extremos no cuentan.
  * @returns {string|null} `<campo>_requerido`, `<campo>_demasiado_largo` o null.
  */
 const errorDeTextoObligatorio = (valor, campo) => {
@@ -88,8 +107,7 @@ const errorDeTextoObligatorio = (valor, campo) => {
   return null
 }
 
-/**
- * Valida el alta de una cuenta (historia 9a, con nombre y correo).
+/** Valida el alta de una cuenta (historia 9a, con nombre y correo).
  * Mismas reglas que el backend: nombre y correo de hasta 150 caracteres, correo con forma
  * de correo, contraseña de al menos 8 y uno de los tres roles.
  * @returns {{ valido: boolean, errores: { nombre: string|null, correo: string|null, password: string|null, rol: string|null } }}
@@ -114,8 +132,7 @@ export const validarAltaUsuario = (nombre, correo, password, rol) => {
   return { valido: Object.values(errores).every((error) => error === null), errores }
 }
 
-/**
- * Valida el restablecimiento de contraseña (historia 9b) con las mismas reglas que el alta:
+/** Valida el restablecimiento de contraseña (historia 9b) con las mismas reglas que el alta:
  * correo obligatorio, de hasta 150 caracteres y con forma de correo; contraseña de al menos 8.
  * @returns {{ valido: boolean, errores: { correo: string|null, password: string|null } }}
  */
@@ -134,3 +151,18 @@ export const validarRestablecimiento = (correo, password) => {
 
   return { valido: Object.values(errores).every((error) => error === null), errores }
 }
+
+/**
+ * Valida que la fecha de inicio tenga un formato DD-MM-YYYY y sea una fecha real.
+ * @param {string} fecha - cadena de texto a validar.
+ * @returns {{ valido: boolean, error: string|null }}
+ */
+export const validarFechaInicio = (fecha) => {
+  if (!fecha) return { valido: true, error: null } // opcional
+  const re = /^\d{2}-\d{2}-\d{4}$/;
+  if (!re.test(fecha)) return { valido: false, error: 'fecha_formato_invalido' };
+  const [d, m, a] = fecha.split('-').map(Number);
+  const fechaObj = new Date(a, m - 1, d);
+  if (fechaObj.getDate() !== d || fechaObj.getMonth() + 1 !== m) return { valido: false, error: 'fecha_invalida' };
+  return { valido: true, error: null }
+};

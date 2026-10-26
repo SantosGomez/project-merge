@@ -5,6 +5,7 @@ const {
   validateNewCaseInput,
   validateStatus,
   validatePriority,
+  validarTextoOpcional,
 } = require('../src/utils/validationUtils');
 
 /**
@@ -176,6 +177,46 @@ function testNuevoCasoClienteObjeto() {
   assert.deepStrictEqual(resultado, { valido: false, error: 'cliente_tipo_invalido' });
 }
 
+// Campos opcionales del caso: ausente es válido y significa "guardar null".
+function testTextoOpcionalAusente() {
+  for (const valor of [null, undefined, '', '   ']) {
+    const resultado = validarTextoOpcional(valor, 'descripcion', 10);
+    assert.strictEqual(resultado.estado, 'ausente', `"${valor}" debe tratarse como ausente`);
+    assert.strictEqual(resultado.campo, 'descripcion');
+    assert.strictEqual(resultado.valor, undefined);
+  }
+}
+
+// El máximo se mide sobre el texto ya recortado: los espacios extremos no cuentan.
+function testTextoOpcionalRecortaYValidaMaximo() {
+  assert.deepStrictEqual(validarTextoOpcional('  hola  ', 'descripcion', 10), {
+    estado: 'valido',
+    campo: 'descripcion',
+    valor: 'hola',
+  });
+
+  assert.deepStrictEqual(validarTextoOpcional('1234567890', 'descripcion', 10), {
+    estado: 'valido',
+    campo: 'descripcion',
+    valor: '1234567890',
+  });
+
+  assert.deepStrictEqual(validarTextoOpcional(' 12345678901 ', 'descripcion', 10), {
+    estado: 'demasiado_largo',
+    campo: 'descripcion',
+    valor: '12345678901',
+  });
+}
+
+// Un valor que no es texto no debe llegar a `.trim()`: se informa como tipo inválido.
+function testTextoOpcionalTipoInvalido() {
+  for (const valor of [42, true, {}, [], () => {}]) {
+    const resultado = validarTextoOpcional(valor, 'observaciones', 10);
+    assert.strictEqual(resultado.estado, 'tipo_invalido', `${typeof valor} no es texto`);
+    assert.strictEqual(resultado.campo, 'observaciones');
+  }
+}
+
 describe('validationUtils', () => {
   test('testLoginInputCamposVacios', testLoginInputCamposVacios);
   test('testLoginInputSoloEspacios', testLoginInputSoloEspacios);
@@ -199,4 +240,7 @@ describe('validationUtils', () => {
   test('testNuevoCasoClienteLista', testNuevoCasoClienteLista);
   test('testNuevoCasoPrioridadBooleana', testNuevoCasoPrioridadBooleana);
   test('testNuevoCasoClienteObjeto', testNuevoCasoClienteObjeto);
+  test('validarTextoOpcional trata null, undefined y vacío como ausente', testTextoOpcionalAusente);
+  test('validarTextoOpcional recorta y respeta el máximo', testTextoOpcionalRecortaYValidaMaximo);
+  test('validarTextoOpcional rechaza los valores que no son texto', testTextoOpcionalTipoInvalido);
 });

@@ -8,6 +8,7 @@ const {
 } = require('../soporte-pruebas/bd');
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { query } = require('../src/config/db');
+const CaseModel = require('../src/models/CaseModel');
 const { formatLocalDate } = require('../src/utils/dateUtils');
 
 // Formato de hora local de RNF-2: sin `T`, sin `Z` y sin milisegundos.
@@ -344,6 +345,223 @@ async function testPerfilSeCompruebaAntesDelCaso() {
   assert.strictEqual(filas[0].prioridad, 'Media', 'los intentos denegados no deben modificar la prioridad');
 }
 
+// ---------- Fecha de inicio: sin desplazamiento y sin colgar el servidor ----------
+async function testFechaInicioSeGuardaSinDesplazar() {
+  const crear = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente con fecha', prioridad: 'Alta', fecha_inicio: '31-12-2026' },
+    tokenContador
+  );
+
+  assert.strictEqual(crear.statusCode, 201, 'debe aceptar una fecha real DD-MM-AAAA');
+  assert.match(
+    String(crear.body.caso.fecha_inicio),
+    /^2026-12-31/,
+    'la fecha de inicio no debe desplazarse al día anterior por la zona horaria'
+  );
+  assert.match(
+    String(crear.body.caso.fecha_vencimiento),
+    /^2027-01-07/,
+    'el vencimiento se cuenta en 5 días hábiles desde el 31-12-2026 (Alta)'
+  );
+}
+
+async function testFechaInicioInvalidaResponde400() {
+  const antes = await query('SELECT COUNT(*) AS total FROM casos WHERE contador_id = ?', [contador.id]);
+
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente con fecha imposible', prioridad: 'Alta', fecha_inicio: '31-02-2026' },
+    tokenContador
+  );
+
+  assert.strictEqual(respuesta.statusCode, 400, 'una fecha imposible debe rechazarse con 400');
+  assert.match(String(respuesta.body.mensaje), /Fecha de inicio no válida/, 'el aviso va sobre la fecha');
+
+  const despues = await query('SELECT COUNT(*) AS total FROM casos WHERE contador_id = ?', [contador.id]);
+  assert.strictEqual(
+    Number(despues[0].total),
+    Number(antes[0].total),
+    'una fecha inválida no debe registrar ningún caso'
+  );
+}
+
+// ---------- Descripción y observaciones (RF-21, RF-37) ----------
+async function testCasoConDescripcionYObservacionesSeGuarda() {
+  const descripcion = 'Cliente distribuidora de abarrotes, zona centro';
+  const observaciones = 'Lunes y miércoles de 9 a 14. Contacto: María López.';
+
+  const crear = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente con descripción', prioridad: 'Alta', descripcion, observaciones },
+    tokenContador
+  );
+
+  assert.strictEqual(crear.statusCode, 201, 'debe aceptar descripción y observaciones');
+  assert.strictEqual(crear.body.caso.descripcion, descripcion, 'descripción se guarda');
+  assert.strictEqual(crear.body.caso.observaciones, observaciones, 'observaciones se guarda');
+
+  const misCasos = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, tokenContador);
+  assert.strictEqual(misCasos.statusCode, 200, 'debe listar los casos propios');
+  const propio = misCasos.body.casos.find((caso) => caso.id === crear.body.caso.id);
+  assert.ok(propio, 'el caso creado aparece en los casos propios');
+  assert.strictEqual(propio.descripcion, descripcion, 'descripción se lee desde mis casos');
+  assert.strictEqual(propio.observaciones, observaciones, 'observaciones se lee desde mis casos');
+}
+
+async function testDescripcionDemasiadoLargaResponde400() {
+  const descripcion = 'x'.repeat(1001);
+
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente', prioridad: 'Alta', descripcion },
+    tokenContador
+  );
+
+  assert.strictEqual(respuesta.statusCode, 400, 'descripción de 1001 caracteres debe rechazarse');
+  assert.match(String(respuesta.body.mensaje), /descripción/, 'el aviso va sobre la descripción');
+}
+
+async function testObservacionesDemasiadoLargaResponde400() {
+  const observaciones = 'x'.repeat(2001);
+
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente', prioridad: 'Alta', observaciones },
+    tokenContador
+  );
+
+  assert.strictEqual(respuesta.statusCode, 400, 'observaciones de 2001 caracteres debe rechazarse');
+  assert.match(String(respuesta.body.mensaje), /observaciones/, 'el aviso va sobre las observaciones');
+}
+
+async function testDescripcionYObservacionesNoTextoResponde400() {
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente', prioridad: 'Alta', descripcion: 42, observaciones: ['no'] },
+    tokenContador
+  );
+
+  assert.strictEqual(respuesta.statusCode, 400, 'descripción y observaciones no texto deben rechazarse');
+  assert.match(
+    String(respuesta.body.mensaje),
+    /descripción|observaciones/,
+    'el aviso va sobre el campo que no es texto'
+  );
+}
+
+async function testCambiarPrioridadRecalculaVencimiento() {
+  // Primero creamos un caso vía API con una fecha de inicio conocida
+  const crear = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente para recalcular', prioridad: 'Alta', fecha_inicio: '31-12-2026' },
+    tokenContador
+  );
+  assert.strictEqual(crear.statusCode, 201, 'caso debe crearse');
+  const casoId = crear.body.caso.id;
+
+  // Ahora cambiamos prioridad de Alta a Baja, el vencimiento cambia
+  const respuesta = await peticion(
+    servidor.puerto,
+    'PATCH',
+    `/casos/${casoId}`,
+    { prioridad: 'Baja' },
+    tokenContador
+  );
+
+  assert.strictEqual(respuesta.statusCode, 200, 'debe actualizarse cambiando prioridad');
+  // El vencimiento se recalcula con la nueva prioridad Baja: 15 días hábiles desde el 31-12-2026
+  assert.match(
+    String(respuesta.body.caso.fecha_vencimiento),
+    /^2027-01-21/,
+    'vencimiento recalculado con prioridad Baja'
+  );
+  // La fecha de inicio no cambió, debe mantenerse
+  assert.match(
+    String(respuesta.body.caso.fecha_inicio),
+    /^2026-12-31/,
+    'la fecha de inicio no debió cambiar'
+  );
+}
+
+async function testCambiarSoloEstadoNoRecalculaVencimiento() {
+  // Primero creamos un caso vía API
+  const crear = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente estado solo', prioridad: 'Alta', fecha_inicio: '31-12-2026' },
+    tokenContador
+  );
+  assert.strictEqual(crear.statusCode, 201, 'caso debe crearse');
+  const casoId = crear.body.caso.id;
+
+  // Al cambiar solo el estado a 'Finalizado', el vencimiento no debería cambiar
+  const respuesta = await peticion(
+    servidor.puerto,
+    'PATCH',
+    `/casos/${casoId}`,
+    { estado: 'Finalizado' },
+    tokenContador
+  );
+
+  assert.strictEqual(respuesta.statusCode, 200, 'debe actualizarse cambiando solo estado');
+  // El vencimiento debe mantenerse igual (5 días hábiles desde Alta)
+  assert.match(
+    String(respuesta.body.caso.fecha_vencimiento),
+    /^2027-01-07/,
+    'el vencimiento no debe recalcularse al cambiar solo el estado'
+  );
+}
+
+async function testCambiarPrioridadYEstadoTransaccional() {
+  // Primero creamos un caso vía API
+  const crear = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente transaccional', prioridad: 'Media', fecha_inicio: '31-12-2026' },
+    tokenContador
+  );
+  assert.strictEqual(crear.statusCode, 201, 'debe crearse el caso');
+  const casoId = crear.body.caso.id;
+
+  // Cambiar prioridad a Alta Y estado a En proceso en una sola petición
+  const respuesta = await peticion(
+    servidor.puerto,
+    'PATCH',
+    `/casos/${casoId}`,
+    { prioridad: 'Alta', estado: 'En proceso' },
+    tokenContador
+  );
+
+  assert.strictEqual(respuesta.statusCode, 200, 'debe actualizarse');
+  assert.match(
+    String(respuesta.body.caso.fecha_vencimiento),
+    /^2027-01-07/,
+    'vencimiento recalculado con prioridad Alta son 5 días hábiles'
+  );
+  assert.match(
+    String(respuesta.body.caso.estado),
+    /En proceso/,
+    'el estado también debe actualizarse'
+  );
+}
+
 describe('rutas de casos', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -366,9 +584,22 @@ describe('rutas de casos', () => {
   test('registrar sin cliente responde 400', testRegistroSinClienteRechaza);
   test('registrar con prioridad inválida responde 400', testRegistroConPrioridadInvalidaRechaza);
   test('registrar con cliente de más de 80 caracteres responde 400', testRegistroClienteDemasiadoLargoRechaza);
+  test('descripción y observaciones se guardan y aparecen en mis casos', testCasoConDescripcionYObservacionesSeGuarda);
+  test('descripción de más de 1000 caracteres responde 400', testDescripcionDemasiadoLargaResponde400);
+  test('observaciones de más de 2000 caracteres responde 400', testObservacionesDemasiadoLargaResponde400);
+  test('descripción y observaciones que no son texto responden 400', testDescripcionYObservacionesNoTextoResponde400);
   test('cambiar estado y prioridad de un caso propio actualiza el caso', testCambiarEstadoYPrioridadCasoPropio);
   test('cambiar un caso ajeno es acceso denegado para otro contador y para el administrador', testCambiarCasoAjenoEsDenegado);
   test('un caso inexistente responde 404', testCasoInexistenteDevuelve404);
   test('crear y cambiar un caso devuelve las fechas en hora local YYYY-MM-DD HH:mm:ss', testFechasDelCasoEnHoraLocal);
+  test('la fecha de inicio se guarda sin desplazarse y calcula el vencimiento', testFechaInicioSeGuardaSinDesplazar);
+  test(
+    'una fecha de inicio imposible responde 400 sin colgar el servidor',
+    { timeout: 5000 },
+    testFechaInicioInvalidaResponde400
+  );
   test('un perfil que no es contador recibe 403 exista o no el caso, y un contador recibe 404', testPerfilSeCompruebaAntesDelCaso);
+  test('cambiar prioridad recalcula el vencimiento (y no asume Media)', testCambiarPrioridadRecalculaVencimiento);
+  test('cambiar solo estado no recalcula el vencimiento', testCambiarSoloEstadoNoRecalculaVencimiento);
+  test('cambiar prioridad y estado actualiza todo en una transacción', testCambiarPrioridadYEstadoTransaccional);
 });

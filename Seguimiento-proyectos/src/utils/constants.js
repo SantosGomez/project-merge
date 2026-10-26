@@ -43,3 +43,9 @@ export const MIN_PASSWORD_LENGTH = 8
 
 /** Máximo de caracteres del nombre y del correo de una cuenta (columnas de 150 en la base). */
 export const MAX_NOMBRE_CORREO_LENGTH = 150
+
+/** Máximo de caracteres de la descripción de un caso (columna TEXT, 1000 se aceptan, 1001 no). */
+export const MAX_DESCRIPCION_LENGTH = 1000
+
+/** Máximo de caracteres de las observaciones de un caso (columna TEXT, 2000 se aceptan, 2001 no). */
+export const MAX_OBSERVACIONES_LENGTH = 2000

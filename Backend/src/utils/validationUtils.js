@@ -25,6 +25,32 @@ function validarCampoTexto(valor, nombre) {
 }
 
 /**
+ * Clasifica un campo de texto opcional (descripción, observaciones) sin llamar
+ * nunca a `.trim()` sobre un valor que no sea texto.
+ * @param {*} valor - Valor recibido.
+ * @param {string} nombre - Nombre del campo, para indicarlo en el error.
+ * @param {number} maximo - Longitud máxima permitida, medida sobre el texto recortado.
+ * @returns {{ estado: 'ausente' | 'tipo_invalido' | 'demasiado_largo' | 'valido', campo: string, valor?: string }}
+ */
+function validarTextoOpcional(valor, nombre, maximo) {
+  if (valor === null || valor === undefined) {
+    return { estado: 'ausente', campo: nombre };
+  }
+  if (typeof valor !== 'string') {
+    return { estado: 'tipo_invalido', campo: nombre };
+  }
+
+  const texto = valor.trim();
+  if (texto === '') {
+    return { estado: 'ausente', campo: nombre };
+  }
+  if (texto.length > maximo) {
+    return { estado: 'demasiado_largo', campo: nombre, valor: texto };
+  }
+  return { estado: 'valido', campo: nombre, valor: texto };
+}
+
+/**
  * Valida un identificador (correo en el login, usuario en el alta) y una contraseña.
  * RF-02, RF-37.
  * @param {*} identificador - Correo o nombre de usuario.
@@ -149,6 +175,7 @@ function parseCounterId(valor) {
 
 module.exports = {
   validarCampoTexto,
+  validarTextoOpcional,
   validateLoginInput,
   validateNewCaseInput,
   validateStatus,

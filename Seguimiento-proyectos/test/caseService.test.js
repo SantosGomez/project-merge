@@ -150,6 +150,72 @@ test('crearCaso rechaza con tres partes si la respuesta no trae un caso traducib
   )
 })
 
+test('crearCaso convierte la fecha del formulario (DD-MM-AAAA) a la forma de la API', async () => {
+  const api = crearApiFalsa({
+    POST: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.crearCaso('Cliente', 'Alta', '31-12-2026')
+
+  assert.equal(
+    api.llamadas[0].cuerpo.fecha_inicio,
+    '2026-12-31',
+    'la API recibe AAAA-MM-DD, no el formato del formulario',
+  )
+})
+
+test('crearCaso rechaza con tres partes y no llama al backend si la fecha no es válida', async () => {
+  const api = crearApiFalsa({ POST: async () => ({ data: {} }) })
+  const servicio = crearCaseService({ api })
+
+  await assert.rejects(
+    servicio.crearCaso('Cliente', 'Alta', '31-02-2026'),
+    esErrorDeTresPartes('datos_invalidos'),
+  )
+  assert.equal(api.llamadas.length, 0, 'no se envía una petición con una fecha imposible')
+})
+
+test('crearCaso no envía fecha_inicio cuando no se indica', async () => {
+  const api = crearApiFalsa({
+    POST: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.crearCaso('Cliente', 'Alta')
+
+  assert.equal('fecha_inicio' in api.llamadas[0].cuerpo, false, 'sin fecha, el backend usa hoy')
+})
+
+test('crearCaso envía descripción y observaciones cuando se indican', async () => {
+  const api = crearApiFalsa({
+    POST: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.crearCaso('Cliente', 'Alta', '31-12-2026', 'Cliente distribuidora zona centro', 'Lunes 9 a 14.')
+
+  assert.deepEqual(api.llamadas[0].cuerpo, {
+    cliente: 'Cliente',
+    prioridad: 'Alta',
+    fecha_inicio: '2026-12-31',
+    descripcion: 'Cliente distribuidora zona centro',
+    observaciones: 'Lunes 9 a 14.',
+  })
+})
+
+test('crearCaso no envía descripción ni observaciones cuando están vacías', async () => {
+  const api = crearApiFalsa({
+    POST: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.crearCaso('Cliente', 'Alta', '31-12-2026', undefined, undefined)
+
+  assert.equal('descripcion' in api.llamadas[0].cuerpo, false, 'descripción vacía no se envía')
+  assert.equal('observaciones' in api.llamadas[0].cuerpo, false, 'observaciones vacías no se envían')
+})
+
 // --- actualizarCaso (RF-22, RF-29, RF-30, RF-31) --------------------------
 
 test('actualizarCaso hace PATCH /casos/:id con estado y prioridad traducidos', async () => {

@@ -105,6 +105,79 @@
             </p>
           </div>
 
+          <div class="form-group">
+            <label for="fecha-inicio-field" class="form-label">Fecha de inicio <span aria-label="opcional">*</span></label>
+            <q-input
+              for="fecha-inicio-field"
+              v-model="fechaInicio"
+              type="text"
+              placeholder="DD-MM-AAAA"
+              maxlength="10"
+              outlined
+              dense
+              counter
+              aria-required="false"
+              aria-describedby="fecha-inicio-help fecha-inicio-error"
+              :error="!!formError && formError.code === 'fecha_inicio_invalido'"
+              @update:model-value="clearFormError()"
+            />
+            <p id="fecha-inicio-help" class="form-help">Formato DD-MM-AAAA. Deja vacío para usar hoy.</p>
+            <p
+              v-if="formError && formError.code === 'fecha_inicio_invalido'"
+              id="fecha-inicio-error"
+              class="form-error"
+              role="alert"
+            >
+              {{ formError.message }}
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label for="descripcion-field" class="form-label">Descripción</label>
+            <q-input
+              for="descripcion-field"
+              v-model="descripcion"
+              type="textarea"
+              outlined
+              dense
+              rows="3"
+              maxlength="1000"
+              aria-describedby="descripcion-help descripcion-error"
+            />
+            <p id="descripcion-help" class="form-help">Máximo 1000 caracteres.</p>
+            <p
+              v-if="formError && formError.code === 'descripcion_demasiado_largo'"
+              id="descripcion-error"
+              class="form-error"
+              role="alert"
+            >
+              La descripción no debe superar los 1000 caracteres.
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label for="observaciones-field" class="form-label">Observaciones</label>
+            <q-input
+              for="observaciones-field"
+              v-model="observaciones"
+              type="textarea"
+              outlined
+              dense
+              rows="3"
+              maxlength="2000"
+              aria-describedby="observaciones-help observaciones-error"
+            />
+            <p id="observaciones-help" class="form-help">Máximo 2000 caracteres.</p>
+            <p
+              v-if="formError && formError.code === 'observaciones_demasiado_largo'"
+              id="observaciones-error"
+              class="form-error"
+              role="alert"
+            >
+              Las observaciones no deben superar los 2000 caracteres.
+            </p>
+          </div>
+
           <dl class="readonly-info">
             <div class="readonly-row">
               <dt>Estado</dt>
@@ -161,9 +234,9 @@ import { computed, nextTick, ref, watch } from 'vue'
 import ErrorState from './ErrorState.vue'
 import PriorityTag from './PriorityTag.vue'
 import { CASE_ERROR_CODES } from '../utils/caseRules.js'
-import { PRIORITIES, PRIORITY_LABELS, STATUS_LABELS, STATUSES } from '../utils/constants.js'
+import { PRIORITIES, PRIORITY_LABELS, STATUS_LABELS, STATUSES, MAX_DESCRIPCION_LENGTH, MAX_OBSERVACIONES_LENGTH } from '../utils/constants.js'
 import { prioridadABackend } from '../utils/traduccionBackend.js'
-import { validarCliente, validarPrioridad } from '../utils/validators.js'
+import { validarCliente, validarFechaInicio, validarPrioridad, validarTextoOpcional } from '../utils/validators.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
 
@@ -193,6 +266,10 @@ const priorityOptions = computed(() =>
   PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p })),
 )
 
+const fechaInicio = ref('')
+const descripcion = ref('')
+const observaciones = ref('')
+
 const assignedCounterName = computed(() =>
   assignedCounter.value ? assignedCounter.value.name : 'Sin asignar',
 )
@@ -210,6 +287,9 @@ const clearFormError = () => {
 const reiniciarFormulario = () => {
   client.value = ''
   priority.value = ''
+  fechaInicio.value = ''
+  descripcion.value = ''
+  observaciones.value = ''
   formError.value = null
   errorGuardado.value = null
 }
@@ -264,7 +344,44 @@ const submitCase = async () => {
     return
   }
 
-  const resultado = await cases.crearCaso(clienteLimpio, prioridadBackend)
+  const fechaLimpia = fechaInicio.value.trim()
+  const validacionFecha = validarFechaInicio(fechaLimpia)
+  if (!validacionFecha.valido) {
+    formError.value = {
+      code: 'fecha_inicio_invalido',
+      message:
+        validacionFecha.error === 'fecha_invalida'
+          ? 'La fecha no existe. Use una fecha real en formato DD-MM-AAAA.'
+          : 'Formato de fecha inválido. Use DD-MM-AAAA.',
+    }
+    return
+  }
+
+  const validacionDescripcion = validarTextoOpcional(descripcion.value, 'descripcion', MAX_DESCRIPCION_LENGTH)
+  if (!validacionDescripcion.valido) {
+    formError.value = {
+      code: 'descripcion_demasiado_largo',
+      message: 'La descripción no debe superar los 1000 caracteres.',
+    }
+    return
+  }
+
+  const validacionObservaciones = validarTextoOpcional(observaciones.value, 'observaciones', MAX_OBSERVACIONES_LENGTH)
+  if (!validacionObservaciones.valido) {
+    formError.value = {
+      code: 'observaciones_demasiado_largo',
+      message: 'Las observaciones no deben superar los 2000 caracteres.',
+    }
+    return
+  }
+
+  const resultado = await cases.crearCaso(
+    clienteLimpio,
+    prioridadBackend,
+    fechaLimpia || undefined,
+    descripcion.value || undefined,
+    observaciones.value || undefined
+  )
 
   if (!resultado.ok) {
     errorGuardado.value = resultado.error ?? null

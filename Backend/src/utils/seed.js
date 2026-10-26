@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const { formatLocalDate } = require('../utils/dateUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 
@@ -38,6 +39,10 @@ async function crearTablasSiNoExisten() {
       cliente VARCHAR(200) NOT NULL,
       estado ENUM('Pendiente', 'En proceso', 'Finalizado') NOT NULL DEFAULT 'Pendiente',
       prioridad ENUM('Alta', 'Media', 'Baja') NOT NULL,
+      fecha_inicio DATE NOT NULL,
+      fecha_vencimiento DATE NOT NULL,
+      descripcion TEXT NULL,
+      observaciones TEXT NULL,
       creado_en DATETIME NOT NULL,
       actualizado_en DATETIME NOT NULL,
       FOREIGN KEY (contador_id) REFERENCES usuarios(id)
@@ -132,6 +137,7 @@ function debeSembrarCuentasDemo(env) {
 async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) } = {}) {
   await crearTablasSiNoExisten();
   await migrarUsuarios();
+  await migrarCasos({ cuentasDemo });
 
   if (!cuentasDemo) return;
 
@@ -141,6 +147,64 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
 
   if (!(await cuentaExiste(CONTADOR_CORREO))) {
     await insertarCuenta(CONTADOR_NOMBRE, CONTADOR_CORREO, CONTADOR_PASSWORD, 'contador');
+  }
+}
+
+/**
+ * Migra casos existentes rellenando las nuevas columnas `fecha_inicio` y `fecha_vencimiento`.
+ * Idempotente: si ya tiene fecha inicio la deja intacta; si no, usa creado_en y calcula el vencimiento
+ * según la prioridad (Alta=5, Media=10, Baja=15 días hábiles, sin festivos).
+ * @param {{ cuentasDemo?: boolean }} [opciones]
+ */
+async function migrarCasos({ cuentasDemo = false } = {}) {
+  if (!cuentasDemo) return;
+
+  // Añade las columnas si la tabla vieja no las tiene (sin NOT NULL todavía)
+  await query('ALTER TABLE casos ADD IF NOT EXISTS fecha_inicio DATE DEFAULT NULL AFTER prioridad');
+  await query('ALTER TABLE casos ADD IF NOT EXISTS fecha_vencimiento DATE DEFAULT NULL AFTER fecha_inicio');
+  await query('ALTER TABLE casos ADD IF NOT EXISTS descripcion TEXT NULL AFTER fecha_vencimiento');
+  await query('ALTER TABLE casos ADD IF NOT EXISTS observaciones TEXT NULL AFTER descripcion');
+
+  // Rellena las filas existentes: usa creado_en como fecha inicio y calcula el vencimiento
+  const [rows] = await query(
+    'SELECT id, contador_id, cliente, prioridad, creado_en FROM casos WHERE fecha_inicio IS NULL'
+  );
+  const casoRows = Array.isArray(rows) ? rows : [];
+  if (casoRows.length === 0) return;
+
+  const diasMap = { Alta: 5, Media: 10, Baja: 15 };
+
+  for (const r of casoRows) {
+    const prioridad = r.prioridad ?? 'Media';
+    const dias = diasMap[prioridad] ?? 10;
+
+    // Fecha inicio = creado_en
+    await query(
+      'UPDATE casos SET fecha_inicio = ? WHERE id = ?',
+      [r.creado_en, r.id]
+    );
+
+    // Calcula y establece la fecha de vencimiento sumando días hábiles
+    const f = new Date(r.creado_en);
+    let sumados = 0;
+    while (sumados < dias) {
+      f.setDate(f.getDate() + 1);
+      const diaSemana = f.getDay();
+      if (diaSemana >= 1 && diaSemana <= 5) sumados++;
+    }
+    const fnVencimiento = formatLocalDate(f);
+    await query(
+      'UPDATE casos SET fecha_vencimiento = ? WHERE id = ?',
+      [fnVencimiento, r.id]
+    );
+  }
+
+  // Ahora sí, poner las columnas NOT NULL (solo si todas tienen valor)
+  try {
+    await query('ALTER TABLE casos MODIFY fecha_inicio DATE NOT NULL AFTER prioridad');
+    await query('ALTER TABLE casos MODIFY fecha_vencimiento DATE NOT NULL AFTER fecha_inicio');
+  } catch {
+    // Si falla (algo quedó NULL), dejamos nullable para no romper el sistema
   }
 }
 

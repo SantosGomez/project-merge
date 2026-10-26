@@ -10,7 +10,9 @@ import {
   validarRestablecimiento,
   validarCliente,
   validarCredenciales,
+  validarFechaInicio,
   validarPrioridad,
+  validarTextoOpcional,
 } from '../src/utils/validators.js'
 
 // --- validarCredenciales ---------------------------------------------------
@@ -238,4 +240,61 @@ test('validarRestablecimiento rechaza correo vacío o sin forma de correo y cont
     valido: false,
     errores: { correo: 'correo_invalido', password: 'password_corta' },
   })
+})
+
+// --- validarFechaInicio (fecha de inicio del caso) -------------------------
+
+test('validarFechaInicio acepta una fecha real DD-MM-AAAA y la fecha vacía', () => {
+  assert.deepEqual(validarFechaInicio('31-12-2026'), { valido: true, error: null })
+  assert.deepEqual(validarFechaInicio('05-01-2027'), { valido: true, error: null })
+  assert.deepEqual(validarFechaInicio(''), { valido: true, error: null }, 'es opcional')
+  assert.deepEqual(validarFechaInicio(undefined), { valido: true, error: null })
+})
+
+test('validarFechaInicio distingue el formato inválido de una fecha que no existe', () => {
+  assert.deepEqual(validarFechaInicio('31/12/2026'), {
+    valido: false,
+    error: 'fecha_formato_invalido',
+  })
+  assert.deepEqual(validarFechaInicio('2026-12-31'), {
+    valido: false,
+    error: 'fecha_formato_invalido',
+  })
+  assert.deepEqual(validarFechaInicio('31-02-2026'), { valido: false, error: 'fecha_invalida' })
+  assert.deepEqual(validarFechaInicio('32-01-2026'), { valido: false, error: 'fecha_invalida' })
+})
+
+// --- validarTextoOpcional (descripción y observaciones) -----------------------
+
+test('validarTextoOpcional trata ausente, vacío y solo espacios como válido (se guarda null)', () => {
+  for (const valor of [null, undefined, '', '   ']) {
+    assert.deepEqual(
+      validarTextoOpcional(valor, 'descripcion', 10),
+      { valido: true, error: null },
+      `${JSON.stringify(valor)} debe ser válido porque es opcional`
+    )
+  }
+})
+
+test('validarTextoOpcional acepta texto dentro del máximo y recorta los extremos', () => {
+  assert.deepEqual(validarTextoOpcional('  hola  ', 'descripcion', 10), { valido: true, error: null })
+  assert.deepEqual(validarTextoOpcional('1234567890', 'descripcion', 10), { valido: true, error: null })
+})
+
+test('validarTextoOpcional rechaza texto que supera el máximo (mide el texto recortado)', () => {
+  assert.deepEqual(
+    validarTextoOpcional(' 12345678901 ', 'descripcion', 10),
+    { valido: false, error: 'descripcion_demasiado_largo' },
+    '11 caracteres (sin contar los extremos) superan el máximo de 10'
+  )
+})
+
+test('validarTextoOpcional rechaza valores que no son texto', () => {
+  for (const valor of [42, true, {}, [], () => {}]) {
+    assert.deepEqual(
+      validarTextoOpcional(valor, 'observaciones', 10),
+      { valido: false, error: 'observaciones_tipo_invalido' },
+      `${typeof valor} no es texto`
+    )
+  }
 })
