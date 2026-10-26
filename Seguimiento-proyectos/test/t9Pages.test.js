@@ -333,3 +333,30 @@ describe('Sesión sin usuario (rebanada 5b) — verificación estática', () => 
     assert.doesNotMatch(rutas, /sesion\.usuario/, 'ya no lee el usuario de la sesión')
   })
 })
+
+describe('Mis casos (rebanada 6) — un solo flujo para guardar cambios', () => {
+  // Cuerpo de la función guardarCambio, para revisar su orden interno.
+  const inicioGuardar = myCasesSource.indexOf('const guardarCambio')
+  const cuerpoGuardar = myCasesSource.slice(inicioGuardar, myCasesSource.indexOf('\n}\n', inicioGuardar))
+  const inicioRetry = myCasesSource.indexOf('const retry')
+  const cuerpoRetry = myCasesSource.slice(inicioRetry, myCasesSource.indexOf('\n}\n', inicioRetry))
+
+  it('estado y prioridad usan la misma función, sin copias', () => {
+    assert.ok(inicioGuardar > 0, 'existe guardarCambio')
+    assert.doesNotMatch(myCasesSource, /const changeStatus|const changePriority/, 'no quedan las funciones duplicadas')
+    assert.strictEqual(myCasesSource.match(/cases\.actualizarCaso\(/g).length, 1, 'un solo punto llama a actualizarCaso')
+    assert.match(myCasesSource, /guardarCambio\(item\.id, \{ estado: v \}\)/)
+    assert.match(myCasesSource, /guardarCambio\(item\.id, \{ prioridad: v \}\)/)
+  })
+
+  it('al empezar un cambio se borra el aviso anterior', () => {
+    const borra = cuerpoGuardar.indexOf("confirmation.value = ''")
+    assert.ok(borra > 0, 'guardarCambio borra el aviso')
+    assert.ok(borra < cuerpoGuardar.indexOf('cases.actualizarCaso('), 'lo borra antes de guardar')
+  })
+
+  it('reintentar repite el último cambio tal cual, sin ramas por campo', () => {
+    assert.match(cuerpoRetry, /guardarCambio\(/)
+    assert.doesNotMatch(cuerpoRetry, /cambios\.estado|cambios\.prioridad/)
+  })
+})

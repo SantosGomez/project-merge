@@ -55,7 +55,7 @@
                   map-options
                   aria-label="Cambiar estado del caso"
                   :disable="cases.guardando"
-                  @update:model-value="(v) => changeStatus(item.id, v)"
+                  @update:model-value="(v) => guardarCambio(item.id, { estado: v })"
                 />
               </div>
               <div class="case-action-group">
@@ -72,7 +72,7 @@
                   map-options
                   aria-label="Cambiar prioridad del caso"
                   :disable="cases.guardando"
-                  @update:model-value="(v) => changePriority(item.id, v)"
+                  @update:model-value="(v) => guardarCambio(item.id, { prioridad: v })"
                 />
               </div>
             </div>
@@ -131,27 +131,14 @@ const priorityOptions = computed(() =>
   PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p })),
 )
 
-const changeStatus = async (caseId, newStatus) => {
+// Guarda un cambio de estado o de prioridad; se recuerda para poder reintentarlo si falla.
+const guardarCambio = async (caseId, cambios) => {
   if (cases.guardando) return
+  confirmation.value = ''
   errorCambio.value = null
-  ultimoCambio.value = { id: caseId, cambios: { estado: newStatus } }
+  ultimoCambio.value = { id: caseId, cambios }
 
-  const resultado = await cases.actualizarCaso(caseId, { estado: newStatus })
-
-  if (resultado.ok) {
-    confirmation.value = 'Cambio guardado.'
-    ultimoCambio.value = null
-  } else {
-    errorCambio.value = resultado.error
-  }
-}
-
-const changePriority = async (caseId, newPriority) => {
-  if (cases.guardando) return
-  errorCambio.value = null
-  ultimoCambio.value = { id: caseId, cambios: { prioridad: newPriority } }
-
-  const resultado = await cases.actualizarCaso(caseId, { prioridad: newPriority })
+  const resultado = await cases.actualizarCaso(caseId, cambios)
 
   if (resultado.ok) {
     confirmation.value = 'Cambio guardado.'
@@ -179,11 +166,7 @@ const alRegistrar = async () => {
 const retry = async () => {
   if (errorCambio.value && ultimoCambio.value) {
     const { id, cambios } = ultimoCambio.value
-    if (cambios.estado !== undefined) {
-      await changeStatus(id, cambios.estado)
-    } else if (cambios.prioridad !== undefined) {
-      await changePriority(id, cambios.prioridad)
-    }
+    await guardarCambio(id, cambios)
     return
   }
 
