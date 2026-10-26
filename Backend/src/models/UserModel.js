@@ -114,24 +114,24 @@ async function findAll(filtro) {
 }
 
 /**
- * Devuelve solo id y usuario de los usuarios con rol contador, ordenados por id.
+ * Devuelve solo id y nombre de los usuarios con rol contador, ordenados por id.
  * Se usa para la lista de contadores administrador (RF-32).
- * @returns {Promise<Array>} Lista de { id, usuario } de los contadores.
+ * @returns {Promise<Array>} Lista de { id, nombre } de los contadores.
  */
 async function findCountersPublic() {
-  const rows = await query('SELECT id, usuario FROM usuarios WHERE rol = ? ORDER BY id', ['contador']);
+  const rows = await query('SELECT id, nombre FROM usuarios WHERE rol = ? ORDER BY id', ['contador']);
   return rows;
 }
 
 /**
  * Busca un contador por su ID: solo devuelve usuarios con rol 'contador'.
- * Trae únicamente id y usuario, nunca el hash de la contraseña.
+ * Trae únicamente id y nombre, nunca el hash de la contraseña.
  * RF-35, RF-16.
  * @param {number} id - ID del contador.
  * @returns {Promise<Object|null>} El contador encontrado o null si no existe o no es contador.
  */
 async function findCounterById(id) {
-  const rows = await query("SELECT id, usuario FROM usuarios WHERE id = ? AND rol = 'contador'", [id]);
+  const rows = await query("SELECT id, nombre FROM usuarios WHERE id = ? AND rol = 'contador'", [id]);
   return rows.length > 0 ? rows[0] : null;
 }
 

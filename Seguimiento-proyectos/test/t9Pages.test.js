@@ -233,3 +233,13 @@ describe('Login por correo — verificación estática de P-1', () => {
     )
   })
 })
+
+describe('Contadores por nombre (rebanada 5a) — verificación estática', () => {
+  const dashboard = read('../src/pages/AdminDashboardPage.vue')
+
+  it('el dashboard nombra al contador seleccionado con su nombre, no con su usuario', () => {
+    assert.match(dashboard, /Casos de \{\{ contadorSeleccionado\.nombre \}\}/, 'texto del detalle')
+    assert.match(dashboard, /El contador \$\{contadorSeleccionado\.nombre\} no tiene casos/, 'aviso sin casos')
+    assert.doesNotMatch(dashboard, /contadorSeleccionado\.usuario/, 'ya no lee el usuario')
+  })
+})

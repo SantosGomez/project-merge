@@ -60,7 +60,7 @@ export const crearCountersStore = (dependencias = {}) => {
 
   return defineStore('counters', {
     state: () => ({
-      /** Contadores registrados: `{ id, usuario }` (RF-11, RF-16). */
+      /** Contadores registrados: `{ id, nombre }` (RF-11, RF-16). */
       contadores: [],
       /** Conteos por estado de cada contador, indexados por id (RF-12). */
       conteosPorId: {},

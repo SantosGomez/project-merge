@@ -95,8 +95,8 @@ test('estado inicial: sin contadores, sin conteos y pantalla vacía', () => {
 test('cargarContadores obtiene la lista y N conteos con ceros incluidos (RF-12)', async () => {
   const servicio = crearServicioFalso({
     contadores: [
-      { id: 3, usuario: 'ana' },
-      { id: 4, usuario: 'luis' },
+      { id: 3, nombre: 'ana' },
+      { id: 4, nombre: 'luis' },
     ],
     conteos: {
       3: { pendiente: 2, en_proceso: 0, finalizado: 5 },
@@ -163,8 +163,8 @@ test('lanza las N peticiones de conteos en paralelo y muestra carga hasta termin
 test('si un conteo falla: error completo, sin conteos parciales y sin lista (RF-36)', async () => {
   const servicio = crearServicioFalso({
     contadores: [
-      { id: 3, usuario: 'ana' },
-      { id: 4, usuario: 'luis' },
+      { id: 3, nombre: 'ana' },
+      { id: 4, nombre: 'luis' },
     ],
     conteos: { 3: { pendiente: 2, en_proceso: 0, finalizado: 0 } },
     errores: { conteos: ERROR_RED },
@@ -205,8 +205,8 @@ test('una lista vacía deja la pantalla en vacío (RF-14)', async () => {
 test('seleccionarContador carga su detalle y al cambiar de contador reemplaza el anterior (RF-15)', async () => {
   const servicio = crearServicioFalso({
     contadores: [
-      { id: 3, usuario: 'ana' },
-      { id: 4, usuario: 'luis' },
+      { id: 3, nombre: 'ana' },
+      { id: 4, nombre: 'luis' },
     ],
     casos: {
       3: [caso({ id: 9, cliente: 'Cliente de ana' })],
@@ -267,7 +267,7 @@ test('al elegir otro contador el detalle anterior desaparece mientras carga', as
 
 test('detalle vacío: estadoDetalle en vacío con el contador seleccionado (RF-14)', async () => {
   const servicio = crearServicioFalso({
-    contadores: [{ id: 3, usuario: 'ana' }],
+    contadores: [{ id: 3, nombre: 'ana' }],
     casos: { 3: [] },
   })
   const store = montarStore(servicio)
@@ -280,7 +280,7 @@ test('detalle vacío: estadoDetalle en vacío con el contador seleccionado (RF-1
 
 test('si falla el detalle: no se conserva la selección y se informa el error (RF-36)', async () => {
   const servicio = crearServicioFalso({
-    contadores: [{ id: 3, usuario: 'ana' }],
+    contadores: [{ id: 3, nombre: 'ana' }],
     errores: { casos: ERROR_DETALLE },
   })
   const store = montarStore(servicio)
@@ -307,7 +307,7 @@ test('reintentar repite la carga, limpia el error y recupera el contenido', asyn
       if (fallar) {
         throw ERROR_RED
       }
-      return [{ id: 3, usuario: 'ana' }]
+      return [{ id: 3, nombre: 'ana' }]
     },
     async getConteosPorEstado() {
       return { pendiente: 1, en_proceso: 0, finalizado: 0 }
@@ -331,7 +331,7 @@ test('reintentar repite la carga, limpia el error y recupera el contenido', asyn
 
 test('reiniciar deja el store sin datos de otro perfil (RNF-05)', async () => {
   const servicio = crearServicioFalso({
-    contadores: [{ id: 3, usuario: 'ana' }],
+    contadores: [{ id: 3, nombre: 'ana' }],
     casos: { 3: [caso()] },
   })
   const store = montarStore(servicio)
@@ -362,7 +362,7 @@ test('una respuesta tard�a tras reiniciar no repuebla contadores (guardia de v
           resolverPrimera = resolver
         })
       }
-      return [{ id: 3, usuario: 'nuevo' }]
+      return [{ id: 3, nombre: 'nuevo' }]
     },
     async getConteosPorEstado() {
       return { pendiente: 1, en_proceso: 0, finalizado: 0 }
@@ -382,13 +382,13 @@ test('una respuesta tard�a tras reiniciar no repuebla contadores (guardia de v
   await promesaB
 
   assert.equal(store.contadores.length, 1)
-  assert.equal(store.contadores[0].usuario, 'nuevo')
+  assert.equal(store.contadores[0].nombre, 'nuevo')
 
-  resolverPrimera([{ id: 99, usuario: 'antiguo' }])
+  resolverPrimera([{ id: 99, nombre: 'antiguo' }])
   await promesaA.catch(() => {})
 
   assert.equal(store.contadores.length, 1, 'la respuesta tard�a no repuebla')
-  assert.equal(store.contadores[0].usuario, 'nuevo')
+  assert.equal(store.contadores[0].nombre, 'nuevo')
   assert.equal(store.cargando, false)
 })
 

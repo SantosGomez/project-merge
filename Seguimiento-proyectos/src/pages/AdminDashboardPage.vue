@@ -68,7 +68,7 @@
             <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
 
             <p v-if="contadorSeleccionado" class="dashboard-panel__help">
-              Casos de {{ contadorSeleccionado.usuario }}. Esta vista es de solo consulta: no permite
+              Casos de {{ contadorSeleccionado.nombre }}. Esta vista es de solo consulta: no permite
               cambiar el estado ni la prioridad.
             </p>
             <p v-else class="dashboard-panel__help">
@@ -95,7 +95,7 @@
             <EmptyState
               v-else-if="estadoDetalle === SCREEN_STATES.empty"
               title="Este contador no tiene casos"
-              :message="`El contador ${contadorSeleccionado.usuario} no tiene casos registrados. Selecciona otro contador de la lista para ver su detalle.`"
+              :message="`El contador ${contadorSeleccionado.nombre} no tiene casos registrados. Selecciona otro contador de la lista para ver su detalle.`"
             />
 
             <ul v-else class="case-list">
@@ -137,7 +137,7 @@ import { SCREEN_STATES } from '../utils/screenState.js'
  */
 const contadoresStore = useCountersStore()
 
-/** Contadores registrados, tal como los entrega el servicio (`{ id, usuario }`). */
+/** Contadores registrados, tal como los entrega el servicio (`{ id, nombre }`). */
 const contadores = computed(() => contadoresStore.contadores)
 
 /** Estado general de la pantalla: carga, error, vacío o contenido (RF-34 a RF-36). */

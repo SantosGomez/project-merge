@@ -39,8 +39,8 @@ export const crearCounterService = (opciones = {}) => {
   const api = opciones.api ?? apiPorDefecto
 
   /**
-   * GET /contadores: lista de contadores `{ id, usuario }` (RF-11, RF-16).
-   * @returns {Promise<Array<{ id: number, usuario: string }>>}
+   * GET /contadores: lista de contadores `{ id, nombre }` (RF-11, RF-16).
+   * @returns {Promise<Array<{ id: number, nombre: string }>>}
    */
   const listCounters = async () => {
     const { data } = await api.get('/contadores')

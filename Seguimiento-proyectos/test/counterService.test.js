@@ -45,10 +45,10 @@ const esErrorDeTresPartes = (estado) => (error) => {
 
 // --- listCounters (RF-11, RF-12, RF-16) ------------------------------------
 
-test('listCounters hace GET /contadores y devuelve la lista { id, usuario }', async () => {
+test('listCounters hace GET /contadores y devuelve la lista { id, nombre }', async () => {
   const contadores = [
-    { id: 3, usuario: 'ana' },
-    { id: 4, usuario: 'luis' },
+    { id: 3, nombre: 'ana' },
+    { id: 4, nombre: 'luis' },
   ]
   const api = crearApiFalsa({ datos: { contadores } })
   const servicio = crearCounterService({ api })

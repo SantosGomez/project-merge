@@ -115,8 +115,8 @@ async function testLoginDevuelveIdNumerico() {
   }
 }
 
-// ---------- RF-12, RF-32, criterio 26: la lista de contadores solo trae id y usuario ----------
-async function testListaDeContadoresSoloIdYUsuario() {
+// ---------- RF-12, RF-32, criterio 26: la lista de contadores solo trae id y nombre ----------
+async function testListaDeContadoresSoloIdYNombre() {
   const respuesta = await peticion(servidor.puerto, 'GET', '/contadores', null, tokenAdmin);
 
   assert.strictEqual(respuesta.statusCode, 200, 'el administrador debe recibir 200 al listar contadores');
@@ -124,24 +124,24 @@ async function testListaDeContadoresSoloIdYUsuario() {
 
   // Se afirma sobre los contadores propios de esta prueba, nunca sobre la lista completa.
   const propios = respuesta.body.contadores.filter(
-    (fila) => fila.usuario === contador.usuario || fila.usuario === usuarioSistema.usuario
+    (fila) => fila.nombre === contador.usuario || fila.nombre === usuarioSistema.usuario
   );
-  const propio = propios.find((fila) => fila.usuario === contador.usuario);
+  const propio = propios.find((fila) => fila.nombre === contador.usuario);
   assert.ok(propio, 'la lista debe incluir el contador propio creado en esta prueba');
 
-  // RF-32: cada contador tiene exactamente las claves id y usuario, ninguna otra.
+  // RF-32: cada contador tiene exactamente las claves id y nombre, ninguna otra.
   assert.deepStrictEqual(
     Object.keys(propio).sort(),
-    ['id', 'usuario'],
-    'cada contador de la lista debe tener exactamente las claves id y usuario (RF-12, RF-32)'
+    ['id', 'nombre'],
+    'cada contador de la lista debe tener exactamente las claves id y nombre (RF-12, RF-32)'
   );
 
   // La misma comprobación para cada fila devuelta: ni hash, ni rol, ni fecha de creación.
   const clavesDeCadaFila = respuesta.body.contadores.map((fila) => Object.keys(fila).sort().join(','));
   assert.deepStrictEqual(
     [...new Set(clavesDeCadaFila)],
-    ['id,usuario'],
-    'ningún contador de la lista puede traer campos distintos de id y usuario (RF-32)'
+    ['id,nombre'],
+    'ningún contador de la lista puede traer campos distintos de id y nombre (RF-32)'
   );
 }
 
@@ -327,6 +327,6 @@ describe('respuestas de la API', () => {
   });
 
   test('el login de administrador, contador y usuario de sistema incluye el id numérico', testLoginDevuelveIdNumerico);
-  test('la lista de contadores devuelve solo id y usuario de cada contador', testListaDeContadoresSoloIdYUsuario);
+  test('la lista de contadores devuelve solo id y nombre de cada contador', testListaDeContadoresSoloIdYNombre);
   test('ninguna respuesta de la API contiene datos de acceso', testBarridoDeRespuestasSinDatosDeAcceso);
 });

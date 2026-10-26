@@ -14,14 +14,14 @@ import {
 } from '../src/utils/filasVista.js'
 import { STATUSES } from '../src/utils/constants.js'
 
-test('contadorAFila usa el usuario del backend como nombre visible (RF-11)', () => {
-  assert.deepEqual(contadorAFila({ id: 3, usuario: 'ana' }), { id: 3, name: 'ana' })
+test('contadorAFila usa el nombre del backend como nombre visible (RF-11)', () => {
+  assert.deepEqual(contadorAFila({ id: 3, nombre: 'ana' }), { id: 3, name: 'ana' })
 })
 
 test('contadorAFila conserva el nombre largo completo, sin recortarlo (RNF-08)', () => {
   const largo = 'María de los Ángeles Fernández-Ñandú (turno de noche)'
 
-  assert.equal(contadorAFila({ id: 7, usuario: largo }).name, largo)
+  assert.equal(contadorAFila({ id: 7, nombre: largo }).name, largo)
 })
 
 test('contadorAFila no inventa datos si el contador no es un objeto', () => {

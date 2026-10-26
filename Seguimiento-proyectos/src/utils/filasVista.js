@@ -23,8 +23,8 @@ export const ayudaConteo = (estado) => AYUDA_CONTEO[estado] ?? null
 
 /**
  * Adapta un contador del backend a la fila de `CounterCountsRow.vue`.
- * El nombre visible es el usuario de la cuenta; el nombre nunca se recorta (RNF-08).
- * @param {Object} contador - `{ id, usuario }` de `GET /contadores`.
+ * El nombre visible es el nombre de la cuenta; nunca se recorta (RNF-08).
+ * @param {Object} contador - `{ id, nombre }` de `GET /contadores`.
  * @returns {{ id: number|string, name: string }|null}
  */
 export const contadorAFila = (contador) => {
@@ -34,7 +34,7 @@ export const contadorAFila = (contador) => {
 
   return {
     id: contador.id ?? null,
-    name: contador.usuario ?? '',
+    name: contador.nombre ?? '',
   }
 }
 
