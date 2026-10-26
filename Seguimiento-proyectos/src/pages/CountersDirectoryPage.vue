@@ -2,12 +2,36 @@
   <q-page class="directory-page">
     <section class="directory-panel" aria-labelledby="directory-title">
       <div class="directory-panel__head">
-        <h2 id="directory-title" class="directory-panel__title">Directorio de usuarios</h2>
-        <p class="directory-panel__help">
+        <div class="directory-panel__title-row">
+          <h2 id="directory-title" class="directory-panel__title">Directorio de usuarios</h2>
+          <q-btn
+            v-if="session.esUsuarioSistema"
+            color="primary"
+            icon="person_add"
+            label="Nuevo usuario"
+            no-caps
+            unelevated
+            class="control-touch"
+            @click="abrirNuevoUsuario"
+          >
+            <q-tooltip>Abre el formulario para crear una cuenta nueva.</q-tooltip>
+          </q-btn>
+        </div>
+        <p v-if="session.esAdministrador" class="directory-panel__help">
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. En los contadores,
           «Ver casos» abre el detalle de sus casos. No hay conteos ni casos aquí.
         </p>
+        <p v-else class="directory-panel__help">
+          Todas las cuentas del equipo, con su rol y la fecha de su último acceso. «Nuevo usuario»
+          crea una cuenta.
+        </p>
+        <p v-if="mensajeExito" class="directory-panel__exito" role="status" aria-live="polite">
+          <q-icon name="check_circle" color="positive" size="20px" />
+          {{ mensajeExito }}
+        </p>
       </div>
+
+      <NewUserDialog v-if="session.esUsuarioSistema" v-model="dialogoNuevoAbierto" @creado="alCrearUsuario" />
 
       <div class="directory-panel__body">
         <ScreenLoader
@@ -101,6 +125,7 @@ import { useRouter } from 'vue-router'
 
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import NewUserDialog from '../components/NewUserDialog.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarUsuarios } from '../services/userService.js'
 import { useCountersStore } from '../stores/counters.js'
@@ -172,6 +197,21 @@ const retry = () => {
   cargar()
 }
 
+const dialogoNuevoAbierto = ref(false)
+const mensajeExito = ref('')
+
+// Se oculta el aviso de la alta anterior para no confundirlo con la nueva.
+const abrirNuevoUsuario = () => {
+  mensajeExito.value = ''
+  dialogoNuevoAbierto.value = true
+}
+
+// La cuenta nueva aparece en la tabla al recargar el directorio.
+const alCrearUsuario = (mensaje) => {
+  mensajeExito.value = mensaje
+  cargar()
+}
+
 onMounted(() => {
   // Compatibilidad con el flujo anterior (carga inicial de la pantalla en la maqueta).
   maqueta.startScreenLoad(SCREEN_IDS.directory)
@@ -196,6 +236,37 @@ onMounted(() => {
 
 .directory-panel__head {
   margin-bottom: 12px;
+}
+
+/* El botón baja debajo del título cuando no cabe al lado (celular). */
+.directory-panel__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.directory-panel__title-row .directory-panel__title {
+  margin: 0;
+}
+
+.directory-panel__exito {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border: 1px solid #d4edda;
+  border-radius: 10px;
+  background: #f0faf3;
+  color: #1e5631;
+  font-size: 0.9rem;
+}
+
+.control-touch {
+  min-height: 44px;
 }
 
 .directory-panel__title {
