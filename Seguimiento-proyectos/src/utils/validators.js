@@ -113,3 +113,24 @@ export const validarAltaUsuario = (nombre, correo, password, rol) => {
 
   return { valido: Object.values(errores).every((error) => error === null), errores }
 }
+
+/**
+ * Valida el restablecimiento de contraseña (historia 9b) con las mismas reglas que el alta:
+ * correo obligatorio, de hasta 150 caracteres y con forma de correo; contraseña de al menos 8.
+ * @returns {{ valido: boolean, errores: { correo: string|null, password: string|null } }}
+ */
+export const validarRestablecimiento = (correo, password) => {
+  const errores = {
+    correo: errorDeTextoObligatorio(correo, 'correo'),
+    password: normalizar(password).length === 0 ? 'password_requerida' : null,
+  }
+
+  if (errores.correo === null && !FORMA_DE_CORREO.test(normalizar(correo))) {
+    errores.correo = 'correo_invalido'
+  }
+  if (errores.password === null && normalizar(password).length < MIN_PASSWORD_LENGTH) {
+    errores.password = 'password_corta'
+  }
+
+  return { valido: Object.values(errores).every((error) => error === null), errores }
+}

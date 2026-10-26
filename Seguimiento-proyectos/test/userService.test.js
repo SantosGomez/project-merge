@@ -7,13 +7,17 @@ import assert from 'node:assert/strict'
 
 import { crearUserService } from '../src/services/userService.js'
 
-// Api falsa: registra cada POST y responde con el manejador recibido.
+// Api falsa: registra cada POST y PATCH (este con su método) y responde con el manejador recibido.
 const crearApiFalsa = (responder) => {
   const llamadas = []
   return {
     llamadas,
     post: async (url, cuerpo) => {
       llamadas.push({ url, cuerpo })
+      return responder(url, cuerpo)
+    },
+    patch: async (url, cuerpo) => {
+      llamadas.push({ metodo: 'patch', url, cuerpo })
       return responder(url, cuerpo)
     },
   }
@@ -46,6 +50,50 @@ test('crearUsuario envía nombre y correo a POST /usuarios, recortados y con el 
       },
     },
   ])
+})
+
+test('restablecerContrasena envía el correo y la contraseña nueva en el cuerpo de PATCH /usuarios/restablecer-contrasena (historia 9b)', async () => {
+  const api = crearApiFalsa(() => ({
+    status: 200,
+    data: { mensaje: 'Contraseña restablecida correctamente' },
+  }))
+  const servicio = crearUserService({ api })
+
+  const mensaje = await servicio.restablecerContrasena({
+    correo: '  KRamirez@DelGrow.MX  ',
+    password: ' clave nueva ',
+  })
+
+  assert.equal(mensaje, 'Contraseña restablecida correctamente')
+  assert.deepEqual(api.llamadas, [
+    {
+      metodo: 'patch',
+      url: '/usuarios/restablecer-contrasena',
+      // Igual que el login: correo recortado y en minúsculas, contraseña recortada.
+      cuerpo: { correo: 'kramirez@delgrow.mx', password: 'clave nueva' },
+    },
+  ])
+})
+
+test('restablecerContrasena deja pasar el error del backend tal cual (p. ej. correo inexistente)', async () => {
+  const errorBackend = {
+    estado: 'no_encontrado',
+    mensaje: 'No se encontró una cuenta con ese correo sobre correo: Verifique que el correo esté bien escrito',
+    codigoHttp: 404,
+    datos: null,
+  }
+  const api = crearApiFalsa(() => {
+    throw errorBackend
+  })
+  const servicio = crearUserService({ api })
+
+  await assert.rejects(
+    servicio.restablecerContrasena({ correo: 'nadie@delgrow.mx', password: 'ClaveNueva2026' }),
+    (error) => {
+      assert.equal(error, errorBackend)
+      return true
+    },
+  )
 })
 
 test('crearUsuario deja pasar el error del backend tal cual (p. ej. correo repetido)', async () => {

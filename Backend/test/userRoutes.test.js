@@ -176,19 +176,13 @@ async function testAltaConNombreDemasiadoLargoRechaza() {
 const queryOriginal = pool.query.bind(pool);
 
 /**
- * Pide el restablecimiento de la contraseña de una cuenta.
- * @param {string} nombre - Nombre de usuario de la cuenta a restablecer.
- * @param {Object} cuerpo - Cuerpo de la petición, normalmente { password }.
+ * Pide el restablecimiento de la contraseña de una cuenta por su correo (historia 9b).
+ * @param {string} correo - Correo de la cuenta a restablecer; va en el cuerpo, no en la ruta.
+ * @param {Object} cuerpo - Resto del cuerpo, normalmente { password }.
  * @param {string} token - Token del solicitante.
  */
-function restablecer(nombre, cuerpo, token) {
-  return peticion(
-    servidor.puerto,
-    'PATCH',
-    `/usuarios/${encodeURIComponent(nombre)}/restablecer-contrasena`,
-    cuerpo,
-    token
-  );
+function restablecer(correo, cuerpo, token) {
+  return peticion(servidor.puerto, 'PATCH', '/usuarios/restablecer-contrasena', { correo, ...cuerpo }, token);
 }
 
 // Código de estado del login de la cuenta con ese nombre (entra con su correo de acceso).
@@ -245,7 +239,7 @@ async function testRestablecerContrasenaCorrecto() {
   const sesionDos = await iniciarSesion(servidor.puerto, cuenta.correo, cuenta.password);
   const nueva = 'NuevaClave2026';
 
-  const respuesta = await restablecer(cuenta.usuario, { password: nueva }, tokenAdmin);
+  const respuesta = await restablecer(cuenta.correo, { password: nueva }, tokenAdmin);
   assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 al restablecer la contraseña');
   assert.ok(
     respuesta.body.mensaje && respuesta.body.mensaje.includes('Contraseña restablecida'),
@@ -266,14 +260,14 @@ async function testRestablecerContrasenaCorrecto() {
   const otra = 'OtraClave2026';
   const conFallo = await conFalloDeBd(
     (sql) => sql.startsWith('UPDATE usuarios SET password_hash'),
-    () => restablecer(cuenta.usuario, { password: otra }, tokenAdmin)
+    () => restablecer(cuenta.correo, { password: otra }, tokenAdmin)
   );
   assert.strictEqual(conFallo.statusCode, 503, 'un fallo al guardar la contraseña debe responder 503');
   assert.match(String(conFallo.body.mensaje), /^.+ sobre .+: .+$/, 'el 503 debe tener las tres partes');
   assert.strictEqual(await estadoDelLogin(cuenta.usuario, nueva), 200, 'tras el fallo, la contraseña actual debe seguir sirviendo');
 
   // Con el pool restaurado, el restablecimiento real vuelve a funcionar.
-  const reintento = await restablecer(cuenta.usuario, { password: otra }, tokenAdmin);
+  const reintento = await restablecer(cuenta.correo, { password: otra }, tokenAdmin);
   assert.strictEqual(reintento.statusCode, 200, 'el restablecimiento debe funcionar de nuevo sin el fallo');
   assert.strictEqual(await estadoDelLogin(cuenta.usuario, otra), 200, 'la contraseña del reintento debe servir');
 }
@@ -284,15 +278,15 @@ async function testRestablecerNoEncontradoDenegadoYPropio() {
   const cuenta = await crearUsuarioDePrueba('contador');
   const nueva = 'NuevaClave2026';
 
-  const inexistente = await restablecer(nombreDePrueba('no_existe'), { password: nueva }, tokenAdmin);
+  const inexistente = await restablecer(`${nombreDePrueba('no_existe')}@prueba.local`, { password: nueva }, tokenAdmin);
   assert.strictEqual(inexistente.statusCode, 404, 'una cuenta inexistente debe responder 404');
-  assert.ok(inexistente.body.mensaje.includes('No se encontró'), 'el aviso debe ser de no encontrado');
+  assert.strictEqual(
+    inexistente.body.mensaje,
+    'No se encontró una cuenta con ese correo sobre correo: Verifique que el correo esté bien escrito',
+    'el aviso debe decir que no hay una cuenta con ese correo'
+  );
 
-  const otraCapitalizacion = await restablecer(cuenta.usuario.toUpperCase(), { password: nueva }, tokenAdmin);
-  assert.strictEqual(otraCapitalizacion.statusCode, 404, 'el nombre con otra capitalización debe tomarse por no encontrado');
-  assert.ok(otraCapitalizacion.body.mensaje.includes('No se encontró'), 'el aviso debe ser de no encontrado');
-
-  const comoContador = await restablecer(cuenta.usuario, { password: nueva }, await loginContador());
+  const comoContador = await restablecer(cuenta.correo, { password: nueva }, await loginContador());
   assert.strictEqual(comoContador.statusCode, 403, 'un contador debe recibir acceso denegado');
 
   assert.strictEqual(
@@ -304,9 +298,47 @@ async function testRestablecerNoEncontradoDenegadoYPropio() {
   // Un usuarios_de_sistema restablece su propia cuenta y entra con la nueva (criterio 44).
   const sistema = await crearUsuarioDePrueba('usuarios_de_sistema');
   const tokenSistema = await iniciarSesion(servidor.puerto, sistema.correo, sistema.password);
-  const propia = await restablecer(sistema.usuario, { password: nueva }, tokenSistema);
+  const propia = await restablecer(sistema.correo, { password: nueva }, tokenSistema);
   assert.strictEqual(propia.statusCode, 200, 'usuarios_de_sistema debe poder restablecer su propia contraseña');
   assert.strictEqual(await estadoDelLogin(sistema.usuario, nueva), 200, 'debe poder entrar con la contraseña nueva');
+}
+
+// ---------- Historia 9b: el correo se escribe como en el login ----------
+async function testRestablecerConCorreoEnMayusculasYEspacios() {
+  const tokenAdmin = await loginAdmin();
+  const cuenta = await crearUsuarioDePrueba('contador');
+  const nueva = 'NuevaClave2026';
+
+  const respuesta = await restablecer(`  ${cuenta.correo.toUpperCase()}  `, { password: nueva }, tokenAdmin);
+  assert.strictEqual(respuesta.statusCode, 200, 'el correo con mayúsculas y espacios debe encontrar la cuenta');
+  assert.strictEqual(await estadoDelLogin(cuenta.usuario, nueva), 200, 'la cuenta debe entrar con la contraseña nueva');
+}
+
+// ---------- Historia 9b, RF-37: correo faltante o que no es texto ----------
+async function testRestablecerSinCorreoOConCorreoNoTextual() {
+  const tokenAdmin = await loginAdmin();
+  const cuenta = await crearUsuarioDePrueba('contador');
+  const falta = 'Falta el correo sobre correo: Escriba el correo de la cuenta';
+  const noTexto = 'Dato inválido sobre correo: debe enviarse como texto';
+
+  const casos = [
+    ['ausente', undefined, falta],
+    ['vacío', '', falta],
+    ['solo espacios', '   ', falta],
+    ['número', 12345, noTexto],
+    ['lista', [cuenta.correo], noTexto],
+  ];
+  for (const [descripcion, correo, mensaje] of casos) {
+    const respuesta = await restablecer(correo, { password: 'NuevaClave2026' }, tokenAdmin);
+    assert.strictEqual(respuesta.statusCode, 400, `correo ${descripcion}: debe responder 400`);
+    assert.strictEqual(respuesta.body.mensaje, mensaje, `correo ${descripcion}: el aviso va sobre el correo`);
+  }
+
+  assert.strictEqual(
+    await estadoDelLogin(cuenta.usuario, cuenta.password),
+    200,
+    'la contraseña actual debe seguir sirviendo tras los rechazos'
+  );
 }
 
 // ---------- RF-44, RF-37, criterio 39: contraseña nueva inválida ----------
@@ -323,7 +355,7 @@ async function testRestablecerConContrasenaInvalida() {
     ['de 7 caracteres', { password: 'Clave12' }],
   ];
   for (const [descripcion, cuerpo] of casos) {
-    const respuesta = await restablecer(cuenta.usuario, cuerpo, tokenAdmin);
+    const respuesta = await restablecer(cuenta.correo, cuerpo, tokenAdmin);
     assert.strictEqual(respuesta.statusCode, 400, `contraseña ${descripcion}: debe responder 400`);
     assert.match(
       String(respuesta.body.mensaje),
@@ -355,18 +387,18 @@ async function testRestablecerAdministradorSeedYPropia() {
   const tokensSeed = [];
 
   try {
-    const administradorResp = await restablecer(otroAdministrador.usuario, { password: nueva }, tokenSolicitante);
+    const administradorResp = await restablecer(otroAdministrador.correo, { password: nueva }, tokenSolicitante);
     assert.strictEqual(administradorResp.statusCode, 200, 'debe poder restablecerse una cuenta de administrador');
     assert.strictEqual(await estadoDelLogin(otroAdministrador.usuario, nueva), 200, 'el administrador debe entrar con la nueva');
 
-    const seedResp = await restablecer('contador_seed', { password: nueva }, tokenSolicitante);
+    const seedResp = await restablecer('contador_seed@prueba.local', { password: nueva }, tokenSolicitante);
     assert.strictEqual(seedResp.statusCode, 200, 'debe poder restablecerse una cuenta del seed');
     const loginSeed = await peticion(servidor.puerto, 'POST', '/auth/login', { correo: 'contador_seed@prueba.local', password: nueva });
     if (loginSeed.body.token) tokensSeed.push(loginSeed.body.token);
     assert.strictEqual(loginSeed.statusCode, 200, 'contador_seed debe entrar con la nueva');
 
     // La cuenta propia va al final porque invalida el token del solicitante.
-    const propia = await restablecer(solicitante.usuario, { password: nueva }, tokenSolicitante);
+    const propia = await restablecer(solicitante.correo, { password: nueva }, tokenSolicitante);
     assert.strictEqual(propia.statusCode, 200, 'el administrador debe poder restablecer su propia contraseña');
     await afirmarSesionCaducada(tokenSolicitante, 'cuenta propia');
     assert.strictEqual(await estadoDelLogin(solicitante.usuario, nueva), 200, 'debe entrar con su contraseña nueva');
@@ -392,12 +424,12 @@ async function testFalloAlRevocarSesionesYReintento() {
 
   const conFallo = await conFalloDeBd(
     (sql) => sql.startsWith('UPDATE sesiones SET revocado = 1 WHERE usuario_id'),
-    () => restablecer(cuenta.usuario, { password: nueva }, tokenAdmin)
+    () => restablecer(cuenta.correo, { password: nueva }, tokenAdmin)
   );
   assert.strictEqual(conFallo.statusCode, 503, 'un fallo al revocar las sesiones debe responder 503');
   assert.match(String(conFallo.body.mensaje), /^.+ sobre .+: .+$/, 'el 503 debe tener las tres partes');
 
-  const reintento = await restablecer(cuenta.usuario, { password: nueva }, tokenAdmin);
+  const reintento = await restablecer(cuenta.correo, { password: nueva }, tokenAdmin);
   assert.strictEqual(reintento.statusCode, 200, 'el reintento debe completar el restablecimiento');
   await afirmarSesionCaducada(sesionUno, 'primera sesión tras el reintento');
   await afirmarSesionCaducada(sesionDos, 'segunda sesión tras el reintento');
@@ -423,6 +455,8 @@ describe('rutas de usuarios', () => {
   test('el alta con un correo que solo difiere en mayúsculas responde 400', testAltaDuplicadaConOtraCapitalizacionRechaza);
   test('restablecer la contraseña la cambia con Argon2id e invalida todas las sesiones', testRestablecerContrasenaCorrecto);
   test('restablecer una cuenta inexistente responde 404, un contador recibe 403 y se puede restablecer la propia', testRestablecerNoEncontradoDenegadoYPropio);
+  test('restablecer con el correo en mayúsculas y con espacios encuentra la cuenta', testRestablecerConCorreoEnMayusculasYEspacios);
+  test('restablecer sin correo o con un correo que no es texto responde 400 sin cambiar nada', testRestablecerSinCorreoOConCorreoNoTextual);
   test('restablecer con una contraseña nueva inválida responde 400 sin cambiarla', testRestablecerConContrasenaInvalida);
   test('el alta con nombre o correo de más de 150 caracteres responde 400 y con 150 se acepta', testAltaConNombreDemasiadoLargoRechaza);
   test('se restablece una cuenta de administrador, una del seed y la propia del administrador', testRestablecerAdministradorSeedYPropia);

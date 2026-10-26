@@ -12,6 +12,7 @@ import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
 import NewCasePage from '../pages/NewCasePage.vue'
 import NewUserPage from '../pages/NewUserPage.vue'
+import ResetPasswordPage from '../pages/ResetPasswordPage.vue'
 import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
@@ -101,6 +102,16 @@ const routes = [
           requiereSesion: true,
           perfil: PROFILES.sistema,
           titulo: 'Alta de usuario',
+        },
+      },
+      {
+        path: 'usuarios/restablecer-contrasena',
+        name: 'usuarios-restablecer',
+        component: ResetPasswordPage,
+        meta: {
+          requiereSesion: true,
+          perfil: PROFILES.sistema,
+          titulo: 'Restablecer contraseña',
         },
       },
     ],

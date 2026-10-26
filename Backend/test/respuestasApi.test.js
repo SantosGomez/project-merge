@@ -262,28 +262,18 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
   // Restablecimiento de contraseña: éxito, contraseña inválida (400), contador (403) y cuenta inexistente (404).
   // Se usa una cuenta propia para no invalidar las sesiones que usa el resto del barrido (RF-42).
   const cuentaRestablecer = await crearUsuarioDePrueba('contador');
-  const rutaRestablecer = (nombre) => `/usuarios/${encodeURIComponent(nombre)}/restablecer-contrasena`;
+  // El correo de la cuenta va en el cuerpo (historia 9b).
+  const restablecer = (correo, password, token) =>
+    peticion(servidor.puerto, 'PATCH', '/usuarios/restablecer-contrasena', { correo, password }, token);
   const restablecimiento = guardar(
     'restablecimiento de contraseña',
-    await peticion(servidor.puerto, 'PATCH', rutaRestablecer(cuentaRestablecer.usuario), { password: 'ClaveBarrido2026' }, tokenAdmin)
+    await restablecer(cuentaRestablecer.correo, 'ClaveBarrido2026', tokenAdmin)
   );
-  guardar(
-    'restablecimiento con contraseña inválida',
-    await peticion(servidor.puerto, 'PATCH', rutaRestablecer(cuentaRestablecer.usuario), { password: 'corta' }, tokenAdmin)
-  );
-  guardar(
-    'restablecimiento como contador',
-    await peticion(servidor.puerto, 'PATCH', rutaRestablecer(cuentaRestablecer.usuario), { password: 'ClaveBarrido2026' }, tokenContador)
-  );
+  guardar('restablecimiento con contraseña inválida', await restablecer(cuentaRestablecer.correo, 'corta', tokenAdmin));
+  guardar('restablecimiento como contador', await restablecer(cuentaRestablecer.correo, 'ClaveBarrido2026', tokenContador));
   guardar(
     'restablecimiento de una cuenta inexistente',
-    await peticion(
-      servidor.puerto,
-      'PATCH',
-      rutaRestablecer(`zz_test_no_existe_${crypto.randomBytes(4).toString('hex')}`),
-      { password: 'ClaveBarrido2026' },
-      tokenAdmin
-    )
+    await restablecer(`zz_test_no_existe_${crypto.randomBytes(4).toString('hex')}@prueba.local`, 'ClaveBarrido2026', tokenAdmin)
   );
 
   // La respuesta de éxito del restablecimiento no trae ningún dato de acceso (RF-42, RF-33).

@@ -677,6 +677,54 @@ describe('Alta de usuario (historia 9a) — verificación estática', () => {
   })
 })
 
+describe('Restablecer contraseña (historia 9b) — verificación estática', () => {
+  const rutas = read('../src/router/index.js')
+
+  it('la ruta de restablecer es solo del usuario de sistema y sin «Volver»', () => {
+    const inicio = rutas.indexOf("name: 'usuarios-restablecer'")
+    assert.ok(inicio >= 0, 'falta la ruta usuarios-restablecer')
+    const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
+
+    assert.match(ruta, /path: 'usuarios\/restablecer-contrasena'/, 'dirección de la pantalla')
+    assert.match(ruta, /component: ResetPasswordPage/, 'abre la pantalla de restablecer')
+    assert.match(ruta, /perfil: PROFILES\.sistema/, 'solo el usuario de sistema')
+    assert.match(ruta, /titulo: 'Restablecer contraseña'/, 'título de la pantalla')
+    assert.doesNotMatch(ruta, /volverA:/, 'se llega desde el menú, no desde otra pantalla')
+  })
+
+  it('la sección «Usuarios» del menú tiene la opción «Restablecer contraseña»', () => {
+    const inicio = src.indexOf('<template v-if="session.esUsuarioSistema">')
+    const seccion = src.slice(inicio, src.indexOf('</template>', inicio))
+
+    assert.match(seccion, /:to="\{ name: 'usuarios-restablecer' \}"/, 'lleva a restablecer')
+    assert.match(seccion, /<q-item-label>Restablecer contraseña<\/q-item-label>/, 'nombre de la opción')
+    assert.match(seccion, /<q-tooltip>Ir a restablecer la contraseña de una cuenta<\/q-tooltip>/, 'tooltip de la opción')
+    assert.match(seccion, /aria-label="Ir a restablecer la contraseña de una cuenta"/, 'nombre accesible')
+  })
+
+  it('la pantalla pide Correo y Contraseña nueva, valida antes de enviar y el 404 sale bajo Correo', () => {
+    const pagina = read('../src/pages/ResetPasswordPage.vue')
+    const etiquetas = [...pagina.matchAll(/class="form-label"\s*>([^<]+)</g)].map((m) => m[1].trim())
+    assert.deepEqual(etiquetas, ['Correo', 'Contraseña nueva'], 'solo los dos campos, en orden')
+    assert.match(pagina, /v-model="correo"[\s\S]*?type="email"/, 'el correo abre el teclado de correo')
+
+    const enviar = pagina.slice(pagina.indexOf('const restablecer = async'), pagina.indexOf('</script>'))
+    assert.match(enviar, /validarRestablecimiento\(correo\.value, password\.value\)/, 'valida antes de enviar')
+    assert.ok(
+      enviar.indexOf('if (!validacion.valido) return') < enviar.indexOf('restablecerContrasena('),
+      'con errores no se envía',
+    )
+    assert.match(enviar, /error\?\.codigoHttp === 404[\s\S]*?errores\.correo = error\.mensaje/, 'el 404 va bajo Correo')
+
+    // Cada id que nombra aria-describedby debe existir en la pantalla.
+    const referidos = [...pagina.matchAll(/aria-describedby="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/))
+    assert.ok(referidos.length >= 2, 'cada campo tiene su ayuda')
+    for (const id of referidos) {
+      assert.match(pagina, new RegExp(`\\sid="${id}"`), `falta el elemento con id «${id}»`)
+    }
+  })
+})
+
 describe('Pie del menú con el nombre de la cuenta (login por correo)', () => {
   it('muestra el nombre visible y sus iniciales, no el usuario', () => {
     const pie = src.slice(src.indexOf('<div class="drawer-usuario__fila"'), src.indexOf('<div class="drawer-usuario__salir"'))

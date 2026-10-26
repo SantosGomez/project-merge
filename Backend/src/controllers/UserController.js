@@ -93,8 +93,16 @@ async function createUser(req, res) {
  * @param {Object} res - Respuesta Express.
  */
 async function resetPassword(req, res) {
-  const { usuario } = req.params;
-  const { password } = req.body;
+  const { correo, password } = req.body;
+
+  // 0. El correo es obligatorio y debe llegar como texto, con los mismos avisos que el alta (RF-37)
+  const campoCorreo = validarCampoTexto(correo, 'correo');
+  if (campoCorreo.estado === 'tipo_invalido') {
+    return res.status(400).json(buildError('Dato inválido', 'correo', 'debe enviarse como texto'));
+  }
+  if (campoCorreo.estado === 'faltante') {
+    return res.status(400).json(buildError('Falta el correo', 'correo', 'Escriba el correo de la cuenta'));
+  }
 
   // 1. La contraseña nueva sigue la misma regla que el alta (RF-44, RF-37)
   const campo = validarCampoTexto(password, 'contraseña');
@@ -109,11 +117,11 @@ async function resetPassword(req, res) {
     );
   }
 
-  // 2. La cuenta se identifica por su nombre exacto (RF-36, RF-43)
-  const cuenta = await UserModel.findByUsername(usuario);
+  // 2. La cuenta se identifica por su correo de acceso, como en el login (RF-43, historia 9b)
+  const cuenta = await UserModel.findByCorreo(correo);
   if (!cuenta) {
     return res.status(404).json(
-      buildError('No se encontró el usuario', 'usuario solicitado', 'Verifique el nombre de usuario exacto')
+      buildError('No se encontró una cuenta con ese correo', 'correo', 'Verifique que el correo esté bien escrito')
     );
   }
 

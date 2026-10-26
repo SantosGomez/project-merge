@@ -32,10 +32,25 @@ export const crearUserService = (opciones = {}) => {
     return data.mensaje
   }
 
-  return { crearUsuario }
+  /**
+   * PATCH /usuarios/restablecer-contrasena: cambia la contraseña de la cuenta con ese correo (historia 9b).
+   * El correo va en el cuerpo, recortado y en minúsculas, y la contraseña recortada, como en el login.
+   * @param {{ correo: string, password: string }} datos
+   * @returns {Promise<string>} mensaje de restablecimiento del backend.
+   */
+  const restablecerContrasena = async ({ correo, password }) => {
+    const { data } = await api.patch('/usuarios/restablecer-contrasena', {
+      correo: correo.trim().toLowerCase(),
+      password: password.trim(),
+    })
+    return data.mensaje
+  }
+
+  return { crearUsuario, restablecerContrasena }
 }
 
 // Servicio por defecto con la instancia de axios real.
 const servicioPorDefecto = crearUserService()
 
 export const crearUsuario = servicioPorDefecto.crearUsuario
+export const restablecerContrasena = servicioPorDefecto.restablecerContrasena

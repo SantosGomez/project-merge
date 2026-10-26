@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import { MAX_CLIENT_LENGTH } from '../src/utils/constants.js'
 import {
   validarAltaUsuario,
+  validarRestablecimiento,
   validarCliente,
   validarCredenciales,
   validarPrioridad,
@@ -217,4 +218,24 @@ test('validarAltaUsuario exige elegir uno de los tres roles', () => {
   for (const rol of [null, undefined, '', 'Administrador', 'invitado']) {
     assert.equal(validarAlta({ rol }).errores.rol, 'rol_requerido', `«${rol}» no es un rol válido`)
   }
+})
+
+// --- validarRestablecimiento (historia 9b) ---------------------------------
+
+test('validarRestablecimiento acepta un correo con forma de correo y una contraseña de 8, sin contar espacios', () => {
+  assert.deepEqual(validarRestablecimiento('  KRamirez@DelGrow.MX  ', ' 12345678 '), {
+    valido: true,
+    errores: { correo: null, password: null },
+  })
+})
+
+test('validarRestablecimiento rechaza correo vacío o sin forma de correo y contraseña vacía o de menos de 8', () => {
+  assert.deepEqual(validarRestablecimiento('   ', ''), {
+    valido: false,
+    errores: { correo: 'correo_requerido', password: 'password_requerida' },
+  })
+  assert.deepEqual(validarRestablecimiento('kramirez@delgrow', ' 1234567 '), {
+    valido: false,
+    errores: { correo: 'correo_invalido', password: 'password_corta' },
+  })
 })

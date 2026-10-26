@@ -260,6 +260,25 @@ test('decidirAcceso deniega a administrador y contador el alta de usuarios', () 
   }
 })
 
+const RUTA_USUARIOS_RESTABLECER = { requiereSesion: true, perfil: 'usuarios_de_sistema' }
+
+test('decidirAcceso deja entrar al usuario de sistema a «Restablecer contraseña» y lo deniega a administrador y contador (historia 9b)', () => {
+  assert.deepEqual(
+    decidirAcceso({ ruta: RUTA_USUARIOS_RESTABLECER, sesion: { autenticado: true, rol: 'usuarios_de_sistema' } }),
+    { accion: 'permitir' },
+  )
+
+  for (const [rol, destino] of [
+    ['administrador', 'admin-dashboard'],
+    ['contador', 'contador-casos'],
+  ]) {
+    assert.deepEqual(
+      decidirAcceso({ ruta: RUTA_USUARIOS_RESTABLECER, sesion: { autenticado: true, rol } }),
+      { accion: 'denegar', motivo: 'perfil', destino },
+    )
+  }
+})
+
 test('decidirAcceso deniega un perfil sin pantalla asignada y ofrece volver a P-1', () => {
   const sesion = { autenticado: true, rol: 'invitado' }
 

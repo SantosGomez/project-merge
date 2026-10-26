@@ -331,7 +331,7 @@ async function testCasosYRestablecimientoJsonMalFormado() {
   const peticiones = [
     ['POST', '/casos'],
     ['PATCH', '/casos/1'],
-    ['PATCH', `/usuarios/${contador.usuario}/restablecer-contrasena`],
+    ['PATCH', '/usuarios/restablecer-contrasena'],
   ];
 
   for (const [metodo, ruta] of peticiones) {

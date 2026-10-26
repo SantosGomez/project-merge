@@ -8,9 +8,9 @@ const { asyncHandler } = require('../utils/asyncHandler');
 // POST /usuarios — Alta de usuario protegida (solo administrador o usuarios_de_sistema) (RF-28 a RF-30)
 router.post('/', authenticateToken, requireAdminOrSistema, asyncHandler(createUser));
 
-// PATCH /usuarios/:usuario/restablecer-contrasena — Restablecimiento protegido (RF-42 a RF-44)
+// PATCH /usuarios/restablecer-contrasena — Restablecimiento por correo, que va en el cuerpo (RF-42 a RF-44, historia 9b)
 router.patch(
-  '/:usuario/restablecer-contrasena',
+  '/restablecer-contrasena',
   authenticateToken,
   requireAdminOrSistema,
   asyncHandler(resetPassword)
