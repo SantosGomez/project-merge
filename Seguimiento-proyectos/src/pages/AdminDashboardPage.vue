@@ -50,37 +50,63 @@
           <div class="dashboard-panel__head">
             <h2 id="counter-list-title" class="dashboard-panel__title">Contadores del equipo</h2>
             <p class="dashboard-panel__help">
-              Cada conteo indica cuántos casos tiene el contador en estado Pendiente, En proceso o
-              Finalizado; se muestra 0 cuando no hay casos en ese estado. Selecciona un contador para
-              ver el detalle de sus casos.
+              Cada conteo indica cuántos casos importantes tiene el contador en estado Pendiente, En
+              proceso o Finalizado (0 si no tiene). Toca el nombre para ver todos sus casos importantes
+              o un conteo para ver solo los de ese estado.
             </p>
           </div>
 
           <div class="dashboard-panel__body">
-            <ul class="counter-list">
+            <q-input
+              v-model="busqueda"
+              dense
+              outlined
+              clearable
+              debounce="150"
+              type="search"
+              label="Buscar contador por nombre"
+              aria-label="Buscar contador por nombre"
+              class="counter-search"
+            >
+              <template #prepend>
+                <q-icon name="search" aria-hidden="true" />
+              </template>
+              <q-tooltip>Escribe parte del nombre; no importan mayúsculas ni acentos.</q-tooltip>
+            </q-input>
+            <p class="counter-search__resultado" aria-live="polite">
+              {{ contadoresVisibles.length }} de {{ contadores.length }} contadores
+            </p>
+
+            <p v-if="contadoresVisibles.length === 0" class="dashboard-panel__prompt" role="status">
+              Ningún contador coincide con «{{ busqueda }}». Revisa el nombre o borra la búsqueda.
+            </p>
+
+            <ul v-else class="counter-list">
               <CounterCountsRow
-                v-for="contador in contadores"
+                v-for="contador in contadoresVisibles"
                 :key="contador.id"
                 :counter="contadorAFila(contador)"
                 :counts="contadoresStore.conteosDe(contador.id)"
                 :selected="contador.id === contadoresStore.contadorSeleccionadoId"
+                :estado-activo="contador.id === contadoresStore.contadorSeleccionadoId ? estadoConteoActivo : null"
                 @select="seleccionar(contador.id)"
+                @filtrar="(estado) => filtrarPorConteo(contador.id, estado)"
               />
             </ul>
           </div>
         </section>
 
-        <section class="dashboard-panel" aria-labelledby="counter-detail-title">
+        <section ref="panelDetalle" class="dashboard-panel" aria-labelledby="counter-detail-title">
           <div class="dashboard-panel__head">
             <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
 
             <p v-if="contadorSeleccionado" class="dashboard-panel__help">
-              Casos de {{ contadorSeleccionado.nombre }}. Esta vista es de solo consulta: no permite
-              cambiar el estado ni la prioridad.
+              Casos importantes de {{ contadorSeleccionado.nombre }}. Esta vista es de solo consulta: no
+              permite cambiar el estado ni la prioridad.
             </p>
             <p v-else class="dashboard-panel__help">
               Selecciona un contador de la lista para ver el cliente, el estado y la prioridad de cada
-              uno de sus casos.
+              uno de sus casos importantes.
             </p>
           </div>
 
@@ -101,18 +127,41 @@
             -->
             <EmptyState
               v-else-if="estadoDetalle === SCREEN_STATES.empty"
-              title="Este contador no tiene casos"
-              :message="`El contador ${contadorSeleccionado.nombre} no tiene casos registrados. Selecciona otro contador de la lista para ver su detalle.`"
+              title="Este contador no tiene casos importantes"
+              :message="`El contador ${contadorSeleccionado.nombre} no tiene casos marcados como importantes. Selecciona otro contador de la lista para ver su detalle.`"
             />
 
-            <ul v-else class="case-list">
-              <CaseRow
-                v-for="caso in filasDetalle"
-                :key="caso.id"
-                :case-item="caso"
-                readonly
+            <template v-else>
+              <FiltrosCasos
+                v-model="filtrosDetalle"
+                :estados="ESTADOS_DETALLE"
+                :con-interruptores="false"
               />
-            </ul>
+
+              <p v-if="paginacionDetalle.totalPaginas === 0" class="dashboard-panel__prompt" role="status">
+                {{ contadorSeleccionado.nombre }} no tiene casos importantes en estado
+                {{ STATUS_LABELS[filtrosDetalle.estado] }}. Elige otro estado o «Todos».
+              </p>
+
+              <q-list v-else bordered separator class="case-list" aria-label="Casos importantes del contador">
+                <CasoItem v-for="caso in filasDetalle" :key="caso.id" :caso="caso" solo-lectura />
+              </q-list>
+
+              <div v-if="paginacionDetalle.totalPaginas > 0" class="detalle-paginacion">
+                <p class="detalle-paginacion__texto" aria-live="polite">{{ paginacionDetalle.texto }}</p>
+                <q-pagination
+                  v-if="paginacionDetalle.totalPaginas > 1"
+                  :model-value="paginacionDetalle.pagina"
+                  :max="paginacionDetalle.totalPaginas"
+                  :max-pages="5"
+                  direction-links
+                  boundary-numbers
+                  color="primary"
+                  active-design="unelevated"
+                  @update:model-value="(p) => (paginaDetalle = p)"
+                />
+              </div>
+            </template>
           </div>
         </section>
       </div>
@@ -121,17 +170,20 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
-import CaseRow from '../components/CaseRow.vue'
+import CasoItem from '../components/CasoItem.vue'
 import CounterCountsRow from '../components/CounterCountsRow.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { getResumenEquipo } from '../services/counterService.js'
 import { useCountersStore } from '../stores/counters.js'
-import { casosAFilas, contadorAFila } from '../utils/filasVista.js'
+import { STATUS_LABELS } from '../utils/constants.js'
+import { casoAFila, contadorAFila } from '../utils/filasVista.js'
+import { FILTROS_INICIALES, filtrarCasos, filtrarContadores, hoyLocal, paginar } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES } from '../utils/screenState.js'
 
 /*
@@ -158,16 +210,70 @@ const estadoDetalle = computed(() => contadoresStore.estadoDetalle)
 /** Contador cuyo detalle se está viendo, o null (RF-13). */
 const contadorSeleccionado = computed(() => contadoresStore.contadorSeleccionado)
 
-/** Casos del detalle adaptados a las props de CaseRow (cliente, estado y prioridad). */
-const filasDetalle = computed(() => casosAFilas(contadoresStore.casosDetalle))
+/** Búsqueda por nombre: solo oculta filas de la lista; el detalle abierto se conserva. */
+const busqueda = ref('')
+const contadoresVisibles = computed(() => filtrarContadores(contadores.value, busqueda.value))
+
+/*
+ * Filtro de estado del detalle. Los chips y los conteos del contador seleccionado comparten
+ * este valor: tocar un conteo lo cambia y el chip correspondiente se marca, y al revés.
+ */
+const ESTADOS_DETALLE = ['todos', 'pendiente', 'en_proceso', 'finalizado']
+const filtrosDetalle = ref({ ...FILTROS_INICIALES, estado: 'todos' })
+const paginaDetalle = ref(1)
+const POR_PAGINA_DETALLE = 10
+
+/** Estado marcado en los conteos del contador seleccionado (null con «Todos»). */
+const estadoConteoActivo = computed(() =>
+  filtrosDetalle.value.estado === 'todos' ? null : filtrosDetalle.value.estado,
+)
+
+watch(filtrosDetalle, () => {
+  paginaDetalle.value = 1
+})
+
+const paginacionDetalle = computed(() =>
+  paginar(
+    filtrarCasos(contadoresStore.casosDetalle, filtrosDetalle.value, hoyLocal()),
+    paginaDetalle.value,
+    POR_PAGINA_DETALLE,
+  ),
+)
+
+/** Casos del detalle adaptados a las props de CasoItem (solo lectura). */
+const filasDetalle = computed(() => paginacionDetalle.value.elementos.map(casoAFila))
 
 /** Mensaje de tres partes del último error; si no llegó, se describe la carga (RNF-01). */
 const mensajeError = computed(
   () => contadoresStore.error?.mensaje ?? 'la carga de los contadores y de sus conteos.',
 )
 
-/** Selecciona un contador y reemplaza el detalle anterior (RF-13, RF-15). */
-const seleccionar = (contadorId) => contadoresStore.seleccionarContador(contadorId)
+const panelDetalle = ref(null)
+
+// En celular y tableta el detalle queda debajo de la lista: se lleva la vista hasta él.
+const mostrarDetalle = async () => {
+  await nextTick()
+  if (window.matchMedia('(max-width: 1023px)').matches) {
+    panelDetalle.value?.scrollIntoView({ block: 'start' })
+  }
+}
+
+/** Selecciona un contador; por defecto, con todos sus casos importantes (RF-13, RF-15). */
+const seleccionar = async (contadorId, estado = 'todos') => {
+  filtrosDetalle.value = { ...filtrosDetalle.value, estado }
+  // Si ya era el seleccionado no se vuelve a pedir el detalle: solo cambia el filtro.
+  if (contadorId !== contadoresStore.contadorSeleccionadoId) {
+    await contadoresStore.seleccionarContador(contadorId)
+  }
+  // Después de cargar: con la página ya completa, el desplazamiento llega hasta el detalle.
+  mostrarDetalle()
+}
+
+/** Tocar un conteo filtra por ese estado; tocar otra vez el conteo activo quita el filtro. */
+const filtrarPorConteo = (contadorId, estado) => {
+  const yaActivo = contadorId === contadoresStore.contadorSeleccionadoId && estadoConteoActivo.value === estado
+  return seleccionar(contadorId, yaActivo ? 'todos' : estado)
+}
 
 /** Reintenta la carga completa; P-2 vuelve sin contador seleccionado (RF-36). */
 const reintentar = () => contadoresStore.reintentar()
@@ -290,7 +396,37 @@ onMounted(async () => {
 }
 
 .dashboard-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
+}
+
+/* La búsqueda queda fija arriba cuando la lista se desplaza dentro del panel (escritorio). */
+.counter-search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f7f9fc;
+}
+
+.counter-search__resultado,
+.detalle-paginacion__texto {
+  margin: -4px 0 0;
+  color: #334e68;
+  font-size: 0.85rem;
+}
+
+.detalle-paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detalle-paginacion__texto {
+  margin: 0;
 }
 
 .dashboard-panel__prompt {
@@ -305,8 +441,7 @@ onMounted(async () => {
   text-align: center;
 }
 
-.counter-list,
-.case-list {
+.counter-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -314,6 +449,13 @@ onMounted(async () => {
   padding: 0;
   list-style: none;
   min-width: 0;
+}
+
+.case-list {
+  overflow: hidden;
+  border-color: #dbe4ee;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 /* RNF-02: una columna con 720 px de ancho como máximo, centrada, entre 600 y 1023 px. */

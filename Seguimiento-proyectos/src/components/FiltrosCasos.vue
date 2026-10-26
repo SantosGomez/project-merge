@@ -3,7 +3,7 @@
     <div class="filtros-casos__grupo" role="group" aria-labelledby="filtro-estado-titulo">
       <span id="filtro-estado-titulo" class="filtros-casos__titulo">Estado</span>
       <q-chip
-        v-for="opcion in OPCIONES_ESTADO"
+        v-for="opcion in opcionesVisibles"
         :key="opcion.valor"
         clickable
         :outline="filtros.estado !== opcion.valor"
@@ -18,7 +18,7 @@
       </q-chip>
     </div>
 
-    <div class="filtros-casos__grupo">
+    <div v-if="conInterruptores" class="filtros-casos__grupo">
       <q-toggle
         :model-value="filtros.soloImportantes"
         color="amber-9"
@@ -63,18 +63,35 @@ import { computed } from 'vue'
 import { FILTROS_INICIALES } from '../utils/filtrosCasos.js'
 
 /*
- * Barra de filtros de «Mis casos»: estado (chips), solo importantes y solo vencidos.
+ * Barra de filtros de casos: estado (chips) y, en «Mis casos», solo importantes y solo vencidos.
  * Solo edita el objeto de filtros; la lista se filtra en la página con `filtrarCasos`.
  */
 const filtros = defineModel({ type: Object, required: true })
+
+const props = defineProps({
+  /** Estados que se ofrecen como chips, en orden; por defecto, los de «Mis casos». */
+  estados: {
+    type: Array,
+    default: () => ['abiertos', 'pendiente', 'en_proceso', 'finalizado', 'todos'],
+  },
+  /** Muestra «Solo importantes», «Solo vencidos» y «Limpiar filtros». */
+  conInterruptores: {
+    type: Boolean,
+    default: true,
+  },
+})
 
 const OPCIONES_ESTADO = [
   { valor: 'abiertos', etiqueta: 'Abiertos', ayuda: 'Casos pendientes y en proceso.' },
   { valor: 'pendiente', etiqueta: 'Pendiente', ayuda: 'Casos que aún no se empiezan.' },
   { valor: 'en_proceso', etiqueta: 'En proceso', ayuda: 'Casos en los que ya se está trabajando.' },
   { valor: 'finalizado', etiqueta: 'Finalizado', ayuda: 'Casos terminados.' },
-  { valor: 'todos', etiqueta: 'Todos', ayuda: 'Todos tus casos, incluidos los finalizados.' },
+  { valor: 'todos', etiqueta: 'Todos', ayuda: 'Todos los casos, incluidos los finalizados.' },
 ]
+
+const opcionesVisibles = computed(() =>
+  props.estados.map((valor) => OPCIONES_ESTADO.find((opcion) => opcion.valor === valor)).filter(Boolean),
+)
 
 const hayFiltrosExtra = computed(() =>
   Object.keys(FILTROS_INICIALES).some((clave) => filtros.value[clave] !== FILTROS_INICIALES[clave]),

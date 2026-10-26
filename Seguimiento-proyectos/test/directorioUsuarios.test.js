@@ -48,15 +48,15 @@ describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', (
     assert.match(boton, /v-if="session\.esUsuarioSistema"/)
     assert.match(boton, /<q-tooltip>/)
     assert.match(boton, /@click="abrirNuevoUsuario"/)
-    const abrir = pagina.slice(pagina.indexOf('const abrirNuevoUsuario'), pagina.indexOf('\n}', pagina.indexOf('const abrirNuevoUsuario')))
-    assert.match(abrir, /mensajeExito\.value = ''/, 'el aviso de la alta anterior se oculta')
+    // Los avisos son notificaciones de Quasar que se van solas: ya no hay aviso fijo que ocultar.
+    assert.doesNotMatch(pagina, /mensajeExito/, 'sin el aviso fijo anterior')
     assert.match(pagina, /<NewUserDialog v-if="session\.esUsuarioSistema" v-model="dialogoNuevoAbierto"/)
   })
 
   it('al crear la cuenta el directorio avisa y recarga la tabla', () => {
     assert.match(pagina, /@creado="alCrearUsuario"/)
     const alCrear = pagina.slice(pagina.indexOf('const alCrearUsuario'), pagina.indexOf('\nconst ', pagina.indexOf('const alCrearUsuario') + 1))
-    assert.match(alCrear, /mensajeExito\.value = mensaje/)
+    assert.match(alCrear, /\$q\.notify\(\{ type: 'positive', message: mensaje \}\)/)
     assert.match(alCrear, /cargar\(\)/)
   })
 })

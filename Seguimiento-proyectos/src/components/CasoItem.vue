@@ -1,6 +1,6 @@
 <template>
-  <q-item class="caso-item" :class="{ 'caso-item--importante': caso.important }">
-    <q-item-section avatar class="caso-item__estrella">
+  <q-item class="caso-item" :class="{ 'caso-item--importante': caso.important && !soloLectura }">
+    <q-item-section v-if="!soloLectura" avatar class="caso-item__estrella">
       <q-btn
         flat
         round
@@ -25,7 +25,7 @@
     <q-item-section class="caso-item__datos">
       <q-item-label class="caso-item__cliente">
         <span class="caso-item__nombre">{{ caso.client }}</span>
-        <span v-if="caso.important" class="caso-item__importante" tabindex="0">
+        <span v-if="caso.important && !soloLectura" class="caso-item__importante" tabindex="0">
           Importante
           <q-tooltip>Caso marcado como importante: requiere seguimiento especial.</q-tooltip>
         </span>
@@ -41,25 +41,32 @@
         <span
           v-if="caso.dueDate"
           class="caso-item__vence"
-          :class="{ 'caso-item__vence--vencido': caso.vencido }"
+          :class="{ 'caso-item__vence--vencido': vencido }"
           tabindex="0"
         >
           <q-icon name="schedule" aria-hidden="true" /> Vence {{ caso.dueDate }}
-          <strong v-if="caso.vencido">· Vencido</strong>
+          <strong v-if="vencido">· Vencido</strong>
           <q-tooltip>{{
-            caso.vencido
+            vencido
               ? 'La fecha de vencimiento ya pasó y el caso no está finalizado.'
               : 'Fecha límite calculada en días hábiles según la prioridad.'
           }}</q-tooltip>
         </span>
-        <span v-if="caso.inProgressSince" tabindex="0" class="caso-item__ayuda">
+        <span v-if="caso.inProgressSince && !soloLectura" tabindex="0" class="caso-item__ayuda">
           <q-icon name="play_circle_outline" aria-hidden="true" /> En proceso desde {{ caso.inProgressSince }}
           <q-tooltip>Primer día en que el caso pasó a «En proceso».</q-tooltip>
         </span>
       </q-item-label>
     </q-item-section>
 
-    <q-item-section side class="caso-item__acciones">
+    <q-item-section v-if="soloLectura" side class="caso-item__acciones">
+      <span class="caso-item__estado-fijo" tabindex="0">
+        {{ STATUS_LABELS[caso.status] ?? caso.status }}
+        <q-tooltip>Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.</q-tooltip>
+      </span>
+    </q-item-section>
+
+    <q-item-section v-else side class="caso-item__acciones">
       <q-select
         dense
         outlined
@@ -96,14 +103,18 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import PriorityTag from './PriorityTag.vue'
 import { STATUSES, STATUS_LABELS } from '../utils/constants.js'
 
 /*
  * Un caso de «Mis casos» como QItem: estrella de importante, datos del caso y acciones rápidas
  * (estado y Editar). La prioridad se ve como etiqueta y se cambia desde «Editar».
+ * En `solo-lectura` (dashboard del administrador) no hay controles: el estado se muestra como texto
+ * y, por ahora, no se muestran la estrella, «Importante», «Vencido» ni «En proceso desde».
  */
-defineProps({
+const props = defineProps({
   /** Fila de `casoAFila` más `vencido` (boolean). */
   caso: {
     type: Object,
@@ -114,7 +125,14 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  /** Sin controles de edición (vista de consulta del administrador). */
+  soloLectura: {
+    type: Boolean,
+    default: false,
+  },
 })
+
+const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
 
 const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar'])
 
@@ -212,6 +230,22 @@ const opcionesEstado = STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s 
 
 .caso-item__estado {
   width: 150px;
+}
+
+.caso-item__estado-fijo {
+  padding: 2px 10px;
+  border: 1px solid #c9d4e0;
+  border-radius: 999px;
+  background: #f5f8fb;
+  color: #102a43;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: help;
+}
+
+.caso-item__estado-fijo:focus-visible {
+  outline: 3px solid #0b5cad;
+  outline-offset: 2px;
 }
 
 /* En celular, las acciones bajan a su propia línea, alineadas con los datos. */

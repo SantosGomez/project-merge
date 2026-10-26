@@ -14,19 +14,22 @@
       </button>
 
       <span class="counter-row__counts">
-        <span
+        <button
           v-for="status in STATUSES"
           :key="status"
+          type="button"
           class="counter-row__count"
-          tabindex="0"
+          :class="{ 'counter-row__count--activo': estadoActivo === status }"
+          :aria-pressed="estadoActivo === status ? 'true' : 'false'"
           :aria-label="`${STATUS_LABELS[status]}: ${counts[status] ?? 0}. ${ayudaConteo(status)}`"
+          @click="emit('filtrar', status)"
         >
           <span class="counter-row__count-value">{{ counts[status] ?? 0 }}</span>
           <span class="counter-row__count-label">{{ STATUS_LABELS[status] }}</span>
 
-          <!-- Ayuda contextual de cada conteo: qué está contando (RNF-03). -->
+          <!-- Ayuda contextual de cada conteo: qué cuenta y que filtra al tocarlo (RNF-03). -->
           <q-tooltip v-if="ayudaConteo(status)">{{ ayudaConteo(status) }}</q-tooltip>
-        </span>
+        </button>
       </span>
     </div>
   </li>
@@ -42,9 +45,9 @@ import { ayudaConteo } from '../utils/filasVista.js'
  * El componente no decide qué contador está seleccionado ni cuenta casos: recibe los
  * conteos ya calculados y avisa con un evento. El nombre nunca se recorta (RNF-08).
  *
- * La selección vive en el botón del nombre (un solo control por fila). Los conteos quedan
- * fuera de ese botón para que cada uno pueda recibir foco y mostrar su ayuda con teclado,
- * además de con puntero y con toque (RNF-03); dentro de un `button` el foco no llegaría.
+ * El botón del nombre selecciona al contador con todos sus casos. Cada conteo es otro botón:
+ * selecciona al contador y filtra su detalle por ese estado (`filtrar`). Quedan fuera del botón
+ * del nombre para que cada uno reciba foco y muestre su ayuda con teclado, puntero y toque (RNF-03).
  */
 defineProps({
   /** Contador: `{ id, name }`. */
@@ -62,9 +65,14 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  /** Estado por el que se está filtrando el detalle de este contador, o null. */
+  estadoActivo: {
+    type: String,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'filtrar'])
 </script>
 
 <style scoped>
@@ -164,10 +172,28 @@ const emit = defineEmits(['select'])
   border: 1px solid #dbe4ee;
   border-radius: 8px;
   background: #f4f7fb;
-  cursor: help;
+  font: inherit;
+  cursor: pointer;
 }
 
-/* Cada conteo recibe foco para explicar qué cuenta también con teclado (RNF-03, RNF-07). */
+.counter-row__count:hover {
+  border-color: #1f5f99;
+  background: #ffffff;
+}
+
+/* Conteo por el que se filtra el detalle: borde y fondo azules, además de aria-pressed. */
+.counter-row__count--activo,
+.counter-row__count--activo:hover {
+  border-color: #1f5f99;
+  background: #1f5f99;
+}
+
+.counter-row__count--activo .counter-row__count-value,
+.counter-row__count--activo .counter-row__count-label {
+  color: #ffffff;
+}
+
+/* Cada conteo es un botón con foco visible (RNF-03, RNF-07). */
 .counter-row__count:focus-visible {
   outline: 3px solid #0b5cad;
   outline-offset: 2px;

@@ -9,6 +9,7 @@ import {
   esCasoVencido,
   hoyLocal,
   filtrarCasos,
+  filtrarContadores,
   paginar,
 } from '../src/utils/filtrosCasos.js'
 
@@ -97,4 +98,26 @@ test('paginar sin casos no muestra páginas', () => {
 test('hoyLocal da la fecha local AAAA-MM-DD, sin pasar por UTC', () => {
   assert.equal(hoyLocal(new Date(2026, 9, 26, 23, 30)), '2026-10-26', 'de noche no salta al día siguiente')
   assert.equal(hoyLocal(new Date(2027, 0, 5, 0, 5)), '2027-01-05')
+})
+
+// --- búsqueda de contadores (dashboard del administrador) --------------------
+
+const CONTADORES = [
+  { id: 1, nombre: 'Ana López' },
+  { id: 2, nombre: 'Luis Méndez' },
+  { id: 3, nombre: 'Sofía Ruiz' },
+]
+
+test('filtrarContadores busca por nombre sin importar mayúsculas ni acentos', () => {
+  assert.deepEqual(ids(filtrarContadores(CONTADORES, 'lopez')), [1])
+  assert.deepEqual(ids(filtrarContadores(CONTADORES, 'SOFIA')), [3])
+  assert.deepEqual(ids(filtrarContadores(CONTADORES, 'méndez')), [2])
+  assert.deepEqual(ids(filtrarContadores(CONTADORES, 'u')), [2, 3], 'busca en cualquier parte del nombre')
+})
+
+test('filtrarContadores sin texto (o solo espacios) devuelve todos y no encuentra lo que no existe', () => {
+  assert.deepEqual(ids(filtrarContadores(CONTADORES, '')), [1, 2, 3])
+  assert.deepEqual(ids(filtrarContadores(CONTADORES, '   ')), [1, 2, 3])
+  assert.deepEqual(ids(filtrarContadores(CONTADORES, null)), [1, 2, 3])
+  assert.deepEqual(filtrarContadores(CONTADORES, 'pedro'), [])
 })

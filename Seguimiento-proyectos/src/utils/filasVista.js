@@ -3,7 +3,7 @@
 // Los servicios devuelven casos ya traducidos a códigos internos con la forma
 // `{ id, cliente, estado, prioridad, contador_id, creado_en, actualizado_en }`
 // y contadores con la forma `{ id, nombre }`; `CounterCountsRow.vue` y
-// `CaseRow.vue` esperan `{ id, name }` y `{ id, client, status, priority, counterId }`.
+// `CasoItem.vue` esperan `{ id, name }` y `{ id, client, status, priority, counterId }`.
 // Funciones puras, síncronas, sin Vue y sin efectos secundarios.
 
 import { PROFILES, STATUSES, STATUS_LABELS } from './constants.js'
@@ -12,9 +12,9 @@ import { formatearRol } from './formateadores.js'
 
 /** Texto de ayuda de cada conteo: qué está contando (RNF-03). */
 export const AYUDA_CONTEO = Object.freeze({
-  pendiente: 'Cuenta los casos de este contador en estado Pendiente: todavía no se han empezado.',
-  en_proceso: 'Cuenta los casos de este contador en estado En proceso: están siendo atendidos.',
-  finalizado: 'Cuenta los casos de este contador en estado Finalizado: ya están terminados.',
+  pendiente: 'Casos importantes de este contador en estado Pendiente: todavía no se han empezado. Tócalo para ver solo esos casos.',
+  en_proceso: 'Casos importantes de este contador en estado En proceso: están siendo atendidos. Tócalo para ver solo esos casos.',
+  finalizado: 'Casos importantes de este contador en estado Finalizado: ya están terminados. Tócalo para ver solo esos casos.',
 })
 
 /**
@@ -77,7 +77,7 @@ export const compararUltimoAcceso = (a, b) => {
 }
 
 /**
- * Adapta un caso interno a la fila de `CaseRow.vue`.
+ * Adapta un caso interno a la fila de `CasoItem.vue`.
  * Solo se copian los campos que el componente muestra: cliente completo, estado, prioridad,
  * fechas de inicio y vencimiento (DD-MM-AAAA), descripción, si es importante y desde cuándo está en proceso.
  * @param {Object} caso - caso interno del servicio.
@@ -104,7 +104,7 @@ export const casoAFila = (caso) => {
 }
 
 /**
- * Adapta una lista de casos internos a filas de `CaseRow.vue`, descartando los
+ * Adapta una lista de casos internos a filas de `CasoItem.vue`, descartando los
  * elementos que no son casos válidos.
  * @param {Array<Object>} [casos] - casos internos del servicio.
  * @returns {Array<Object>}

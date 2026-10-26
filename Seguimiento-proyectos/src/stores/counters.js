@@ -26,6 +26,9 @@ const contadoresPorDefecto = {
 
 const CONTEO_EN_CERO = Object.freeze({ pendiente: 0, en_proceso: 0, finalizado: 0 })
 
+// El dashboard del administrador muestra por contador solo sus casos importantes.
+const SOLO_IMPORTANTES = Object.freeze({ soloImportantes: true })
+
 /** Conteos con las tres claves y valores numéricos (RF-12: el cero se muestra). */
 const normalizarConteos = (conteos) => ({
   pendiente: Number(conteos?.pendiente) || 0,
@@ -131,7 +134,7 @@ export const crearCountersStore = (dependencias = {}) => {
           }
 
           const conteos = await Promise.all(
-            lista.map((contador) => servicio.getConteosPorEstado(contador.id)),
+            lista.map((contador) => servicio.getConteosPorEstado(contador.id, SOLO_IMPORTANTES)),
           )
 
           if (versionActual !== version) {
@@ -182,7 +185,7 @@ export const crearCountersStore = (dependencias = {}) => {
         this.error = null
 
         try {
-          const casos = await servicio.getCasosPorContador(id)
+          const casos = await servicio.getCasosPorContador(id, SOLO_IMPORTANTES)
 
           // Respuesta tardía o selección más reciente: se descarta sin tocar el estado.
           if (versionActual !== version || this.contadorSeleccionadoId !== id) {

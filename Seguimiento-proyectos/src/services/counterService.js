@@ -35,6 +35,9 @@ const traducirCasos = (casos, sobreQue) =>
  * @param {Object} [opciones.api] - instancia de axios (o api falsa).
  * @returns {Object} funciones del servicio de contadores.
  */
+// El dashboard del administrador pide solo los casos importantes.
+const filtroImportantes = (opciones = {}) => (opciones.soloImportantes ? '?importantes=true' : '')
+
 export const crearCounterService = (opciones = {}) => {
   const api = opciones.api ?? apiPorDefecto
 
@@ -51,10 +54,11 @@ export const crearCounterService = (opciones = {}) => {
    * GET /contadores/:id/conteos: conteos por estado con ceros incluidos (RF-12).
    * Las claves del backend ya coinciden con los códigos internos.
    * @param {number|string} id - identificador del contador.
+   * @param {{ soloImportantes?: boolean }} [opciones] - contar solo los casos importantes.
    * @returns {Promise<{ pendiente: number, en_proceso: number, finalizado: number }>}
    */
-  const getConteosPorEstado = async (id) => {
-    const { data } = await api.get(`/contadores/${id}/conteos`)
+  const getConteosPorEstado = async (id, opciones) => {
+    const { data } = await api.get(`/contadores/${id}/conteos${filtroImportantes(opciones)}`)
     return {
       pendiente: Number(data?.pendiente) || 0,
       en_proceso: Number(data?.en_proceso) || 0,
@@ -65,10 +69,11 @@ export const crearCounterService = (opciones = {}) => {
   /**
    * GET /contadores/:id/casos: casos del contador ya traducidos (RF-14, RF-15).
    * @param {number|string} id - identificador del contador.
+   * @param {{ soloImportantes?: boolean }} [opciones] - devolver solo los casos importantes.
    * @returns {Promise<Array<Object>>}
    */
-  const getCasosPorContador = async (id) => {
-    const { data } = await api.get(`/contadores/${id}/casos`)
+  const getCasosPorContador = async (id, opciones) => {
+    const { data } = await api.get(`/contadores/${id}/casos${filtroImportantes(opciones)}`)
     const casos = leerLista(data, 'casos', 'los casos del contador')
     return traducirCasos(casos, 'los casos del contador')
   }

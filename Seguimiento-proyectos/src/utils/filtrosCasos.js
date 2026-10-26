@@ -90,3 +90,23 @@ export const paginar = (lista, pagina, porPagina) => {
     texto: `Mostrando ${inicio + 1}–${inicio + elementos.length} de ${total} casos`,
   }
 }
+
+// Texto comparable: sin acentos, en minúsculas y sin espacios en los extremos.
+const normalizar = (texto) =>
+  String(texto ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+
+/**
+ * Contadores cuyo nombre contiene el texto buscado, sin importar mayúsculas ni acentos.
+ * Sin texto devuelve todos.
+ * @param {Array<{ id: number, nombre: string }>} contadores
+ * @param {string} texto - lo escrito en la barra de búsqueda.
+ * @returns {Array<Object>} arreglo nuevo.
+ */
+export const filtrarContadores = (contadores, texto) => {
+  const buscado = normalizar(texto)
+  return contadores.filter((contador) => normalizar(contador.nombre).includes(buscado))
+}

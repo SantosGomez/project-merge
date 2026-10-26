@@ -227,6 +227,50 @@ async function testResumenSoloAdministrador() {
   assert.strictEqual(sinSesion.statusCode, 401, 'sin sesión se responde 401');
 }
 
+// ---------- Dashboard del admin: solo casos importantes con ?importantes=true ----------
+async function contadorConImportantes() {
+  const contador = await crearUsuarioDePrueba('contador');
+  const caso = (cliente, estado, importante) =>
+    CaseModel.create({ contador_id: contador.id, cliente, estado, prioridad: 'Media', importante });
+  await caso('zz_test_imp pendiente', 'Pendiente', true);
+  await caso('zz_test_imp en proceso', 'En proceso', true);
+  await caso('zz_test_normal pendiente', 'Pendiente', false);
+  await caso('zz_test_normal finalizado', 'Finalizado', false);
+  return contador;
+}
+
+async function testConteosSoloImportantes() {
+  const contador = await contadorConImportantes();
+  const ruta = `/contadores/${contador.id}/conteos`;
+
+  const importantes = await peticion(servidor.puerto, 'GET', `${ruta}?importantes=true`, null, tokenAdmin);
+  const todos = await peticion(servidor.puerto, 'GET', ruta, null, tokenAdmin);
+
+  assert.strictEqual(importantes.statusCode, 200);
+  assert.deepStrictEqual(
+    [importantes.body.pendiente, importantes.body.en_proceso, importantes.body.finalizado],
+    [1, 1, 0],
+    'con importantes=true solo cuenta los importantes'
+  );
+  assert.deepStrictEqual([todos.body.pendiente, todos.body.en_proceso, todos.body.finalizado], [2, 1, 1], 'sin el parámetro cuenta todos');
+}
+
+async function testCasosSoloImportantes() {
+  const contador = await contadorConImportantes();
+  const ruta = `/contadores/${contador.id}/casos`;
+
+  const importantes = await peticion(servidor.puerto, 'GET', `${ruta}?importantes=true`, null, tokenAdmin);
+  const todos = await peticion(servidor.puerto, 'GET', ruta, null, tokenAdmin);
+
+  assert.strictEqual(importantes.statusCode, 200);
+  assert.deepStrictEqual(
+    importantes.body.casos.map((c) => c.cliente).sort(),
+    ['zz_test_imp en proceso', 'zz_test_imp pendiente'],
+    'con importantes=true solo devuelve los importantes'
+  );
+  assert.strictEqual(todos.body.casos.length, 4, 'sin el parámetro devuelve todos');
+}
+
 describe('rutas de contadores', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -276,4 +320,6 @@ describe('rutas de contadores', () => {
   test('las fechas de los casos de un contador llegan en hora local YYYY-MM-DD HH:mm:ss', testFechasDeCasosEnHoraLocal);
   test('el resumen del equipo cuenta exacto por contador y el total es su suma', testResumenDelEquipo);
   test('el resumen del equipo es solo para el administrador', testResumenSoloAdministrador);
+  test('los conteos con importantes=true cuentan solo los casos importantes', testConteosSoloImportantes);
+  test('los casos con importantes=true devuelven solo los importantes', testCasosSoloImportantes);
 });

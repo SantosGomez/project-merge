@@ -16,11 +16,12 @@ async function findById(id) {
  * Devuelve los casos asignados a un contador.
  * RF-14, RF-15.
  * @param {number} contadorId - ID del contador.
+ * @param {{ soloImportantes?: boolean }} [opciones] - solo los casos marcados como importantes.
  * @returns {Promise<Array>} Lista de casos del contador.
  */
-async function findByCounter(contadorId) {
+async function findByCounter(contadorId, { soloImportantes = false } = {}) {
   const rows = await query(
-    'SELECT * FROM casos WHERE contador_id = ? ORDER BY id DESC',
+    `SELECT * FROM casos WHERE contador_id = ?${soloImportantes ? ' AND importante = 1' : ''} ORDER BY id DESC`,
     [contadorId]
   );
   return rows;
@@ -30,13 +31,14 @@ async function findByCounter(contadorId) {
  * Devuelve el conteo de casos por estado para un contador, incluyendo ceros.
  * RF-13.
  * @param {number} contadorId - ID del contador.
+ * @param {{ soloImportantes?: boolean }} [opciones] - contar solo los casos marcados como importantes.
  * @returns {Promise<{pendiente: number, en_proceso: number, finalizado: number}>} Conteos por estado.
  */
-async function countByStatus(contadorId) {
+async function countByStatus(contadorId, { soloImportantes = false } = {}) {
   const rows = await query(
     `SELECT estado, COUNT(*) AS cantidad
      FROM casos
-     WHERE contador_id = ?
+     WHERE contador_id = ?${soloImportantes ? ' AND importante = 1' : ''}
      GROUP BY estado`,
     [contadorId]
   );

@@ -91,8 +91,8 @@ export default defineConfig((/* ctx */) => {
       // components: [],
       // directives: [],
 
-      // Quasar plugins
-      plugins: [],
+      // Quasar plugins (Notify: avisos de «Cambio guardado», alta y restablecimiento)
+      plugins: ['Notify'],
     },
 
     // animations: 'all', // --- includes all animations

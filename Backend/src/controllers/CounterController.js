@@ -8,6 +8,9 @@ const { casoConFechasLocales, formatearFechaISO, nowLocal } = require('../utils/
 // Serializador compartido de dateUtils (mismo que usa CaseController).
 const conFechasLocales = casoConFechasLocales;
 
+// El dashboard del admin pide solo los casos importantes con ?importantes=true; sin el parámetro, todos.
+const pideSoloImportantes = (req) => req.query.importantes === 'true';
+
 /**
  * Lista todos los contadores registrados (solo administrador).
  * RF-12, RF-24.
@@ -44,7 +47,7 @@ async function countCasesByStatus(req, res) {
   }
 
   // Obtener conteos con ceros incluidos (RF-13)
-  const conteos = await CaseModel.countByStatus(idNumerico);
+  const conteos = await CaseModel.countByStatus(idNumerico, { soloImportantes: pideSoloImportantes(req) });
   return res.status(200).json({
     contador_id: id,
     pendiente: conteos.pendiente,
@@ -86,7 +89,7 @@ async function getCasesByCounter(req, res) {
     );
   }
 
-  const casos = await CaseModel.findByCounter(idNumerico);
+  const casos = await CaseModel.findByCounter(idNumerico, { soloImportantes: pideSoloImportantes(req) });
   if (casos.length === 0) {
     return res.status(200).json({
       mensaje: 'El contador no tiene casos registrados',

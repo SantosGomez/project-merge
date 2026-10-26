@@ -22,7 +22,7 @@ const read = (relativePath) =>
 const directorySource = read('../src/pages/CountersDirectoryPage.vue')
 const caseFormSource = read('../src/components/CaseFormDialog.vue')
 const myCasesSource = read('../src/pages/MyCasesPage.vue')
-const caseRowSource = read('../src/components/CaseRow.vue')
+const casoItemSource = read('../src/components/CasoItem.vue')
 const quasarConfig = readFileSync(fileURLToPath(new URL('../quasar.config.js', import.meta.url)), 'utf8')
 
 /** Devuelve la regla CSS de un selector dentro del bloque <style scoped> del archivo. */
@@ -313,7 +313,7 @@ describe('Contadores por nombre (rebanada 5a) — verificación estática', () =
   const dashboard = read('../src/pages/AdminDashboardPage.vue')
 
   it('el dashboard nombra al contador seleccionado con su nombre, no con su usuario', () => {
-    assert.match(dashboard, /Casos de \{\{ contadorSeleccionado\.nombre \}\}/, 'texto del detalle')
+    assert.match(dashboard, /Casos importantes de \{\{ contadorSeleccionado\.nombre \}\}/, 'texto del detalle')
     assert.match(dashboard, /El contador \$\{contadorSeleccionado\.nombre\} no tiene casos/, 'aviso sin casos')
     assert.doesNotMatch(dashboard, /contadorSeleccionado\.usuario/, 'ya no lee el usuario')
   })
@@ -353,10 +353,16 @@ describe('Mis casos (rebanada 6) — un solo flujo para guardar cambios', () => 
     assert.match(myCasesSource, /guardarCambio\(item\.id, \{ importante: !item\.important \}\)/)
   })
 
-  it('al empezar un cambio se borra el aviso anterior', () => {
-    const borra = cuerpoGuardar.indexOf("confirmation.value = ''")
-    assert.ok(borra > 0, 'guardarCambio borra el aviso')
-    assert.ok(borra < cuerpoGuardar.indexOf('cases.actualizarCaso('), 'lo borra antes de guardar')
+  // Los avisos son notificaciones de Quasar (plugin Notify), que se van solas.
+  it('al guardar avisa con una notificación de éxito o de error', () => {
+    const guardar = cuerpoGuardar.indexOf('cases.actualizarCaso(')
+    assert.ok(cuerpoGuardar.indexOf("$q.notify({ type: 'positive', message: 'Cambio guardado.' })") > guardar, 'avisa el éxito después de guardar')
+    assert.match(cuerpoGuardar, /\$q\.notify\(\{ type: 'negative'/, 'avisa el error')
+    assert.doesNotMatch(myCasesSource, /confirmation/, 'sin el aviso fijo anterior')
+  })
+
+  it('el plugin Notify está habilitado (sin él, $q.notify falla al guardar)', () => {
+    assert.match(quasarConfig, /plugins: \[[^\]]*'Notify'/)
   })
 
   it('reintentar repite el último cambio tal cual, sin ramas por campo', () => {
@@ -366,16 +372,15 @@ describe('Mis casos (rebanada 6) — un solo flujo para guardar cambios', () => 
 })
 
 describe('Editar caso — fila con fechas y botón «Editar»', () => {
+  // La fila de caso es CasoItem.vue (Mis casos y, en solo lectura, el dashboard del admin).
   it('la fila muestra Inicio, Vence y la descripción solo cuando existen', () => {
-    assert.match(caseRowSource, /v-if="caseItem\.startDate"[\s\S]*?>Inicio</)
-    assert.match(caseRowSource, /v-if="caseItem\.dueDate"[\s\S]*?>Vence</)
-    assert.match(caseRowSource, /v-if="caseItem\.description"[^>]*class="case-row__description"|class="case-row__description"[^>]*v-if="caseItem\.description"/)
-    assert.match(cssRule(caseRowSource, '.case-row__description'), /-webkit-line-clamp:\s*2/, 'la descripción se recorta a 2 líneas')
+    assert.match(casoItemSource, /v-if="caso\.startDate"[\s\S]*?Inicio \{\{ caso\.startDate \}\}/)
+    assert.match(casoItemSource, /v-if="caso\.dueDate"[\s\S]*?Vence \{\{ caso\.dueDate \}\}/)
+    assert.match(casoItemSource, /v-if="caso\.description"[^>]*lines="2"/, 'la descripción se recorta a 2 líneas')
   })
 
   // Desde el rediseño con QList, el botón vive en CasoItem.vue y la página atiende su evento.
   it('cada fila de «Mis casos» tiene un botón «Editar» con ayuda que abre el diálogo', () => {
-    const casoItemSource = read('../src/components/CasoItem.vue')
     const inicio = casoItemSource.indexOf('label="Editar"')
     assert.ok(inicio > 0, 'existe el botón de editar')
     const boton = casoItemSource.slice(casoItemSource.lastIndexOf('<q-btn', inicio), casoItemSource.indexOf('</q-btn>', inicio))
@@ -396,8 +401,11 @@ describe('Editar caso — fila con fechas y botón «Editar»', () => {
 
   it('el tablero del administrador sigue sin acciones en la fila', () => {
     const admin = read('../src/pages/AdminDashboardPage.vue')
-    assert.match(admin, /<CaseRow[\s\S]*?readonly/)
-    assert.doesNotMatch(admin, /abrirEdicion/)
+    assert.match(admin, /<CasoItem[^>]*solo-lectura/)
+    assert.doesNotMatch(admin, /abrirEdicion|guardarCambio/)
+    // En solo lectura no hay estrella, selector de estado ni «Editar».
+    assert.match(casoItemSource, /<q-item-section v-if="!soloLectura" avatar/)
+    assert.match(casoItemSource, /<q-item-section v-else side class="caso-item__acciones">\s*<q-select/)
   })
 })
 

@@ -25,10 +25,6 @@
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. «Nuevo usuario»
           crea una cuenta y «Restablecer contraseña» le asigna una contraseña nueva.
         </p>
-        <p v-if="mensajeExito" class="directory-panel__exito" role="status" aria-live="polite">
-          <q-icon name="check_circle" color="positive" size="20px" />
-          {{ mensajeExito }}
-        </p>
       </div>
 
       <NewUserDialog v-if="session.esUsuarioSistema" v-model="dialogoNuevoAbierto" @creado="alCrearUsuario" />
@@ -153,6 +149,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
 import EmptyState from '../components/EmptyState.vue'
@@ -168,6 +165,7 @@ import { compararUltimoAcceso, usuarioAFila } from '../utils/filasVista.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const router = useRouter()
+const $q = useQuasar()
 const maqueta = useMaquetaStore()
 const contadoresStore = useCountersStore()
 const session = useSessionStore()
@@ -231,11 +229,8 @@ const retry = () => {
 }
 
 const dialogoNuevoAbierto = ref(false)
-const mensajeExito = ref('')
 
-// Se oculta el aviso de la alta anterior para no confundirlo con la nueva.
 const abrirNuevoUsuario = () => {
-  mensajeExito.value = ''
   dialogoNuevoAbierto.value = true
 }
 
@@ -243,13 +238,12 @@ const dialogoRestablecerAbierto = ref(false)
 const cuentaRestablecer = ref(null)
 
 const abrirRestablecer = (fila) => {
-  mensajeExito.value = ''
   cuentaRestablecer.value = fila
   dialogoRestablecerAbierto.value = true
 }
 
 const alRestablecer = (mensaje) => {
-  mensajeExito.value = mensaje
+  $q.notify({ type: 'positive', message: mensaje })
 }
 
 // En celular la tarjeta solo lleva barra de acciones si tiene algún botón que mostrar.
@@ -258,7 +252,7 @@ const tieneAccionesTarjeta = (fila) =>
 
 // La cuenta nueva aparece en la tabla al recargar el directorio.
 const alCrearUsuario = (mensaje) => {
-  mensajeExito.value = mensaje
+  $q.notify({ type: 'positive', message: mensaje })
   cargar()
 }
 
@@ -300,19 +294,6 @@ onMounted(() => {
 
 .directory-panel__title-row .directory-panel__title {
   margin: 0;
-}
-
-.directory-panel__exito {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 0;
-  padding: 8px 12px;
-  border: 1px solid #d4edda;
-  border-radius: 10px;
-  background: #f0faf3;
-  color: #1e5631;
-  font-size: 0.9rem;
 }
 
 .control-touch {

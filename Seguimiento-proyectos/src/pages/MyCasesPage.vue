@@ -93,11 +93,6 @@
           />
         </div>
       </template>
-
-      <div v-if="confirmation" class="confirmation-banner" role="status" aria-live="polite">
-        <q-icon name="check_circle" color="positive" size="24px" />
-        <p class="confirmation-banner__text">{{ confirmation }}</p>
-      </div>
     </div>
 
     <CaseFormDialog
@@ -111,6 +106,7 @@
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
+import { useQuasar } from 'quasar'
 
 import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CasoItem from '../components/CasoItem.vue'
@@ -131,6 +127,7 @@ import {
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const cases = useCasesStore()
+const $q = useQuasar()
 
 const filtros = ref({ ...FILTROS_INICIALES })
 const pagina = ref(1)
@@ -159,7 +156,6 @@ const screenStateName = computed(() =>
   }),
 )
 
-const confirmation = ref('')
 const dialogoRegistroAbierto = ref(false)
 const casoEnEdicion = ref(null)
 const errorCambio = ref(null)
@@ -173,40 +169,37 @@ const mensajeError = computed(() => {
 // Guarda un cambio de estado, prioridad o importante; se recuerda para poder reintentarlo si falla.
 const guardarCambio = async (caseId, cambios) => {
   if (cases.guardando) return
-  confirmation.value = ''
   errorCambio.value = null
   ultimoCambio.value = { id: caseId, cambios }
 
   const resultado = await cases.actualizarCaso(caseId, cambios)
 
   if (resultado.ok) {
-    confirmation.value = 'Cambio guardado.'
+    $q.notify({ type: 'positive', message: 'Cambio guardado.' })
     ultimoCambio.value = null
   } else {
     errorCambio.value = resultado.error
+    $q.notify({ type: 'negative', message: resultado.error?.mensaje ?? 'Error al guardar el cambio.' })
   }
 }
 
 const abrirRegistro = () => {
-  // El diálogo se prepara solo al abrirse; aquí se descarta el aviso anterior.
-  confirmation.value = ''
   casoEnEdicion.value = null
   dialogoRegistroAbierto.value = true
 }
 
 // El mismo diálogo, en modo edición, con el caso tal como lo guarda el store.
 const abrirEdicion = (caseId) => {
-  confirmation.value = ''
   casoEnEdicion.value = cases.casos.find((caso) => String(caso.id) === String(caseId)) ?? null
   dialogoRegistroAbierto.value = casoEnEdicion.value !== null
 }
 
 const alGuardarEdicion = () => {
-  confirmation.value = 'Cambios guardados.'
+  $q.notify({ type: 'positive', message: 'Cambios guardados.' })
 }
 
 const alRegistrar = async () => {
-  confirmation.value = 'Caso registrado.'
+  $q.notify({ type: 'positive', message: 'Caso registrado.' })
 
   // Si la lista no había cargado, se recarga para que el caso nuevo quede visible.
   if (cases.error) {
@@ -322,24 +315,6 @@ onMounted(() => {
   .paginacion__paginas {
     margin-left: 0;
   }
-}
-
-.confirmation-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  margin-top: 12px;
-  border: 1px solid #d4edda;
-  border-radius: 10px;
-  background: #e8f5e9;
-}
-
-.confirmation-banner__text {
-  margin: 0;
-  font-weight: 600;
-  color: #1b5e20;
-  font-size: 0.95rem;
 }
 
 @media (min-width: 1024px) {
