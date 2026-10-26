@@ -4,7 +4,7 @@
 // inyectar para probarlo sin navegador y sin red.
 //
 // Contrato que consume la capa superior (T4/T5/T7):
-// - `login` resuelve `{ token, rol, id, usuario }` y ya dejó la sesión guardada;
+// - `login` resuelve `{ token, rol, id, nombre }` y ya dejó la sesión guardada;
 //   si falla, rechaza con el error normalizado de `api.js`.
 // - `logout` NUNCA rechaza: resuelve `{ ok: true, mensaje }` o
 //   `{ ok: false, error }`. No limpia sessionStorage (4.8: el cierre local lo
@@ -101,24 +101,21 @@ export const crearAuthService = (opciones = {}) => {
 
   const getToken = () => leer(CLAVES_SESION.token)
   const getRol = () => leer(CLAVES_SESION.rol)
-  const getUsuario = () => leer(CLAVES_SESION.usuario)
   const getNombre = () => leer(CLAVES_SESION.nombre)
   const getId = () => leer(CLAVES_SESION.id)
 
   const setToken = (token) => escribir(CLAVES_SESION.token, token)
   const setRol = (rol) => escribir(CLAVES_SESION.rol, rol)
-  const setUsuario = (usuario) => escribir(CLAVES_SESION.usuario, usuario)
   const setNombre = (nombre) => escribir(CLAVES_SESION.nombre, nombre)
   const setId = (id) => escribir(CLAVES_SESION.id, id)
 
   /**
    * Guarda la sesión completa (RF-02, RF-42).
-   * @param {{ token: string, rol: string, id?: number|string, usuario: string, nombre?: string|null }} sesion
+   * @param {{ token: string, rol: string, id?: number|string, nombre?: string|null }} sesion
    */
   const setSesion = (sesion) => {
     setToken(sesion.token)
     setRol(sesion.rol)
-    setUsuario(sesion.usuario)
     setNombre(sesion.nombre)
     setId(sesion.id)
   }
@@ -137,7 +134,7 @@ export const crearAuthService = (opciones = {}) => {
    * Inicia sesión con correo contra POST /auth/login y guarda la sesión (RF-01 a RF-04).
    * @param {string} correo
    * @param {string} password
-   * @returns {Promise<{ token: string, rol: string, id: number, usuario: string, nombre: string|null }>}
+   * @returns {Promise<{ token: string, rol: string, id: number, nombre: string|null }>}
    */
   const login = async (correo, password) => {
     const { data } = await api.post('/auth/login', { correo, password })
@@ -150,7 +147,6 @@ export const crearAuthService = (opciones = {}) => {
       token: data.token,
       rol: data.rol,
       id: data.id,
-      usuario: data.usuario,
       nombre: data.nombre ?? null,
     }
     setSesion(sesion)
@@ -182,13 +178,12 @@ export const crearAuthService = (opciones = {}) => {
     logout,
     getToken,
     getRol,
-    getUsuario,
     getNombre,
     getId,
     setSesion,
     setToken,
     setRol,
-    setUsuario,
+    setNombre,
     setId,
     limpiarSesion,
     isTokenExpirado,
@@ -202,12 +197,11 @@ export const login = servicioPorDefecto.login
 export const logout = servicioPorDefecto.logout
 export const getToken = servicioPorDefecto.getToken
 export const getRol = servicioPorDefecto.getRol
-export const getUsuario = servicioPorDefecto.getUsuario
 export const getNombre = servicioPorDefecto.getNombre
 export const getId = servicioPorDefecto.getId
 export const setSesion = servicioPorDefecto.setSesion
 export const setToken = servicioPorDefecto.setToken
 export const setRol = servicioPorDefecto.setRol
-export const setUsuario = servicioPorDefecto.setUsuario
+export const setNombre = servicioPorDefecto.setNombre
 export const setId = servicioPorDefecto.setId
 export const limpiarSesion = servicioPorDefecto.limpiarSesion

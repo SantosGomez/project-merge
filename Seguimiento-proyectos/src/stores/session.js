@@ -20,7 +20,6 @@ import {
   registrarOnSesionExpirada as registrarSesionExpiradaPorDefecto,
 } from '../services/api.js'
 import {
-  getUsuario as getUsuarioPorDefecto,
   getNombre as getNombrePorDefecto,
   getId as getIdPorDefecto,
   getRol as getRolPorDefecto,
@@ -104,7 +103,6 @@ const authServicePorDefecto = {
   logout: logoutPorDefecto,
   getToken: getTokenPorDefecto,
   getRol: getRolPorDefecto,
-  getUsuario: getUsuarioPorDefecto,
   getNombre: getNombrePorDefecto,
   getId: getIdPorDefecto,
   setToken: setTokenPorDefecto,
@@ -145,7 +143,6 @@ export const crearSessionStore = (dependencias = {}) => {
         token,
         /** Perfil de la cuenta: administrador, contador u otro sin pantalla. */
         rol: authService.getRol(),
-        usuario: authService.getUsuario(),
         /** Nombre de la persona para el menú (login por correo); null en sesiones anteriores. */
         nombre: authService.getNombre(),
         id: authService.getId(),
@@ -170,8 +167,8 @@ export const crearSessionStore = (dependencias = {}) => {
       esAdministrador: (state) => state.rol === 'administrador',
       esContador: (state) => state.rol === 'contador',
       esUsuarioSistema: (state) => state.rol === 'usuarios_de_sistema',
-      /** Nombre que se muestra: el de la cuenta o, si falta, el usuario. */
-      nombreVisible: (state) => state.nombre ?? state.usuario,
+      /** Nombre que se muestra en el menú; null si la sesión guardada no lo trae. */
+      nombreVisible: (state) => state.nombre,
     },
 
     actions: {
@@ -179,7 +176,6 @@ export const crearSessionStore = (dependencias = {}) => {
       aplicarSesionGuardada() {
         this.token = authService.getToken()
         this.rol = authService.getRol()
-        this.usuario = authService.getUsuario()
         this.nombre = authService.getNombre()
         this.id = authService.getId()
         this.exp = expiracionDeToken(this.token)
@@ -189,7 +185,6 @@ export const crearSessionStore = (dependencias = {}) => {
       limpiarEstadoLocal() {
         this.token = null
         this.rol = null
-        this.usuario = null
         this.nombre = null
         this.id = null
         this.exp = null
@@ -344,11 +339,11 @@ export const crearSessionStore = (dependencias = {}) => {
        * Si había una sesión viva, la revoca con `authService.logout()` de forma
        * best-effort antes de dejar la nueva en el estado (RF-10): el resultado de
        * logout no bloquea. Un login fallido conserva la sesión previa.
-       * @param {string} usuario
+       * @param {string} correo
        * @param {string} password
        * @returns {Promise<Object>} resultado para la pantalla P-1.
        */
-      async iniciarSesion(usuario, password) {
+      async iniciarSesion(correo, password) {
         // Enviar credenciales es la siguiente acción del usuario: limpia el aviso (RF-46/47).
         this.avisoSesion = null
 
@@ -356,7 +351,7 @@ export const crearSessionStore = (dependencias = {}) => {
         let nueva
 
         try {
-          nueva = await authService.login(usuario, password)
+          nueva = await authService.login(correo, password)
         } catch (error) {
           return { ok: false, error }
         }
@@ -387,7 +382,6 @@ export const crearSessionStore = (dependencias = {}) => {
         return {
           ok: true,
           rol: this.rol,
-          usuario: this.usuario,
           id: this.id,
           pantallaPrincipal: pantalla,
           accesoDenegado: pantalla === null,

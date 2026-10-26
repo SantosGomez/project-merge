@@ -52,7 +52,7 @@ const DATOS_SESION = {
   token: 'token-falso',
   rol: 'administrador',
   id: 5,
-  usuario: 'admin_seed',
+  nombre: 'Admin Seed',
 }
 
 // --- login (RF-01 a RF-04, RF-08, RF-42) -----------------------------------
@@ -73,7 +73,7 @@ test('login entra con el correo y guarda también el nombre de la cuenta', async
   assert.equal(servicio.getNombre(), 'CPC. Admin Seed')
 })
 
-test('login hace POST /auth/login y guarda token, rol, id y usuario en el almacén', async () => {
+test('login hace POST /auth/login y guarda token, rol, id y nombre en el almacén, sin usuario (5b)', async () => {
   const api = crearApiFalsa({ datos: DATOS_SESION })
   const almacen = crearAlmacenFalso()
   const servicio = crearAuthService({ api, almacen })
@@ -83,11 +83,13 @@ test('login hace POST /auth/login y guarda token, rol, id y usuario en el almac�
   assert.deepEqual(api.llamadas, [
     { url: '/auth/login', cuerpo: { correo: 'admin_seed', password: 'clave-falsa' } },
   ])
-  assert.deepEqual(sesion, { ...DATOS_SESION, nombre: null },  'login devuelve los datos de la sesión')
+  assert.deepEqual(sesion, DATOS_SESION, 'login devuelve los datos de la sesión')
   assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
   assert.equal(almacen.getItem(CLAVES_SESION.id), '5')
-  assert.equal(almacen.getItem(CLAVES_SESION.usuario), 'admin_seed')
+  assert.equal(almacen.getItem(CLAVES_SESION.nombre), 'Admin Seed')
+  assert.ok(!('usuario' in CLAVES_SESION), 'la sesión ya no tiene clave de usuario')
+  assert.equal(almacen.getItem('delgrow_usuario'), null, 'no se guarda el usuario')
 })
 
 test('las claves de sesión llevan el prefijo delgrow_ para no mezclarse con otros datos', () => {
@@ -128,28 +130,28 @@ test('login rechaza con tres partes si el backend no devuelve token', async () =
 
 // --- lectura y escritura de la sesión -------------------------------------
 
-test('getToken, getRol, getUsuario y getId leen del almacén y devuelven null si no hay sesión', () => {
+test('getToken, getRol, getNombre y getId leen del almacén y devuelven null si no hay sesión', () => {
   const almacen = crearAlmacenFalso({
     [CLAVES_SESION.token]: 'token-falso',
     [CLAVES_SESION.rol]: 'contador',
     [CLAVES_SESION.id]: '7',
-    [CLAVES_SESION.usuario]: 'ana',
+    [CLAVES_SESION.nombre]: 'Ana',
   })
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
 
   assert.equal(servicio.getToken(), 'token-falso')
   assert.equal(servicio.getRol(), 'contador')
   assert.equal(servicio.getId(), '7')
-  assert.equal(servicio.getUsuario(), 'ana')
+  assert.equal(servicio.getNombre(), 'Ana')
 
   const vacio = crearAuthService({ api: crearApiFalsa(), almacen: crearAlmacenFalso() })
   assert.equal(vacio.getToken(), null)
   assert.equal(vacio.getRol(), null)
   assert.equal(vacio.getId(), null)
-  assert.equal(vacio.getUsuario(), null)
+  assert.equal(vacio.getNombre(), null)
 })
 
-test('setSesion escribe token, rol, id y usuario de una vez', () => {
+test('setSesion escribe token, rol, id y nombre de una vez', () => {
   const almacen = crearAlmacenFalso()
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
 
@@ -158,21 +160,21 @@ test('setSesion escribe token, rol, id y usuario de una vez', () => {
   assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
   assert.equal(almacen.getItem(CLAVES_SESION.id), '5')
-  assert.equal(almacen.getItem(CLAVES_SESION.usuario), 'admin_seed')
+  assert.equal(almacen.getItem(CLAVES_SESION.nombre), 'Admin Seed')
 })
 
-test('setToken, setRol, setUsuario y setId escriben cada dato por separado', () => {
+test('setToken, setRol, setNombre y setId escriben cada dato por separado', () => {
   const almacen = crearAlmacenFalso()
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
 
   servicio.setToken('otro-token')
   servicio.setRol('contador')
-  servicio.setUsuario('ana')
+  servicio.setNombre('Ana')
   servicio.setId(9)
 
   assert.equal(servicio.getToken(), 'otro-token')
   assert.equal(servicio.getRol(), 'contador')
-  assert.equal(servicio.getUsuario(), 'ana')
+  assert.equal(servicio.getNombre(), 'Ana')
   assert.equal(servicio.getId(), '9')
 })
 

@@ -193,7 +193,7 @@ const errorCarga = ref(null)
 const errorGuardado = ref(null)
 
 const assignedCounter = computed(() =>
-  session.usuario ? { id: session.id, name: session.usuario } : null,
+  session.nombreVisible ? { id: session.id, name: session.nombreVisible } : null,
 )
 
 const screenStateName = computed(() =>

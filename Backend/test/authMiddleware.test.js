@@ -218,8 +218,8 @@ async function testTokenValidoAdjuntaReqUserYLlamaNext() {
   assert.ok(resultado.req.user, 'debe adjuntar req.user con los datos del usuario');
   assert.deepStrictEqual(
     resultado.req.user,
-    { id: contador.id, usuario: contador.usuario, rol: 'contador' },
-    'req.user debe tener el id, el usuario y el rol de la cuenta que inició sesión'
+    { id: contador.id, rol: 'contador' },
+    'req.user debe tener solo el id y el rol de la cuenta que inició sesión (rebanada 5b)'
   );
 }
 

@@ -27,7 +27,7 @@ const { hashPassword } = require('../src/utils/passwordUtils');
 let servidor;
 let contador;
 
-// ---------- RF-01: login válido devuelve token, rol y usuario ----------
+// ---------- RF-01: login válido devuelve token, rol, id, nombre y correo (sin usuario, rebanada 5b) ----------
 async function testLoginValidoDevuelveToken() {
   const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
     correo: contador.correo,
@@ -37,7 +37,25 @@ async function testLoginValidoDevuelveToken() {
   assert.strictEqual(respuesta.statusCode, 200, 'debe responder 200 con credenciales válidas');
   assert.ok(respuesta.body.token, 'debe incluir un token de acceso');
   assert.strictEqual(respuesta.body.rol, 'contador', 'debe incluir el rol del usuario');
-  assert.strictEqual(respuesta.body.usuario, contador.usuario, 'debe incluir el nombre de usuario');
+  assert.deepStrictEqual(
+    Object.keys(respuesta.body).sort(),
+    ['correo', 'id', 'nombre', 'rol', 'token'],
+    'la respuesta trae token, rol, id, nombre y correo, sin el usuario'
+  );
+}
+
+// ---------- Rebanada 5b: la carga del token identifica la cuenta por id y rol, sin usuario ----------
+async function testTokenDelLoginSinUsuario() {
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    correo: contador.correo,
+    password: contador.password,
+  });
+
+  const carga = jwt.decode(respuesta.body.token);
+  assert.strictEqual(carga.id, contador.id, 'el token lleva el id de la cuenta');
+  assert.strictEqual(carga.rol, 'contador', 'el token lleva el rol de la cuenta');
+  assert.ok(!('usuario' in carga), 'el token ya no lleva el usuario');
+  await pool.query('DELETE FROM sesiones WHERE jti = ?', [carga.jti]);
 }
 
 // ---------- RF-02: login sin campos falla con 400 ----------
@@ -268,7 +286,8 @@ describe('rutas de autenticación', () => {
     await cerrarBaseDeDatos();
   });
 
-  test('el login válido devuelve token, rol y usuario', testLoginValidoDevuelveToken);
+  test('el login válido devuelve token, rol, id, nombre y correo, sin usuario', testLoginValidoDevuelveToken);
+  test('el token del login lleva id y rol, sin usuario', testTokenDelLoginSinUsuario);
   test('el login con correo devuelve nombre y correo', testLoginConCorreoDevuelveNombreYCorreo);
   test('el correo no distingue mayúsculas ni espacios extremos', testLoginConCorreoSinImportarMayusculasNiEspacios);
   test('un correo inexistente recibe el mensaje genérico', testLoginConCorreoInexistenteUsaMensajeGenerico);

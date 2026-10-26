@@ -92,7 +92,8 @@ async function testLoginDevuelveIdNumerico() {
     assert.strictEqual(respuesta.statusCode, 200, `el login de ${etiqueta} debe responder 200`);
     assert.ok(respuesta.body.token, `el login de ${etiqueta} debe incluir el token de acceso`);
     assert.strictEqual(respuesta.body.rol, rol, `el login de ${etiqueta} debe incluir su rol`);
-    assert.strictEqual(respuesta.body.usuario, cuenta.usuario, `el login de ${etiqueta} debe incluir su usuario`);
+    // El apoyo crea cada cuenta con el nombre igual a su usuario (rebanada 5b: el login ya no trae usuario).
+    assert.strictEqual(respuesta.body.nombre, cuenta.usuario, `el login de ${etiqueta} debe incluir su nombre`);
 
     // RF-01 y criterio 1: el identificador es un número y es el de la cuenta que inició sesión.
     assert.ok(

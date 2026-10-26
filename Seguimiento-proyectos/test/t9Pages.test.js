@@ -243,3 +243,21 @@ describe('Contadores por nombre (rebanada 5a) — verificación estática', () =
     assert.doesNotMatch(dashboard, /contadorSeleccionado\.usuario/, 'ya no lee el usuario')
   })
 })
+
+describe('Sesión sin usuario (rebanada 5b) — verificación estática', () => {
+  const rutas = read('../src/router/index.js')
+
+  it('el registro de casos muestra como contador asignado el nombre de la sesión', () => {
+    assert.match(
+      newCaseSource,
+      /session\.nombreVisible \? \{ id: session\.id, name: session\.nombreVisible \} : null/,
+      'contador asignado con el nombre',
+    )
+    assert.doesNotMatch(newCaseSource, /session\.usuario/, 'ya no lee el usuario de la sesión')
+  })
+
+  it('el guard copia el nombre de la sesión a la identidad de la maqueta', () => {
+    assert.match(rutas, /account: sesion\.nombreVisible/, 'la cuenta de la maqueta es el nombre')
+    assert.doesNotMatch(rutas, /sesion\.usuario/, 'ya no lee el usuario de la sesión')
+  })
+})

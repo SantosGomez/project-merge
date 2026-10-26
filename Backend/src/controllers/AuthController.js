@@ -10,7 +10,7 @@ const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
 /**
  * Inicio de sesión con correo: valida credenciales, genera token JWT, registra sesión,
- * guarda el último acceso y devuelve token, rol, id, usuario, nombre y correo.
+ * guarda el último acceso y devuelve token, rol, id, nombre y correo.
  * RF-01, RF-02, RF-03, RF-06.
  * @param {Object} req - Petición Express con cuerpo { correo, password }.
  * @param {Object} res - Respuesta Express.
@@ -41,7 +41,7 @@ async function login(req, res) {
 
   // 3. Generar token JWT (RF-01)
   const token = generateAccessToken(
-    { id: cuenta.id, usuario: cuenta.usuario, rol: cuenta.rol },
+    { id: cuenta.id, rol: cuenta.rol },
     JWT_SECRET,
     JWT_EXPIRES_IN
   );
@@ -64,12 +64,11 @@ async function login(req, res) {
     // La sesión ya quedó registrada: se responde igual.
   }
 
-  // 6. Responder 200 con token, rol, id, usuario, nombre y correo (RF-01, RF-06)
+  // 6. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06)
   return res.status(200).json({
     token,
     rol: cuenta.rol,
     id: cuenta.id,
-    usuario: cuenta.usuario,
     nombre: cuenta.nombre,
     correo: cuenta.correo,
   });

@@ -58,7 +58,7 @@ const escribir = (almacen, clave, valor) => {
 const almacenConSesion = (sesion) => ({
   [CLAVES_SESION.token]: sesion.token,
   [CLAVES_SESION.rol]: sesion.rol,
-  [CLAVES_SESION.usuario]: sesion.usuario,
+  [CLAVES_SESION.nombre]: sesion.nombre,
   [CLAVES_SESION.id]: sesion.id,
 })
 
@@ -111,14 +111,12 @@ const crearAuthFalsa = ({ inicial = {}, sesionLogin, errorLogin, resultadoLogout
     llamadas,
     getToken: () => almacen.getItem(CLAVES_SESION.token),
     getRol: () => almacen.getItem(CLAVES_SESION.rol),
-    getUsuario: () => almacen.getItem(CLAVES_SESION.usuario),
     getNombre: () => almacen.getItem(CLAVES_SESION.nombre),
     getId: () => almacen.getItem(CLAVES_SESION.id),
     setToken: (token) => escribir(almacen, CLAVES_SESION.token, token),
     setSesion: (sesion) => {
       escribir(almacen, CLAVES_SESION.token, sesion.token)
       escribir(almacen, CLAVES_SESION.rol, sesion.rol)
-      escribir(almacen, CLAVES_SESION.usuario, sesion.usuario)
       escribir(almacen, CLAVES_SESION.nombre, sesion.nombre)
       escribir(almacen, CLAVES_SESION.id, sesion.id)
     },
@@ -128,8 +126,8 @@ const crearAuthFalsa = ({ inicial = {}, sesionLogin, errorLogin, resultadoLogout
       }
     },
     isTokenExpirado: (token, ahora) => isTokenExpirado(token, ahora),
-    async login(usuario, password) {
-      llamadas.push({ accion: 'login', usuario, password })
+    async login(correo, password) {
+      llamadas.push({ accion: 'login', correo, password })
       if (errorLogin) {
         throw errorLogin
       }
@@ -137,7 +135,7 @@ const crearAuthFalsa = ({ inicial = {}, sesionLogin, errorLogin, resultadoLogout
         token: tokenVigente(),
         rol: 'administrador',
         id: 5,
-        usuario,
+        nombre: correo,
       }
       servicio.setSesion(sesion)
       return sesion
@@ -161,7 +159,7 @@ const crearContadoresFalsos = ({ error, contadores } = {}) => {
       if (error) {
         throw error
       }
-      return contadores ?? [{ id: 3, usuario: 'ana' }]
+      return contadores ?? [{ id: 3, nombre: 'ana' }]
     },
     async getConteosPorEstado() {
       return { pendiente: 0, en_proceso: 0, finalizado: 0 }
@@ -266,7 +264,7 @@ test('arranque con token vencido: caduca sin llamar al backend ni conservar el t
       token: tokenCon({ exp: EXP_VENCIDO }),
       rol: 'administrador',
       id: 5,
-      usuario: 'admin_seed',
+      nombre: 'admin_seed',
     }),
   })
   const { store, contadores, reloj, programador } = montarSesion({ auth })
@@ -288,7 +286,7 @@ test('arranque con token vigente de administrador: valida con GET /contadores y 
       token: tokenVigente(),
       rol: 'administrador',
       id: 5,
-      usuario: 'admin_seed',
+      nombre: 'admin_seed',
     }),
   })
   const contadores = crearContadoresFalsos()
@@ -302,7 +300,7 @@ test('arranque con token vigente de administrador: valida con GET /contadores y 
   assert.equal(contadores.llamadas[0].accion, 'listCounters')
   assert.equal(store.autenticado, true)
   assert.equal(store.rol, 'administrador')
-  assert.equal(store.usuario, 'admin_seed')
+  assert.equal(store.nombre, 'admin_seed')
   assert.equal(store.id, '5')
   assert.equal(store.exp, EXP_FUTURO)
   assert.equal(store.sesionCaducada, false)
@@ -313,7 +311,7 @@ test('arranque con token vigente de administrador: valida con GET /contadores y 
 
 test('arranque con token vigente de contador: valida con GET /casos/mis-casos y abre P-5', async () => {
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, usuario: 'ana' }),
+    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, nombre: 'ana' }),
   })
   const casos = crearCasosFalsos()
   const { store } = montarSesion({ auth, casos })
@@ -333,7 +331,7 @@ test('arranque con 401 del backend: caduca y limpia la sesión (RF-43)', async (
       token: tokenVigente(),
       rol: 'administrador',
       id: 5,
-      usuario: 'admin_seed',
+      nombre: 'admin_seed',
     }),
   })
   const { store, programador } = montarSesion({
@@ -357,7 +355,7 @@ test('arranque con error de red: error recuperable y la sesión sigue viva (4.3)
       token: tokenVigente(),
       rol: 'administrador',
       id: 5,
-      usuario: 'admin_seed',
+      nombre: 'admin_seed',
     }),
   })
   const { store, programador } = montarSesion({
@@ -378,7 +376,7 @@ test('arranque con error de red: error recuperable y la sesión sigue viva (4.3)
 
 test('arranque con error del servidor: error recuperable y sin borrar el token', async () => {
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, usuario: 'ana' }),
+    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, nombre: 'ana' }),
   })
   const { store } = montarSesion({
     auth,
@@ -398,7 +396,7 @@ test('arranque del usuario de sistema: valida con «mis casos» y abre el alta d
       token: tokenVigente(),
       rol: 'usuarios_de_sistema',
       id: 8,
-      usuario: 'sistema',
+      nombre: 'sistema',
     }),
   })
   const contadores = crearContadoresFalsos()
@@ -422,7 +420,7 @@ test('arranque con un perfil sin pantalla: acceso denegado y sin lectura protegi
       token: tokenVigente(),
       rol: 'invitado',
       id: 8,
-      usuario: 'invitado',
+      nombre: 'invitado',
     }),
   })
   const contadores = crearContadoresFalsos()
@@ -444,7 +442,7 @@ test('arranque con un perfil sin pantalla: acceso denegado y sin lectura protegi
 
 test('iniciarSesion guarda el nombre de la cuenta para mostrarlo en el menú', async () => {
   const auth = crearAuthFalsa({
-    sesionLogin: { token: tokenVigente(), rol: 'contador', id: 7, usuario: 'ana', nombre: 'Ana Karen Ramírez' },
+    sesionLogin: { token: tokenVigente(), rol: 'contador', id: 7, nombre: 'Ana Karen Ramírez' },
   })
   const { store } = montarSesion({ auth })
 
@@ -454,16 +452,22 @@ test('iniciarSesion guarda el nombre de la cuenta para mostrarlo en el menú', a
   assert.equal(store.nombreVisible, 'Ana Karen Ramírez')
 })
 
-test('una sesión guardada sin nombre muestra el usuario como nombre', async () => {
+test('la sesión ya no expone el usuario: el nombre visible es solo el nombre (5b)', async () => {
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 7, usuario: 'contador_seed' }),
+    sesionLogin: { token: tokenVigente(), rol: 'contador', id: 7, nombre: 'Ana Karen Ramírez' },
   })
   const { store } = montarSesion({ auth })
 
-  store.aplicarSesionGuardada()
+  const resultado = await store.iniciarSesion('ana@delgrow.mx', 'clave')
 
-  assert.equal(store.nombre, null)
-  assert.equal(store.nombreVisible, 'contador_seed')
+  assert.ok(!('usuario' in store.$state), 'el estado no tiene usuario')
+  assert.ok(!('usuario' in resultado), 'iniciarSesion no devuelve usuario')
+  assert.equal(store.nombreVisible, 'Ana Karen Ramírez')
+
+  // Una sesión guardada antes del cambio, sin nombre, no tiene nada que mostrar.
+  auth.almacen.removeItem(CLAVES_SESION.nombre)
+  store.aplicarSesionGuardada()
+  assert.equal(store.nombreVisible, null)
 })
 
 test('iniciarSesion sin sesión previa: guarda la sesión, arranca el temporizador y devuelve la pantalla', async () => {
@@ -479,7 +483,7 @@ test('iniciarSesion sin sesión previa: guarda la sesión, arranca el temporizad
   assert.equal(store.autenticado, true)
   assert.equal(store.token, tokenVigente())
   assert.equal(store.rol, 'administrador')
-  assert.equal(store.usuario, 'admin_seed')
+  assert.equal(store.nombre, 'admin_seed')
   assert.equal(store.exp, EXP_FUTURO)
   assert.equal(store.ultimaActividad, reloj.ahora().getTime())
   assert.equal(programador.activo, true)
@@ -489,8 +493,8 @@ test('iniciarSesion sin sesión previa: guarda la sesión, arranca el temporizad
 test('iniciarSesion con sesión previa: revoca la anterior de forma best-effort (RF-10)', async () => {
   const tokenAnterior = tokenCon({ exp: EXP_FUTURO, jti: 'anterior' })
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenAnterior, rol: 'contador', id: 3, usuario: 'ana' }),
-    sesionLogin: { token: tokenVigente(), rol: 'administrador', id: 5, usuario: 'admin_seed' },
+    inicial: almacenConSesion({ token: tokenAnterior, rol: 'contador', id: 3, nombre: 'ana' }),
+    sesionLogin: { token: tokenVigente(), rol: 'administrador', id: 5, nombre: 'admin_seed' },
   })
   const { store } = montarSesion({ auth })
 
@@ -513,9 +517,9 @@ test('iniciarSesion con sesión previa: un fallo de logout no bloquea el cambio 
       token: tokenCon({ exp: EXP_FUTURO, jti: 'anterior' }),
       rol: 'contador',
       id: 3,
-      usuario: 'ana',
+      nombre: 'ana',
     }),
-    sesionLogin: { token: tokenVigente(), rol: 'administrador', id: 5, usuario: 'admin_seed' },
+    sesionLogin: { token: tokenVigente(), rol: 'administrador', id: 5, nombre: 'admin_seed' },
     resultadoLogout: { ok: false, error: ERROR_RED },
   })
   const { store } = montarSesion({ auth })
@@ -536,7 +540,7 @@ test('iniciarSesion con credenciales inválidas conserva la sesión previa y no 
     datos: null,
   }
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenAnterior, rol: 'contador', id: 3, usuario: 'ana' }),
+    inicial: almacenConSesion({ token: tokenAnterior, rol: 'contador', id: 3, nombre: 'ana' }),
     errorLogin: error,
   })
   const { store } = montarSesion({ auth })
@@ -556,7 +560,7 @@ test('iniciarSesion con credenciales inválidas conserva la sesión previa y no 
 
 test('iniciarSesion del usuario de sistema lleva al alta de usuarios y arranca el temporizador (9a)', async () => {
   const auth = crearAuthFalsa({
-    sesionLogin: { token: tokenVigente(), rol: 'usuarios_de_sistema', id: 8, usuario: 'sistema' },
+    sesionLogin: { token: tokenVigente(), rol: 'usuarios_de_sistema', id: 8, nombre: 'sistema' },
   })
   const { store, programador } = montarSesion({ auth })
 
@@ -573,7 +577,7 @@ test('iniciarSesion del usuario de sistema lleva al alta de usuarios y arranca e
 
 test('iniciarSesion con un perfil sin pantalla devuelve acceso denegado y no arranca el temporizador', async () => {
   const auth = crearAuthFalsa({
-    sesionLogin: { token: tokenVigente(), rol: 'invitado', id: 8, usuario: 'invitado' },
+    sesionLogin: { token: tokenVigente(), rol: 'invitado', id: 8, nombre: 'invitado' },
   })
   const { store, programador } = montarSesion({ auth })
 
@@ -594,7 +598,7 @@ test('cerrarSesionVoluntaria con logout correcto: aviso de sesión cerrada y tok
       token: tokenVigente(),
       rol: 'administrador',
       id: 5,
-      usuario: 'admin_seed',
+      nombre: 'admin_seed',
     }),
   })
   const { store, programador } = montarSesion({ auth })
@@ -614,7 +618,7 @@ test('cerrarSesionVoluntaria con logout correcto: aviso de sesión cerrada y tok
 
 test('cerrarSesionVoluntaria con logout fallido: cierre local igual y aviso de tres partes (RF-47)', async () => {
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, usuario: 'ana' }),
+    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, nombre: 'ana' }),
     resultadoLogout: { ok: false, error: ERROR_RED },
   })
   const { store, programador } = montarSesion({ auth })
@@ -635,7 +639,7 @@ test('cerrarSesionVoluntaria con logout fallido: cierre local igual y aviso de t
 
 test('cerrarSesionPorContrasenaNueva cierra en este equipo sin llamar a logout y avisa de la contraseña nueva (9b)', () => {
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenVigente(), rol: 'usuarios_de_sistema', id: 7, usuario: 'sis' }),
+    inicial: almacenConSesion({ token: tokenVigente(), rol: 'usuarios_de_sistema', id: 7, nombre: 'sis' }),
   })
   const { store, programador } = montarSesion({ auth })
   store.iniciarTemporizador()
@@ -725,7 +729,7 @@ test('el temporizador comprueba la inactividad y caduca la sesión al dispararse
 
 test('caducarSesion directa limpia la sesión y activa la bandera de caducidad', () => {
   const auth = crearAuthFalsa({
-    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, usuario: 'ana' }),
+    inicial: almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 3, nombre: 'ana' }),
   })
   const { store } = montarSesion({ auth })
 

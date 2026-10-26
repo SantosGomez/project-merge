@@ -101,7 +101,6 @@ async function authenticateToken(req, res, next) {
   // 6. Adjuntar datos del usuario al request
   req.user = {
     id: resultado.payload.id,
-    usuario: resultado.payload.usuario,
     rol: resultado.payload.rol,
   };
   // jti de la sesión, disponible para el cierre de sesión (RF-41)

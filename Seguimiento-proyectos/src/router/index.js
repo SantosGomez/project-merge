@@ -128,7 +128,7 @@ const sincronizarIdentidadMaqueta = (sesion) => {
   const maqueta = useMaquetaStore()
 
   maqueta.session = sesion.autenticado
-    ? { profile: sesion.rol, account: sesion.usuario, counterId: sesion.id }
+    ? { profile: sesion.rol, account: sesion.nombreVisible, counterId: sesion.id }
     : null
 }
 

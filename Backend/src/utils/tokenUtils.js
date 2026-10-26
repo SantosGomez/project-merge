@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
  * Genera un token de acceso JWT firmado con su propio campo exp (RF-01) y un
  * `jti` aleatorio, para que cada inicio de sesión tenga un token y una sesión
  * propios aunque sea el mismo usuario en el mismo instante (RF-41).
- * @param {object} payload - datos del usuario (id, usuario, rol).
+ * @param {object} payload - datos de la cuenta (id, rol).
  * @param {string} secreto - secreto con el que se firma el token.
  * @param {string|number} expiresIn - duración del token (ej. '1h', '30m').
  * @returns {string} token JWT firmado.
