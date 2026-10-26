@@ -1,5 +1,5 @@
 const { query } = require('../config/db');
-const { formatLocalDate } = require('../utils/dateUtils');
+const { formatearFechaISO, calcularFechaVencimiento } = require('../utils/dateUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 
@@ -137,7 +137,7 @@ function debeSembrarCuentasDemo(env) {
 async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) } = {}) {
   await crearTablasSiNoExisten();
   await migrarUsuarios();
-  await migrarCasos({ cuentasDemo });
+  await migrarCasos();
 
   if (!cuentasDemo) return;
 
@@ -151,60 +151,43 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
 }
 
 /**
- * Migra casos existentes rellenando las nuevas columnas `fecha_inicio` y `fecha_vencimiento`.
- * Idempotente: si ya tiene fecha inicio la deja intacta; si no, usa creado_en y calcula el vencimiento
- * según la prioridad (Alta=5, Media=10, Baja=15 días hábiles, sin festivos).
- * @param {{ cuentasDemo?: boolean }} [opciones]
+ * Migra los casos anteriores a las columnas de fechas, descripción y observaciones.
+ * Corre siempre al arrancar (no depende de las cuentas demo) y es idempotente:
+ * - sin fecha de inicio: se usa el día en que se creó el caso;
+ * - sin vencimiento: se calcula desde la fecha de inicio según la prioridad (días hábiles);
+ * - un caso con ambas fechas no se toca.
+ * Al final las dos fechas quedan obligatorias, como en una base nueva.
  */
-async function migrarCasos({ cuentasDemo = false } = {}) {
-  if (!cuentasDemo) return;
-
+async function migrarCasos() {
   // Añade las columnas si la tabla vieja no las tiene (sin NOT NULL todavía)
   await query('ALTER TABLE casos ADD IF NOT EXISTS fecha_inicio DATE DEFAULT NULL AFTER prioridad');
   await query('ALTER TABLE casos ADD IF NOT EXISTS fecha_vencimiento DATE DEFAULT NULL AFTER fecha_inicio');
   await query('ALTER TABLE casos ADD IF NOT EXISTS descripcion TEXT NULL AFTER fecha_vencimiento');
   await query('ALTER TABLE casos ADD IF NOT EXISTS observaciones TEXT NULL AFTER descripcion');
 
-  // Rellena las filas existentes: usa creado_en como fecha inicio y calcula el vencimiento
-  const [rows] = await query(
-    'SELECT id, contador_id, cliente, prioridad, creado_en FROM casos WHERE fecha_inicio IS NULL'
+  const pendientes = await query(
+    'SELECT id, prioridad, creado_en, fecha_inicio FROM casos WHERE fecha_inicio IS NULL OR fecha_vencimiento IS NULL'
   );
-  const casoRows = Array.isArray(rows) ? rows : [];
-  if (casoRows.length === 0) return;
-
-  const diasMap = { Alta: 5, Media: 10, Baja: 15 };
-
-  for (const r of casoRows) {
-    const prioridad = r.prioridad ?? 'Media';
-    const dias = diasMap[prioridad] ?? 10;
-
-    // Fecha inicio = creado_en
-    await query(
-      'UPDATE casos SET fecha_inicio = ? WHERE id = ?',
-      [r.creado_en, r.id]
-    );
-
-    // Calcula y establece la fecha de vencimiento sumando días hábiles
-    const f = new Date(r.creado_en);
-    let sumados = 0;
-    while (sumados < dias) {
-      f.setDate(f.getDate() + 1);
-      const diaSemana = f.getDay();
-      if (diaSemana >= 1 && diaSemana <= 5) sumados++;
-    }
-    const fnVencimiento = formatLocalDate(f);
-    await query(
-      'UPDATE casos SET fecha_vencimiento = ? WHERE id = ?',
-      [fnVencimiento, r.id]
-    );
+  for (const caso of pendientes) {
+    // mysql2 entrega DATE y DATETIME como fechas locales: se toma el día sin desplazarlo
+    const inicio = caso.fecha_inicio ?? caso.creado_en;
+    await query('UPDATE casos SET fecha_inicio = ?, fecha_vencimiento = ? WHERE id = ?', [
+      formatearFechaISO(inicio),
+      calcularFechaVencimiento(inicio, caso.prioridad),
+      caso.id,
+    ]);
   }
 
-  // Ahora sí, poner las columnas NOT NULL (solo si todas tienen valor)
-  try {
-    await query('ALTER TABLE casos MODIFY fecha_inicio DATE NOT NULL AFTER prioridad');
-    await query('ALTER TABLE casos MODIFY fecha_vencimiento DATE NOT NULL AFTER fecha_inicio');
-  } catch {
-    // Si falla (algo quedó NULL), dejamos nullable para no romper el sistema
+  // Solo se vuelven obligatorias si aún aceptan vacío y ya no queda ninguna vacía:
+  // MariaDB sin modo estricto convertiría un NULL en una fecha 0000-00-00.
+  const [{ opcionales }] = await query(
+    "SELECT COUNT(*) AS opcionales FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'casos' AND COLUMN_NAME IN ('fecha_inicio', 'fecha_vencimiento') AND IS_NULLABLE = 'YES'"
+  );
+  const [{ vacias }] = await query(
+    'SELECT COUNT(*) AS vacias FROM casos WHERE fecha_inicio IS NULL OR fecha_vencimiento IS NULL'
+  );
+  if (Number(opcionales) > 0 && Number(vacias) === 0) {
+    await query('ALTER TABLE casos MODIFY fecha_inicio DATE NOT NULL, MODIFY fecha_vencimiento DATE NOT NULL');
   }
 }
 

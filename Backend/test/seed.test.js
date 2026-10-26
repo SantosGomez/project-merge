@@ -4,6 +4,8 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const {
   prepararBaseDeDatos,
+  crearUsuarioDePrueba,
+  crearCasoDePrueba,
   limpiarDatosDePrueba,
   cerrarBaseDeDatos,
 } = require('../soporte-pruebas/bd');
@@ -199,6 +201,82 @@ function testCreateTableDeUsuariosSinUsuario() {
   assert.match(tabla, /UNIQUE KEY uq_usuarios_correo \(correo\)/, 'el correo es único con el mismo índice que la migración');
 }
 
+// ---------- Migración de fechas de los casos anteriores a fecha_inicio/fecha_vencimiento ----------
+// Las tablas viejas tenían estas columnas vacías; para simularlo se vuelven a permitir NULL
+// (la migración las deja otra vez obligatorias) y se vacían solo en los casos propios.
+async function casoAntiguo(contadorId, { creadoEn, prioridad, fechaInicio = null, fechaVencimiento = null }) {
+  await query('ALTER TABLE casos MODIFY fecha_inicio DATE NULL, MODIFY fecha_vencimiento DATE NULL');
+  const id = await crearCasoDePrueba(contadorId, { cliente: 'zz_test_migracion', prioridad });
+  await query('UPDATE casos SET creado_en = ?, fecha_inicio = ?, fecha_vencimiento = ? WHERE id = ?', [
+    creadoEn,
+    fechaInicio,
+    fechaVencimiento,
+    id,
+  ]);
+  return id;
+}
+
+async function fechasDelCaso(id) {
+  const [fila] = await query(
+    "SELECT DATE_FORMAT(fecha_inicio, '%Y-%m-%d') AS inicio, DATE_FORMAT(fecha_vencimiento, '%Y-%m-%d') AS vence FROM casos WHERE id = ?",
+    [id]
+  );
+  return fila;
+}
+
+async function testMigracionRellenaFechasDeCasosAntiguos() {
+  const contador = await crearUsuarioDePrueba('contador');
+  // Como «Cliente Test 2»: sin inicio y con un vencimiento calculado desde otro día.
+  const sinInicio = await casoAntiguo(contador.id, {
+    creadoEn: '2026-10-20 15:42:21',
+    prioridad: 'Media',
+    fechaVencimiento: '2026-11-09',
+  });
+  // Creado casi a medianoche: el día no se desplaza.
+  const deNoche = await casoAntiguo(contador.id, { creadoEn: '2026-10-23 23:30:00', prioridad: 'Alta' });
+
+  await seedDatabase({ cuentasDemo: false });
+
+  assert.deepStrictEqual(await fechasDelCaso(sinInicio), { inicio: '2026-10-20', vence: '2026-11-03' });
+  assert.deepStrictEqual(await fechasDelCaso(deNoche), { inicio: '2026-10-23', vence: '2026-10-30' });
+}
+
+async function testMigracionRespetaLasFechasQueYaExisten() {
+  const contador = await crearUsuarioDePrueba('contador');
+  const sinVencimiento = await casoAntiguo(contador.id, {
+    creadoEn: '2026-10-20 10:00:00',
+    prioridad: 'Alta',
+    fechaInicio: '2026-12-31',
+  });
+  const completo = await casoAntiguo(contador.id, {
+    creadoEn: '2026-10-20 10:00:00',
+    prioridad: 'Baja',
+    fechaInicio: '2026-12-31',
+    fechaVencimiento: '2030-01-01',
+  });
+
+  await seedDatabase({ cuentasDemo: false });
+
+  assert.deepStrictEqual(await fechasDelCaso(sinVencimiento), { inicio: '2026-12-31', vence: '2027-01-07' }, 'solo se calcula el vencimiento');
+  assert.deepStrictEqual(await fechasDelCaso(completo), { inicio: '2026-12-31', vence: '2030-01-01' }, 'un caso completo no cambia');
+}
+
+async function testMigracionDeFechasSePuedeRepetirYDejaColumnasObligatorias() {
+  const contador = await crearUsuarioDePrueba('contador');
+  const id = await casoAntiguo(contador.id, { creadoEn: '2026-10-26 12:37:39', prioridad: 'Alta' });
+
+  await seedDatabase({ cuentasDemo: false });
+  const primera = await fechasDelCaso(id);
+  await seedDatabase({ cuentasDemo: false });
+
+  assert.deepStrictEqual(await fechasDelCaso(id), primera, 'la segunda vez no cambia nada');
+  assert.deepStrictEqual(primera, { inicio: '2026-10-26', vence: '2026-11-02' });
+  const columnas = await query(
+    "SELECT COLUMN_NAME AS columna, IS_NULLABLE AS nulo FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'casos' AND COLUMN_NAME IN ('fecha_inicio', 'fecha_vencimiento') ORDER BY COLUMN_NAME"
+  );
+  assert.deepStrictEqual(columnas.map((c) => c.nulo), ['NO', 'NO'], 'las fechas vuelven a ser obligatorias');
+}
+
 describe('seed de datos maestros', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -222,4 +300,7 @@ describe('seed de datos maestros', () => {
   test('la migración borra la columna usuario', testMigracionBorraLaColumnaUsuario);
   test('antes de borrarla deja el respaldo usuarios_respaldo_5c con el usuario de cada cuenta', testMigracionDejaElRespaldoAntesDeBorrar);
   test('la migración se puede correr dos veces sin la columna', testMigracionSePuedeCorrerDosVeces);
+  test('la migración de fechas rellena los casos antiguos sin cuentas demo', testMigracionRellenaFechasDeCasosAntiguos);
+  test('la migración de fechas respeta las fechas que ya existen', testMigracionRespetaLasFechasQueYaExisten);
+  test('la migración de fechas se puede repetir y deja las columnas obligatorias', testMigracionDeFechasSePuedeRepetirYDejaColumnasObligatorias);
 });
