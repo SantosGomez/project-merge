@@ -344,12 +344,13 @@ describe('Mis casos (rebanada 6) — un solo flujo para guardar cambios', () => 
   const inicioRetry = myCasesSource.indexOf('const retry')
   const cuerpoRetry = myCasesSource.slice(inicioRetry, myCasesSource.indexOf('\n}\n', inicioRetry))
 
-  it('estado y prioridad usan la misma función, sin copias', () => {
+  // La prioridad ya no tiene selector en la fila (se cambia en «Editar»); estado e importante comparten la función.
+  it('estado e importante usan la misma función, sin copias', () => {
     assert.ok(inicioGuardar > 0, 'existe guardarCambio')
     assert.doesNotMatch(myCasesSource, /const changeStatus|const changePriority/, 'no quedan las funciones duplicadas')
     assert.strictEqual(myCasesSource.match(/cases\.actualizarCaso\(/g).length, 1, 'un solo punto llama a actualizarCaso')
     assert.match(myCasesSource, /guardarCambio\(item\.id, \{ estado: v \}\)/)
-    assert.match(myCasesSource, /guardarCambio\(item\.id, \{ prioridad: v \}\)/)
+    assert.match(myCasesSource, /guardarCambio\(item\.id, \{ importante: !item\.important \}\)/)
   })
 
   it('al empezar un cambio se borra el aviso anterior', () => {
@@ -372,16 +373,19 @@ describe('Editar caso — fila con fechas y botón «Editar»', () => {
     assert.match(cssRule(caseRowSource, '.case-row__description'), /-webkit-line-clamp:\s*2/, 'la descripción se recorta a 2 líneas')
   })
 
+  // Desde el rediseño con QList, el botón vive en CasoItem.vue y la página atiende su evento.
   it('cada fila de «Mis casos» tiene un botón «Editar» con ayuda que abre el diálogo', () => {
-    const inicio = myCasesSource.indexOf('class="case-edit-btn')
+    const casoItemSource = read('../src/components/CasoItem.vue')
+    const inicio = casoItemSource.indexOf('label="Editar"')
     assert.ok(inicio > 0, 'existe el botón de editar')
-    const boton = myCasesSource.slice(inicio, myCasesSource.indexOf('</q-btn>', inicio))
-    assert.match(boton, /label="Editar"/)
+    const boton = casoItemSource.slice(casoItemSource.lastIndexOf('<q-btn', inicio), casoItemSource.indexOf('</q-btn>', inicio))
     assert.match(boton, /icon="edit"/)
     assert.match(boton, /aria-haspopup="dialog"/)
-    assert.match(boton, /:disable="cases\.guardando"/)
-    assert.match(boton, /@click="abrirEdicion\(item\.id\)"/)
-    assert.match(boton, /<q-tooltip>Abre el formulario para cambiar la información del caso\.<\/q-tooltip>/)
+    assert.match(boton, /:disable="deshabilitado"/)
+    assert.match(boton, /@click="emit\('editar'\)"/)
+    assert.match(boton, /<q-tooltip>Abre el formulario para cambiar la información del caso/)
+    assert.match(myCasesSource, /:deshabilitado="cases\.guardando"/)
+    assert.match(myCasesSource, /@editar="abrirEdicion\(item\.id\)"/)
   })
 
   it('el diálogo recibe el caso a editar y al guardar avisa «Cambios guardados.»', () => {

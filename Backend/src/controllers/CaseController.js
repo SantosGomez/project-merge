@@ -50,6 +50,13 @@ const TEXTOS_OPCIONALES = {
   },
 };
 
+// Importante es opcional, pero si viene debe ser un booleano real (no "true", 1 ni null)
+const ERROR_IMPORTANTE = buildError('Dato inválido', 'importante', 'Envíe importante como true o false');
+
+function importanteInvalido(valor) {
+  return valor !== undefined && typeof valor !== 'boolean';
+}
+
 const ERROR_FECHA_INICIO = buildError(
   'Fecha de inicio no válida',
   'fecha_inicio',
@@ -89,6 +96,10 @@ async function createCase(req, res) {
     return res.status(400).json(buildError(...MENSAJES_ENTRADA_CASO[validacion.error]));
   }
 
+  if (importanteInvalido(req.body.importante)) {
+    return res.status(400).json(ERROR_IMPORTANTE);
+  }
+
   // Descripción y observaciones son opcionales: ausente o vacío se guarda como null.
   const textos = {};
   for (const campo of Object.keys(TEXTOS_OPCIONALES)) {
@@ -120,6 +131,7 @@ async function createCase(req, res) {
     cliente: cliente.trim(),
     estado: 'Pendiente', // Siempre Pendiente, no se elige (RF-18)
     prioridad,
+    importante: req.body.importante === true,
     descripcion: textos.descripcion,
     observaciones: textos.observaciones,
     fecha_inicio: fechaInicio,
@@ -148,15 +160,20 @@ async function updateCase(req, res) {
   const { cliente, estado, prioridad, fecha_inicio: fechaRecibida } = req.body;
   const casoActual = req.caso;
 
-  const editables = [cliente, estado, prioridad, fechaRecibida, req.body.descripcion, req.body.observaciones];
+  const { importante } = req.body;
+  const editables = [cliente, estado, prioridad, fechaRecibida, req.body.descripcion, req.body.observaciones, importante];
   if (editables.every((valor) => valor === undefined)) {
     return res.status(400).json(
       buildError(
         'Nada que actualizar',
         'caso',
-        'Envíe al menos uno de: cliente, estado, prioridad, fecha de inicio, descripción u observaciones'
+        'Envíe al menos uno de: cliente, estado, prioridad, fecha de inicio, descripción, observaciones o importante'
       )
     );
+  }
+
+  if (importanteInvalido(importante)) {
+    return res.status(400).json(ERROR_IMPORTANTE);
   }
 
   // RF-37: un dato no textual se rechaza antes de guardar nada, para no dejar cambios a medias
@@ -227,6 +244,7 @@ async function updateCase(req, res) {
     fecha_vencimiento: fechaVencimiento,
     descripcion: textos.descripcion,
     observaciones: textos.observaciones,
+    importante,
   });
 
   const caso = await CaseModel.findById(casoActual.id);

@@ -54,6 +54,8 @@ test('casoAFila traduce los campos internos a los que espera CaseRow (RF-13)', (
     startDate: '',
     dueDate: '',
     description: '',
+    important: false,
+    inProgressSince: '',
   })
 })
 
@@ -248,4 +250,18 @@ test('segmentosDona sin casos devuelve total 0 y arcos vacíos (la vista muestra
   const dona = segmentosDona({})
   assert.equal(dona.total, 0)
   assert.deepEqual(dona.segmentos.map((s) => [s.valor, s.arco, s.porcentaje]), [[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+})
+
+test('casoAFila marca el caso importante y muestra desde cuándo está en proceso (DD-MM-AAAA)', () => {
+  const fila = casoAFila({
+    id: 5,
+    cliente: 'Gamesa',
+    estado: 'en_proceso',
+    prioridad: 'alta',
+    importante: true,
+    en_proceso_en: '2026-10-23 10:03:40',
+  })
+
+  assert.equal(fila.important, true)
+  assert.equal(fila.inProgressSince, '23-10-2026')
 })

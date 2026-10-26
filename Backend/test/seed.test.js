@@ -277,6 +277,43 @@ async function testMigracionDeFechasSePuedeRepetirYDejaColumnasObligatorias() {
   assert.deepStrictEqual(columnas.map((c) => c.nulo), ['NO', 'NO'], 'las fechas vuelven a ser obligatorias');
 }
 
+// ---------- Importante / En proceso: columnas corregidas de la tabla casos ----------
+async function columnaDeCasos(nombre) {
+  const [columna] = await query('SHOW COLUMNS FROM casos WHERE Field = ?', [nombre]);
+  return columna && { campo: columna.Field, tipo: columna.Type, nulo: columna.Null, defecto: columna.Default, extra: columna.Extra };
+}
+
+async function testMigracionDejaImportanteYEnProcesoEn() {
+  await seedDatabase({ cuentasDemo: false });
+  await seedDatabase({ cuentasDemo: false }); // se puede repetir sin fallar
+
+  assert.deepStrictEqual(await columnaDeCasos('importante'), {
+    campo: 'importante',
+    tipo: 'tinyint(1)',
+    nulo: 'NO',
+    defecto: '0',
+    extra: '',
+  });
+  assert.deepStrictEqual(await columnaDeCasos('en_proceso_en'), {
+    campo: 'en_proceso_en',
+    tipo: 'datetime',
+    nulo: 'YES',
+    defecto: null,
+    extra: '',
+  });
+  assert.strictEqual(await columnaDeCasos('en_proceso_at'), undefined, 'la columna vieja ya no existe');
+}
+
+// Verificación estática: una base nueva crea las dos columnas desde el CREATE TABLE.
+function testCreateTableDeCasosConImportanteYEnProcesoEn() {
+  const fuente = readFileSync(join(__dirname, '../src/utils/seed.js'), 'utf8');
+  const inicio = fuente.indexOf('CREATE TABLE IF NOT EXISTS casos');
+  const tabla = fuente.slice(inicio, fuente.indexOf(') ENGINE=InnoDB', inicio));
+
+  assert.match(tabla, /\bimportante TINYINT\(1\) NOT NULL DEFAULT 0/);
+  assert.match(tabla, /\ben_proceso_en DATETIME NULL/);
+}
+
 describe('seed de datos maestros', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -303,4 +340,6 @@ describe('seed de datos maestros', () => {
   test('la migración de fechas rellena los casos antiguos sin cuentas demo', testMigracionRellenaFechasDeCasosAntiguos);
   test('la migración de fechas respeta las fechas que ya existen', testMigracionRespetaLasFechasQueYaExisten);
   test('la migración de fechas se puede repetir y deja las columnas obligatorias', testMigracionDeFechasSePuedeRepetirYDejaColumnasObligatorias);
+  test('la migración deja importante (0 por defecto) y en_proceso_en (vacía, sin ON UPDATE)', testMigracionDejaImportanteYEnProcesoEn);
+  test('una base nueva crea la tabla casos con importante y en_proceso_en', testCreateTableDeCasosConImportanteYEnProcesoEn);
 });

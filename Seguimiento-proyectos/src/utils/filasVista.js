@@ -79,10 +79,10 @@ export const compararUltimoAcceso = (a, b) => {
 /**
  * Adapta un caso interno a la fila de `CaseRow.vue`.
  * Solo se copian los campos que el componente muestra: cliente completo, estado, prioridad,
- * fechas de inicio y vencimiento (DD-MM-AAAA) y descripción.
+ * fechas de inicio y vencimiento (DD-MM-AAAA), descripción, si es importante y desde cuándo está en proceso.
  * @param {Object} caso - caso interno del servicio.
  * @returns {{ id: number|string|null, client: string, status: string, priority: string, counterId: number|string|null,
- *   startDate: string, dueDate: string, description: string }|null}
+ *   startDate: string, dueDate: string, description: string, important: boolean, inProgressSince: string }|null}
  */
 export const casoAFila = (caso) => {
   if (caso === null || typeof caso !== 'object') {
@@ -98,6 +98,8 @@ export const casoAFila = (caso) => {
     startDate: fechaParaFormulario(caso.fecha_inicio),
     dueDate: fechaParaFormulario(caso.fecha_vencimiento),
     description: caso.descripcion ?? '',
+    important: Boolean(caso.importante),
+    inProgressSince: fechaParaFormulario(caso.en_proceso_en),
   }
 }
 

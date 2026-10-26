@@ -95,18 +95,19 @@ async function resumenPorContador(hoy) {
  * @param {Object} datos - Datos del caso: contador_id, cliente, estado, prioridad, creado_en, actualizado_en.
  * @returns {Promise<number>} ID del caso insertado.
  */
-async function create({ contador_id, cliente, estado, prioridad, creado_en, actualizado_en, fecha_inicio, fecha_vencimiento, descripcion, observaciones }) {
+async function create({ contador_id, cliente, estado, prioridad, importante = false, creado_en, actualizado_en, fecha_inicio, fecha_vencimiento, descripcion, observaciones }) {
   const ahora = formatLocalDate(nowLocal());
   // Las columnas son DATE: se envía solo la fecha, nunca una fecha con hora.
   const hoy = formatearFechaISO(nowLocal());
   const result = await query(
-    `INSERT INTO casos (contador_id, cliente, estado, prioridad, descripcion, observaciones, fecha_inicio, fecha_vencimiento, creado_en, actualizado_en)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO casos (contador_id, cliente, estado, prioridad, importante, descripcion, observaciones, fecha_inicio, fecha_vencimiento, creado_en, actualizado_en)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       contador_id,
       cliente,
       estado,
       prioridad,
+      importante,
       descripcion,
       observaciones,
       fecha_inicio || hoy,
@@ -155,6 +156,7 @@ const COLUMNAS_EDITABLES = [
   'fecha_vencimiento',
   'descripcion',
   'observaciones',
+  'importante',
 ];
 
 /**
@@ -181,11 +183,14 @@ async function updatePatch(id, campos = {}) {
     return;
   }
 
-  await query(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [
-    ...valores,
-    formatLocalDate(nowLocal()),
-    id,
-  ]);
+  const ahora = formatLocalDate(nowLocal());
+  // Solo la primera vez que pasa a «En proceso»: si ya tiene fecha, se conserva
+  if (campos.estado === 'En proceso') {
+    asignaciones.push('en_proceso_en = COALESCE(en_proceso_en, ?)');
+    valores.push(ahora);
+  }
+
+  await query(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
 module.exports = { findById, findByCounter, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };

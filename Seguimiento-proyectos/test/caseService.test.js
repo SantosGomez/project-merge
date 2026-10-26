@@ -344,3 +344,27 @@ test('actualizarCaso no envía campos que no se editan y, si solo vienen esos, n
   )
   assert.equal(api.llamadas.length, 0)
 })
+
+// --- importante -------------------------------------------------------------
+
+test('crearCaso envía importante cuando se indica', async () => {
+  const api = crearApiFalsa({
+    POST: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.crearCaso('Cliente', 'Alta', undefined, undefined, undefined, true)
+
+  assert.deepEqual(api.llamadas[0].cuerpo, { cliente: 'Cliente', prioridad: 'Alta', importante: true })
+})
+
+test('actualizarCaso envía importante (también false) y solo ese campo', async () => {
+  const api = crearApiFalsa({
+    PATCH: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.actualizarCaso(9, { importante: false })
+
+  assert.deepEqual(api.llamadas[0].cuerpo, { importante: false })
+})

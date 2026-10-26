@@ -405,3 +405,16 @@ test('cambiosDelCaso incluye el estado cuando cambia', () => {
     estado: 'finalizado',
   })
 })
+
+test('cambiosDelCaso incluye importante cuando se marca o se desmarca', () => {
+  assert.deepEqual(cambiosDelCaso(casoGuardado, { ...formularioSinCambios, importante: true }), { importante: true })
+  assert.deepEqual(
+    cambiosDelCaso({ ...casoGuardado, importante: true }, { ...formularioSinCambios, importante: false }),
+    { importante: false },
+  )
+  assert.deepEqual(
+    cambiosDelCaso({ ...casoGuardado, importante: true }, { ...formularioSinCambios, importante: true }),
+    {},
+    'sin cambio de importante no se envía',
+  )
+})

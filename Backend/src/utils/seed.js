@@ -39,11 +39,13 @@ async function crearTablasSiNoExisten() {
       cliente VARCHAR(200) NOT NULL,
       estado ENUM('Pendiente', 'En proceso', 'Finalizado') NOT NULL DEFAULT 'Pendiente',
       prioridad ENUM('Alta', 'Media', 'Baja') NOT NULL,
+      importante TINYINT(1) NOT NULL DEFAULT 0,
       fecha_inicio DATE NOT NULL,
       fecha_vencimiento DATE NOT NULL,
       descripcion TEXT NULL,
       observaciones TEXT NULL,
       creado_en DATETIME NOT NULL,
+      en_proceso_en DATETIME NULL,
       actualizado_en DATETIME NOT NULL,
       FOREIGN KEY (contador_id) REFERENCES usuarios(id)
     ) ENGINE=InnoDB
@@ -189,6 +191,30 @@ async function migrarCasos() {
   if (Number(opcionales) > 0 && Number(vacias) === 0) {
     await query('ALTER TABLE casos MODIFY fecha_inicio DATE NOT NULL, MODIFY fecha_vencimiento DATE NOT NULL');
   }
+
+  await migrarImportanteYEnProceso();
+}
+
+/**
+ * Deja las columnas `importante` y `en_proceso_en` de la tabla casos. Es idempotente.
+ * - `Importante` (agregada a mano, sin valor por defecto) pasa a `importante` con 0 por defecto.
+ * - `en_proceso_at` (TIMESTAMP con ON UPDATE: cambiaba con cualquier edición) pasa a
+ *   `en_proceso_en` DATETIME vacía; los casos que ya están «En proceso» toman su
+ *   `actualizado_en` como mejor aproximación y los demás quedan vacíos.
+ */
+async function migrarImportanteYEnProceso() {
+  await query('ALTER TABLE casos ADD IF NOT EXISTS importante TINYINT(1) NOT NULL DEFAULT 0 AFTER prioridad');
+  const [importante] = await query("SHOW COLUMNS FROM casos WHERE Field = 'importante'");
+  if (importante.Field !== 'importante' || importante.Default !== '0') {
+    await query('ALTER TABLE casos CHANGE importante importante TINYINT(1) NOT NULL DEFAULT 0');
+  }
+
+  const [anterior] = await query("SHOW COLUMNS FROM casos WHERE Field = 'en_proceso_at'");
+  if (anterior) {
+    await query('ALTER TABLE casos CHANGE en_proceso_at en_proceso_en DATETIME NULL DEFAULT NULL');
+    await query("UPDATE casos SET en_proceso_en = IF(estado = 'En proceso', actualizado_en, NULL)");
+  }
+  await query('ALTER TABLE casos ADD IF NOT EXISTS en_proceso_en DATETIME NULL AFTER creado_en');
 }
 
 module.exports = { seedDatabase, debeSembrarCuentasDemo };

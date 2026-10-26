@@ -210,6 +210,23 @@
             </p>
           </div>
 
+          <div class="form-group registro-caso__ancho-completo">
+            <q-toggle
+              v-model="importante"
+              color="amber-9"
+              checked-icon="star"
+              unchecked-icon="star_border"
+              label="Caso importante"
+              class="registro-caso__importante"
+              aria-describedby="importante-help"
+            >
+              <q-tooltip>Marca el caso como importante para darle seguimiento especial.</q-tooltip>
+            </q-toggle>
+            <p id="importante-help" class="form-help">
+              Actívalo si el caso es de un cliente importante o requiere atención especial.
+            </p>
+          </div>
+
           <dl class="readonly-info">
             <div v-if="modoEdicion" class="readonly-row">
               <dt>Vence</dt>
@@ -345,6 +362,7 @@ const estado = ref('')
 const fechaInicio = ref('')
 const descripcion = ref('')
 const observaciones = ref('')
+const importante = ref(false)
 
 const vencimientoActual = computed(() => fechaParaFormulario(props.caso?.fecha_vencimiento) || 'Sin fecha')
 
@@ -358,6 +376,7 @@ const cambios = computed(() =>
         fechaInicio: fechaInicio.value,
         descripcion: descripcion.value,
         observaciones: observaciones.value,
+        importante: importante.value,
       })
     : {},
 )
@@ -385,6 +404,7 @@ const reiniciarFormulario = () => {
   fechaInicio.value = fechaParaFormulario(caso?.fecha_inicio)
   descripcion.value = caso?.descripcion ?? ''
   observaciones.value = caso?.observaciones ?? ''
+  importante.value = Boolean(caso?.importante)
   formError.value = null
   errorGuardado.value = null
 }
@@ -496,7 +516,8 @@ const submitCase = async () => {
     prioridadBackend,
     fechaLimpia || undefined,
     descripcion.value || undefined,
-    observaciones.value || undefined
+    observaciones.value || undefined,
+    importante.value
   )
 
   if (!resultado.ok) {
@@ -640,6 +661,13 @@ const submitCase = async () => {
   font-weight: 600;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.registro-caso__importante {
+  align-self: flex-start;
+  min-height: 44px;
+  color: #102a43;
+  font-weight: 600;
 }
 
 .priority-selected {

@@ -608,6 +608,11 @@ describe('rutas de casos', () => {
   test('cambiar fecha de inicio y prioridad a la vez usa la prioridad nueva', testCambiarFechaYPrioridadALaVez);
   test('una edición con un dato inválido responde 400 y no guarda nada', testEdicionInvalidaNoGuardaNada);
   test('sin campos editables responde 400', testEdicionSinCamposEditablesResponde400);
+  test('un caso nuevo no es importante ni tiene fecha de en proceso', testCasoNuevoNoEsImportanteNiEstaEnProceso);
+  test('pasar a En proceso guarda la fecha en hora local', testPasarAEnProcesoGuardaLaFecha);
+  test('volver a En proceso conserva la primera fecha', testVolverAEnProcesoConservaLaPrimeraFecha);
+  test('un caso se registra, marca y desmarca como importante', testRegistrarYMarcarImportante);
+  test('importante que no es true/false responde 400 y no guarda nada', testImportanteNoBooleanoResponde400);
 });
 
 // ---------- Edición del caso: cliente, descripción, observaciones y fecha de inicio ----------
@@ -702,4 +707,73 @@ async function testEdicionSinCamposEditablesResponde400() {
     assert.strictEqual(respuesta.statusCode, 400, `${JSON.stringify(cuerpo)} debe responder 400`);
     assert.match(respuesta.body.mensaje, /Nada que actualizar/);
   }
+}
+
+// ---------- Importante / En proceso: fecha en que el caso empezó a atenderse ----------
+async function testCasoNuevoNoEsImportanteNiEstaEnProceso() {
+  const respuesta = await peticion(servidor.puerto, 'POST', '/casos', { cliente: 'Cliente nuevo', prioridad: 'Media' }, tokenContador);
+
+  assert.strictEqual(respuesta.statusCode, 201);
+  assert.strictEqual(respuesta.body.caso.importante, false, 'un caso nuevo no es importante');
+  assert.strictEqual(respuesta.body.caso.en_proceso_en, null, 'un caso Pendiente no tiene fecha de en proceso');
+}
+
+async function testPasarAEnProcesoGuardaLaFecha() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente en proceso', prioridad: 'Media' });
+
+  const respuesta = await editarCaso(casoId, { estado: 'En proceso' });
+
+  assert.strictEqual(respuesta.statusCode, 200);
+  assert.match(String(respuesta.body.caso.en_proceso_en), FORMATO_FECHA_LOCAL, 'en hora local YYYY-MM-DD HH:mm:ss');
+  assert.strictEqual(respuesta.body.caso.en_proceso_en, respuesta.body.caso.actualizado_en, 'es el momento del cambio');
+}
+
+async function testVolverAEnProcesoConservaLaPrimeraFecha() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente vuelve a proceso', prioridad: 'Media' });
+  await editarCaso(casoId, { estado: 'En proceso' });
+  // Se fija una primera fecha conocida para distinguirla de la del segundo cambio.
+  await query('UPDATE casos SET en_proceso_en = ? WHERE id = ?', ['2026-01-05 09:00:00', casoId]);
+
+  const pendiente = await editarCaso(casoId, { estado: 'Pendiente' });
+  const otraVez = await editarCaso(casoId, { estado: 'En proceso' });
+  const otroCambio = await editarCaso(casoId, { descripcion: 'Otro cambio' });
+
+  assert.strictEqual(pendiente.body.caso.en_proceso_en, '2026-01-05 09:00:00', 'regresar a Pendiente no la borra');
+  assert.strictEqual(otraVez.body.caso.en_proceso_en, '2026-01-05 09:00:00', 'volver a En proceso conserva la primera');
+  assert.strictEqual(otroCambio.body.caso.en_proceso_en, '2026-01-05 09:00:00', 'otra edición no la toca');
+}
+
+async function testRegistrarYMarcarImportante() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente importante', prioridad: 'Baja', importante: true });
+  assert.strictEqual((await CaseModel.findById(casoId)).importante, 1, 'se registra como importante');
+
+  const desmarcar = await editarCaso(casoId, { importante: false });
+  assert.strictEqual(desmarcar.statusCode, 200, 'importante basta para editar');
+  assert.strictEqual(desmarcar.body.caso.importante, false);
+
+  const marcar = await editarCaso(casoId, { importante: true });
+  assert.strictEqual(marcar.body.caso.importante, true);
+  assert.strictEqual(marcar.body.caso.prioridad, 'Baja', 'lo que no se envía no cambia');
+}
+
+async function testImportanteNoBooleanoResponde400() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente no booleano', prioridad: 'Media' });
+
+  for (const valor of ['true', 1, 0, null, 'sí']) {
+    const registro = await peticion(
+      servidor.puerto,
+      'POST',
+      '/casos',
+      { cliente: 'Cliente no booleano', prioridad: 'Media', importante: valor },
+      tokenContador
+    );
+    assert.strictEqual(registro.statusCode, 400, `registrar con ${JSON.stringify(valor)} debe responder 400`);
+    assert.match(registro.body.mensaje, /importante/i);
+
+    const edicion = await editarCaso(casoId, { descripcion: 'No se guarda', importante: valor });
+    assert.strictEqual(edicion.statusCode, 400, `editar con ${JSON.stringify(valor)} debe responder 400`);
+  }
+
+  const caso = await CaseModel.findById(casoId);
+  assert.strictEqual(caso.descripcion, null, 'un importante inválido no guarda nada');
 }

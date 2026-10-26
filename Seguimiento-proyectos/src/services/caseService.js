@@ -106,7 +106,7 @@ export const crearCaseService = (opciones = {}) => {
    * @param {string} prioridad - código interno (`alta`) o forma del backend (`Alta`).
    * @returns {Promise<Object>} caso registrado con estado `pendiente`.
    */
-  const crearCaso = async (cliente, prioridad, fechaInicio, descripcion, observaciones) => {
+  const crearCaso = async (cliente, prioridad, fechaInicio, descripcion, observaciones, importante) => {
     const prioridadBackend = prioridadParaEnviar(prioridad)
     if (prioridadBackend === null) {
       throw errorDePrioridadInvalida()
@@ -126,6 +126,7 @@ export const crearCaseService = (opciones = {}) => {
     }
     if (descripcion !== undefined) cuerpo.descripcion = descripcion
     if (observaciones !== undefined) cuerpo.observaciones = observaciones
+    if (typeof importante === 'boolean') cuerpo.importante = importante
 
     const { data } = await api.post('/casos', cuerpo)
     return leerCaso(data, 'el caso registrado')
@@ -133,7 +134,7 @@ export const crearCaseService = (opciones = {}) => {
 
   /**
    * PATCH /casos/:id: edita un caso propio. Solo se envían los campos editables que vengan
-   * informados: estado, prioridad, cliente, fecha_inicio (DD-MM-AAAA), descripcion y observaciones.
+   * informados: estado, prioridad, cliente, fecha_inicio (DD-MM-AAAA), descripcion, observaciones e importante.
    * Cualquier otra clave se ignora; si no queda ningún cambio, no se llama al backend.
    * @param {number|string} id - identificador del caso.
    * @param {{ estado?: string, prioridad?: string, cliente?: string, fecha_inicio?: string,
@@ -141,7 +142,7 @@ export const crearCaseService = (opciones = {}) => {
    * @returns {Promise<Object>} caso actualizado, ya traducido.
    */
   const actualizarCaso = async (id, cambios = {}) => {
-    const { estado, prioridad, cliente, fecha_inicio: fechaInicio, descripcion, observaciones } = cambios
+    const { estado, prioridad, cliente, fecha_inicio: fechaInicio, descripcion, observaciones, importante } = cambios
     const cuerpo = {}
 
     if (estado !== undefined) {
@@ -171,6 +172,7 @@ export const crearCaseService = (opciones = {}) => {
     if (cliente !== undefined) cuerpo.cliente = cliente
     if (descripcion !== undefined) cuerpo.descripcion = descripcion
     if (observaciones !== undefined) cuerpo.observaciones = observaciones
+    if (typeof importante === 'boolean') cuerpo.importante = importante
 
     if (Object.keys(cuerpo).length === 0) {
       throw crearErrorFrontend(

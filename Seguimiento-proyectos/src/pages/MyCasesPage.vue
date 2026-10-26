@@ -2,8 +2,8 @@
   <q-page class="my-cases-page">
     <div class="my-cases-page__head">
       <p class="my-cases-page__lead">
-        Revisa y actualiza los casos que tienes asignados. Puedes cambiar el estado y la prioridad
-        en cualquier momento.
+        Revisa y actualiza los casos que tienes asignados. Cambia el estado desde la lista y el resto
+        de los datos, incluida la prioridad, con «Editar».
       </p>
       <q-btn
         class="my-cases-page__register-btn control-touch"
@@ -37,62 +37,62 @@
         @action="abrirRegistro"
       />
 
-      <ul v-else class="case-list">
-        <CaseRow v-for="oneCase in filas" :key="oneCase.id" :case-item="oneCase">
-          <template #actions="{ item }">
-            <div class="case-actions">
-              <div class="case-action-group">
-                <label :for="`status-${item.id}`" class="case-action-label">Estado</label>
-                <q-select
-                  :for="`status-${item.id}`"
-                  dense
-                  outlined
-                  :model-value="item.status"
-                  :options="statusOptions"
-                  option-label="label"
-                  option-value="value"
-                  emit-value
-                  map-options
-                  aria-label="Cambiar estado del caso"
-                  :disable="cases.guardando"
-                  @update:model-value="(v) => guardarCambio(item.id, { estado: v })"
-                />
-              </div>
-              <div class="case-action-group">
-                <label :for="`priority-${item.id}`" class="case-action-label">Prioridad</label>
-                <q-select
-                  :for="`priority-${item.id}`"
-                  dense
-                  outlined
-                  :model-value="item.priority"
-                  :options="priorityOptions"
-                  option-label="label"
-                  option-value="value"
-                  emit-value
-                  map-options
-                  aria-label="Cambiar prioridad del caso"
-                  :disable="cases.guardando"
-                  @update:model-value="(v) => guardarCambio(item.id, { prioridad: v })"
-                />
-              </div>
-              <q-btn
-                class="case-edit-btn control-touch"
-                outline
-                no-caps
-                color="primary"
-                icon="edit"
-                label="Editar"
-                aria-haspopup="dialog"
-                :aria-label="`Editar el caso de ${item.client}`"
-                :disable="cases.guardando"
-                @click="abrirEdicion(item.id)"
-              >
-                <q-tooltip>Abre el formulario para cambiar la información del caso.</q-tooltip>
-              </q-btn>
-            </div>
-          </template>
-        </CaseRow>
-      </ul>
+      <template v-else>
+        <FiltrosCasos v-model="filtros" />
+
+        <div v-if="paginacion.totalPaginas === 0" class="sin-resultados" role="status">
+          <q-icon name="filter_alt" size="28px" color="grey-7" aria-hidden="true" />
+          <p class="sin-resultados__texto">
+            Ningún caso cumple estos filtros. Cambia el estado o usa «Limpiar filtros» para ver tus casos abiertos.
+          </p>
+        </div>
+
+        <q-list v-else bordered separator class="case-list" aria-label="Tus casos">
+          <!-- Cada fila entra con un desvanecido al aparecer en pantalla; el alto mínimo evita saltos. -->
+          <q-intersection
+            v-for="item in filas"
+            :key="item.id"
+            once
+            transition="fade"
+            class="case-list__entrada"
+          >
+            <CasoItem
+              :caso="item"
+              :deshabilitado="cases.guardando"
+              @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
+              @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
+              @editar="abrirEdicion(item.id)"
+            />
+          </q-intersection>
+        </q-list>
+
+        <div v-if="paginacion.totalPaginas > 0" class="paginacion">
+          <p class="paginacion__texto" aria-live="polite">{{ paginacion.texto }}</p>
+          <q-select
+            v-model="porPagina"
+            :options="OPCIONES_POR_PAGINA"
+            dense
+            outlined
+            options-dense
+            label="Por página"
+            class="paginacion__por-pagina"
+          >
+            <q-tooltip>Cuántos casos se muestran en cada página.</q-tooltip>
+          </q-select>
+          <q-pagination
+            v-if="paginacion.totalPaginas > 1"
+            :model-value="paginacion.pagina"
+            :max="paginacion.totalPaginas"
+            :max-pages="5"
+            direction-links
+            boundary-numbers
+            color="primary"
+            active-design="unelevated"
+            class="paginacion__paginas"
+            @update:model-value="(p) => (pagina = p)"
+          />
+        </div>
+      </template>
 
       <div v-if="confirmation" class="confirmation-banner" role="status" aria-live="polite">
         <q-icon name="check_circle" color="positive" size="24px" />
@@ -110,21 +110,46 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 
 import CaseFormDialog from '../components/CaseFormDialog.vue'
-import CaseRow from '../components/CaseRow.vue'
+import CasoItem from '../components/CasoItem.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
-import { STATUSES, STATUS_LABELS, PRIORITIES, PRIORITY_LABELS } from '../utils/constants.js'
 import { useCasesStore } from '../stores/cases.js'
-import { casosAFilas } from '../utils/filasVista.js'
+import { casoAFila } from '../utils/filasVista.js'
+import {
+  FILTROS_INICIALES,
+  OPCIONES_POR_PAGINA,
+  esCasoVencido,
+  filtrarCasos,
+  hoyLocal,
+  paginar,
+} from '../utils/filtrosCasos.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const cases = useCasesStore()
 
-const filas = computed(() => casosAFilas(cases.casos))
+const filtros = ref({ ...FILTROS_INICIALES })
+const pagina = ref(1)
+const porPagina = ref(OPCIONES_POR_PAGINA[0])
+
+// Al cambiar los filtros o el tamaño de página se vuelve a la primera página.
+watch([filtros, porPagina], () => {
+  pagina.value = 1
+})
+
+const hoy = hoyLocal()
+
+const paginacion = computed(() =>
+  paginar(filtrarCasos(cases.casos, filtros.value, hoy), pagina.value, porPagina.value),
+)
+
+const filas = computed(() =>
+  paginacion.value.elementos.map((caso) => ({ ...casoAFila(caso), vencido: esCasoVencido(caso, hoy) })),
+)
 
 const screenStateName = computed(() =>
   screenState({
@@ -145,13 +170,7 @@ const mensajeError = computed(() => {
   return error?.mensaje ?? 'tus casos asignados.'
 })
 
-const statusOptions = computed(() => STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s })))
-
-const priorityOptions = computed(() =>
-  PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p })),
-)
-
-// Guarda un cambio de estado o de prioridad; se recuerda para poder reintentarlo si falla.
+// Guarda un cambio de estado, prioridad o importante; se recuerda para poder reintentarlo si falla.
 const guardarCambio = async (caseId, cambios) => {
   if (cases.guardando) return
   confirmation.value = ''
@@ -244,39 +263,65 @@ onMounted(() => {
   outline-offset: 2px;
 }
 
-.case-list {
+.my-cases-page__body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: 12px;
 }
 
-.case-actions {
+.case-list {
+  overflow: hidden;
+  border-color: #dbe4ee;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+/* Alto mínimo de la fila mientras aún no aparece en pantalla (QIntersection). */
+.case-list__entrada {
+  min-height: 88px;
+}
+
+.sin-resultados {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed #c9d4e0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.sin-resultados__texto {
+  margin: 0;
+  color: #334e68;
+  font-size: 0.95rem;
+}
+
+.paginacion {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  min-width: 0;
+  align-items: center;
+  gap: 8px 16px;
 }
 
-.case-action-group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+.paginacion__texto {
+  margin: 0;
+  color: #334e68;
+  font-size: 0.9rem;
 }
 
-.case-edit-btn {
-  align-self: flex-end;
+.paginacion__por-pagina {
+  width: 120px;
 }
 
-.case-action-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #486581;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+.paginacion__paginas {
+  margin-left: auto;
+}
+
+@media (max-width: 599px) {
+  .paginacion__paginas {
+    margin-left: 0;
+  }
 }
 
 .confirmation-banner {

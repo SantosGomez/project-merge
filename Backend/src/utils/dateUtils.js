@@ -167,6 +167,9 @@ function casoConFechasLocales(caso) {
     actualizado_en: formatLocalDate(caso.actualizado_en),
     fecha_inicio: caso.fecha_inicio ? formatLocalDate(caso.fecha_inicio) : null,
     fecha_vencimiento: caso.fecha_vencimiento ? formatLocalDate(caso.fecha_vencimiento) : null,
+    en_proceso_en: caso.en_proceso_en ? formatLocalDate(caso.en_proceso_en) : null,
+    // MariaDB guarda el TINYINT(1) como 0/1; la API lo entrega como booleano
+    importante: Boolean(caso.importante),
   };
 }
 
