@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
 const { parseAllowedOrigins } = require('./utils/originUtils');
 const { createOriginGuard, buildCorsOptions } = require('./middlewares/originMiddleware');
 const authRoutes = require('./routes/authRoutes');
@@ -14,14 +16,20 @@ const { buildError } = require('./utils/errorUtils');
  * No contiene lógica de negocio (Constitución: Estándar de Arquitectura del Backend).
  * RF-34: el backend solo acepta peticiones de los orígenes locales de desarrollo
  * del frontend web, y acepta las peticiones que no declaran origen (RF-04 sigue aplicando).
- * @param {{ origenesPermitidos?: string[] }} [opciones] - orígenes permitidos; si no se
- * pasan, se leen de la variable de entorno CORS_ORIGENES (con los de desarrollo por defecto).
+ * @param {{ origenesPermitidos?: string[], limitarLogin?: boolean }} [opciones] - orígenes
+ * permitidos (si no se pasan, se leen de CORS_ORIGENES) y si se limita el inicio de sesión
+ * (por defecto sí; las pruebas lo apagan porque inician sesión muchas veces).
  * @returns {import('express').Express} La aplicación Express configurada.
  */
 function crearApp(opciones) {
   const app = express();
   const opcionesApp = opciones || {};
   const origenesPermitidos = opcionesApp.origenesPermitidos ?? parseAllowedOrigins(process.env.CORS_ORIGENES);
+  const limitarLogin = opcionesApp.limitarLogin ?? true;
+
+  // Cabeceras de seguridad; helmet también quita x-powered-by, se deja explícito
+  app.disable('x-powered-by');
+  app.use(helmet());
 
   // 1.º Rechaza las peticiones de orígenes no permitidos (RF-34)
   app.use(createOriginGuard(origenesPermitidos));
@@ -31,6 +39,25 @@ function crearApp(opciones) {
 
   // Parsear cuerpos JSON de las peticiones entrantes
   app.use(express.json());
+
+  // Máximo 10 intentos fallidos de inicio de sesión por IP cada 15 minutos (los exitosos no cuentan)
+  if (limitarLogin) {
+    app.use(
+      '/auth/login',
+      rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 10,
+        skipSuccessfulRequests: true,
+        standardHeaders: 'draft-7',
+        legacyHeaders: false,
+        message: buildError(
+          'Demasiados intentos fallidos',
+          'inicio de sesión',
+          'Espere 15 minutos antes de volver a intentarlo'
+        ),
+      })
+    );
+  }
 
   // Montaje de rutas de la API
   app.use('/auth', authRoutes);

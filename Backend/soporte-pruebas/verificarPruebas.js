@@ -36,6 +36,7 @@ const MINIMOS = {
   'respuestasApi.test.js': 3,
   'roleMiddleware.test.js': 8,
   'seed.test.js': 3,
+  'seguridadApp.test.js': 7,
   'tokenUtils.test.js': 6,
   'userModel.test.js': 9,
   'userRoutes.test.js': 10,
