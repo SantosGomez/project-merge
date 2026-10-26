@@ -100,6 +100,9 @@ npm run build
 - Lee `docs/constitution.md` antes de tocar código.
 - solo aplicar los cambios o modificaciones que sean aprobadas por el usuario.
 - El registro de caso del contador vive en un diálogo dentro de «Mis casos» (`components/CaseFormDialog.vue`). No crear una pantalla aparte ni un ítem de menú para registrarlo; `contador/registro` solo redirige a «Mis casos».
+- Contrato de fechas del caso: el formulario usa `DD-MM-AAAA`, la API y las columnas DATE `AAAA-MM-DD`, y los DATETIME se devuelven en hora local `YYYY-MM-DD HH:mm:ss`. Nunca usar `new Date('AAAA-MM-DD')` (se lee como UTC y desplaza un día); usar `parseFechaInicio`/`formatearFechaISO` de `dateUtils.js` y `fechasCaso.js` en el frontend.
+- El vencimiento se calcula por días hábiles según prioridad (Alta 5, Media 10, Baja 15) con `calcularFechaVencimiento`. Al editar un caso (PATCH, RF-22) solo cambian estado y prioridad; el vencimiento se recalcula solo si cambia la prioridad y la fecha de inicio no se toca.
+- Seguridad del backend: en producción `JWT_SECRET` es obligatorio (sin él el servidor no arranca). El login tiene límite de intentos fallidos; las pruebas crean la app con `crearApp({ limitarLogin: false })` (ya lo hace `soporte-pruebas/http.js`).
 - <Limites: que no tocar, que no agregar ni modificar sin preguntar.>
 
 ## Forma de trabajar

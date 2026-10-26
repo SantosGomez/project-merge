@@ -24,3 +24,10 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Salidas de comandos guardadas a mano (build, dev, lint, pruebas): no se versionan
+/build-*.txt
+/dev-*.txt
+/lint-*.txt
+/test-*-output.txt
+/echo
