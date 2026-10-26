@@ -62,6 +62,15 @@ async function findAll(filtro) {
 }
 
 /**
+ * Devuelve las cuentas con solo sus datos públicos (sin hash de contraseña), ordenadas por id.
+ * Se usa para el directorio de usuarios.
+ * @returns {Promise<Array>} Lista de { id, nombre, correo, rol, ultimo_acceso_en }.
+ */
+async function findAllPublic() {
+  return await query('SELECT id, nombre, correo, rol, ultimo_acceso_en FROM usuarios ORDER BY id');
+}
+
+/**
  * Devuelve solo id y nombre de los usuarios con rol contador, ordenados por id.
  * Se usa para la lista de contadores administrador (RF-32).
  * @returns {Promise<Array>} Lista de { id, nombre } de los contadores.
@@ -99,6 +108,7 @@ module.exports = {
   create,
   findById,
   findAll,
+  findAllPublic,
   findCountersPublic,
   findCounterById,
 };

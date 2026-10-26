@@ -21,6 +21,7 @@ const read = (relativePath) =>
 
 const directorySource = read('../src/pages/CountersDirectoryPage.vue')
 const newCaseSource = read('../src/pages/NewCasePage.vue')
+const quasarConfig = readFileSync(fileURLToPath(new URL('../quasar.config.js', import.meta.url)), 'utf8')
 
 /** Devuelve la regla CSS de un selector dentro del bloque <style scoped> del archivo. */
 const cssRule = (source, selector) => {
@@ -31,17 +32,32 @@ const cssRule = (source, selector) => {
   return matches.map((match) => match[1]).join(' | ')
 }
 
-describe('T9 — revisión estática de P-3 (RF-16, RF-17, RNF-9, RNF-10)', () => {
-  it('muestra solo nombres, sin conteos ni casos (RF-16)', () => {
-    assert.match(directorySource, /Directorio de contadores/)
-    assert.match(directorySource, /\{\{ counter\.name \}\}/)
+describe('Directorio de usuarios (rebanada 1) — revisión estática de P-3 (RF-16, RF-17, RNF-9, RNF-10)', () => {
+  it('es una tabla de cuentas con nombre, correo, rol y último acceso, sin conteos ni casos (RF-16)', () => {
+    assert.match(directorySource, /Directorio de usuarios/)
+    assert.match(directorySource, /<q-table/, 'usa QTable')
+    for (const etiqueta of ['Nombre', 'Correo', 'Rol', 'Último acceso']) {
+      assert.ok(directorySource.includes(`label: '${etiqueta}'`), `columna «${etiqueta}»`)
+    }
+    assert.match(directorySource, /row-key="id"/)
+    assert.match(directorySource, /listarUsuarios\(\)/, 'las filas salen del servicio de usuarios')
+    assert.match(directorySource, /usuarioAFila/, 'cada cuenta se adapta con usuarioAFila')
     assert.doesNotMatch(directorySource, /countsFor/)
     assert.doesNotMatch(directorySource, /CounterCountsRow/)
     assert.doesNotMatch(directorySource, /CaseRow/)
   })
 
-  it('al elegir un nombre selecciona el contador y abre P-2 (RF-17)', () => {
-    assert.match(directorySource, /@click="selectCounter\(counter\.id\)"/)
+  it('en pantallas angostas cada cuenta es una tarjeta, con la tabla paginada', () => {
+    assert.match(directorySource, /:grid="\$q\.screen\.lt\.sm"/, 'tarjetas en celular')
+    assert.match(directorySource, /<template #item=/, 'tarjeta propia para cada cuenta')
+    assert.match(directorySource, /:rows-per-page-options=/, 'paginación elegible')
+    assert.match(directorySource, /no-data-label=/, 'texto propio cuando no hay filas')
+  })
+
+  it('«Ver casos» solo aparece en contadores, los selecciona y abre P-2 (RF-17)', () => {
+    assert.match(directorySource, /v-if="[\w.]*puedeVerCasos"/, 'solo si puedeVerCasos')
+    assert.match(directorySource, /@click="selectCounter\([\w.]*id\)"/)
+    assert.match(directorySource, /Ver casos/)
     assert.match(directorySource, /maqueta\.selectCounter\(counterId\)/)
     assert.match(directorySource, /router\.push\(\{ name: 'admin-dashboard' \}\)/)
   })
@@ -54,25 +70,15 @@ describe('T9 — revisión estática de P-3 (RF-16, RF-17, RNF-9, RNF-10)', () =
     assert.match(directorySource, /startScreenLoad\(SCREEN_IDS\.directory\)/)
   })
 
-  it('los nombres largos se muestran completos y la lista se recorre con scroll (RNF-9, RNF-10)', () => {
-    const nameRule = cssRule(directorySource, '.counter-name-btn__text')
-    assert.match(nameRule, /overflow-wrap: anywhere/, 'el nombre puede partirse en varias líneas')
-    assert.doesNotMatch(nameRule, /text-overflow/, 'no se recorta el nombre')
-    assert.doesNotMatch(nameRule, /white-space:\s*nowrap/, 'el nombre no queda en una sola línea')
-    assert.doesNotMatch(directorySource, /text-overflow:\s*ellipsis/)
+  it('los nombres y correos largos se muestran completos y se parten en varias líneas (RNF-9, RNF-10)', () => {
+    const celda = cssRule(directorySource, '.directory-cell')
+    assert.match(celda, /overflow-wrap: anywhere/, 'el texto puede partirse')
+    assert.match(celda, /white-space: normal/, 'no queda en una sola línea')
+    assert.doesNotMatch(directorySource, /text-overflow:\s*ellipsis/, 'no se recorta con puntos suspensivos')
+  })
 
-    assert.ok(
-      directorySource.includes('overflow-y: auto'),
-      'la lista se recorre con desplazamiento vertical',
-    )
-    assert.ok(
-      !directorySource.includes('overflow-x'),
-      'sin desbordamiento horizontal',
-    )
-    assert.ok(
-      !directorySource.includes('text-overflow: ellipsis'),
-      'no se recorta el texto con puntos suspensivos',
-    )
+  it('Quasar usa el idioma español para los textos de la tabla', () => {
+    assert.match(quasarConfig, /^\s*lang: 'es',/m, 'framework.lang es')
   })
 })
 

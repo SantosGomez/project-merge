@@ -2,9 +2,12 @@
 // componentes de vista de la maqueta (RF-11, RF-12, RF-13, RNF-03, RNF-08).
 // Los servicios devuelven casos ya traducidos a códigos internos con la forma
 // `{ id, cliente, estado, prioridad, contador_id, creado_en, actualizado_en }`
-// y contadores con la forma `{ id, usuario }`; `CounterCountsRow.vue` y
+// y contadores con la forma `{ id, nombre }`; `CounterCountsRow.vue` y
 // `CaseRow.vue` esperan `{ id, name }` y `{ id, client, status, priority, counterId }`.
 // Funciones puras, síncronas, sin Vue y sin efectos secundarios.
+
+import { PROFILES } from './constants.js'
+import { formatearRol } from './formateadores.js'
 
 /** Texto de ayuda de cada conteo: qué está contando (RNF-03). */
 export const AYUDA_CONTEO = Object.freeze({
@@ -36,6 +39,40 @@ export const contadorAFila = (contador) => {
     id: contador.id ?? null,
     name: contador.nombre ?? '',
   }
+}
+
+/**
+ * Adapta una cuenta de `GET /usuarios` a la fila de la tabla del directorio.
+ * El rol sale con su nombre legible, el último acceso como llega (hora local) o «Nunca», y solo
+ * los contadores tienen casos que ver.
+ * @param {Object} usuario - `{ id, nombre, correo, rol, ultimo_acceso_en }` del backend.
+ * @returns {{ id: number|string|null, nombre: string, correo: string, rol: string, ultimoAcceso: string, puedeVerCasos: boolean }|null}
+ */
+export const usuarioAFila = (usuario) => {
+  if (usuario === null || typeof usuario !== 'object') {
+    return null
+  }
+
+  return {
+    id: usuario.id ?? null,
+    nombre: usuario.nombre ?? '',
+    correo: usuario.correo ?? '',
+    rol: formatearRol(usuario.rol),
+    ultimoAcceso: usuario.ultimo_acceso_en ?? 'Nunca',
+    puedeVerCasos: usuario.rol === PROFILES.contador,
+  }
+}
+
+/**
+ * Comparador para ordenar la columna «Último acceso»: las fechas van en orden cronológico
+ * (el texto `YYYY-MM-DD HH:mm:ss` ya se ordena bien) y «Nunca» cuenta como el acceso más antiguo.
+ * @param {string} a - último acceso de una fila.
+ * @param {string} b - último acceso de otra fila.
+ * @returns {number} negativo, cero o positivo, como `Array.prototype.sort`.
+ */
+export const compararUltimoAcceso = (a, b) => {
+  const valor = (acceso) => (acceso === 'Nunca' ? '' : acceso)
+  return valor(a).localeCompare(valor(b))
 }
 
 /**

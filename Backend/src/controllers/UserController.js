@@ -3,6 +3,7 @@ const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 /** Máximo de caracteres del nombre y del correo (columnas VARCHAR(150)). */
 const MAX_NOMBRE_Y_CORREO = 150;
@@ -137,4 +138,20 @@ async function resetPassword(req, res) {
   });
 }
 
-module.exports = { createUser, resetPassword };
+/**
+ * Lista las cuentas con sus datos públicos para el directorio de usuarios
+ * (solo administrador o usuarios_de_sistema). Nunca incluye el hash de la contraseña.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function listUsers(req, res) {
+  const cuentas = await UserModel.findAllPublic();
+  // El último acceso sale como texto en hora local YYYY-MM-DD HH:mm:ss; null si la cuenta nunca entró (RNF-2).
+  const usuarios = cuentas.map((cuenta) => ({
+    ...cuenta,
+    ultimo_acceso_en: cuenta.ultimo_acceso_en ? formatLocalDate(cuenta.ultimo_acceso_en) : null,
+  }));
+  return res.status(200).json({ usuarios });
+}
+
+module.exports = { createUser, resetPassword, listUsers };

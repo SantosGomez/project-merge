@@ -434,6 +434,57 @@ async function testFalloAlRevocarSesionesYReintento() {
   await afirmarSesionCaducada(sesionDos, 'segunda sesión tras el reintento');
 }
 
+// ---------- Directorio de usuarios, rebanada 1: GET /usuarios lista las cuentas sin datos de acceso ----------
+async function testListarUsuariosComoAdmin() {
+  const tokenAdmin = await loginAdmin(); // deja el último acceso del administrador de prueba en este instante
+  const sinAcceso = await crearUsuarioDePrueba('contador'); // nunca ha iniciado sesión
+
+  const respuesta = await peticion(servidor.puerto, 'GET', '/usuarios', null, tokenAdmin);
+  assert.strictEqual(respuesta.statusCode, 200, 'el administrador debe recibir 200');
+  assert.ok(Array.isArray(respuesta.body.usuarios), 'la respuesta trae la lista en «usuarios»');
+
+  // Cada fila trae solo estos campos: nunca el hash de la contraseña ni fechas internas.
+  for (const fila of respuesta.body.usuarios) {
+    assert.deepStrictEqual(
+      Object.keys(fila).sort(),
+      ['correo', 'id', 'nombre', 'rol', 'ultimo_acceso_en'],
+      'cada cuenta trae solo id, nombre, correo, rol y ultimo_acceso_en'
+    );
+  }
+  assert.ok(!JSON.stringify(respuesta.body).includes('$argon2'), 'ningún hash en la respuesta');
+
+  // Las cuentas propias de esta prueba están en la lista, con su rol y su correo.
+  const filaAdmin = respuesta.body.usuarios.find((fila) => fila.id === administrador.id);
+  const filaSinAcceso = respuesta.body.usuarios.find((fila) => fila.id === sinAcceso.id);
+  assert.ok(filaAdmin && filaSinAcceso, 'la lista incluye las cuentas propias de la prueba');
+  assert.strictEqual(filaAdmin.rol, 'administrador');
+  assert.strictEqual(filaAdmin.correo, administrador.correo);
+  assert.strictEqual(filaSinAcceso.nombre, sinAcceso.nombre);
+
+  // Fechas como texto local YYYY-MM-DD HH:mm:ss; null si la cuenta nunca entró.
+  assert.strictEqual(filaSinAcceso.ultimo_acceso_en, null, 'quien nunca entró no tiene último acceso');
+  assert.match(filaAdmin.ultimo_acceso_en, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, 'texto sin zona horaria');
+  const hace = Math.abs(Date.now() - new Date(filaAdmin.ultimo_acceso_en.replace(' ', 'T')).getTime());
+  assert.ok(hace < 2 * 60 * 1000, 'es la hora local de ahora, no la UTC');
+}
+
+async function testListarUsuariosPermisos() {
+  const sistema = await crearUsuarioDePrueba('usuarios_de_sistema');
+  const tokenSistema = await iniciarSesion(servidor.puerto, sistema.correo, sistema.password);
+
+  const comoSistema = await peticion(servidor.puerto, 'GET', '/usuarios', null, tokenSistema);
+  assert.strictEqual(comoSistema.statusCode, 200, 'el usuario de sistema puede ver el directorio');
+  assert.ok(comoSistema.body.usuarios.some((fila) => fila.id === sistema.id), 've la lista completa');
+
+  const comoContador = await peticion(servidor.puerto, 'GET', '/usuarios', null, await loginContador());
+  assert.strictEqual(comoContador.statusCode, 403, 'un contador recibe acceso denegado');
+  assert.strictEqual(comoContador.body.usuarios, undefined, 'y no recibe la lista');
+
+  const sinSesion = await peticion(servidor.puerto, 'GET', '/usuarios', null, null);
+  assert.strictEqual(sinSesion.statusCode, 401, 'sin sesión se responde 401');
+  assert.strictEqual(sinSesion.body.usuarios, undefined, 'y no recibe la lista');
+}
+
 describe('rutas de usuarios', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -448,6 +499,8 @@ describe('rutas de usuarios', () => {
     await cerrarBaseDeDatos();
   });
 
+  test('el administrador lista las cuentas con solo id, nombre, correo, rol y último acceso local', testListarUsuariosComoAdmin);
+  test('el directorio de cuentas lo ven administrador y usuario de sistema, no el contador ni quien no inició sesión', testListarUsuariosPermisos);
   test('el administrador da de alta una cuenta con nombre y correo', testAltaUsuarioComoAdmin);
   test('el contador no puede dar de alta usuarios', testAltaUsuarioComoContadorEsDenegado);
   test('los datos inválidos de alta responden 400', testAltaUsuarioDatosInvalidos);

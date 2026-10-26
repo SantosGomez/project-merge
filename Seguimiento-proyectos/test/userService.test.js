@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 
 import { crearUserService } from '../src/services/userService.js'
 
-// Api falsa: registra cada POST y PATCH (este con su método) y responde con el manejador recibido.
+// Api falsa: registra cada POST, PATCH y GET (estos con su método) y responde con el manejador recibido.
 const crearApiFalsa = (responder) => {
   const llamadas = []
   return {
@@ -19,6 +19,10 @@ const crearApiFalsa = (responder) => {
     patch: async (url, cuerpo) => {
       llamadas.push({ metodo: 'patch', url, cuerpo })
       return responder(url, cuerpo)
+    },
+    get: async (url) => {
+      llamadas.push({ metodo: 'get', url })
+      return responder(url)
     },
   }
 }
@@ -116,4 +120,36 @@ test('crearUsuario deja pasar el error del backend tal cual (p. ej. correo repet
       return true
     },
   )
+})
+
+test('listarUsuarios hace GET /usuarios y devuelve la lista de cuentas (directorio, rebanada 1)', async () => {
+  const usuarios = [
+    { id: 1, nombre: 'Ana Karen Ramírez', correo: 'kramirez@delgrow.mx', rol: 'contador', ultimo_acceso_en: null },
+    { id: 2, nombre: 'Admin', correo: 'admin@delgrow.mx', rol: 'administrador', ultimo_acceso_en: '2026-10-26 09:00:00' },
+  ]
+  const api = crearApiFalsa(() => ({ status: 200, data: { usuarios } }))
+  const servicio = crearUserService({ api })
+
+  assert.deepEqual(await servicio.listarUsuarios(), usuarios)
+  assert.deepEqual(api.llamadas, [{ metodo: 'get', url: '/usuarios' }])
+})
+
+test('listarUsuarios deja pasar el error del backend y rechaza con tres partes una respuesta sin lista', async () => {
+  const errorBackend = { estado: 'sin_permiso', mensaje: 'Rol insuficiente sobre usuario autenticado: …', codigoHttp: 403, datos: null }
+  const conError = crearUserService({
+    api: crearApiFalsa(() => {
+      throw errorBackend
+    }),
+  })
+  await assert.rejects(conError.listarUsuarios(), (error) => {
+    assert.equal(error, errorBackend)
+    return true
+  })
+
+  const sinLista = crearUserService({ api: crearApiFalsa(() => ({ status: 200, data: {} })) })
+  await assert.rejects(sinLista.listarUsuarios(), (error) => {
+    assert.equal(error.estado, 'respuesta_inesperada')
+    assert.ok(error.mensaje.includes('Qué ocurrió:') && error.mensaje.includes('Qué hacer:'))
+    return true
+  })
 })

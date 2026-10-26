@@ -11,6 +11,8 @@ import {
   casoAFila,
   casosAFilas,
   contadorAFila,
+  usuarioAFila,
+  compararUltimoAcceso,
 } from '../src/utils/filasVista.js'
 import { STATUSES } from '../src/utils/constants.js'
 
@@ -101,4 +103,61 @@ test('cada conteo tiene texto de ayuda propio (RNF-03)', () => {
 test('ayudaConteo devuelve null para un conteo desconocido', () => {
   assert.equal(ayudaConteo('archivado'), null)
   assert.equal(ayudaConteo(null), null)
+})
+
+// --- usuarioAFila (directorio de usuarios, rebanada 1) ---------------------
+
+test('usuarioAFila arma la fila con nombre, correo, rol legible y último acceso', () => {
+  const fila = usuarioAFila({
+    id: 7,
+    nombre: 'Ana Karen Ramírez',
+    correo: 'kramirez@delgrow.mx',
+    rol: 'administrador',
+    ultimo_acceso_en: '2026-10-26 09:05:00',
+  })
+
+  assert.deepEqual(fila, {
+    id: 7,
+    nombre: 'Ana Karen Ramírez',
+    correo: 'kramirez@delgrow.mx',
+    rol: 'Administrador',
+    ultimoAcceso: '2026-10-26 09:05:00',
+    puedeVerCasos: false,
+  })
+})
+
+test('usuarioAFila muestra «Nunca» si la cuenta no ha iniciado sesión', () => {
+  const fila = usuarioAFila({ id: 8, nombre: 'Luis', correo: 'l@delgrow.mx', rol: 'contador', ultimo_acceso_en: null })
+
+  assert.equal(fila.ultimoAcceso, 'Nunca')
+})
+
+test('usuarioAFila solo permite ver casos a los contadores', () => {
+  for (const [rol, esperado] of [
+    ['contador', true],
+    ['administrador', false],
+    ['usuarios_de_sistema', false],
+  ]) {
+    assert.equal(usuarioAFila({ id: 1, nombre: 'x', correo: 'x@y.mx', rol, ultimo_acceso_en: null }).puedeVerCasos, esperado, rol)
+  }
+})
+
+test('usuarioAFila conserva el nombre y el correo largos completos y no inventa datos', () => {
+  const largo = 'María de los Ángeles Fernández-Ñandú (turno de noche) con un nombre larguísimo'
+  assert.equal(usuarioAFila({ id: 9, nombre: largo, correo: 'm@d.mx', rol: 'contador', ultimo_acceso_en: null }).nombre, largo)
+  assert.equal(usuarioAFila(null), null)
+  assert.equal(usuarioAFila(undefined), null)
+  assert.equal(usuarioAFila(42), null)
+})
+
+test('compararUltimoAcceso ordena por fecha y trata «Nunca» como el acceso más antiguo', () => {
+  const accesos = ['2026-10-26 09:05:00', 'Nunca', '2025-01-02 23:59:59', '2026-10-26 18:30:00']
+
+  assert.deepEqual([...accesos].sort(compararUltimoAcceso), [
+    'Nunca',
+    '2025-01-02 23:59:59',
+    '2026-10-26 09:05:00',
+    '2026-10-26 18:30:00',
+  ])
+  assert.equal(compararUltimoAcceso('Nunca', 'Nunca'), 0)
 })

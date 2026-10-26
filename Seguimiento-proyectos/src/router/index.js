@@ -66,7 +66,7 @@ const routes = [
           requiereSesion: true,
           perfil: PROFILES.administrador,
           screenId: SCREEN_IDS.directory,
-          titulo: 'Directorio de contadores',
+          titulo: 'Directorio de usuarios',
           volverA: 'admin-dashboard',
         },
       },

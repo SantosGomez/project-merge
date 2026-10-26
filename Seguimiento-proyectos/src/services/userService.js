@@ -4,7 +4,7 @@
 // Los errores ya llegan con su mensaje desde api.js y se dejan pasar tal cual:
 // la pantalla muestra el texto del backend sin reescribirlo.
 
-import { api as apiPorDefecto } from './api.js'
+import { api as apiPorDefecto, crearErrorInesperado } from './api.js'
 
 /**
  * Crea el servicio de usuarios con api inyectable.
@@ -47,7 +47,19 @@ export const crearUserService = (opciones = {}) => {
     return { mensaje: data.mensaje, cuentaPropia: data.cuentaPropia === true }
   }
 
-  return { crearUsuario, restablecerContrasena }
+  /**
+   * GET /usuarios: cuentas del directorio, sin datos de acceso.
+   * @returns {Promise<Array<{ id: number, nombre: string, correo: string, rol: string, ultimo_acceso_en: string|null }>>}
+   */
+  const listarUsuarios = async () => {
+    const { data } = await api.get('/usuarios')
+    if (!Array.isArray(data?.usuarios)) {
+      throw crearErrorInesperado('la lista de usuarios')
+    }
+    return data.usuarios
+  }
+
+  return { crearUsuario, restablecerContrasena, listarUsuarios }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -55,3 +67,4 @@ const servicioPorDefecto = crearUserService()
 
 export const crearUsuario = servicioPorDefecto.crearUsuario
 export const restablecerContrasena = servicioPorDefecto.restablecerContrasena
+export const listarUsuarios = servicioPorDefecto.listarUsuarios
