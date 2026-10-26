@@ -149,7 +149,11 @@ test('resolveProfile no modifica la lista de cuentas', () => {
 
 const RUTA_LOGIN = { requiereSesion: false, perfil: null }
 const RUTA_ADMIN_DASHBOARD = { requiereSesion: true, perfil: 'administrador' }
-const RUTA_ADMIN_DIRECTORIO = { requiereSesion: true, perfil: 'administrador' }
+// El directorio lo comparten administrador y usuario de sistema (directorio, rebanada 2).
+const RUTA_ADMIN_DIRECTORIO = {
+  requiereSesion: true,
+  perfil: ['administrador', 'usuarios_de_sistema'],
+}
 const RUTA_CONTADOR_REGISTRO = { requiereSesion: true, perfil: 'contador' }
 const RUTA_CONTADOR_CASOS = { requiereSesion: true, perfil: 'contador' }
 
@@ -231,15 +235,17 @@ test('decidirAcceso deja entrar al usuario de sistema a «Alta de usuario» (his
   assert.equal(PANTALLA_PRINCIPAL_POR_ROL.usuarios_de_sistema, 'usuarios-alta')
 })
 
-test('decidirAcceso deniega al usuario de sistema las pantallas de administrador y contador', () => {
+test('decidirAcceso deja entrar al usuario de sistema al directorio de usuarios (directorio, rebanada 2)', () => {
+  const sistema = { autenticado: true, rol: 'usuarios_de_sistema' }
+  assert.deepEqual(decidirAcceso({ ruta: RUTA_ADMIN_DIRECTORIO, sesion: sistema }), {
+    accion: 'permitir',
+  })
+})
+
+test('decidirAcceso deniega al usuario de sistema el dashboard y las pantallas de contador', () => {
   const sistema = { autenticado: true, rol: 'usuarios_de_sistema' }
 
-  for (const ruta of [
-    RUTA_ADMIN_DASHBOARD,
-    RUTA_ADMIN_DIRECTORIO,
-    RUTA_CONTADOR_REGISTRO,
-    RUTA_CONTADOR_CASOS,
-  ]) {
+  for (const ruta of [RUTA_ADMIN_DASHBOARD, RUTA_CONTADOR_REGISTRO, RUTA_CONTADOR_CASOS]) {
     assert.deepEqual(decidirAcceso({ ruta, sesion: sistema }), {
       accion: 'denegar',
       motivo: 'perfil',

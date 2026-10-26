@@ -164,6 +164,24 @@
               v-ripple
               class="q-item--nav"
               active-class="q-item--nav-activo"
+              :to="{ name: 'admin-directorio' }"
+              aria-label="Ir al directorio de usuarios"
+            >
+              <q-item-section avatar>
+                <q-icon name="group" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Directorio</q-item-label>
+                <q-item-label caption>Ver todas las cuentas</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir al directorio de usuarios</q-tooltip>
+            </q-item>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
               :to="{ name: 'usuarios-alta' }"
               aria-label="Ir al alta de usuario"
             >
@@ -311,6 +329,7 @@ import { accessDenied } from '../router/accessState.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
+import { decidirAcceso } from '../utils/accessRules.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
 import { guardarMenuFijado, leerMenuFijado } from '../utils/preferenciaMenu.js'
 
@@ -357,7 +376,18 @@ const dialogoCierreAbierto = ref(false)
 const cerrandoSesion = ref(false)
 
 const pageTitle = computed(() => route.meta.titulo ?? 'Pantalla')
-const backRouteName = computed(() => route.meta.volverA ?? null)
+// «Volver» solo se ofrece si la sesión puede abrir la pantalla de destino.
+const backRouteName = computed(() => {
+  const destino = route.meta.volverA ?? null
+  if (!destino) return null
+
+  const meta = router.resolve({ name: destino }).meta
+  const decision = decidirAcceso({
+    ruta: { requiereSesion: meta.requiereSesion === true, perfil: meta.perfil ?? null },
+    sesion: { autenticado: session.autenticado, rol: session.rol },
+  })
+  return decision.accion === 'permitir' ? destino : null
+})
 const backTitle = computed(() => {
   if (!backRouteName.value) {
     return 'la pantalla anterior'

@@ -64,7 +64,7 @@ const routes = [
         component: CountersDirectoryPage,
         meta: {
           requiereSesion: true,
-          perfil: PROFILES.administrador,
+          perfil: [PROFILES.administrador, PROFILES.sistema],
           screenId: SCREEN_IDS.directory,
           titulo: 'Directorio de usuarios',
           volverA: 'admin-dashboard',

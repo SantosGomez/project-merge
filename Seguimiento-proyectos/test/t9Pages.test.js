@@ -55,7 +55,7 @@ describe('Directorio de usuarios (rebanada 1) — revisión estática de P-3 (RF
   })
 
   it('«Ver casos» solo aparece en contadores, los selecciona y abre P-2 (RF-17)', () => {
-    assert.match(directorySource, /v-if="[\w.]*puedeVerCasos"/, 'solo si puedeVerCasos')
+    assert.match(directorySource, /v-if="[\w.]*puedeVerCasos && session\.esAdministrador"/, 'solo contadores y solo para el administrador')
     assert.match(directorySource, /@click="selectCounter\([\w.]*id\)"/)
     assert.match(directorySource, /Ver casos/)
     assert.match(directorySource, /maqueta\.selectCounter\(counterId\)/)

@@ -44,7 +44,7 @@
           <template #body-cell-acciones="props">
             <q-td :props="props">
               <q-btn
-                v-if="props.row.puedeVerCasos"
+                v-if="props.row.puedeVerCasos && session.esAdministrador"
                 flat
                 dense
                 no-caps
@@ -73,7 +73,7 @@
                     {{ props.row.ultimoAcceso }}
                   </p>
                 </q-card-section>
-                <q-card-actions v-if="props.row.puedeVerCasos">
+                <q-card-actions v-if="props.row.puedeVerCasos && session.esAdministrador">
                   <q-btn
                     flat
                     no-caps
@@ -104,6 +104,7 @@ import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarUsuarios } from '../services/userService.js'
 import { useCountersStore } from '../stores/counters.js'
+import { useSessionStore } from '../stores/session.js'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
 import { compararUltimoAcceso, usuarioAFila } from '../utils/filasVista.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
@@ -111,6 +112,7 @@ import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 const router = useRouter()
 const maqueta = useMaquetaStore()
 const contadoresStore = useCountersStore()
+const session = useSessionStore()
 
 const usuarios = ref([])
 const cargando = ref(true)

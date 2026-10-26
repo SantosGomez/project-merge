@@ -11,6 +11,10 @@ const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'ut
 
 const src = read('../src/layouts/MaquetaLayout.vue')
 
+// Sección «Usuarios» del usuario de sistema: también lleva al directorio (directorio, rebanada 2).
+const inicioSistema = src.indexOf('<template v-if="session.esUsuarioSistema">')
+const bloqueSistema = src.slice(inicioSistema, src.indexOf('</template>', inicioSistema))
+
 const cssRule = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return src.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
@@ -115,7 +119,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
 
     const bloqueContador = src.slice(inicioContador, finContador)
-    const sinBloques = src.replace(bloqueAdmin, '').replace(bloqueContador, '')
+    const sinBloques = src.replace(bloqueAdmin, '').replace(bloqueContador, '').replace(bloqueSistema, '')
     for (const ruta of [
       'admin-dashboard',
       'admin-directorio',
@@ -160,7 +164,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(finAdmin > inicioAdmin, 'falta el cierre del bloque del administrador')
 
     const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
-    const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '')
+    const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '').replace(bloqueSistema, '')
     for (const ruta of [
       'admin-dashboard',
       'admin-directorio',
@@ -743,5 +747,44 @@ describe('Pie del menú con el nombre de la cuenta (login por correo)', () => {
     assert.match(pie, /\{\{ session\.nombreVisible \}\}\s*<q-tooltip>\{\{ session\.nombreVisible \}\}<\/q-tooltip>/, 'nombre y su tooltip')
     assert.doesNotMatch(pie, /session\.usuario/, 'el pie ya no muestra el usuario')
     assert.match(src, /formatearIniciales\(session\.nombreVisible\)/, 'iniciales del nombre')
+  })
+})
+
+describe('Directorio de usuarios (rebanada 2: el usuario de sistema entra) — verificación estática', () => {
+  const rutas = read('../src/router/index.js')
+  const pagina = read('../src/pages/CountersDirectoryPage.vue')
+
+  it('la ruta del directorio admite al administrador y al usuario de sistema', () => {
+    const inicio = rutas.indexOf("name: 'admin-directorio'")
+    const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
+
+    assert.match(ruta, /perfil: \[PROFILES\.administrador, PROFILES\.sistema\]/, 'los dos perfiles')
+  })
+
+  it('la sección «Usuarios» del menú tiene la opción «Directorio»', () => {
+    const inicio = src.indexOf('<template v-if="session.esUsuarioSistema">')
+    const seccion = src.slice(inicio, src.indexOf('</template>', inicio))
+
+    assert.match(seccion, /:to="\{ name: 'admin-directorio' \}"/, 'lleva al directorio')
+    assert.match(seccion, /<q-item-label>Directorio<\/q-item-label>/, 'nombre de la opción')
+    assert.match(seccion, /<q-tooltip>Ir al directorio de usuarios<\/q-tooltip>/, 'tooltip de la opción')
+    assert.match(seccion, /aria-label="Ir al directorio de usuarios"/, 'nombre accesible')
+  })
+
+  it('«Volver» solo aparece si la sesión puede abrir la pantalla de destino', () => {
+    const inicio = src.indexOf('const backRouteName')
+    const calculo = src.slice(inicio, src.indexOf('\nconst ', inicio + 1))
+
+    assert.match(calculo, /decidirAcceso\(/, 'usa la misma regla que el guard')
+    assert.match(calculo, /accion === 'permitir' \? destino : null/, 'sin permiso no hay «Volver»')
+  })
+
+  it('«Ver casos» solo se muestra al administrador', () => {
+    const condiciones = [...pagina.matchAll(/v-if="([^"]*puedeVerCasos[^"]*)"/g)].map((m) => m[1])
+
+    assert.equal(condiciones.length, 2, 'tabla y tarjetas')
+    for (const condicion of condiciones) {
+      assert.match(condicion, /session\.esAdministrador/, `«${condicion}» exige administrador`)
+    }
   })
 })

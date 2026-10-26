@@ -79,7 +79,7 @@ export const resolveProfile = (username, password, accounts) => {
  * - Sesión del perfil correcto: se permite. Perfil incorrecto: se deniega con la
  *   pantalla principal del perfil de la sesión como destino de vuelta.
  * @param {Object} entrada
- * @param {{ requiereSesion?: boolean, perfil?: string|null }} [entrada.ruta] - `meta` de la ruta.
+ * @param {{ requiereSesion?: boolean, perfil?: string|string[]|null }} [entrada.ruta] - `meta` de la ruta.
  * @param {{ autenticado?: boolean, rol?: string|null }} [entrada.sesion] - sesión real.
  * @returns {{ accion: 'permitir' }
  *   | { accion: 'ir_login', aviso: 'sesion' }
@@ -106,7 +106,10 @@ export const decidirAcceso = ({ ruta = {}, sesion = {} } = {}) => {
     return { accion: 'denegar', motivo: 'sin_pantalla', destino: null }
   }
 
-  if (perfil !== null && perfil !== rol) {
+  // `perfil` puede ser un perfil o una lista de perfiles que comparten la pantalla.
+  const perfilesPermitidos = perfil === null ? null : [perfil].flat()
+
+  if (perfilesPermitidos !== null && !perfilesPermitidos.includes(rol)) {
     return { accion: 'denegar', motivo: 'perfil', destino }
   }
 
