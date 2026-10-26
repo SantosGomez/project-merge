@@ -93,7 +93,8 @@ describe('T9 — registro de caso en diálogo (P-4, RF-19 a RF-25, RF-43)', () =
     assert.match(caseFormSource, /PriorityTag/)
 
     assert.match(caseFormSource, /readonly-info/)
-    assert.match(caseFormSource, /<dt>Estado<\/dt>/)
+    // El estado de un caso nuevo se muestra fijo (Pendiente) en la fila 2, sin control para elegirlo.
+    assert.match(caseFormSource, /class="estado-fijo"[^>]*>\s*\{\{ statusLabel \}\}/)
     assert.match(caseFormSource, /<dt>Contador asignado<\/dt>/)
     // El bloque de solo lectura no contiene entradas de formulario.
     const block = caseFormSource.slice(
@@ -421,5 +422,38 @@ describe('Editar caso — CaseFormDialog en modo edición', () => {
     assert.match(caseFormSource, /emit\('guardado'/)
     assert.match(caseFormSource, /:disable="cases\.guardando \|\| \(modoEdicion && !hayCambios\)"/)
     assert.match(caseFormSource, /Aún no cambias ningún dato/)
+  })
+})
+
+describe('Formulario de caso más horizontal: filas 2, 2, 1', () => {
+  // Orden de los campos en el código: es el orden de lectura de la cuadrícula.
+  const posicion = (texto) => caseFormSource.indexOf(texto)
+
+  it('los campos van en orden Cliente, Prioridad, Fecha de inicio, Estado, Descripción y Observaciones', () => {
+    const orden = [
+      'for="client-field"',
+      'for="priority-field"',
+      'for="fecha-inicio-field"',
+      'class="form-group registro-caso__estado"',
+      'for="descripcion-field"',
+      'for="observaciones-field"',
+    ].map(posicion)
+    assert.ok(orden.every((valor) => valor > 0), 'todos los campos existen')
+    assert.deepEqual([...orden].sort((a, b) => a - b), orden, 'están en el orden de las filas')
+  })
+
+  it('el estado ocupa su lugar en la fila 2 también al registrar (Pendiente, sin elegirse)', () => {
+    const inicio = posicion('class="form-group registro-caso__estado"')
+    const grupo = caseFormSource.slice(inicio, caseFormSource.indexOf('</div>\n\n', inicio))
+    assert.match(grupo, /v-if="modoEdicion"/, 'en edición es un selector')
+    assert.match(grupo, /v-else[\s\S]*?\{\{ statusLabel \}\}/, 'al registrar muestra Pendiente')
+  })
+
+  it('en pantallas medianas y grandes el cuerpo es una cuadrícula de dos columnas y el diálogo es más ancho', () => {
+    assert.match(caseFormSource, /@media \(min-width: 700px\)\s*\{\s*\.registro-caso__body\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
+    assert.match(cssRule(caseFormSource, '.registro-caso__body'), /display: grid/)
+    assert.match(cssRule(caseFormSource, '.registro-caso'), /width: min\(860px, calc\(100vw - 32px\)\)/)
+    assert.match(cssRule(caseFormSource, '.registro-caso'), /max-width: none !important/, 'quita el tope de 560 px de Quasar')
+    assert.match(cssRule(caseFormSource, '.registro-caso__ancho-completo'), /grid-column: 1 \/ -1/)
   })
 })

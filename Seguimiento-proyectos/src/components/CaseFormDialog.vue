@@ -103,28 +103,6 @@
             </p>
           </div>
 
-          <div v-if="modoEdicion" class="form-group">
-            <label for="estado-field" class="form-label"
-              >Estado <span aria-label="obligatorio" class="required-mark">*</span></label
-            >
-            <q-select
-              for="estado-field"
-              v-model="estado"
-              :options="statusOptions"
-              option-label="label"
-              option-value="value"
-              outlined
-              dense
-              emit-value
-              map-options
-              aria-required="true"
-              aria-describedby="estado-help"
-            />
-            <p id="estado-help" class="form-help">
-              Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.
-            </p>
-          </div>
-
           <div class="form-group">
             <label for="fecha-inicio-field" class="form-label"
               >Fecha de inicio
@@ -153,6 +131,37 @@
             >
               {{ formError.message }}
             </p>
+          </div>
+
+          <div class="form-group registro-caso__estado">
+            <template v-if="modoEdicion">
+              <label for="estado-field" class="form-label"
+                >Estado <span aria-label="obligatorio" class="required-mark">*</span></label
+              >
+              <q-select
+                for="estado-field"
+                v-model="estado"
+                :options="statusOptions"
+                option-label="label"
+                option-value="value"
+                outlined
+                dense
+                emit-value
+                map-options
+                aria-required="true"
+                aria-describedby="estado-help"
+              />
+              <p id="estado-help" class="form-help">
+                Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.
+              </p>
+            </template>
+            <template v-else>
+              <span id="estado-label" class="form-label">Estado</span>
+              <p class="estado-fijo" aria-labelledby="estado-label" aria-describedby="estado-help">
+                {{ statusLabel }}
+              </p>
+              <p id="estado-help" class="form-help">Todo caso nuevo empieza en Pendiente.</p>
+            </template>
           </div>
 
           <div class="form-group">
@@ -202,11 +211,7 @@
           </div>
 
           <dl class="readonly-info">
-            <div v-if="!modoEdicion" class="readonly-row">
-              <dt>Estado</dt>
-              <dd>{{ statusLabel }}</dd>
-            </div>
-            <div v-else class="readonly-row">
+            <div v-if="modoEdicion" class="readonly-row">
               <dt>Vence</dt>
               <dd>{{ vencimientoActual }}</dd>
             </div>
@@ -218,7 +223,7 @@
 
           <ErrorState
             v-if="errorGuardado"
-            class="registro-caso__error"
+            class="registro-caso__error registro-caso__ancho-completo"
             :title="textos.errorGuardado"
             :detail="mensajeError"
             @retry="submitCase"
@@ -506,8 +511,10 @@ const submitCase = async () => {
 </script>
 
 <style scoped>
+/* Más ancho que el tope de 560 px de Quasar para repartir los campos en dos columnas. */
 .registro-caso {
-  width: min(560px, calc(100vw - 32px));
+  width: min(860px, calc(100vw - 32px));
+  max-width: none !important;
   min-width: 0;
 }
 
@@ -535,11 +542,36 @@ const submitCase = async () => {
   line-height: 1.45;
 }
 
+/* Una columna en móvil; dos desde 700 px: Cliente | Prioridad, Fecha | Estado, Descripción | Observaciones. */
 .registro-caso__body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px 20px;
+  align-items: start;
   min-width: 0;
+}
+
+@media (min-width: 700px) {
+  .registro-caso__body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.registro-caso__ancho-completo {
+  grid-column: 1 / -1;
+}
+
+.estado-fijo {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px dashed #c9d4e0;
+  border-radius: 4px;
+  background: #f5f8fb;
+  color: #102a43;
+  font-weight: 600;
 }
 
 .registro-caso__actions {
@@ -578,6 +610,7 @@ const submitCase = async () => {
 }
 
 .readonly-info {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 6px;
