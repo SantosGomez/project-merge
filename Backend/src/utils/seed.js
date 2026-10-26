@@ -2,7 +2,8 @@ const { query } = require('../config/db');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 
-// Credenciales placeholder del seed (cargadas desde otra base de datos posteriormente, RF-27).
+// Cuentas demo del seed, solo para desarrollo y pruebas: se crean únicamente con SEED_CUENTAS_DEMO=true.
+// Sus contraseñas están en el código, así que nunca deben existir en un servidor real.
 // Las cuentas del seed se reconocen por su correo (rebanada 5c); el nombre es el mismo de siempre.
 const ADMIN_NOMBRE = 'admin_seed';
 const ADMIN_CORREO = 'admin_seed@prueba.local';
@@ -115,13 +116,24 @@ async function insertarCuenta(nombre, correo, password, rol) {
 }
 
 /**
- * Seed de datos maestros: crea tablas e inserta al menos un administrador y
- * al menos un contador con contraseñas hasheadas. Si los usuarios ya existen,
- * no hace nada (idempotente, no sobrescribe ni falla). RF-27.
+ * Indica si se deben sembrar las cuentas demo: solo con SEED_CUENTAS_DEMO igual a 'true' (apagada por defecto).
+ * @param {Object} env - Variables de entorno (process.env).
+ * @returns {boolean} true si hay que crear admin_seed y contador_seed.
  */
-async function seedDatabase() {
+function debeSembrarCuentasDemo(env) {
+  return env.SEED_CUENTAS_DEMO === 'true';
+}
+
+/**
+ * Seed de datos maestros: crea las tablas y migra la de usuarios. Las cuentas demo (un administrador y un
+ * contador con contraseñas hasheadas) solo se crean si se piden; si ya existen no hace nada (idempotente). RF-27.
+ * @param {{ cuentasDemo?: boolean }} [opciones] - cuentasDemo: por defecto sale de SEED_CUENTAS_DEMO.
+ */
+async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) } = {}) {
   await crearTablasSiNoExisten();
   await migrarUsuarios();
+
+  if (!cuentasDemo) return;
 
   if (!(await cuentaExiste(ADMIN_CORREO))) {
     await insertarCuenta(ADMIN_NOMBRE, ADMIN_CORREO, ADMIN_PASSWORD, 'administrador');
@@ -132,4 +144,4 @@ async function seedDatabase() {
   }
 }
 
-module.exports = { seedDatabase };
+module.exports = { seedDatabase, debeSembrarCuentasDemo };

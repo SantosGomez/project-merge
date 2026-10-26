@@ -7,9 +7,9 @@ const {
   limpiarDatosDePrueba,
   cerrarBaseDeDatos,
 } = require('../soporte-pruebas/bd');
-const { seedDatabase } = require('../src/utils/seed');
+const { seedDatabase, debeSembrarCuentasDemo } = require('../src/utils/seed');
 const { findByCorreo, findAll } = require('../src/models/UserModel');
-const { query } = require('../src/config/db');
+const { pool, query } = require('../src/config/db');
 
 const CORREO_ADMIN = 'admin_seed@prueba.local';
 const CORREO_CONTADOR = 'contador_seed@prueba.local';
@@ -33,7 +33,7 @@ async function contarPorCorreo(correo) {
 }
 
 async function testSeedCreaAlmenosUnAdministradorYUnContador() {
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
   const administrador = await findByCorreo(CORREO_ADMIN);
   assert.ok(administrador, 'el seed debe crear la cuenta admin_seed');
   assert.strictEqual(administrador.rol, 'administrador');
@@ -43,7 +43,7 @@ async function testSeedCreaAlmenosUnAdministradorYUnContador() {
 }
 
 async function testSeedContraseñasEstanHasheadasConArgon2id() {
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
   const administrador = await findByCorreo(CORREO_ADMIN);
   assert.ok(administrador, 'debe existir admin_seed para verificar su hash');
   assert.ok(
@@ -61,11 +61,11 @@ async function testSeedContraseñasEstanHasheadasConArgon2id() {
 }
 
 async function testSeedNoDuplicaUsuariosAlEjecutarseDosVeces() {
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
   const admins1 = await contarPorCorreo(CORREO_ADMIN);
   const contadores1 = await contarPorCorreo(CORREO_CONTADOR);
 
-  await seedDatabase(); // segunda ejecución: no debe duplicar ni fallar
+  await seedDatabase({ cuentasDemo: true }); // segunda ejecución: no debe duplicar ni fallar
 
   const admins2 = await contarPorCorreo(CORREO_ADMIN);
   const contadores2 = await contarPorCorreo(CORREO_CONTADOR);
@@ -84,7 +84,7 @@ async function testSeedNoDuplicaUsuariosAlEjecutarseDosVeces() {
 }
 
 async function testMigracionAgregaColumnasDeLaCuenta() {
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
   const columnas = (await query('SHOW COLUMNS FROM usuarios')).map((c) => c.Field);
   for (const columna of ['nombre', 'correo', 'actualizado_en', 'ultimo_acceso_en']) {
     assert.ok(columnas.includes(columna), `la tabla usuarios debe tener la columna ${columna}`);
@@ -96,7 +96,7 @@ async function testMigracionAgregaColumnasDeLaCuenta() {
 }
 
 async function testMigracionDaCorreoYNombreALasCuentasExistentes() {
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
   const administrador = await findByCorreo(CORREO_ADMIN);
   assert.strictEqual(administrador.correo, 'admin_seed@prueba.local', 'cuenta sin correo recibe uno de prueba');
   assert.strictEqual(administrador.nombre, 'admin_seed', 'el nombre parte del usuario actual');
@@ -110,10 +110,51 @@ async function testMigracionDaCorreoYNombreALasCuentasExistentes() {
 async function testSeedReconoceSusCuentasPorCorreo() {
   const antes = await findByCorreo(CORREO_ADMIN);
 
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
 
   assert.strictEqual(await contarPorCorreo(CORREO_ADMIN), 1, 'no crea otra cuenta admin_seed');
   assert.strictEqual((await findByCorreo(CORREO_ADMIN)).id, antes.id, 'conserva la cuenta existente');
+}
+
+// ---------- Revisión de la rebanada 5: las cuentas demo solo se siembran si se pide ----------
+function testBanderaDeCuentasDemo() {
+  assert.strictEqual(debeSembrarCuentasDemo({}), false, 'sin la variable, apagada por defecto');
+  assert.strictEqual(debeSembrarCuentasDemo({ SEED_CUENTAS_DEMO: 'true' }), true);
+  for (const valor of ['false', 'TRUE', '1', 'yes', '', ' true']) {
+    assert.strictEqual(debeSembrarCuentasDemo({ SEED_CUENTAS_DEMO: valor }), false, `«${valor}» no la enciende`);
+  }
+}
+
+// Aparta la cuenta admin_seed (le cambia el correo) con el mismo cerrojo que usa prepararBaseDeDatos,
+// ejecuta la semilla como una base sin esa cuenta y lo deja todo como estaba.
+async function conAdminSeedApartado(prueba) {
+  const conexion = await pool.getConnection();
+  const apartado = `apartado_${CORREO_ADMIN}`;
+  const [original] = await query('SELECT id FROM usuarios WHERE correo = ?', [CORREO_ADMIN]);
+  try {
+    await conexion.query("SELECT GET_LOCK('delgrow_pruebas_seed', 30)");
+    await query('UPDATE usuarios SET correo = ? WHERE id = ?', [apartado, original.id]);
+    await prueba();
+  } finally {
+    await query('DELETE FROM usuarios WHERE correo = ?', [CORREO_ADMIN]);
+    await query('UPDATE usuarios SET correo = ? WHERE id = ?', [CORREO_ADMIN, original.id]);
+    await conexion.query("SELECT RELEASE_LOCK('delgrow_pruebas_seed')");
+    conexion.release();
+  }
+}
+
+async function testSinBanderaNoSiembraCuentasDemo() {
+  await conAdminSeedApartado(async () => {
+    await seedDatabase({ cuentasDemo: false });
+    assert.strictEqual(await contarPorCorreo(CORREO_ADMIN), 0, 'con la bandera apagada no crea admin_seed');
+  });
+}
+
+async function testConBanderaSiembraCuentasDemo() {
+  await conAdminSeedApartado(async () => {
+    await seedDatabase({ cuentasDemo: true });
+    assert.strictEqual(await contarPorCorreo(CORREO_ADMIN), 1, 'con la bandera encendida crea admin_seed');
+  });
 }
 
 // ---------- Rebanada 5c: la migración borra la columna usuario, con respaldo previo ----------
@@ -122,12 +163,12 @@ async function columnasDeUsuarios(tabla = 'usuarios') {
 }
 
 async function testMigracionBorraLaColumnaUsuario() {
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
   assert.ok(!(await columnasDeUsuarios()).includes('usuario'), 'la tabla usuarios ya no tiene la columna usuario');
 }
 
 async function testMigracionDejaElRespaldoAntesDeBorrar() {
-  await seedDatabase();
+  await seedDatabase({ cuentasDemo: true });
   const respaldo = await query("SHOW TABLES LIKE 'usuarios_respaldo_5c'");
   assert.strictEqual(respaldo.length, 1, 'existe el respaldo usuarios_respaldo_5c');
   assert.ok((await columnasDeUsuarios('usuarios_respaldo_5c')).includes('usuario'), 'el respaldo conserva la columna usuario');
@@ -140,8 +181,8 @@ async function testMigracionDejaElRespaldoAntesDeBorrar() {
 }
 
 async function testMigracionSePuedeCorrerDosVeces() {
-  await seedDatabase();
-  await seedDatabase(); // sin la columna usuario: no debe fallar
+  await seedDatabase({ cuentasDemo: true });
+  await seedDatabase({ cuentasDemo: true }); // sin la columna usuario: no debe fallar
   assert.ok(!(await columnasDeUsuarios()).includes('usuario'), 'la columna sigue sin existir');
 }
 
@@ -175,6 +216,9 @@ describe('seed de datos maestros', () => {
   test('la migración da correo y nombre a las cuentas existentes', testMigracionDaCorreoYNombreALasCuentasExistentes);
   test('la semilla reconoce sus cuentas por correo aunque no tengan usuario', testSeedReconoceSusCuentasPorCorreo);
   test('una base nueva crea la tabla usuarios sin la columna usuario', testCreateTableDeUsuariosSinUsuario);
+  test('la bandera SEED_CUENTAS_DEMO solo se enciende con el valor exacto true', testBanderaDeCuentasDemo);
+  test('con la bandera apagada la semilla no crea las cuentas demo', testSinBanderaNoSiembraCuentasDemo);
+  test('con la bandera encendida la semilla crea las cuentas demo', testConBanderaSiembraCuentasDemo);
   test('la migración borra la columna usuario', testMigracionBorraLaColumnaUsuario);
   test('antes de borrarla deja el respaldo usuarios_respaldo_5c con el usuario de cada cuenta', testMigracionDejaElRespaldoAntesDeBorrar);
   test('la migración se puede correr dos veces sin la columna', testMigracionSePuedeCorrerDosVeces);

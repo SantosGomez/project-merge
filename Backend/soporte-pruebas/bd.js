@@ -33,7 +33,7 @@ async function prepararBaseDeDatos() {
   try {
     await conexion.query('SELECT GET_LOCK(?, 30)', [LOCK_SEED]);
     try {
-      await seedDatabase();
+      await seedDatabase({ cuentasDemo: true });
     } finally {
       await conexion.query('SELECT RELEASE_LOCK(?)', [LOCK_SEED]);
     }
