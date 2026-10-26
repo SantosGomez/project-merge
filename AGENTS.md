@@ -29,7 +29,7 @@ Es una herramienta que permite gestionar el estado de los contadores, para saber
 ├── src/
 │ ├── components/ # Componentes reutilizables
 │ ├── layouts/ # Layouts de la aplicación
-│ ├── pages/ # Páginas de la aplicación (vista de login, dashboard de casos, directorio de contadores, «Mis casos» del contador y alta/restablecimiento de usuarios.)
+│ ├── pages/ # Páginas de la aplicación (vista de login, dashboard de casos, «Mis casos» del contador y directorio de usuarios, con alta y restablecimiento de contraseña en diálogos.)
 │ ├── services/ # Servicios de la aplicación
 │ ├── utils/ # Funciones auxiliares globales
 │ ├── store/ # Stores de la aplicación
@@ -67,7 +67,7 @@ npm run dev
 - levantar backend:
 
 ```bash
-cd backend && nodemon src/server.js
+cd Backend && npm run dev
 ```
 
 - build:
