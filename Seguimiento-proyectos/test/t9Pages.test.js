@@ -489,3 +489,36 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
     assert.match(componente, /aria-labelledby="resumen-equipo-titulo"/)
   })
 })
+
+describe('Dashboard: dona «Casos por estado» (rediseño, rebanada 2)', () => {
+  const ruta = '../src/components/DonaEstados.vue'
+  const existe = existsSync(fileURLToPath(new URL(ruta, import.meta.url)))
+  const dona = existe ? read(ruta) : ''
+  const resumen = read('../src/components/ResumenEquipo.vue')
+
+  it('dibuja un arco por estado con la geometría de segmentosDona y el total al centro', () => {
+    assert.ok(existe, 'existe components/DonaEstados.vue')
+    assert.match(dona, /segmentosDona\(props\.resumen\)/)
+    assert.match(dona, /v-for="segmento in dona\.segmentos"/)
+    assert.match(dona, /pathLength="100"/)
+    assert.match(dona, /:stroke-dasharray="`\$\{segmento\.arco\} \$\{100 - segmento\.arco\}`"/)
+    assert.match(dona, /:stroke-dashoffset="-segmento\.desplazamiento"/)
+    assert.match(dona, /\{\{ dona\.total \}\}/)
+  })
+
+  it('es accesible: el SVG es una imagen con el resumen en texto y la leyenda trae número y porcentaje', () => {
+    assert.match(dona, /<svg[^>]*role="img"[^>]*:aria-label="descripcion"/)
+    assert.match(dona, /\{\{ segmento\.etiqueta \}\}/)
+    assert.match(dona, /\{\{ segmento\.valor \}\}/)
+    assert.match(dona, /\{\{ segmento\.porcentaje \}\}%/)
+  })
+
+  it('sin casos muestra «Sin casos registrados» en lugar de la dona', () => {
+    assert.match(dona, /v-if="dona\.total === 0"[^>]*>\s*Sin casos registrados/)
+  })
+
+  it('ResumenEquipo la muestra con los mismos datos, junto a las tarjetas', () => {
+    assert.match(resumen, /<DonaEstados :resumen="resumen" \/>/)
+    assert.match(resumen, /import DonaEstados from '\.\/DonaEstados\.vue'/)
+  })
+})

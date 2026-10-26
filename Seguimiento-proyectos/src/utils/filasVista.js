@@ -6,7 +6,7 @@
 // `CaseRow.vue` esperan `{ id, name }` y `{ id, client, status, priority, counterId }`.
 // Funciones puras, síncronas, sin Vue y sin efectos secundarios.
 
-import { PROFILES } from './constants.js'
+import { PROFILES, STATUSES, STATUS_LABELS } from './constants.js'
 import { fechaParaFormulario } from './fechasCaso.js'
 import { formatearRol } from './formateadores.js'
 
@@ -153,4 +153,53 @@ export const tarjetasResumen = (resumen) => {
       alerta: false,
     },
   ]
+}
+
+/** Color de cada estado en la dona del dashboard: ámbar (en espera), azul (en curso) y verde (listo). */
+export const COLOR_ESTADO = Object.freeze({
+  pendiente: '#b45309',
+  en_proceso: '#1f5f99',
+  finalizado: '#2f855a',
+})
+
+/**
+ * Geometría de la dona «Casos por estado» a partir del resumen del equipo.
+ * Los arcos van en porcentaje del círculo (el SVG usa `pathLength="100"`) y `desplazamiento`
+ * es lo que ya ocupan los estados anteriores. Los porcentajes de la leyenda se redondean por
+ * el método del mayor residuo para que siempre sumen 100. Un dato que falte cuenta como 0.
+ * @param {Object} resumen - `{ pendiente, en_proceso, finalizado }`.
+ * @returns {{ total: number, segmentos: Array<{ clave: string, etiqueta: string, valor: number, arco: number, desplazamiento: number, porcentaje: number, color: string }> }}
+ */
+export const segmentosDona = (resumen) => {
+  const valores = STATUSES.map((clave) => Number(resumen?.[clave]) || 0)
+  const total = valores.reduce((suma, valor) => suma + valor, 0)
+  const exactos = valores.map((valor) => (total === 0 ? 0 : (valor * 100) / total))
+
+  // Mayor residuo: cada uno recibe su parte entera y los puntos que faltan van a los mayores restos.
+  const porcentajes = exactos.map(Math.floor)
+  const faltan = total === 0 ? 0 : 100 - porcentajes.reduce((suma, p) => suma + p, 0)
+  exactos
+    .map((exacto, indice) => ({ indice, resto: exacto - Math.floor(exacto) }))
+    .sort((a, b) => b.resto - a.resto)
+    .slice(0, faltan)
+    .forEach(({ indice }) => {
+      porcentajes[indice] += 1
+    })
+
+  let acumulado = 0
+  const segmentos = STATUSES.map((clave, indice) => {
+    const segmento = {
+      clave,
+      etiqueta: STATUS_LABELS[clave],
+      valor: valores[indice],
+      arco: exactos[indice],
+      desplazamiento: acumulado,
+      porcentaje: porcentajes[indice],
+      color: COLOR_ESTADO[clave],
+    }
+    acumulado += exactos[indice]
+    return segmento
+  })
+
+  return { total, segmentos }
 }

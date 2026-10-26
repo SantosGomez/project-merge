@@ -10,26 +10,31 @@
       @retry="emit('reintentar')"
     />
 
-    <ul v-else-if="resumen" class="resumen-equipo__tarjetas">
-      <li
-        v-for="tarjeta in tarjetas"
-        :key="tarjeta.clave"
-        class="resumen-tarjeta"
-        :class="{ 'resumen-tarjeta--alerta': tarjeta.alerta }"
-        tabindex="0"
-      >
-        <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
-        <p class="resumen-tarjeta__valor">{{ tarjeta.valor }}</p>
-        <p class="resumen-tarjeta__detalle">{{ tarjeta.detalle }}</p>
-        <q-tooltip max-width="280px">{{ tarjeta.ayuda }}</q-tooltip>
-      </li>
-    </ul>
+    <div v-else-if="resumen" class="resumen-equipo__contenido">
+      <ul class="resumen-equipo__tarjetas">
+        <li
+          v-for="tarjeta in tarjetas"
+          :key="tarjeta.clave"
+          class="resumen-tarjeta"
+          :class="{ 'resumen-tarjeta--alerta': tarjeta.alerta }"
+          tabindex="0"
+        >
+          <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
+          <p class="resumen-tarjeta__valor">{{ tarjeta.valor }}</p>
+          <p class="resumen-tarjeta__detalle">{{ tarjeta.detalle }}</p>
+          <q-tooltip max-width="280px">{{ tarjeta.ayuda }}</q-tooltip>
+        </li>
+      </ul>
+
+      <DonaEstados :resumen="resumen" />
+    </div>
   </section>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 
+import DonaEstados from './DonaEstados.vue'
 import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import { tarjetasResumen } from '../utils/filasVista.js'
@@ -67,8 +72,23 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen))
   line-height: 1.25;
 }
 
+/* Tarjetas y dona en una fila; en pantallas angostas la dona baja debajo de las tarjetas. */
+.resumen-equipo__contenido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+}
+
+.resumen-equipo__contenido > .dona-estados {
+  flex: 1 1 280px;
+}
+
 /* Una columna en celular; tres en cuanto caben. */
 .resumen-equipo__tarjetas {
+  flex: 3 1 480px;
+  align-content: start;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;

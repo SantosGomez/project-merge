@@ -14,6 +14,7 @@ import {
   usuarioAFila,
   compararUltimoAcceso,
   tarjetasResumen,
+  segmentosDona,
 } from '../src/utils/filasVista.js'
 import { STATUSES } from '../src/utils/constants.js'
 
@@ -215,4 +216,36 @@ test('tarjetasResumen muestra 0 cuando falta un dato', () => {
   const tarjetas = tarjetasResumen({})
   assert.deepEqual(tarjetas.map((t) => t.valor), [0, 0, 0])
   assert.equal(tarjetas[1].detalle, 'Pendientes: 0 · En proceso: 0')
+})
+
+test('segmentosDona reparte la dona por estado: arcos en porcentaje y desplazamiento acumulado', () => {
+  const dona = segmentosDona({ pendiente: 3, en_proceso: 1, finalizado: 4 })
+
+  assert.equal(dona.total, 8)
+  assert.deepEqual(
+    dona.segmentos.map(({ clave, etiqueta, valor, arco, desplazamiento }) => ({ clave, etiqueta, valor, arco, desplazamiento })),
+    [
+      { clave: 'pendiente', etiqueta: 'Pendiente', valor: 3, arco: 37.5, desplazamiento: 0 },
+      { clave: 'en_proceso', etiqueta: 'En proceso', valor: 1, arco: 12.5, desplazamiento: 37.5 },
+      { clave: 'finalizado', etiqueta: 'Finalizado', valor: 4, arco: 50, desplazamiento: 50 },
+    ],
+  )
+  assert.deepEqual(
+    dona.segmentos.map((s) => s.color),
+    ['#b45309', '#1f5f99', '#2f855a'],
+    'ámbar, azul y verde',
+  )
+})
+
+test('segmentosDona redondea los porcentajes de la leyenda para que sumen 100', () => {
+  const porcentajes = (resumen) => segmentosDona(resumen).segmentos.map((s) => s.porcentaje)
+  assert.deepEqual(porcentajes({ pendiente: 3, en_proceso: 1, finalizado: 4 }), [38, 12, 50])
+  assert.deepEqual(porcentajes({ pendiente: 1, en_proceso: 1, finalizado: 1 }), [34, 33, 33])
+  assert.deepEqual(porcentajes({ pendiente: 0, en_proceso: 0, finalizado: 5 }), [0, 0, 100])
+})
+
+test('segmentosDona sin casos devuelve total 0 y arcos vacíos (la vista muestra «Sin casos registrados»)', () => {
+  const dona = segmentosDona({})
+  assert.equal(dona.total, 0)
+  assert.deepEqual(dona.segmentos.map((s) => [s.valor, s.arco, s.porcentaje]), [[0, 0, 0], [0, 0, 0], [0, 0, 0]])
 })
