@@ -383,7 +383,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('list_alt'), 'falta icono list_alt')
     assert.ok(src.includes('aria-label='), 'falta aria-label en items')
     assert.ok(src.includes('Ir al dashboard del administrador'), 'falta aria-label dashboard')
-    assert.ok(src.includes('Ir al directorio de contadores'), 'falta aria-label directorio')
+    assert.ok(src.includes('Ir al directorio de usuarios'), 'falta aria-label directorio')
     assert.ok(src.includes('Ir a mis casos'), 'falta aria-label mis casos')
   })
 

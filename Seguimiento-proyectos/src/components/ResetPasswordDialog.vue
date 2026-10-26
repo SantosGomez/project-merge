@@ -1,6 +1,6 @@
 <template>
-  <q-dialog v-model="dialogoAbierto" :persistent="guardando">
-    <q-card class="restablecer" role="dialog" aria-modal="true" aria-labelledby="restablecer-titulo">
+  <q-dialog v-model="dialogoAbierto" :persistent="guardando" aria-labelledby="restablecer-titulo">
+    <q-card class="restablecer">
       <form
         class="restablecer__form"
         novalidate
@@ -127,14 +127,12 @@ const restablecer = async () => {
 
   errorGeneral.value = ''
 
+  // Solo se valida la contraseña: el correo ya está guardado y lo revisa el backend, así una
+  // cuenta con un correo atípico no queda sin poder restablecerse.
   const validacion = validarRestablecimiento(props.cuenta.correo, password.value)
   const codigo = validacion.errores.password
   errores.password = codigo ? MENSAJES[codigo] : null
-  // El correo viene de la fila; si no fuera válido no hay campo donde mostrarlo.
-  if (validacion.errores.correo) {
-    errorGeneral.value = 'El correo de esta cuenta no es válido. Recarga el directorio e intenta de nuevo.'
-  }
-  if (!validacion.valido) return
+  if (validacion.errores.password) return
 
   guardando.value = true
   try {

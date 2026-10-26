@@ -74,12 +74,14 @@ describe('Directorio de usuarios (rebanada 4: «Restablecer contraseña» por fi
     assert.doesNotMatch(dialogo, /v-model="correo"/, 'el correo no se edita')
   })
 
-  it('valida antes de enviar el correo de la fila', () => {
+  it('valida solo la contraseña nueva antes de enviar; el correo guardado lo valida el backend', () => {
     assert.match(enviar, /validarRestablecimiento\(props\.cuenta\.correo, password\.value\)/)
     assert.ok(
-      enviar.indexOf('if (!validacion.valido) return') < enviar.indexOf('restablecerContrasena('),
-      'con errores no se envía',
+      enviar.indexOf('if (validacion.errores.password) return') < enviar.indexOf('restablecerContrasena('),
+      'con la contraseña inválida no se envía',
     )
+    // Un correo guardado que no pase la regla del formulario no debe bloquear la cuenta.
+    assert.doesNotMatch(enviar, /validacion\.valido|errores\.correo|no es válido/)
     assert.match(enviar, /restablecerContrasena\(\{\s*correo: props\.cuenta\.correo,/)
   })
 
@@ -137,5 +139,31 @@ describe('Directorio de usuarios (rebanada 5: se retiran las pantallas viejas de
     const seccion = menu.slice(inicio, menu.indexOf('</template>', inicio))
     const destinos = [...seccion.matchAll(/:to="\{ name: '([^']+)' \}"/g)].map((m) => m[1])
     assert.deepEqual(destinos, ['admin-directorio'])
+  })
+})
+
+describe('Directorio de usuarios (revisión): diálogos accesibles y texto del menú', () => {
+  const menu = read('../src/layouts/MaquetaLayout.vue')
+
+  for (const [archivo, id] of [
+    ['NewUserDialog', 'nuevo-usuario-titulo'],
+    ['ResetPasswordDialog', 'restablecer-titulo'],
+  ]) {
+    it(`${archivo}: el nombre accesible va en el q-dialog y la tarjeta no repite role ni aria-modal`, () => {
+      const dialogo = read(`../src/components/${archivo}.vue`)
+      const etiqueta = (nombre) => {
+        const inicio = dialogo.indexOf(`<${nombre}`)
+        return dialogo.slice(inicio, dialogo.indexOf('>', inicio) + 1)
+      }
+
+      assert.match(etiqueta('q-dialog'), new RegExp(`aria-labelledby="${id}"`))
+      assert.doesNotMatch(etiqueta('q-card'), /role=|aria-modal|aria-labelledby/)
+    })
+  }
+
+  it('las dos opciones «Directorio» del menú se llaman igual que la pantalla: directorio de usuarios', () => {
+    assert.doesNotMatch(menu, /directorio de contadores|Elegir contador/)
+    const opciones = [...menu.matchAll(/aria-label="Ir al directorio de usuarios"/g)]
+    assert.equal(opciones.length, 2, 'administrador y usuario de sistema')
   })
 })

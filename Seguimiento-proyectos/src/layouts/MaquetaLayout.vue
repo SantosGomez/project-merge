@@ -103,16 +103,16 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'admin-directorio' }"
-              aria-label="Ir al directorio de contadores"
+              aria-label="Ir al directorio de usuarios"
             >
               <q-item-section avatar>
                 <q-icon name="group" />
               </q-item-section>
               <q-item-section>
                 <q-item-label>Directorio</q-item-label>
-                <q-item-label caption>Elegir contador</q-item-label>
+                <q-item-label caption>Ver cuentas y elegir contador</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir al directorio de contadores</q-tooltip>
+              <q-tooltip>Ir al directorio de usuarios</q-tooltip>
             </q-item>
           </template>
 

@@ -1,6 +1,6 @@
 <template>
-  <q-dialog v-model="dialogoAbierto" :persistent="guardando">
-    <q-card class="nuevo-usuario" role="dialog" aria-modal="true" aria-labelledby="nuevo-usuario-titulo">
+  <q-dialog v-model="dialogoAbierto" :persistent="guardando" aria-labelledby="nuevo-usuario-titulo">
+    <q-card class="nuevo-usuario">
       <form
         class="nuevo-usuario__form"
         novalidate
