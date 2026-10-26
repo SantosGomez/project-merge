@@ -111,22 +111,31 @@ async function updatePriority(id, prioridad) {
   );
 }
 
+// Columnas que updatePatch puede cambiar; cualquier otra clave se ignora.
+const COLUMNAS_EDITABLES = [
+  'cliente',
+  'estado',
+  'prioridad',
+  'fecha_inicio',
+  'fecha_vencimiento',
+  'descripcion',
+  'observaciones',
+];
+
 /**
- * Actualiza estado, prioridad y/o fecha de vencimiento de un caso en un solo UPDATE,
- * que es atómico: o se guardan todos los campos o ninguno (RF-22).
+ * Actualiza los campos editables de un caso en un solo UPDATE,
+ * que es atómico: o se guardan todos los campos o ninguno.
  * Solo toca los campos definidos; si no viene ninguno, no hace nada.
  * @param {number} id - ID del caso.
- * @param {Object} campos - { estado, prioridad, fecha_vencimiento (AAAA-MM-DD) }, todos opcionales.
+ * @param {Object} campos - { cliente, estado, prioridad, fecha_inicio, fecha_vencimiento (AAAA-MM-DD),
+ *   descripcion, observaciones }, todos opcionales; null guarda NULL.
  * @returns {Promise<void>}
  */
-async function updatePatch(id, { estado, prioridad, fecha_vencimiento } = {}) {
+async function updatePatch(id, campos = {}) {
   const asignaciones = [];
   const valores = [];
-  for (const [columna, valor] of [
-    ['estado', estado],
-    ['prioridad', prioridad],
-    ['fecha_vencimiento', fecha_vencimiento],
-  ]) {
+  for (const columna of COLUMNAS_EDITABLES) {
+    const valor = campos[columna];
     if (valor !== undefined) {
       asignaciones.push(`${columna} = ?`);
       valores.push(valor);

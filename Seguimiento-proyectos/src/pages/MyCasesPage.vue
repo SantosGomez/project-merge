@@ -75,6 +75,20 @@
                   @update:model-value="(v) => guardarCambio(item.id, { prioridad: v })"
                 />
               </div>
+              <q-btn
+                class="case-edit-btn control-touch"
+                outline
+                no-caps
+                color="primary"
+                icon="edit"
+                label="Editar"
+                aria-haspopup="dialog"
+                :aria-label="`Editar el caso de ${item.client}`"
+                :disable="cases.guardando"
+                @click="abrirEdicion(item.id)"
+              >
+                <q-tooltip>Abre el formulario para cambiar la información del caso.</q-tooltip>
+              </q-btn>
             </div>
           </template>
         </CaseRow>
@@ -86,7 +100,12 @@
       </div>
     </div>
 
-    <CaseFormDialog v-model="dialogoRegistroAbierto" @registrado="alRegistrar" />
+    <CaseFormDialog
+      v-model="dialogoRegistroAbierto"
+      :caso="casoEnEdicion"
+      @registrado="alRegistrar"
+      @guardado="alGuardarEdicion"
+    />
   </q-page>
 </template>
 
@@ -117,6 +136,7 @@ const screenStateName = computed(() =>
 
 const confirmation = ref('')
 const dialogoRegistroAbierto = ref(false)
+const casoEnEdicion = ref(null)
 const errorCambio = ref(null)
 const ultimoCambio = ref(null)
 
@@ -151,7 +171,19 @@ const guardarCambio = async (caseId, cambios) => {
 const abrirRegistro = () => {
   // El diálogo se prepara solo al abrirse; aquí se descarta el aviso anterior.
   confirmation.value = ''
+  casoEnEdicion.value = null
   dialogoRegistroAbierto.value = true
+}
+
+// El mismo diálogo, en modo edición, con el caso tal como lo guarda el store.
+const abrirEdicion = (caseId) => {
+  confirmation.value = ''
+  casoEnEdicion.value = cases.casos.find((caso) => String(caso.id) === String(caseId)) ?? null
+  dialogoRegistroAbierto.value = casoEnEdicion.value !== null
+}
+
+const alGuardarEdicion = () => {
+  confirmation.value = 'Cambios guardados.'
 }
 
 const alRegistrar = async () => {
@@ -233,6 +265,10 @@ onMounted(() => {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+.case-edit-btn {
+  align-self: flex-end;
 }
 
 .case-action-label {

@@ -132,24 +132,16 @@ export const crearCaseService = (opciones = {}) => {
   }
 
   /**
-   * PATCH /casos/:id: cambia estado y/o prioridad de un caso propio (RF-22, RF-29 a RF-31).
-   * Al menos uno de los dos campos debe venir informado.
+   * PATCH /casos/:id: edita un caso propio. Solo se envían los campos editables que vengan
+   * informados: estado, prioridad, cliente, fecha_inicio (DD-MM-AAAA), descripcion y observaciones.
+   * Cualquier otra clave se ignora; si no queda ningún cambio, no se llama al backend.
    * @param {number|string} id - identificador del caso.
-   * @param {{ estado?: string, prioridad?: string }} cambios
+   * @param {{ estado?: string, prioridad?: string, cliente?: string, fecha_inicio?: string,
+   *   descripcion?: string, observaciones?: string }} cambios
    * @returns {Promise<Object>} caso actualizado, ya traducido.
    */
   const actualizarCaso = async (id, cambios = {}) => {
-    const { estado, prioridad } = cambios
-
-    if (estado === undefined && prioridad === undefined) {
-      throw crearErrorFrontend(
-        ESTADOS_ERROR.DATOS_INVALIDOS,
-        'No se indicó qué cambiar del caso',
-        'el caso a actualizar',
-        'Indique el estado o la prioridad que desea guardar',
-      )
-    }
-
+    const { estado, prioridad, cliente, fecha_inicio: fechaInicio, descripcion, observaciones } = cambios
     const cuerpo = {}
 
     if (estado !== undefined) {
@@ -166,6 +158,27 @@ export const crearCaseService = (opciones = {}) => {
         throw errorDePrioridadInvalida()
       }
       cuerpo.prioridad = prioridadBackend
+    }
+
+    if (fechaInicio !== undefined) {
+      const fechaBackend = fechaADominioBackend(fechaInicio)
+      if (fechaBackend === null) {
+        throw errorDeFechaInvalida()
+      }
+      cuerpo.fecha_inicio = fechaBackend
+    }
+
+    if (cliente !== undefined) cuerpo.cliente = cliente
+    if (descripcion !== undefined) cuerpo.descripcion = descripcion
+    if (observaciones !== undefined) cuerpo.observaciones = observaciones
+
+    if (Object.keys(cuerpo).length === 0) {
+      throw crearErrorFrontend(
+        ESTADOS_ERROR.DATOS_INVALIDOS,
+        'No se indicó qué cambiar del caso',
+        'el caso a actualizar',
+        'Cambie al menos un dato del caso antes de guardar',
+      )
     }
 
     const { data } = await api.patch(`/casos/${id}`, cuerpo)

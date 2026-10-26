@@ -2,6 +2,9 @@
   <li class="case-row" :class="{ 'case-row--readonly': readonly }">
     <div class="case-row__main">
       <p class="case-row__client">{{ caseItem.client }}</p>
+      <p v-if="caseItem.description" class="case-row__description" :title="caseItem.description">
+        {{ caseItem.description }}
+      </p>
 
       <dl class="case-row__meta">
         <div class="case-row__meta-item">
@@ -24,6 +27,21 @@
           <dt class="case-row__meta-label">Prioridad</dt>
           <dd class="case-row__meta-value">
             <PriorityTag :priority="caseItem.priority" />
+          </dd>
+        </div>
+
+        <div v-if="caseItem.startDate" class="case-row__meta-item">
+          <dt class="case-row__meta-label">Inicio</dt>
+          <dd class="case-row__meta-value">{{ caseItem.startDate }}</dd>
+        </div>
+
+        <div v-if="caseItem.dueDate" class="case-row__meta-item">
+          <dt class="case-row__meta-label">Vence</dt>
+          <dd class="case-row__meta-value">
+            <span class="case-row__due" tabindex="0">
+              {{ caseItem.dueDate }}
+              <q-tooltip>Fecha límite calculada en días hábiles según la prioridad.</q-tooltip>
+            </span>
           </dd>
         </div>
       </dl>
@@ -53,7 +71,7 @@ import { STATUS_LABELS } from '../utils/constants.js'
  * (RF-13, RF-15). La zona `actions` queda preparada para los selectores de P-5 sin crear otra fila.
  */
 const props = defineProps({
-  /** Caso de ejemplo: `{ id, client, status, priority, counterId }`. */
+  /** Fila de `casoAFila`: `{ id, client, status, priority, counterId, startDate, dueDate, description }`. */
   caseItem: {
     type: Object,
     required: true,
@@ -109,6 +127,29 @@ const estadoAccesible = computed(() =>
   font-weight: 600;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+/* La descripción completa queda en el title; en la fila se recorta a dos líneas. */
+.case-row__description {
+  display: -webkit-box;
+  margin: -4px 0 8px;
+  overflow: hidden;
+  color: #486581;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.case-row__due {
+  cursor: help;
+}
+
+.case-row__due:focus-visible {
+  outline: 3px solid #0b5cad;
+  outline-offset: 2px;
 }
 
 .case-row__meta {

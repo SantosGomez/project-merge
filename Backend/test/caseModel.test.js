@@ -226,4 +226,30 @@ describe('CaseModel', () => {
   test('updatePriority actualiza la prioridad', testUpdatePriorityActualizaPrioridad);
   test('updatePatch actualiza estado, prioridad y vencimiento a la vez', testUpdatePatchActualizaVariosCamposALaVez);
   test('updatePatch con un solo campo lo guarda', testUpdatePatchConUnSoloCampo);
+  test('updatePatch edita cliente, fecha de inicio y textos, y null los borra', testUpdatePatchEditaInformacionDelCaso);
 });
+
+async function testUpdatePatchEditaInformacionDelCaso() {
+  const contador = await crearUsuarioDePrueba('contador');
+  const casoId = await create({
+    contador_id: contador.id,
+    cliente: 'Cliente Info',
+    estado: 'Pendiente',
+    prioridad: 'Media',
+    descripcion: 'Descripción vieja',
+    observaciones: 'Observación vieja',
+  });
+  await updatePatch(casoId, {
+    cliente: 'Cliente Info Editado',
+    fecha_inicio: '2026-12-31',
+    descripcion: 'Descripción nueva',
+    observaciones: null,
+    contador_id: 999999,
+  });
+  const caso = await findById(casoId);
+  assert.strictEqual(caso.cliente, 'Cliente Info Editado');
+  assert.strictEqual(formatearFechaISO(caso.fecha_inicio), '2026-12-31');
+  assert.strictEqual(caso.descripcion, 'Descripción nueva');
+  assert.strictEqual(caso.observaciones, null, 'null borra las observaciones');
+  assert.strictEqual(caso.contador_id, contador.id, 'las columnas que no son editables se ignoran');
+}

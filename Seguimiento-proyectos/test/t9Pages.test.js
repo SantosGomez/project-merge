@@ -22,6 +22,7 @@ const read = (relativePath) =>
 const directorySource = read('../src/pages/CountersDirectoryPage.vue')
 const caseFormSource = read('../src/components/CaseFormDialog.vue')
 const myCasesSource = read('../src/pages/MyCasesPage.vue')
+const caseRowSource = read('../src/components/CaseRow.vue')
 const quasarConfig = readFileSync(fileURLToPath(new URL('../quasar.config.js', import.meta.url)), 'utf8')
 
 /** Devuelve la regla CSS de un selector dentro del bloque <style scoped> del archivo. */
@@ -113,8 +114,9 @@ describe('T9 — registro de caso en diálogo (P-4, RF-19 a RF-25, RF-43)', () =
 
   it('registra con el store, limpia y cierra el diálogo al confirmar (RF-21)', () => {
     assert.match(caseFormSource, /cases\.crearCaso\(/)
-    assert.match(caseFormSource, /client\.value = ''/)
-    assert.match(caseFormSource, /priority\.value = ''/)
+    // Sin caso (registro) el formulario vuelve a quedar vacío.
+    assert.match(caseFormSource, /client\.value = caso\?\.cliente \?\? ''/)
+    assert.match(caseFormSource, /priority\.value = caso\?\.prioridad \?\? ''/)
     assert.match(caseFormSource, /dialogoAbierto\.value = false/)
     assert.match(caseFormSource, /emit\('registrado'/)
   })
@@ -358,5 +360,66 @@ describe('Mis casos (rebanada 6) — un solo flujo para guardar cambios', () => 
   it('reintentar repite el último cambio tal cual, sin ramas por campo', () => {
     assert.match(cuerpoRetry, /guardarCambio\(/)
     assert.doesNotMatch(cuerpoRetry, /cambios\.estado|cambios\.prioridad/)
+  })
+})
+
+describe('Editar caso — fila con fechas y botón «Editar»', () => {
+  it('la fila muestra Inicio, Vence y la descripción solo cuando existen', () => {
+    assert.match(caseRowSource, /v-if="caseItem\.startDate"[\s\S]*?>Inicio</)
+    assert.match(caseRowSource, /v-if="caseItem\.dueDate"[\s\S]*?>Vence</)
+    assert.match(caseRowSource, /v-if="caseItem\.description"[^>]*class="case-row__description"|class="case-row__description"[^>]*v-if="caseItem\.description"/)
+    assert.match(cssRule(caseRowSource, '.case-row__description'), /-webkit-line-clamp:\s*2/, 'la descripción se recorta a 2 líneas')
+  })
+
+  it('cada fila de «Mis casos» tiene un botón «Editar» con ayuda que abre el diálogo', () => {
+    const inicio = myCasesSource.indexOf('class="case-edit-btn')
+    assert.ok(inicio > 0, 'existe el botón de editar')
+    const boton = myCasesSource.slice(inicio, myCasesSource.indexOf('</q-btn>', inicio))
+    assert.match(boton, /label="Editar"/)
+    assert.match(boton, /icon="edit"/)
+    assert.match(boton, /aria-haspopup="dialog"/)
+    assert.match(boton, /:disable="cases\.guardando"/)
+    assert.match(boton, /@click="abrirEdicion\(item\.id\)"/)
+    assert.match(boton, /<q-tooltip>Abre el formulario para cambiar la información del caso\.<\/q-tooltip>/)
+  })
+
+  it('el diálogo recibe el caso a editar y al guardar avisa «Cambios guardados.»', () => {
+    assert.match(myCasesSource, /<CaseFormDialog[^>]*:caso="casoEnEdicion"/)
+    assert.match(myCasesSource, /@guardado="alGuardarEdicion"/)
+    assert.match(myCasesSource, /Cambios guardados\./)
+  })
+
+  it('el tablero del administrador sigue sin acciones en la fila', () => {
+    const admin = read('../src/pages/AdminDashboardPage.vue')
+    assert.match(admin, /<CaseRow[\s\S]*?readonly/)
+    assert.doesNotMatch(admin, /abrirEdicion/)
+  })
+})
+
+describe('Editar caso — CaseFormDialog en modo edición', () => {
+  it('recibe el caso por prop y cambia título, ayuda y botón', () => {
+    assert.match(caseFormSource, /defineProps\(\{[\s\S]*?caso:/)
+    assert.match(caseFormSource, /const modoEdicion = computed\(\(\) => props\.caso !== null\)/)
+    assert.match(caseFormSource, /'Editar caso'/)
+    assert.match(caseFormSource, /'Guardar cambios'/)
+    assert.match(caseFormSource, /El vencimiento se recalcula al guardar si cambias la prioridad o la fecha de inicio/)
+  })
+
+  it('en edición el estado se elige con un selector y se muestra el vencimiento', () => {
+    assert.match(caseFormSource, /<q-select[\s\S]*?for="estado-field"[\s\S]*?:options="statusOptions"/)
+    assert.match(caseFormSource, /<dt>Vence<\/dt>/)
+  })
+
+  it('la fecha de inicio ya no lleva el asterisco de obligatorio en el registro', () => {
+    assert.doesNotMatch(caseFormSource, /<span aria-label="opcional">\*<\/span>/)
+    assert.match(caseFormSource, /La fecha de inicio es obligatoria al editar/)
+  })
+
+  it('guarda solo los cambios con actualizarCaso, avisa «guardado» y no deja guardar sin cambios', () => {
+    assert.match(caseFormSource, /cambiosDelCaso\(props\.caso,/)
+    assert.match(caseFormSource, /cases\.actualizarCaso\(props\.caso\.id, cambios\.value\)/)
+    assert.match(caseFormSource, /emit\('guardado'/)
+    assert.match(caseFormSource, /:disable="cases\.guardando \|\| \(modoEdicion && !hayCambios\)"/)
+    assert.match(caseFormSource, /Aún no cambias ningún dato/)
   })
 })

@@ -3,6 +3,7 @@
 // Sin Vue, sin navegador, sin efectos secundarios y sin mutar los arreglos que recibe.
 
 import { MAX_CLIENT_LENGTH, PRIORITIES, STATUSES } from './constants.js'
+import { fechaParaFormulario } from './fechasCaso.js'
 
 /** Estado inicial de todo caso nuevo: el primero de la lista, Pendiente (RF-26). */
 const INITIAL_STATUS = STATUSES[0]
@@ -90,3 +91,35 @@ export const changeStatus = (cases = [], caseId, status) =>
 /** Cambia la prioridad de un caso; es independiente del estado (RF-31, RF-32). */
 export const changePriority = (cases = [], caseId, priority) =>
   changeCaseField(cases, caseId, 'priority', priority, PRIORITIES)
+
+/** Texto recortado; null o undefined cuentan como texto vacío. */
+const textoLimpio = (valor) => (typeof valor === 'string' ? valor.trim() : '')
+
+/**
+ * Compara el caso guardado con lo escrito en el formulario de edición y devuelve
+ * solo lo que cambió, listo para `actualizarCaso`. Los espacios en los extremos no
+ * cuentan como cambio; un texto vaciado se envía como '' para borrarlo.
+ * @param {Object} caso - caso interno del store (`cliente`, `estado`, `prioridad`, `fecha_inicio`...).
+ * @param {{ cliente: string, estado: string, prioridad: string, fechaInicio: string,
+ *   descripcion: string, observaciones: string }} formulario - valores del formulario (fecha en DD-MM-AAAA).
+ * @returns {Object} campos cambiados: cliente, estado, prioridad, fecha_inicio, descripcion, observaciones.
+ */
+export const cambiosDelCaso = (caso, formulario) => {
+  const cambios = {}
+  const comparar = [
+    ['cliente', textoLimpio(caso.cliente), textoLimpio(formulario.cliente)],
+    ['estado', caso.estado, formulario.estado],
+    ['prioridad', caso.prioridad, formulario.prioridad],
+    ['fecha_inicio', fechaParaFormulario(caso.fecha_inicio), textoLimpio(formulario.fechaInicio)],
+    ['descripcion', textoLimpio(caso.descripcion), textoLimpio(formulario.descripcion)],
+    ['observaciones', textoLimpio(caso.observaciones), textoLimpio(formulario.observaciones)],
+  ]
+
+  for (const [campo, guardado, escrito] of comparar) {
+    if (guardado !== escrito) {
+      cambios[campo] = escrito
+    }
+  }
+
+  return cambios
+}

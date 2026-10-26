@@ -9,16 +9,17 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
   - 1-4 (`6147b07`): fecha de inicio y vencimiento por días hábiles, descripción/observaciones opcionales al registrar, serializador `casoConFechasLocales`, `CaseModel.updatePatch` en un solo UPDATE, `checkCaseOwnership` valida el id con `parseCounterId` y deja `req.caso`.
   - 5 (`0267146`): `helmet`, sin `x-powered-by`, límite de 10 intentos fallidos de login por IP cada 15 min, `obtenerSecretoJwt` sin secreto fijo.
   - 6 (`36f9bed`): `MyCasesPage.vue` con una sola `guardarCambio(id, cambios)`; el aviso «Cambio guardado.» se borra al empezar otro cambio (decisión del usuario: sin temporizador).
-  - 7: salidas `build-*/dev-*/lint-*.txt`, `test-*-output.txt` y `echo` fuera del repo (`git rm --cached` + `.gitignore` del frontend; siguen en disco). Reglas permanentes movidas a `AGENTS.md`.
-- Pruebas: backend 213 pass, frontend 401 pass. `verificarPruebas.js` falla por `userModel.test.js` (5 de 9 mínimas), preexistente desde `bb05516`.
+  - 7 (`11979d5`): salidas `build-*/dev-*/lint-*.txt`, `test-*-output.txt` y `echo` fuera del repo (`git rm --cached` + `.gitignore` del frontend; siguen en disco). Reglas permanentes movidas a `AGENTS.md`.
+- **Editar caso: TERMINADA y verde, sin commit (2026-10-26).** Decisiones del usuario: reutilizar `CaseFormDialog.vue` (prop `caso`), mantener los selectores rápidos, el cliente SÍ se edita, el admin ve Inicio/Vence/descripción sin botón. Backend: `updateCase` acepta cliente, estado, prioridad, fecha_inicio, descripción y observaciones; valida todo antes de guardar; vacío → null en textos; fecha vacía → 400; sin campos editables → 400 «Nada que actualizar»; recalcula vencimiento si cambia prioridad o fecha. `createCase` y `updateCase` comparten `MENSAJES_ENTRADA_CASO`/`validarTextoDelCaso`. `updatePatch` con `COLUMNAS_EDITABLES`. Frontend: `cambiosDelCaso` (caseRules) envía solo lo cambiado; `fechaParaFormulario` (fechasCaso); `casoAFila` con `startDate`/`dueDate`/`description`; botón «Editar» en la fila. Verificado en el navegador (escritorio y 375 px).
+- Pruebas: backend 220 pass, frontend 419 pass. `verificarPruebas.js` falla por `userModel.test.js` (5 de 9 mínimas), preexistente desde `bb05516`.
 - Directorio de usuarios: rebanadas 1-5 subidas; correcciones de la revisión en `ef35980` (sin push). Sin aplicar: CSS y `MENSAJES` duplicados en los diálogos, recarga con loader tras el alta, contraseña en memoria tras cerrar, tablas `PANTALLA_PRINCIPAL*` paralelas, pruebas estáticas de los diálogos, tooltip «directorio de contadores» en `AdminDashboardPage.vue`.
 - Git: commits sin push en `main`. Push solo si el usuario lo pide.
 
 ## Pendiente
 
-- Pregunta al usuario: ¿mostrar «Inicio»/«Vence» (y descripción) en cada fila de «Mis casos»? (NO implementado).
+- **Migración de fechas rota (rebanada 3 no estaba terminada):** `migrarCasos` en `seed.js` solo corre con cuentas demo, hace `const [rows] = await query(...)` (query ya devuelve las filas, así que nunca rellena nada) y duplica el cálculo de hábiles con `new Date(creado_en)`. Los casos anteriores tienen `fecha_inicio` NULL: no muestran «Inicio» y al editarlos hay que escribir la fecha.
 - `userModel.test.js` por debajo de su mínimo en `verificarPruebas.js`.
-- Editar descripción/observaciones de un caso existente no está soportado (RF-22 solo estado/prioridad); sería una rebanada nueva con validación.
+- Renombrar «Finalizado» a «Completado» (pedido original) y resaltar casos vencidos: no hechos.
 
 ## Backend (lo esencial)
 

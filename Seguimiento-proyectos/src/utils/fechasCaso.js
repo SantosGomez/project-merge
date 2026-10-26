@@ -40,3 +40,14 @@ export const fechaADominioBackend = (fecha) => {
 
   return null
 }
+
+/**
+ * Muestra una fecha de la API (AAAA-MM-DD, con o sin hora) como DD-MM-AAAA.
+ * Solo reacomoda el texto: nunca usa `new Date`, que desplazaría el día.
+ * @param {*} fecha - fecha recibida de la API.
+ * @returns {string} fecha en DD-MM-AAAA, o texto vacío si no hay una fecha reconocible.
+ */
+export const fechaParaFormulario = (fecha) => {
+  const iso = typeof fecha === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha.trim()) : null
+  return iso ? `${iso[3]}-${iso[2]}-${iso[1]}` : ''
+}

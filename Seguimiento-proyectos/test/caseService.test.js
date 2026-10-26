@@ -301,3 +301,46 @@ test('actualizarCaso propaga el error normalizado de la api (por ejemplo 404)', 
     return true
   })
 })
+
+// --- actualizarCaso: edición de la información del caso ----------------------
+
+test('actualizarCaso envía cliente, descripción, observaciones y la fecha en AAAA-MM-DD', async () => {
+  const api = crearApiFalsa({ PATCH: async () => ({ data: { caso: casoDeBackend() } }) })
+  const servicio = crearCaseService({ api })
+
+  await servicio.actualizarCaso(9, {
+    cliente: 'Cliente editado',
+    fecha_inicio: '31-12-2026',
+    descripcion: 'Nueva',
+    observaciones: '',
+  })
+
+  assert.deepEqual(api.llamadas[0].cuerpo, {
+    cliente: 'Cliente editado',
+    fecha_inicio: '2026-12-31',
+    descripcion: 'Nueva',
+    observaciones: '',
+  })
+})
+
+test('actualizarCaso rechaza con tres partes y no llama al backend si la fecha no es válida', async () => {
+  const api = crearApiFalsa({ PATCH: async () => ({ data: {} }) })
+  const servicio = crearCaseService({ api })
+
+  await assert.rejects(
+    servicio.actualizarCaso(9, { fecha_inicio: '31-02-2026' }),
+    esErrorDeTresPartes('datos_invalidos'),
+  )
+  assert.equal(api.llamadas.length, 0)
+})
+
+test('actualizarCaso no envía campos que no se editan y, si solo vienen esos, no llama al backend', async () => {
+  const api = crearApiFalsa({ PATCH: async () => ({ data: {} }) })
+  const servicio = crearCaseService({ api })
+
+  await assert.rejects(
+    servicio.actualizarCaso(9, { fecha_vencimiento: '2030-01-01', contador_id: 4 }),
+    esErrorDeTresPartes('datos_invalidos'),
+  )
+  assert.equal(api.llamadas.length, 0)
+})

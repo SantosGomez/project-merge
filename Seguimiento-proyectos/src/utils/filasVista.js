@@ -7,6 +7,7 @@
 // Funciones puras, síncronas, sin Vue y sin efectos secundarios.
 
 import { PROFILES } from './constants.js'
+import { fechaParaFormulario } from './fechasCaso.js'
 import { formatearRol } from './formateadores.js'
 
 /** Texto de ayuda de cada conteo: qué está contando (RNF-03). */
@@ -77,9 +78,11 @@ export const compararUltimoAcceso = (a, b) => {
 
 /**
  * Adapta un caso interno a la fila de `CaseRow.vue`.
- * Solo se copian los campos que el componente muestra: cliente completo, estado y prioridad.
+ * Solo se copian los campos que el componente muestra: cliente completo, estado, prioridad,
+ * fechas de inicio y vencimiento (DD-MM-AAAA) y descripción.
  * @param {Object} caso - caso interno del servicio.
- * @returns {{ id: number|string|null, client: string, status: string, priority: string, counterId: number|string|null }|null}
+ * @returns {{ id: number|string|null, client: string, status: string, priority: string, counterId: number|string|null,
+ *   startDate: string, dueDate: string, description: string }|null}
  */
 export const casoAFila = (caso) => {
   if (caso === null || typeof caso !== 'object') {
@@ -92,6 +95,9 @@ export const casoAFila = (caso) => {
     status: caso.estado ?? '',
     priority: caso.prioridad ?? '',
     counterId: caso.contador_id ?? null,
+    startDate: fechaParaFormulario(caso.fecha_inicio),
+    dueDate: fechaParaFormulario(caso.fecha_vencimiento),
+    description: caso.descripcion ?? '',
   }
 }
 

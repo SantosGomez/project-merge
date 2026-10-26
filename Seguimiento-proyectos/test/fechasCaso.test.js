@@ -6,7 +6,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { fechaADominioBackend } from '../src/utils/fechasCaso.js'
+import { fechaADominioBackend, fechaParaFormulario } from '../src/utils/fechasCaso.js'
 
 describe('fechaADominioBackend', () => {
   it('convierte el formato del formulario DD-MM-AAAA al de la base AAAA-MM-DD', () => {
@@ -41,5 +41,18 @@ describe('fechaADominioBackend', () => {
     ]) {
       assert.equal(fechaADominioBackend(fecha), null, `"${fecha}" no debe aceptarse`)
     }
+  })
+})
+
+describe('fechaParaFormulario', () => {
+  it('muestra una fecha de la API (con o sin hora) como DD-MM-AAAA', () => {
+    assert.equal(fechaParaFormulario('2026-12-31'), '31-12-2026')
+    assert.equal(fechaParaFormulario('2027-01-07 00:00:00'), '07-01-2027')
+  })
+
+  it('devuelve texto vacío si no hay fecha o no tiene forma de fecha', () => {
+    assert.equal(fechaParaFormulario(null), '')
+    assert.equal(fechaParaFormulario(undefined), '')
+    assert.equal(fechaParaFormulario('mañana'), '')
   })
 })

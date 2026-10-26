@@ -602,4 +602,104 @@ describe('rutas de casos', () => {
   test('cambiar prioridad recalcula el vencimiento (y no asume Media)', testCambiarPrioridadRecalculaVencimiento);
   test('cambiar solo estado no recalcula el vencimiento', testCambiarSoloEstadoNoRecalculaVencimiento);
   test('cambiar prioridad y estado actualiza todo en una transacción', testCambiarPrioridadYEstadoTransaccional);
+  test('editar cliente, descripción y observaciones los guarda', testEditarClienteDescripcionYObservaciones);
+  test('vaciar descripción y observaciones guarda null', testVaciarDescripcionYObservacionesGuardaNull);
+  test('cambiar la fecha de inicio recalcula el vencimiento', testCambiarFechaInicioRecalculaVencimiento);
+  test('cambiar fecha de inicio y prioridad a la vez usa la prioridad nueva', testCambiarFechaYPrioridadALaVez);
+  test('una edición con un dato inválido responde 400 y no guarda nada', testEdicionInvalidaNoGuardaNada);
+  test('sin campos editables responde 400', testEdicionSinCamposEditablesResponde400);
 });
+
+// ---------- Edición del caso: cliente, descripción, observaciones y fecha de inicio ----------
+async function crearCasoParaEditar(cuerpo) {
+  const crear = await peticion(servidor.puerto, 'POST', '/casos', cuerpo, tokenContador);
+  assert.strictEqual(crear.statusCode, 201, 'el caso a editar debe crearse');
+  return crear.body.caso.id;
+}
+
+function editarCaso(casoId, cuerpo) {
+  return peticion(servidor.puerto, 'PATCH', `/casos/${casoId}`, cuerpo, tokenContador);
+}
+
+async function testEditarClienteDescripcionYObservaciones() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente original', prioridad: 'Media', descripcion: 'Vieja' });
+
+  const respuesta = await editarCaso(casoId, {
+    cliente: '  Cliente editado  ',
+    descripcion: 'Nueva descripción',
+    observaciones: 'Primera observación',
+  });
+
+  assert.strictEqual(respuesta.statusCode, 200, 'la edición debe aceptarse');
+  assert.strictEqual(respuesta.body.caso.cliente, 'Cliente editado', 'el cliente se guarda sin espacios en los extremos');
+  assert.strictEqual(respuesta.body.caso.descripcion, 'Nueva descripción');
+  assert.strictEqual(respuesta.body.caso.observaciones, 'Primera observación');
+  assert.strictEqual(respuesta.body.caso.prioridad, 'Media', 'lo que no se envía no cambia');
+}
+
+async function testVaciarDescripcionYObservacionesGuardaNull() {
+  const casoId = await crearCasoParaEditar({
+    cliente: 'Cliente para vaciar',
+    prioridad: 'Baja',
+    descripcion: 'Algo',
+    observaciones: 'Algo más',
+  });
+
+  const respuesta = await editarCaso(casoId, { descripcion: '   ', observaciones: null });
+
+  assert.strictEqual(respuesta.statusCode, 200);
+  assert.strictEqual(respuesta.body.caso.descripcion, null, 'una descripción vacía se borra');
+  assert.strictEqual(respuesta.body.caso.observaciones, null, 'observaciones null se borran');
+}
+
+async function testCambiarFechaInicioRecalculaVencimiento() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente fecha', prioridad: 'Media', fecha_inicio: '01-12-2026' });
+
+  const respuesta = await editarCaso(casoId, { fecha_inicio: '31-12-2026' });
+
+  assert.strictEqual(respuesta.statusCode, 200);
+  assert.match(String(respuesta.body.caso.fecha_inicio), /^2026-12-31/, 'la fecha de inicio cambia sin desplazarse');
+  assert.match(String(respuesta.body.caso.fecha_vencimiento), /^2027-01-14/, 'Media: 10 días hábiles desde la fecha nueva');
+}
+
+async function testCambiarFechaYPrioridadALaVez() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente fecha y prioridad', prioridad: 'Baja', fecha_inicio: '01-12-2026' });
+
+  const respuesta = await editarCaso(casoId, { fecha_inicio: '2026-12-31', prioridad: 'Alta' });
+
+  assert.strictEqual(respuesta.statusCode, 200);
+  assert.match(String(respuesta.body.caso.fecha_vencimiento), /^2027-01-07/, 'Alta: 5 días hábiles desde la fecha nueva');
+}
+
+async function testEdicionInvalidaNoGuardaNada() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente intacto', prioridad: 'Media', descripcion: 'Intacta' });
+  const invalidos = [
+    [{ descripcion: 'Cambio', fecha_inicio: '31-02-2026' }, /fecha_inicio/],
+    [{ descripcion: 'Cambio', fecha_inicio: '' }, /fecha_inicio/],
+    [{ descripcion: 'Cambio', cliente: '   ' }, /cliente/],
+    [{ descripcion: 'Cambio', cliente: 'x'.repeat(81) }, /80/],
+    [{ cliente: 'Otro', descripcion: 'x'.repeat(1001) }, /1000/],
+    [{ cliente: 'Otro', observaciones: 'x'.repeat(2001) }, /2000/],
+    [{ cliente: 'Otro', observaciones: 5 }, /observaciones/],
+  ];
+
+  for (const [cuerpo, mensaje] of invalidos) {
+    const respuesta = await editarCaso(casoId, cuerpo);
+    assert.strictEqual(respuesta.statusCode, 400, `${JSON.stringify(cuerpo).slice(0, 60)} debe responder 400`);
+    assert.match(respuesta.body.mensaje, mensaje);
+  }
+
+  const caso = await CaseModel.findById(casoId);
+  assert.strictEqual(caso.cliente, 'Cliente intacto', 'ningún intento inválido guarda el cliente');
+  assert.strictEqual(caso.descripcion, 'Intacta', 'ningún intento inválido guarda la descripción');
+}
+
+async function testEdicionSinCamposEditablesResponde400() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente sin cambios', prioridad: 'Media' });
+
+  for (const cuerpo of [{}, { fecha_vencimiento: '2030-01-01', contador_id: 1 }]) {
+    const respuesta = await editarCaso(casoId, cuerpo);
+    assert.strictEqual(respuesta.statusCode, 400, `${JSON.stringify(cuerpo)} debe responder 400`);
+    assert.match(respuesta.body.mensaje, /Nada que actualizar/);
+  }
+}

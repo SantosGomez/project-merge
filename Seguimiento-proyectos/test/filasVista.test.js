@@ -49,7 +49,26 @@ test('casoAFila traduce los campos internos a los que espera CaseRow (RF-13)', (
     status: 'en_proceso',
     priority: 'alta',
     counterId: 3,
+    startDate: '',
+    dueDate: '',
+    description: '',
   })
+})
+
+test('casoAFila muestra inicio y vencimiento en DD-MM-AAAA y la descripción', () => {
+  const fila = casoAFila({
+    id: 4,
+    cliente: 'Gamesa',
+    estado: 'pendiente',
+    prioridad: 'media',
+    fecha_inicio: '2026-12-31 00:00:00',
+    fecha_vencimiento: '2027-01-14 00:00:00',
+    descripcion: 'Declaración anual',
+  })
+
+  assert.equal(fila.startDate, '31-12-2026')
+  assert.equal(fila.dueDate, '14-01-2027')
+  assert.equal(fila.description, 'Declaración anual')
 })
 
 test('casoAFila conserva el cliente completo y no arrastra campos del backend (RNF-08)', () => {

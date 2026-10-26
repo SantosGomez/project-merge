@@ -10,13 +10,11 @@
         class="registro-caso__form"
         @submit.prevent="submitCase"
         novalidate
-        aria-label="Formulario de registro de caso"
+        :aria-label="textos.formulario"
       >
         <q-card-section class="registro-caso__head">
-          <h2 id="registro-caso-titulo" class="registro-caso__title">Registrar caso</h2>
-          <p class="registro-caso__help">
-            Completa los campos obligatorios. El estado inicial siempre es Pendiente.
-          </p>
+          <h2 id="registro-caso-titulo" class="registro-caso__title">{{ textos.titulo }}</h2>
+          <p class="registro-caso__help">{{ textos.ayuda }}</p>
         </q-card-section>
 
         <q-card-section class="registro-caso__body">
@@ -105,8 +103,33 @@
             </p>
           </div>
 
+          <div v-if="modoEdicion" class="form-group">
+            <label for="estado-field" class="form-label"
+              >Estado <span aria-label="obligatorio" class="required-mark">*</span></label
+            >
+            <q-select
+              for="estado-field"
+              v-model="estado"
+              :options="statusOptions"
+              option-label="label"
+              option-value="value"
+              outlined
+              dense
+              emit-value
+              map-options
+              aria-required="true"
+              aria-describedby="estado-help"
+            />
+            <p id="estado-help" class="form-help">
+              Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.
+            </p>
+          </div>
+
           <div class="form-group">
-            <label for="fecha-inicio-field" class="form-label">Fecha de inicio <span aria-label="opcional">*</span></label>
+            <label for="fecha-inicio-field" class="form-label"
+              >Fecha de inicio
+              <span v-if="modoEdicion" aria-label="obligatorio" class="required-mark">*</span></label
+            >
             <q-input
               for="fecha-inicio-field"
               v-model="fechaInicio"
@@ -116,12 +139,12 @@
               outlined
               dense
               counter
-              aria-required="false"
+              :aria-required="modoEdicion ? 'true' : 'false'"
               aria-describedby="fecha-inicio-help fecha-inicio-error"
               :error="!!formError && formError.code === 'fecha_inicio_invalido'"
               @update:model-value="clearFormError()"
             />
-            <p id="fecha-inicio-help" class="form-help">Formato DD-MM-AAAA. Deja vacío para usar hoy.</p>
+            <p id="fecha-inicio-help" class="form-help">{{ textos.ayudaFecha }}</p>
             <p
               v-if="formError && formError.code === 'fecha_inicio_invalido'"
               id="fecha-inicio-error"
@@ -179,9 +202,13 @@
           </div>
 
           <dl class="readonly-info">
-            <div class="readonly-row">
+            <div v-if="!modoEdicion" class="readonly-row">
               <dt>Estado</dt>
               <dd>{{ statusLabel }}</dd>
+            </div>
+            <div v-else class="readonly-row">
+              <dt>Vence</dt>
+              <dd>{{ vencimientoActual }}</dd>
             </div>
             <div class="readonly-row">
               <dt>Contador asignado</dt>
@@ -192,13 +219,16 @@
           <ErrorState
             v-if="errorGuardado"
             class="registro-caso__error"
-            title="No se pudo registrar el caso"
+            :title="textos.errorGuardado"
             :detail="mensajeError"
             @retry="submitCase"
           />
         </q-card-section>
 
         <q-card-actions align="right" class="registro-caso__actions">
+          <p v-if="modoEdicion && !hayCambios" class="form-help registro-caso__sin-cambios">
+            Aún no cambias ningún dato.
+          </p>
           <q-btn
             flat
             no-caps
@@ -207,20 +237,20 @@
             :disable="cases.guardando"
             @click="cerrar"
           >
-            <q-tooltip>Cierra el formulario sin registrar el caso.</q-tooltip>
+            <q-tooltip>{{ textos.tooltipCancelar }}</q-tooltip>
           </q-btn>
           <q-btn
             type="submit"
             color="primary"
-            label="Registrar caso"
-            icon="add_circle"
+            :label="textos.boton"
+            :icon="modoEdicion ? 'save' : 'add_circle'"
             no-caps
             unelevated
             class="control-touch"
             :loading="cases.guardando"
-            :disable="cases.guardando"
+            :disable="cases.guardando || (modoEdicion && !hayCambios)"
           >
-            <q-tooltip>Guarda el caso en tu lista con estado Pendiente.</q-tooltip>
+            <q-tooltip>{{ textos.tooltipBoton }}</q-tooltip>
           </q-btn>
         </q-card-actions>
       </form>
@@ -233,7 +263,8 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import ErrorState from './ErrorState.vue'
 import PriorityTag from './PriorityTag.vue'
-import { CASE_ERROR_CODES } from '../utils/caseRules.js'
+import { CASE_ERROR_CODES, cambiosDelCaso } from '../utils/caseRules.js'
+import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { PRIORITIES, PRIORITY_LABELS, STATUS_LABELS, STATUSES, MAX_DESCRIPCION_LENGTH, MAX_OBSERVACIONES_LENGTH } from '../utils/constants.js'
 import { prioridadABackend } from '../utils/traduccionBackend.js'
 import { validarCliente, validarFechaInicio, validarPrioridad, validarTextoOpcional } from '../utils/validators.js'
@@ -241,13 +272,50 @@ import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
 
 /*
- * Registro de caso en un diálogo dentro de «Mis casos» (P-5).
- * El formulario y sus reglas son los de la antigua pantalla P-4; el store ya
- * agrega el caso a la lista local, así que la pantalla se entera al cerrar.
+ * Registro y edición de caso en un diálogo dentro de «Mis casos» (P-5).
+ * Sin `caso` registra uno nuevo; con `caso` edita ese caso y solo envía lo que cambió.
+ * El store actualiza la lista local, así que la pantalla se entera al cerrar.
  */
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
-const emit = defineEmits(['registrado'])
+const props = defineProps({
+  /** Caso del store a editar; null para registrar uno nuevo. */
+  caso: {
+    type: Object,
+    default: null,
+  },
+})
+
+const emit = defineEmits(['registrado', 'guardado'])
+
+const modoEdicion = computed(() => props.caso !== null)
+
+const TEXTOS_REGISTRO = {
+  titulo: 'Registrar caso',
+  formulario: 'Formulario de registro de caso',
+  ayuda: 'Completa los campos obligatorios. El estado inicial siempre es Pendiente.',
+  ayudaFecha: 'Formato DD-MM-AAAA. Deja vacío para usar hoy.',
+  boton: 'Registrar caso',
+  tooltipBoton: 'Guarda el caso en tu lista con estado Pendiente.',
+  tooltipCancelar: 'Cierra el formulario sin registrar el caso.',
+  errorGuardado: 'No se pudo registrar el caso',
+  errorDetalle: 'el registro del caso.',
+}
+
+const TEXTOS_EDICION = {
+  titulo: 'Editar caso',
+  formulario: 'Formulario de edición de caso',
+  ayuda:
+    'Cambia los datos que necesites. El vencimiento se recalcula al guardar si cambias la prioridad o la fecha de inicio.',
+  ayudaFecha: 'Formato DD-MM-AAAA.',
+  boton: 'Guardar cambios',
+  tooltipBoton: 'Guarda los cambios del caso.',
+  tooltipCancelar: 'Cierra el formulario sin guardar los cambios.',
+  errorGuardado: 'No se pudieron guardar los cambios',
+  errorDetalle: 'los cambios del caso.',
+}
+
+const textos = computed(() => (modoEdicion.value ? TEXTOS_EDICION : TEXTOS_REGISTRO))
 
 const cases = useCasesStore()
 const session = useSessionStore()
@@ -266,9 +334,30 @@ const priorityOptions = computed(() =>
   PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p })),
 )
 
+const statusOptions = computed(() => STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s })))
+
+const estado = ref('')
 const fechaInicio = ref('')
 const descripcion = ref('')
 const observaciones = ref('')
+
+const vencimientoActual = computed(() => fechaParaFormulario(props.caso?.fecha_vencimiento) || 'Sin fecha')
+
+// Solo lo que cambió respecto al caso guardado (vacío en el registro).
+const cambios = computed(() =>
+  modoEdicion.value
+    ? cambiosDelCaso(props.caso, {
+        cliente: client.value,
+        estado: estado.value,
+        prioridad: priority.value,
+        fechaInicio: fechaInicio.value,
+        descripcion: descripcion.value,
+        observaciones: observaciones.value,
+      })
+    : {},
+)
+
+const hayCambios = computed(() => Object.keys(cambios.value).length > 0)
 
 const assignedCounterName = computed(() =>
   assignedCounter.value ? assignedCounter.value.name : 'Sin asignar',
@@ -276,20 +365,21 @@ const assignedCounterName = computed(() =>
 
 const statusLabel = STATUS_LABELS[STATUSES[0]]
 
-const mensajeError = computed(
-  () => errorGuardado.value?.mensaje ?? 'el registro del caso.',
-)
+const mensajeError = computed(() => errorGuardado.value?.mensaje ?? textos.value.errorDetalle)
 
 const clearFormError = () => {
   formError.value = null
 }
 
+// Registro: formulario vacío. Edición: los valores actuales del caso.
 const reiniciarFormulario = () => {
-  client.value = ''
-  priority.value = ''
-  fechaInicio.value = ''
-  descripcion.value = ''
-  observaciones.value = ''
+  const caso = props.caso
+  client.value = caso?.cliente ?? ''
+  priority.value = caso?.prioridad ?? ''
+  estado.value = caso?.estado ?? ''
+  fechaInicio.value = fechaParaFormulario(caso?.fecha_inicio)
+  descripcion.value = caso?.descripcion ?? ''
+  observaciones.value = caso?.observaciones ?? ''
   formError.value = null
   errorGuardado.value = null
 }
@@ -345,6 +435,13 @@ const submitCase = async () => {
   }
 
   const fechaLimpia = fechaInicio.value.trim()
+  if (modoEdicion.value && fechaLimpia === '') {
+    formError.value = {
+      code: 'fecha_inicio_invalido',
+      message: 'La fecha de inicio es obligatoria al editar. Use el formato DD-MM-AAAA.',
+    }
+    return
+  }
   const validacionFecha = validarFechaInicio(fechaLimpia)
   if (!validacionFecha.valido) {
     formError.value = {
@@ -372,6 +469,20 @@ const submitCase = async () => {
       code: 'observaciones_demasiado_largo',
       message: 'Las observaciones no deben superar los 2000 caracteres.',
     }
+    return
+  }
+
+  if (modoEdicion.value) {
+    if (!hayCambios.value) return
+
+    const edicion = await cases.actualizarCaso(props.caso.id, cambios.value)
+    if (!edicion.ok) {
+      errorGuardado.value = edicion.error ?? null
+      return
+    }
+
+    dialogoAbierto.value = false
+    emit('guardado', edicion.caso)
     return
   }
 

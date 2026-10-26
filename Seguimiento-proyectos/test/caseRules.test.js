@@ -8,6 +8,7 @@ import {
   casesByCounter,
   changePriority,
   changeStatus,
+  cambiosDelCaso,
   countByStatus,
   validateNewCase,
 } from '../src/utils/caseRules.js'
@@ -347,4 +348,60 @@ test('ninguna función muta el arreglo de entrada', () => {
     before,
     'el arreglo original sigue igual después de todas las operaciones',
   )
+})
+
+// --- cambiosDelCaso: qué se envía al editar un caso ----------------------------
+
+const casoGuardado = {
+  id: 7,
+  cliente: 'Gamesa',
+  estado: 'pendiente',
+  prioridad: 'media',
+  fecha_inicio: '2026-12-31 00:00:00',
+  descripcion: 'Declaración anual',
+  observaciones: null,
+}
+
+const formularioSinCambios = {
+  cliente: 'Gamesa',
+  estado: 'pendiente',
+  prioridad: 'media',
+  fechaInicio: '31-12-2026',
+  descripcion: 'Declaración anual',
+  observaciones: '',
+}
+
+test('cambiosDelCaso devuelve un objeto vacío si nada cambió (espacios en los extremos no cuentan)', () => {
+  assert.deepEqual(cambiosDelCaso(casoGuardado, formularioSinCambios), {})
+  assert.deepEqual(
+    cambiosDelCaso(casoGuardado, { ...formularioSinCambios, cliente: '  Gamesa ', descripcion: 'Declaración anual  ' }),
+    {},
+  )
+})
+
+test('cambiosDelCaso devuelve solo los campos cambiados, con el texto recortado', () => {
+  const cambios = cambiosDelCaso(casoGuardado, {
+    ...formularioSinCambios,
+    cliente: ' Gamesa Norte ',
+    prioridad: 'alta',
+    fechaInicio: '05-01-2027',
+    observaciones: 'Llamar al cliente',
+  })
+
+  assert.deepEqual(cambios, {
+    cliente: 'Gamesa Norte',
+    prioridad: 'alta',
+    fecha_inicio: '05-01-2027',
+    observaciones: 'Llamar al cliente',
+  })
+})
+
+test('cambiosDelCaso envía texto vacío para borrar una descripción que existía', () => {
+  assert.deepEqual(cambiosDelCaso(casoGuardado, { ...formularioSinCambios, descripcion: '   ' }), { descripcion: '' })
+})
+
+test('cambiosDelCaso incluye el estado cuando cambia', () => {
+  assert.deepEqual(cambiosDelCaso(casoGuardado, { ...formularioSinCambios, estado: 'finalizado' }), {
+    estado: 'finalizado',
+  })
 })
