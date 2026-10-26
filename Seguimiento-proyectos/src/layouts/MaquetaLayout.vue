@@ -154,45 +154,9 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label>Directorio</q-item-label>
-                <q-item-label caption>Ver todas las cuentas</q-item-label>
+                <q-item-label caption>Crear cuentas y cambiar contraseñas</q-item-label>
               </q-item-section>
               <q-tooltip>Ir al directorio de usuarios</q-tooltip>
-            </q-item>
-
-            <q-item
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
-              :to="{ name: 'usuarios-alta' }"
-              aria-label="Ir al alta de usuario"
-            >
-              <q-item-section avatar>
-                <q-icon name="person_add" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Alta de usuario</q-item-label>
-                <q-item-label caption>Crear una cuenta</q-item-label>
-              </q-item-section>
-              <q-tooltip>Ir al alta de usuario</q-tooltip>
-            </q-item>
-
-            <q-item
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
-              :to="{ name: 'usuarios-restablecer' }"
-              aria-label="Ir a restablecer la contraseña de una cuenta"
-            >
-              <q-item-section avatar>
-                <q-icon name="lock_reset" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Restablecer contraseña</q-item-label>
-                <q-item-label caption>Cambiar la contraseña de una cuenta</q-item-label>
-              </q-item-section>
-              <q-tooltip>Ir a restablecer la contraseña de una cuenta</q-tooltip>
             </q-item>
           </template>
         </q-list>

@@ -4,7 +4,7 @@
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 
 const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8')
@@ -109,5 +109,33 @@ describe('Directorio de usuarios (rebanada 4: «Restablecer contraseña» por fi
       pagina,
       /<ResetPasswordDialog\s+v-if="session\.esUsuarioSistema"\s+v-model="dialogoRestablecerAbierto"\s+:cuenta="cuentaRestablecer"\s+@restablecida="alRestablecer"/,
     )
+  })
+})
+
+describe('Directorio de usuarios (rebanada 5: se retiran las pantallas viejas de alta y restablecer)', () => {
+  const rutas = read('../src/router/index.js')
+  const menu = read('../src/layouts/MaquetaLayout.vue')
+  const existe = (p) => existsSync(fileURLToPath(new URL(p, import.meta.url)))
+
+  it('las pantallas viejas ya no existen ni se importan', () => {
+    assert.equal(existe('../src/pages/NewUserPage.vue'), false, 'se retiró la pantalla de alta')
+    assert.equal(existe('../src/pages/ResetPasswordPage.vue'), false, 'se retiró la pantalla de restablecer')
+    assert.doesNotMatch(rutas, /NewUserPage|ResetPasswordPage/)
+  })
+
+  it('las direcciones viejas redirigen al directorio', () => {
+    for (const path of ['usuarios/alta', 'usuarios/restablecer-contrasena']) {
+      const inicio = rutas.indexOf(`path: '${path}'`)
+      assert.ok(inicio >= 0, `falta la dirección ${path}`)
+      const ruta = rutas.slice(inicio, rutas.indexOf('}', rutas.indexOf('redirect', inicio)) + 1)
+      assert.match(ruta, /redirect: \{ name: 'admin-directorio' \}/, `${path} lleva al directorio`)
+    }
+  })
+
+  it('la sección «Usuarios» del menú solo tiene «Directorio»', () => {
+    const inicio = menu.indexOf('<template v-if="session.esUsuarioSistema">')
+    const seccion = menu.slice(inicio, menu.indexOf('</template>', inicio))
+    const destinos = [...seccion.matchAll(/:to="\{ name: '([^']+)' \}"/g)].map((m) => m[1])
+    assert.deepEqual(destinos, ['admin-directorio'])
   })
 })

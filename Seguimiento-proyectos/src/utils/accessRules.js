@@ -20,7 +20,7 @@ const KNOWN_PROFILES = Object.values(PROFILES)
 export const PANTALLA_PRINCIPAL_POR_ROL = Object.freeze({
   [PROFILES.administrador]: 'admin-dashboard',
   [PROFILES.contador]: 'contador-casos',
-  [PROFILES.sistema]: 'usuarios-alta',
+  [PROFILES.sistema]: 'admin-directorio',
 })
 
 /** Quita los espacios al inicio y al final: un valor formado solo por espacios queda vacío (RF-3). */

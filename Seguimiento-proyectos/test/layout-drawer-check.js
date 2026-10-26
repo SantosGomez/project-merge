@@ -366,8 +366,6 @@ describe('Drawer sidebar — verificación estática', () => {
       'admin-dashboard',
       'admin-directorio',
       'contador-casos',
-      'usuarios-alta',
-      'usuarios-restablecer',
     ]
     for (const r of routes) {
       assert.ok(src.includes(r), `falta ruta ${r}`)
@@ -618,21 +616,8 @@ describe('Drawer compacto — verificación estática', () => {
   })
 })
 
-describe('Alta de usuario (historia 9a) — verificación estática', () => {
-  const rutas = read('../src/router/index.js')
+describe('Sección «Usuarios» y aviso de acceso (historia 9a) — verificación estática', () => {
   const aviso = read('../src/components/AccessDenied.vue')
-
-  it('la ruta del alta es solo del usuario de sistema y sin «Volver»', () => {
-    const inicio = rutas.indexOf("name: 'usuarios-alta'")
-    assert.ok(inicio >= 0, 'falta la ruta usuarios-alta')
-    const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
-
-    assert.match(ruta, /path: 'usuarios\/alta'/, 'coincide con la pantalla principal del rol')
-    assert.match(ruta, /component: NewUserPage/, 'abre la pantalla de alta')
-    assert.match(ruta, /perfil: PROFILES\.sistema/, 'solo el usuario de sistema')
-    assert.match(ruta, /titulo: 'Alta de usuario'/, 'título de la pantalla')
-    assert.doesNotMatch(ruta, /volverA:/, 'es su única pantalla: no hay a dónde volver')
-  })
 
   it('el menú muestra la sección «Usuarios» solo al usuario de sistema', () => {
     const inicio = src.indexOf('<template v-if="session.esUsuarioSistema">')
@@ -640,37 +625,6 @@ describe('Alta de usuario (historia 9a) — verificación estática', () => {
     const seccion = src.slice(inicio, src.indexOf('</template>', inicio))
 
     assert.match(seccion, /<q-item-label header>Usuarios<\/q-item-label>/, 'título de sección')
-    assert.match(seccion, /:to="\{ name: 'usuarios-alta' \}"/, 'lleva al alta')
-    assert.match(seccion, /<q-item-label>Alta de usuario<\/q-item-label>/, 'nombre de la opción')
-    assert.match(seccion, /<q-tooltip>Ir al alta de usuario<\/q-tooltip>/, 'tooltip de la opción')
-    assert.match(seccion, /aria-label="Ir al alta de usuario"/, 'nombre accesible')
-  })
-
-  it('la pantalla de alta no apunta a ids inexistentes y oculta el éxito al editar', () => {
-    const pagina = read('../src/pages/NewUserPage.vue')
-
-    // Cada id que nombra aria-describedby debe existir en la pantalla.
-    const referidos = [...pagina.matchAll(/aria-describedby="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/))
-    for (const id of referidos) {
-      assert.match(pagina, new RegExp(`\\sid="${id}"`), `falta el elemento con id «${id}»`)
-    }
-
-    // Al editar cualquier campo se oculta el aviso de la alta anterior.
-    const limpiar = pagina.slice(pagina.indexOf('const alEditar'), pagina.indexOf('\nconst ', pagina.indexOf('const alEditar') + 1))
-    assert.match(limpiar, /mensajeExito\.value = ''/, 'el aviso de éxito se oculta')
-    assert.match(limpiar, /errores\[campo\] = null/, 'se limpia el error del campo editado')
-    for (const campo of ['nombre', 'correo', 'password', 'rol']) {
-      assert.ok(pagina.includes(`@update:model-value="alEditar('${campo}')"`), `${campo} usa alEditar`)
-    }
-  })
-
-  it('la pantalla de alta pide nombre y correo (no usuario) y el correo repetido sale bajo Correo', () => {
-    const pagina = read('../src/pages/NewUserPage.vue')
-    const etiquetas = [...pagina.matchAll(/class="form-label"\s*>([^<]+)</g)].map((m) => m[1].trim())
-    assert.deepEqual(etiquetas, ['Nombre', 'Correo', 'Contraseña', 'Rol'], 'campos de la tabla usuarios, en orden')
-    assert.match(pagina, /v-model="correo"[\s\S]*?type="email"/, 'el correo abre el teclado de correo')
-    assert.match(pagina, /errores\.correo = error\.mensaje/, 'el 400 del backend (correo repetido) va bajo Correo')
-    assert.match(pagina, /crearUsuario\(\{\s*nombre: nombre\.value,\s*correo: correo\.value,/, 'envía nombre y correo')
   })
 
   it('el aviso de acceso denegado lleva a la pantalla principal de cualquier rol', () => {
@@ -680,65 +634,6 @@ describe('Alta de usuario (historia 9a) — verificación estática', () => {
       'la vuelta sale del rol de la sesión, no de «admin o contador»',
     )
     assert.match(aviso, /formatearRol\(maqueta\.session\?\.profile\)/, 'nombra el rol de la sesión')
-  })
-})
-
-describe('Restablecer contraseña (historia 9b) — verificación estática', () => {
-  const rutas = read('../src/router/index.js')
-
-  it('la ruta de restablecer es solo del usuario de sistema y sin «Volver»', () => {
-    const inicio = rutas.indexOf("name: 'usuarios-restablecer'")
-    assert.ok(inicio >= 0, 'falta la ruta usuarios-restablecer')
-    const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
-
-    assert.match(ruta, /path: 'usuarios\/restablecer-contrasena'/, 'dirección de la pantalla')
-    assert.match(ruta, /component: ResetPasswordPage/, 'abre la pantalla de restablecer')
-    assert.match(ruta, /perfil: PROFILES\.sistema/, 'solo el usuario de sistema')
-    assert.match(ruta, /titulo: 'Restablecer contraseña'/, 'título de la pantalla')
-    assert.doesNotMatch(ruta, /volverA:/, 'se llega desde el menú, no desde otra pantalla')
-  })
-
-  it('la sección «Usuarios» del menú tiene la opción «Restablecer contraseña»', () => {
-    const inicio = src.indexOf('<template v-if="session.esUsuarioSistema">')
-    const seccion = src.slice(inicio, src.indexOf('</template>', inicio))
-
-    assert.match(seccion, /:to="\{ name: 'usuarios-restablecer' \}"/, 'lleva a restablecer')
-    assert.match(seccion, /<q-item-label>Restablecer contraseña<\/q-item-label>/, 'nombre de la opción')
-    assert.match(seccion, /<q-tooltip>Ir a restablecer la contraseña de una cuenta<\/q-tooltip>/, 'tooltip de la opción')
-    assert.match(seccion, /aria-label="Ir a restablecer la contraseña de una cuenta"/, 'nombre accesible')
-  })
-
-  it('la pantalla pide Correo y Contraseña nueva, valida antes de enviar y el 404 sale bajo Correo', () => {
-    const pagina = read('../src/pages/ResetPasswordPage.vue')
-    const etiquetas = [...pagina.matchAll(/class="form-label"\s*>([^<]+)</g)].map((m) => m[1].trim())
-    assert.deepEqual(etiquetas, ['Correo', 'Contraseña nueva'], 'solo los dos campos, en orden')
-    assert.match(pagina, /v-model="correo"[\s\S]*?type="email"/, 'el correo abre el teclado de correo')
-
-    const enviar = pagina.slice(pagina.indexOf('const restablecer = async'), pagina.indexOf('</script>'))
-    assert.match(enviar, /validarRestablecimiento\(correo\.value, password\.value\)/, 'valida antes de enviar')
-    assert.ok(
-      enviar.indexOf('if (!validacion.valido) return') < enviar.indexOf('restablecerContrasena('),
-      'con errores no se envía',
-    )
-    assert.match(enviar, /error\?\.codigoHttp === 404[\s\S]*?errores\.correo = error\.mensaje/, 'el 404 va bajo Correo')
-
-    // Cuenta propia: su sesión ya se revocó, así que se cierra aquí y se lleva al login con el aviso.
-    assert.match(
-      enviar,
-      /if \(cuentaPropia\) \{\s*session\.cerrarSesionPorContrasenaNueva\(\)\s*await router\.replace\(\{ name: 'login' \}\)\s*return\s*\}/,
-      'con la cuenta propia cierra la sesión y va al login',
-    )
-    assert.ok(
-      enviar.indexOf('if (cuentaPropia)') < enviar.indexOf('mensajeExito.value = mensaje'),
-      'con otra cuenta muestra el éxito como antes',
-    )
-
-    // Cada id que nombra aria-describedby debe existir en la pantalla.
-    const referidos = [...pagina.matchAll(/aria-describedby="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/))
-    assert.ok(referidos.length >= 2, 'cada campo tiene su ayuda')
-    for (const id of referidos) {
-      assert.match(pagina, new RegExp(`\\sid="${id}"`), `falta el elemento con id «${id}»`)
-    }
   })
 })
 

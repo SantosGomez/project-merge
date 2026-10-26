@@ -46,7 +46,7 @@ export const INTERVALO_INACTIVIDAD_MS = 60 * 1000
 export const PANTALLA_PRINCIPAL = Object.freeze({
   administrador: '/admin/dashboard',
   contador: '/contador/casos',
-  usuarios_de_sistema: '/usuarios/alta',
+  usuarios_de_sistema: '/admin/directorio',
 })
 
 /** Tipos de aviso persistente de cierre (RF-46 con revocación, RF-47 sin ella). */

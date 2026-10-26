@@ -10,8 +10,6 @@ import AdminDashboardPage from '../pages/AdminDashboardPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
-import NewUserPage from '../pages/NewUserPage.vue'
-import ResetPasswordPage from '../pages/ResetPasswordPage.vue'
 import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
@@ -85,26 +83,9 @@ const routes = [
           titulo: 'Mis casos',
         },
       },
-      {
-        path: 'usuarios/alta',
-        name: 'usuarios-alta',
-        component: NewUserPage,
-        meta: {
-          requiereSesion: true,
-          perfil: PROFILES.sistema,
-          titulo: 'Alta de usuario',
-        },
-      },
-      {
-        path: 'usuarios/restablecer-contrasena',
-        name: 'usuarios-restablecer',
-        component: ResetPasswordPage,
-        meta: {
-          requiereSesion: true,
-          perfil: PROFILES.sistema,
-          titulo: 'Restablecer contraseña',
-        },
-      },
+      // El alta y el restablecimiento de cuentas se hacen en diálogos del directorio.
+      { path: 'usuarios/alta', redirect: { name: 'admin-directorio' } },
+      { path: 'usuarios/restablecer-contrasena', redirect: { name: 'admin-directorio' } },
     ],
   },
 ]

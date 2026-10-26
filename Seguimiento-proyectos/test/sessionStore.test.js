@@ -390,7 +390,7 @@ test('arranque con error del servidor: error recuperable y sin borrar el token',
   assert.equal(store.sesionCaducada, false)
 })
 
-test('arranque del usuario de sistema: valida con «mis casos» y abre el alta de usuarios (9a)', async () => {
+test('arranque del usuario de sistema: valida con «mis casos» y abre el directorio de usuarios (9a)', async () => {
   const auth = crearAuthFalsa({
     inicial: almacenConSesion({
       token: tokenVigente(),
@@ -406,7 +406,7 @@ test('arranque del usuario de sistema: valida con «mis casos» y abre el alta d
   const resultado = await store.restaurarSesion()
 
   assert.equal(resultado.estado, 'valida')
-  assert.equal(resultado.pantallaPrincipal, '/usuarios/alta')
+  assert.equal(resultado.pantallaPrincipal, '/admin/directorio')
   // No tiene lectura propia: «mis casos» acepta cualquier sesión y solo comprueba el token.
   assert.equal(casos.llamadas.length, 1)
   assert.equal(contadores.llamadas.length, 0)
@@ -558,7 +558,7 @@ test('iniciarSesion con credenciales inválidas conserva la sesión previa y no 
   assert.equal(store.rol, 'contador')
 })
 
-test('iniciarSesion del usuario de sistema lleva al alta de usuarios y arranca el temporizador (9a)', async () => {
+test('iniciarSesion del usuario de sistema lleva al directorio de usuarios y arranca el temporizador (9a)', async () => {
   const auth = crearAuthFalsa({
     sesionLogin: { token: tokenVigente(), rol: 'usuarios_de_sistema', id: 8, nombre: 'sistema' },
   })
@@ -568,7 +568,7 @@ test('iniciarSesion del usuario de sistema lleva al alta de usuarios y arranca e
 
   assert.equal(resultado.ok, true)
   assert.equal(resultado.accesoDenegado, false)
-  assert.equal(resultado.pantallaPrincipal, '/usuarios/alta')
+  assert.equal(resultado.pantallaPrincipal, '/admin/directorio')
   assert.equal(store.esUsuarioSistema, true)
   assert.equal(store.esAdministrador, false)
   assert.equal(store.esContador, false)

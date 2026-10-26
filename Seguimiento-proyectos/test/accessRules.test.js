@@ -225,14 +225,8 @@ test('decidirAcceso deniega al administrador las pantallas de contador (RF-06)',
   }
 })
 
-const RUTA_USUARIOS_ALTA = { requiereSesion: true, perfil: 'usuarios_de_sistema' }
-
-test('decidirAcceso deja entrar al usuario de sistema a «Alta de usuario» (historia 9a)', () => {
-  const sistema = { autenticado: true, rol: 'usuarios_de_sistema' }
-  assert.deepEqual(decidirAcceso({ ruta: RUTA_USUARIOS_ALTA, sesion: sistema }), {
-    accion: 'permitir',
-  })
-  assert.equal(PANTALLA_PRINCIPAL_POR_ROL.usuarios_de_sistema, 'usuarios-alta')
+test('la pantalla principal del usuario de sistema es el directorio de usuarios (directorio, rebanada 5)', () => {
+  assert.equal(PANTALLA_PRINCIPAL_POR_ROL.usuarios_de_sistema, 'admin-directorio')
 })
 
 test('decidirAcceso deja entrar al usuario de sistema al directorio de usuarios (directorio, rebanada 2)', () => {
@@ -249,39 +243,8 @@ test('decidirAcceso deniega al usuario de sistema el dashboard y las pantallas d
     assert.deepEqual(decidirAcceso({ ruta, sesion: sistema }), {
       accion: 'denegar',
       motivo: 'perfil',
-      destino: 'usuarios-alta',
+      destino: 'admin-directorio',
     })
-  }
-})
-
-test('decidirAcceso deniega a administrador y contador el alta de usuarios', () => {
-  for (const [rol, destino] of [
-    ['administrador', 'admin-dashboard'],
-    ['contador', 'contador-casos'],
-  ]) {
-    assert.deepEqual(
-      decidirAcceso({ ruta: RUTA_USUARIOS_ALTA, sesion: { autenticado: true, rol } }),
-      { accion: 'denegar', motivo: 'perfil', destino },
-    )
-  }
-})
-
-const RUTA_USUARIOS_RESTABLECER = { requiereSesion: true, perfil: 'usuarios_de_sistema' }
-
-test('decidirAcceso deja entrar al usuario de sistema a «Restablecer contraseña» y lo deniega a administrador y contador (historia 9b)', () => {
-  assert.deepEqual(
-    decidirAcceso({ ruta: RUTA_USUARIOS_RESTABLECER, sesion: { autenticado: true, rol: 'usuarios_de_sistema' } }),
-    { accion: 'permitir' },
-  )
-
-  for (const [rol, destino] of [
-    ['administrador', 'admin-dashboard'],
-    ['contador', 'contador-casos'],
-  ]) {
-    assert.deepEqual(
-      decidirAcceso({ ruta: RUTA_USUARIOS_RESTABLECER, sesion: { autenticado: true, rol } }),
-      { accion: 'denegar', motivo: 'perfil', destino },
-    )
   }
 })
 
