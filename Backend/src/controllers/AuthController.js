@@ -4,7 +4,7 @@ const { generateAccessToken } = require('../utils/tokenUtils');
 const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
-const { verifyPassword } = require('../utils/passwordUtils');
+const { verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
 const { nowLocal } = require('../utils/dateUtils');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
@@ -31,9 +31,13 @@ async function login(req, res) {
     );
   }
 
-  // 2. Buscar la cuenta por correo y verificar contraseña (RF-03, mensaje genérico)
+  // 2. Buscar la cuenta por correo y verificar contraseña (RF-03, mensaje genérico).
+  //    Sin cuenta se verifica contra un hash ficticio: el tiempo no revela qué correos existen.
   const cuenta = await UserModel.findByCorreo(correo);
-  if (!cuenta || !(await verifyPassword(password, cuenta.password_hash))) {
+  const contrasenaValida = cuenta
+    ? await verifyPassword(password, cuenta.password_hash)
+    : await verificarContraHashFicticio(password);
+  if (!cuenta || !contrasenaValida) {
     return res.status(401).json(
       buildError('Credenciales no válidas', 'correo o contraseña', 'Verifique sus datos e intente nuevamente')
     );

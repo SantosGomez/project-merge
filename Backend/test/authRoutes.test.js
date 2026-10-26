@@ -58,6 +58,42 @@ async function testTokenDelLoginSinUsuario() {
   await pool.query('DELETE FROM sesiones WHERE jti = ?', [carga.jti]);
 }
 
+// ---------- Revisión de la rebanada 5: el login no revela por tiempo qué correos existen ----------
+// Medir tiempos es frágil; lo estable es que el trabajo caro (argon2.verify) se haga igual
+// exista o no la cuenta, y que las dos respuestas sean idénticas.
+async function testLoginVerificaSiempreLaContrasena() {
+  const argon2 = require('argon2');
+  const verifyOriginal = argon2.verify;
+  let llamadas = 0;
+  argon2.verify = (...args) => {
+    llamadas += 1;
+    return verifyOriginal(...args);
+  };
+
+  try {
+    const sinCuenta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+      correo: 'nadie_zz_test@prueba.local',
+      password: 'ContraseñaIncorrecta',
+    });
+    const llamadasSinCuenta = llamadas;
+
+    llamadas = 0;
+    const conCuenta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+      correo: contador.correo,
+      password: 'ContraseñaIncorrecta',
+    });
+    const llamadasConCuenta = llamadas;
+
+    assert.strictEqual(sinCuenta.statusCode, 401);
+    assert.strictEqual(conCuenta.statusCode, 401);
+    assert.deepStrictEqual(sinCuenta.body, conCuenta.body, 'la respuesta es idéntica exista o no la cuenta');
+    assert.strictEqual(llamadasConCuenta, 1, 'con cuenta se verifica una vez');
+    assert.strictEqual(llamadasSinCuenta, 1, 'sin cuenta también se verifica una vez, contra un hash ficticio');
+  } finally {
+    argon2.verify = verifyOriginal;
+  }
+}
+
 // ---------- RF-02: login sin campos falla con 400 ----------
 async function testLoginSinCamposRechazaCon400() {
   // Sin cuerpo
@@ -292,6 +328,7 @@ describe('rutas de autenticación', () => {
   test('el correo no distingue mayúsculas ni espacios extremos', testLoginConCorreoSinImportarMayusculasNiEspacios);
   test('un correo inexistente recibe el mensaje genérico', testLoginConCorreoInexistenteUsaMensajeGenerico);
   test('el login exitoso guarda ultimo_acceso_en', testLoginGuardaUltimoAcceso);
+  test('el login verifica la contraseña aunque el correo no exista', testLoginVerificaSiempreLaContrasena);
   test('el login sin campos responde 400', testLoginSinCamposRechazaCon400);
   test('las credenciales incorrectas responden 401 con mensaje genérico', testCredencialesIncorrectasRechazanCon401);
   test('el logout revoca el token y el mismo token recibe 401', testLogoutRevocado);
