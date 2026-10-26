@@ -60,3 +60,54 @@ describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', (
     assert.match(alCrear, /cargar\(\)/)
   })
 })
+
+describe('Directorio de usuarios (rebanada 4: «Restablecer contraseña» por fila)', () => {
+  const dialogo = read('../src/components/ResetPasswordDialog.vue')
+  const pagina = read('../src/pages/CountersDirectoryPage.vue')
+  const enviar = dialogo.slice(dialogo.indexOf('const restablecer = async'), dialogo.indexOf('</script>'))
+
+  it('muestra la cuenta de solo lectura y solo pide la contraseña nueva', () => {
+    const etiquetas = [...dialogo.matchAll(/class="form-label"\s*>([^<]+)</g)].map((m) => m[1].trim())
+    assert.deepEqual(etiquetas, ['Contraseña nueva'])
+    assert.match(dialogo, /\{\{ cuenta\?\.nombre \}\}/, 'nombre de la cuenta')
+    assert.match(dialogo, /\{\{ cuenta\?\.correo \}\}/, 'correo de la cuenta')
+    assert.doesNotMatch(dialogo, /v-model="correo"/, 'el correo no se edita')
+  })
+
+  it('valida antes de enviar el correo de la fila', () => {
+    assert.match(enviar, /validarRestablecimiento\(props\.cuenta\.correo, password\.value\)/)
+    assert.ok(
+      enviar.indexOf('if (!validacion.valido) return') < enviar.indexOf('restablecerContrasena('),
+      'con errores no se envía',
+    )
+    assert.match(enviar, /restablecerContrasena\(\{\s*correo: props\.cuenta\.correo,/)
+  })
+
+  it('no se cierra mientras guarda; al terminar se cierra y avisa a la pantalla', () => {
+    assert.match(dialogo, /<q-dialog v-model="dialogoAbierto" :persistent="guardando"/)
+    assert.match(enviar, /dialogoAbierto\.value = false\s*\n\s*emit\('restablecida', mensaje\)/)
+    assert.match(dialogo, /label="Cancelar"/)
+    assert.match(dialogo, /aria-labelledby="restablecer-titulo"/)
+  })
+
+  it('con la cuenta propia cierra la sesión y lleva al login', () => {
+    assert.match(
+      enviar,
+      /if \(cuentaPropia\) \{\s*session\.cerrarSesionPorContrasenaNueva\(\)\s*await router\.replace\(\{ name: 'login' \}\)/,
+    )
+  })
+
+  it('el botón de cada fila y tarjeta solo lo ve el usuario de sistema', () => {
+    const botones = [...pagina.matchAll(/<q-btn\s[^>]*?label="Restablecer contraseña"[\s\S]*?<\/q-btn>/g)].map((m) => m[0])
+    assert.equal(botones.length, 2, 'tabla y tarjetas')
+    for (const boton of botones) {
+      assert.match(boton, /v-if="session\.esUsuarioSistema"/)
+      assert.match(boton, /@click="abrirRestablecer\(props\.row\)"/)
+      assert.match(boton, /<q-tooltip>/)
+    }
+    assert.match(
+      pagina,
+      /<ResetPasswordDialog\s+v-if="session\.esUsuarioSistema"\s+v-model="dialogoRestablecerAbierto"\s+:cuenta="cuentaRestablecer"\s+@restablecida="alRestablecer"/,
+    )
+  })
+})

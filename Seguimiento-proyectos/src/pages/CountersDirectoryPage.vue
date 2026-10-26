@@ -23,7 +23,7 @@
         </p>
         <p v-else class="directory-panel__help">
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. «Nuevo usuario»
-          crea una cuenta.
+          crea una cuenta y «Restablecer contraseña» le asigna una contraseña nueva.
         </p>
         <p v-if="mensajeExito" class="directory-panel__exito" role="status" aria-live="polite">
           <q-icon name="check_circle" color="positive" size="20px" />
@@ -32,6 +32,12 @@
       </div>
 
       <NewUserDialog v-if="session.esUsuarioSistema" v-model="dialogoNuevoAbierto" @creado="alCrearUsuario" />
+      <ResetPasswordDialog
+        v-if="session.esUsuarioSistema"
+        v-model="dialogoRestablecerAbierto"
+        :cuenta="cuentaRestablecer"
+        @restablecida="alRestablecer"
+      />
 
       <div class="directory-panel__body">
         <ScreenLoader
@@ -80,6 +86,19 @@
               >
                 <q-tooltip>Abre el detalle de casos de este contador.</q-tooltip>
               </q-btn>
+              <q-btn
+                v-if="session.esUsuarioSistema"
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="lock_reset"
+                label="Restablecer contraseña"
+                :aria-label="`Restablecer la contraseña de ${props.row.nombre}`"
+                @click="abrirRestablecer(props.row)"
+              >
+                <q-tooltip>Asigna una contraseña nueva a esta cuenta.</q-tooltip>
+              </q-btn>
             </q-td>
           </template>
 
@@ -97,8 +116,9 @@
                     {{ props.row.ultimoAcceso }}
                   </p>
                 </q-card-section>
-                <q-card-actions v-if="props.row.puedeVerCasos && session.esAdministrador">
+                <q-card-actions v-if="tieneAccionesTarjeta(props.row)">
                   <q-btn
+                    v-if="props.row.puedeVerCasos && session.esAdministrador"
                     flat
                     no-caps
                     color="primary"
@@ -108,6 +128,18 @@
                     @click="selectCounter(props.row.id)"
                   >
                     <q-tooltip>Abre el detalle de casos de este contador.</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    v-if="session.esUsuarioSistema"
+                    flat
+                    no-caps
+                    color="primary"
+                    icon="lock_reset"
+                    label="Restablecer contraseña"
+                    :aria-label="`Restablecer la contraseña de ${props.row.nombre}`"
+                    @click="abrirRestablecer(props.row)"
+                  >
+                    <q-tooltip>Asigna una contraseña nueva a esta cuenta.</q-tooltip>
                   </q-btn>
                 </q-card-actions>
               </q-card>
@@ -126,6 +158,7 @@ import { useRouter } from 'vue-router'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import NewUserDialog from '../components/NewUserDialog.vue'
+import ResetPasswordDialog from '../components/ResetPasswordDialog.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarUsuarios } from '../services/userService.js'
 import { useCountersStore } from '../stores/counters.js'
@@ -205,6 +238,23 @@ const abrirNuevoUsuario = () => {
   mensajeExito.value = ''
   dialogoNuevoAbierto.value = true
 }
+
+const dialogoRestablecerAbierto = ref(false)
+const cuentaRestablecer = ref(null)
+
+const abrirRestablecer = (fila) => {
+  mensajeExito.value = ''
+  cuentaRestablecer.value = fila
+  dialogoRestablecerAbierto.value = true
+}
+
+const alRestablecer = (mensaje) => {
+  mensajeExito.value = mensaje
+}
+
+// En celular la tarjeta solo lleva barra de acciones si tiene algún botón que mostrar.
+const tieneAccionesTarjeta = (fila) =>
+  (fila.puedeVerCasos && session.esAdministrador) || session.esUsuarioSistema
 
 // La cuenta nueva aparece en la tabla al recargar el directorio.
 const alCrearUsuario = (mensaje) => {
