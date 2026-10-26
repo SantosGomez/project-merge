@@ -59,6 +59,10 @@ export const TIPOS_AVISO = Object.freeze({
 /** Texto del aviso tras un cierre con revocación confirmada (RF-46). */
 export const TEXTO_AVISO_CIERRE = 'Sesión cerrada.'
 
+/** Texto del aviso tras restablecer la contraseña de la cuenta propia (historia 9b). */
+export const TEXTO_AVISO_CONTRASENA_NUEVA =
+  'Contraseña restablecida correctamente. Inicia sesión con la contraseña nueva.'
+
 /** Texto del aviso con tres partes cuando no se pudo revocar en el backend (RF-47). */
 export const TEXTO_AVISO_REVOCACION = construirError(
   'la sesión se cerró en este equipo pero no se pudo confirmar la revocación en el servidor',
@@ -418,6 +422,18 @@ export const crearSessionStore = (dependencias = {}) => {
         )
 
         return { ok, avisoSesion: this.avisoSesion }
+      },
+
+      /**
+       * Cierra la sesión en este equipo tras restablecer la contraseña de la cuenta propia (9b).
+       * No llama a logout: el backend ya revocó el token al restablecer y solo respondería 401.
+       */
+      cerrarSesionPorContrasenaNueva() {
+        authService.limpiarSesion()
+        this.limpiarEstadoLocal()
+        this.detenerTemporizador()
+        this.sesionCaducada = false
+        this.fijarAvisoSesion(TEXTO_AVISO_CONTRASENA_NUEVA, TIPOS_AVISO.CIERRE)
       },
     },
   })

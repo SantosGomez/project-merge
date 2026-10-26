@@ -98,8 +98,10 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { restablecerContrasena } from '../services/userService.js'
+import { useSessionStore } from '../stores/session.js'
 import { validarRestablecimiento } from '../utils/validators.js'
 
 /** Texto de cada código de `validarRestablecimiento`. */
@@ -110,6 +112,9 @@ const MENSAJES = {
   password_requerida: 'La contraseña nueva es obligatoria.',
   password_corta: 'La contraseña nueva debe tener al menos 8 caracteres.',
 }
+
+const router = useRouter()
+const session = useSessionStore()
 
 const correo = ref('')
 const password = ref('')
@@ -139,7 +144,17 @@ const restablecer = async () => {
 
   guardando.value = true
   try {
-    mensajeExito.value = await restablecerContrasena({ correo: correo.value, password: password.value })
+    const { mensaje, cuentaPropia } = await restablecerContrasena({
+      correo: correo.value,
+      password: password.value,
+    })
+    // Cuenta propia: el backend ya revocó esta sesión; se cierra aquí y el login muestra el aviso.
+    if (cuentaPropia) {
+      session.cerrarSesionPorContrasenaNueva()
+      await router.replace({ name: 'login' })
+      return
+    }
+    mensajeExito.value = mensaje
     correo.value = ''
     password.value = ''
   } catch (error) {

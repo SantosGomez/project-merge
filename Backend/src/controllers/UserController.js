@@ -130,8 +130,11 @@ async function resetPassword(req, res) {
   await UserModel.updatePassword(cuenta.id, hash);
   await SessionModel.revocarSesionesDeUsuario(cuenta.id);
 
-  // 4. Aviso de éxito sin ningún dato de acceso (RF-33)
-  return res.status(200).json({ mensaje: 'Contraseña restablecida correctamente' });
+  // 4. Aviso de éxito sin ningún dato de acceso (RF-33); `cuentaPropia` avisa al frontend que su sesión ya se revocó
+  return res.status(200).json({
+    mensaje: 'Contraseña restablecida correctamente',
+    cuentaPropia: cuenta.id === req.user.id,
+  });
 }
 
 module.exports = { createUser, resetPassword };

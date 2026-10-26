@@ -716,6 +716,17 @@ describe('Restablecer contraseña (historia 9b) — verificación estática', ()
     )
     assert.match(enviar, /error\?\.codigoHttp === 404[\s\S]*?errores\.correo = error\.mensaje/, 'el 404 va bajo Correo')
 
+    // Cuenta propia: su sesión ya se revocó, así que se cierra aquí y se lleva al login con el aviso.
+    assert.match(
+      enviar,
+      /if \(cuentaPropia\) \{\s*session\.cerrarSesionPorContrasenaNueva\(\)\s*await router\.replace\(\{ name: 'login' \}\)\s*return\s*\}/,
+      'con la cuenta propia cierra la sesión y va al login',
+    )
+    assert.ok(
+      enviar.indexOf('if (cuentaPropia)') < enviar.indexOf('mensajeExito.value = mensaje'),
+      'con otra cuenta muestra el éxito como antes',
+    )
+
     // Cada id que nombra aria-describedby debe existir en la pantalla.
     const referidos = [...pagina.matchAll(/aria-describedby="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/))
     assert.ok(referidos.length >= 2, 'cada campo tiene su ayuda')

@@ -52,19 +52,20 @@ test('crearUsuario envía nombre y correo a POST /usuarios, recortados y con el 
   ])
 })
 
-test('restablecerContrasena envía el correo y la contraseña nueva en el cuerpo de PATCH /usuarios/restablecer-contrasena (historia 9b)', async () => {
+test('restablecerContrasena envía correo y contraseña nueva a PATCH /usuarios/restablecer-contrasena y devuelve mensaje y cuentaPropia (historia 9b)', async () => {
   const api = crearApiFalsa(() => ({
     status: 200,
-    data: { mensaje: 'Contraseña restablecida correctamente' },
+    data: { mensaje: 'Contraseña restablecida correctamente', cuentaPropia: true },
   }))
   const servicio = crearUserService({ api })
 
-  const mensaje = await servicio.restablecerContrasena({
+  const resultado = await servicio.restablecerContrasena({
     correo: '  KRamirez@DelGrow.MX  ',
     password: ' clave nueva ',
   })
 
-  assert.equal(mensaje, 'Contraseña restablecida correctamente')
+  // `cuentaPropia` indica que la sesión actual ya quedó revocada en el backend.
+  assert.deepEqual(resultado, { mensaje: 'Contraseña restablecida correctamente', cuentaPropia: true })
   assert.deepEqual(api.llamadas, [
     {
       metodo: 'patch',

@@ -389,6 +389,7 @@ async function testRestablecerAdministradorSeedYPropia() {
   try {
     const administradorResp = await restablecer(otroAdministrador.correo, { password: nueva }, tokenSolicitante);
     assert.strictEqual(administradorResp.statusCode, 200, 'debe poder restablecerse una cuenta de administrador');
+    assert.strictEqual(administradorResp.body.cuentaPropia, false, 'otra cuenta no es la propia');
     assert.strictEqual(await estadoDelLogin(otroAdministrador.usuario, nueva), 200, 'el administrador debe entrar con la nueva');
 
     const seedResp = await restablecer('contador_seed@prueba.local', { password: nueva }, tokenSolicitante);
@@ -400,6 +401,7 @@ async function testRestablecerAdministradorSeedYPropia() {
     // La cuenta propia va al final porque invalida el token del solicitante.
     const propia = await restablecer(solicitante.correo, { password: nueva }, tokenSolicitante);
     assert.strictEqual(propia.statusCode, 200, 'el administrador debe poder restablecer su propia contraseña');
+    assert.strictEqual(propia.body.cuentaPropia, true, 'avisa que se restableció la cuenta de quien lo pidió');
     await afirmarSesionCaducada(tokenSolicitante, 'cuenta propia');
     assert.strictEqual(await estadoDelLogin(solicitante.usuario, nueva), 200, 'debe entrar con su contraseña nueva');
   } finally {
@@ -459,6 +461,6 @@ describe('rutas de usuarios', () => {
   test('restablecer sin correo o con un correo que no es texto responde 400 sin cambiar nada', testRestablecerSinCorreoOConCorreoNoTextual);
   test('restablecer con una contraseña nueva inválida responde 400 sin cambiarla', testRestablecerConContrasenaInvalida);
   test('el alta con nombre o correo de más de 150 caracteres responde 400 y con 150 se acepta', testAltaConNombreDemasiadoLargoRechaza);
-  test('se restablece una cuenta de administrador, una del seed y la propia del administrador', testRestablecerAdministradorSeedYPropia);
+  test('se restablece una cuenta de administrador, una del seed y la propia, y la respuesta indica si es la propia', testRestablecerAdministradorSeedYPropia);
   test('si falla la revocación de sesiones responde 503 y el reintento las revoca', testFalloAlRevocarSesionesYReintento);
 });

@@ -633,6 +633,28 @@ test('cerrarSesionVoluntaria con logout fallido: cierre local igual y aviso de t
   assert.ok(store.avisoSesion.texto.includes('Qué hacer:'), 'falta qué hacer (RNF-01)')
 })
 
+test('cerrarSesionPorContrasenaNueva cierra en este equipo sin llamar a logout y avisa de la contraseña nueva (9b)', () => {
+  const auth = crearAuthFalsa({
+    inicial: almacenConSesion({ token: tokenVigente(), rol: 'usuarios_de_sistema', id: 7, usuario: 'sis' }),
+  })
+  const { store, programador } = montarSesion({ auth })
+  store.iniciarTemporizador()
+
+  store.cerrarSesionPorContrasenaNueva()
+
+  // El backend ya revocó el token al restablecer: llamar a logout solo daría 401.
+  assert.deepEqual(auth.llamadas, [], 'no llama a logout')
+  assert.equal(store.token, null)
+  assert.equal(store.autenticado, false)
+  assert.equal(auth.getToken(), null)
+  assert.equal(programador.activo, false)
+  assert.equal(store.sesionCaducada, false, 'no es una sesión caducada')
+  assert.deepEqual(store.avisoSesion, {
+    texto: 'Contraseña restablecida correctamente. Inicia sesión con la contraseña nueva.',
+    tipo: 'cierre',
+  })
+})
+
 test('fijarAvisoSesion y limpiarAvisoSesion controlan el aviso persistente', () => {
   const { store } = montarSesion()
 
