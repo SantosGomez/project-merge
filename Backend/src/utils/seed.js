@@ -3,9 +3,12 @@ const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 
 // Credenciales placeholder del seed (cargadas desde otra base de datos posteriormente, RF-27).
-const ADMIN_USUARIO = 'admin_seed';
+// Las cuentas del seed se reconocen por su correo (rebanada 5c); el nombre es el mismo de siempre.
+const ADMIN_NOMBRE = 'admin_seed';
+const ADMIN_CORREO = 'admin_seed@prueba.local';
 const ADMIN_PASSWORD = 'Admin1234';
-const CONTADOR_USUARIO = 'contador_seed';
+const CONTADOR_NOMBRE = 'contador_seed';
+const CONTADOR_CORREO = 'contador_seed@prueba.local';
 const CONTADOR_PASSWORD = 'Contador1234';
 
 /**
@@ -16,10 +19,14 @@ async function crearTablasSiNoExisten() {
   await query(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      usuario VARCHAR(100) NOT NULL UNIQUE,
+      nombre VARCHAR(150) NOT NULL,
+      correo VARCHAR(150) NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
       rol ENUM('administrador', 'contador', 'usuarios_de_sistema') NOT NULL,
-      creado_en DATETIME NOT NULL
+      creado_en DATETIME NOT NULL,
+      actualizado_en DATETIME NULL,
+      ultimo_acceso_en DATETIME NULL,
+      UNIQUE KEY uq_usuarios_correo (correo)
     ) ENGINE=InnoDB
   `);
 
@@ -48,11 +55,16 @@ async function crearTablasSiNoExisten() {
   `);
 }
 
+/** Indica si la tabla usuarios todavía tiene la columna `usuario` (bases anteriores a la 5c). */
+async function columnaUsuarioExiste() {
+  return (await query("SHOW COLUMNS FROM usuarios LIKE 'usuario'")).length > 0;
+}
+
 /**
  * Migración de la tabla usuarios al formato con nombre y correo (login por correo).
  * Se puede correr varias veces: solo agrega lo que falta y conserva los datos.
- * Las cuentas sin correo reciben uno de prueba (`usuario@prueba.local`) para poder entrar;
- * la columna `usuario` se mantiene mientras el resto de la app deja de usarla.
+ * En una base anterior, las cuentas sin correo reciben uno de prueba (`usuario@prueba.local`)
+ * y después se borra la columna `usuario`, no sin antes copiar la tabla a `usuarios_respaldo_5c`.
  */
 async function migrarUsuarios() {
   await query(`
@@ -62,40 +74,44 @@ async function migrarUsuarios() {
       ADD COLUMN IF NOT EXISTS actualizado_en DATETIME NULL AFTER creado_en,
       ADD COLUMN IF NOT EXISTS ultimo_acceso_en DATETIME NULL AFTER actualizado_en
   `);
-  // Mientras exista, `usuario` guarda el correo de las cuentas nuevas: debe admitir sus 150 caracteres.
-  await query('ALTER TABLE usuarios MODIFY usuario VARCHAR(150) NOT NULL');
 
-  await query(`
-    UPDATE usuarios
-    SET correo = IF(usuario LIKE '%@%', LOWER(usuario), CONCAT(LOWER(usuario), '@prueba.local'))
-    WHERE correo IS NULL
-  `);
-  await query('UPDATE usuarios SET nombre = usuario WHERE nombre IS NULL');
+  if (await columnaUsuarioExiste()) {
+    await query(`
+      UPDATE usuarios
+      SET correo = IF(usuario LIKE '%@%', LOWER(usuario), CONCAT(LOWER(usuario), '@prueba.local'))
+      WHERE correo IS NULL
+    `);
+    await query('UPDATE usuarios SET nombre = usuario WHERE nombre IS NULL');
+
+    // El respaldo se toma una sola vez y antes de borrar: si ya existe, se conserva el primero.
+    await query('CREATE TABLE IF NOT EXISTS usuarios_respaldo_5c AS SELECT * FROM usuarios');
+    await query('ALTER TABLE usuarios DROP COLUMN usuario');
+  }
+
   await query('UPDATE usuarios SET actualizado_en = creado_en WHERE actualizado_en IS NULL');
 
   await query('CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_correo ON usuarios (correo)');
 }
 
 /**
- * Verifica si ya existe un usuario con el nombre dado.
- * @param {string} usuario - Nombre de usuario.
+ * Verifica si ya existe una cuenta con el correo dado.
+ * @param {string} correo - Correo de acceso.
  * @returns {Promise<boolean>} true si existe.
  */
-async function usuarioExiste(usuario) {
-  const rows = await query('SELECT id FROM usuarios WHERE usuario = ?', [usuario]);
-  return rows.length > 0;
+async function cuentaExiste(correo) {
+  return (await UserModel.findByCorreo(correo)) !== null;
 }
 
 /**
- * Inserta un usuario con contraseña hasheada usando Argon2id (RNF-1).
- * @param {string} usuario - Nombre de usuario.
+ * Inserta una cuenta con contraseña hasheada usando Argon2id (RNF-1).
+ * @param {string} nombre - Nombre visible de la cuenta.
+ * @param {string} correo - Correo de acceso.
  * @param {string} password - Contraseña en texto plano.
- * @param {string} rol - Rol del usuario.
+ * @param {string} rol - Rol de la cuenta.
  */
-async function insertarUsuario(usuario, password, rol) {
-  const hash = await hashPassword(password);
+async function insertarCuenta(nombre, correo, password, rol) {
   // Mismo alta que la API: la cuenta nace con nombre, correo y actualizado_en.
-  await UserModel.create(usuario, hash, rol);
+  await UserModel.create({ nombre, correo, passwordHash: await hashPassword(password), rol });
 }
 
 /**
@@ -107,14 +123,12 @@ async function seedDatabase() {
   await crearTablasSiNoExisten();
   await migrarUsuarios();
 
-  const existeAdmin = await usuarioExiste(ADMIN_USUARIO);
-  if (!existeAdmin) {
-    await insertarUsuario(ADMIN_USUARIO, ADMIN_PASSWORD, 'administrador');
+  if (!(await cuentaExiste(ADMIN_CORREO))) {
+    await insertarCuenta(ADMIN_NOMBRE, ADMIN_CORREO, ADMIN_PASSWORD, 'administrador');
   }
 
-  const existeContador = await usuarioExiste(CONTADOR_USUARIO);
-  if (!existeContador) {
-    await insertarUsuario(CONTADOR_USUARIO, CONTADOR_PASSWORD, 'contador');
+  if (!(await cuentaExiste(CONTADOR_CORREO))) {
+    await insertarCuenta(CONTADOR_NOMBRE, CONTADOR_CORREO, CONTADOR_PASSWORD, 'contador');
   }
 }
 

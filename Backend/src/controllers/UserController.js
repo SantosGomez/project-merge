@@ -79,7 +79,7 @@ async function createUser(req, res) {
 
   // 4. Hashear contraseña con Argon2id (RNF-1) y crear la cuenta (RF-28)
   const passwordHash = await hashPassword(password);
-  await UserModel.createConCorreo({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol });
+  await UserModel.create({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol });
 
   // 5. Responder 201 con mensaje de alta exitosa (RF-28)
   return res.status(201).json({ mensaje: 'Usuario dado de alta correctamente' });

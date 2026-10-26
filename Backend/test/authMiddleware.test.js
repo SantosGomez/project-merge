@@ -179,7 +179,7 @@ async function testRechazaTokenRevocado() {
 // ---------- RF-05: token con el campo exp vencido ----------
 async function testRechazaTokenExpirado() {
   const tokenExpirado = jwt.sign(
-    { id: contador.id, usuario: contador.usuario, rol: contador.rol },
+    { id: contador.id, rol: contador.rol },
     SECRETO_SERVIDOR,
     { expiresIn: -60 }
   );
@@ -242,7 +242,7 @@ async function testRechazaValorInventado() {
 // ---------- criterio 30: un JWT firmado con otro secreto no autentica ----------
 async function testRechazaJwtFirmadoConOtroSecreto() {
   const tokenAjeno = jwt.sign(
-    { id: contador.id, usuario: contador.usuario, rol: 'administrador' },
+    { id: contador.id, rol: 'administrador' },
     SECRETO_AJENO,
     { expiresIn: '2h' }
   );
@@ -255,7 +255,7 @@ async function testRechazaJwtFirmadoConOtroSecreto() {
 async function testRechazaJwtSinSesionRegistrada() {
   // Firmado con el secreto real, pero nunca emitido por el login: no hay fila en `sesiones`.
   const tokenSinSesion = jwt.sign(
-    { id: contador.id, usuario: contador.usuario, rol: contador.rol },
+    { id: contador.id, rol: contador.rol },
     SECRETO_SERVIDOR,
     { expiresIn: '2h' }
   );

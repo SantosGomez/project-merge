@@ -14,7 +14,7 @@ const {
 // generateAccessToken devuelve un string JWT válido
 function testGenerateAccessTokenDevuelveStringJWT() {
   const token = generateAccessToken(
-    { id: 1, usuario: 'admin', rol: 'administrador' },
+    { id: 1, rol: 'administrador' },
     'secreto',
     '1h'
   );
@@ -27,14 +27,14 @@ function testGenerateAccessTokenDevuelveStringJWT() {
 // verifyAccessToken con token válido -> { valido: true, payload, error: null }
 function testVerifyAccessTokenValido() {
   const token = generateAccessToken(
-    { id: 1, usuario: 'admin', rol: 'administrador' },
+    { id: 1, rol: 'administrador' },
     'secreto',
     '1h'
   );
   const resultado = verifyAccessToken(token, 'secreto');
   assert.strictEqual(resultado.valido, true, 'verifyAccessToken debe devolver valido: true para un token válido');
   assert.strictEqual(resultado.payload.id, 1);
-  assert.strictEqual(resultado.payload.usuario, 'admin');
+  assert.strictEqual(resultado.payload.rol, 'administrador');
   assert.strictEqual(resultado.payload.rol, 'administrador');
   assert.strictEqual(typeof resultado.payload.jti, 'string', 'el payload debe incluir el jti del token (RF-41)');
   assert.ok(resultado.payload.jti.length > 0, 'el jti no debe estar vacío');
@@ -43,7 +43,7 @@ function testVerifyAccessTokenValido() {
 
 // RF-41: dos tokens emitidos en el mismo instante con el mismo payload son distintos
 function testDosTokensDelMismoInstanteSonDistintos() {
-  const payload = { id: 1, usuario: 'admin', rol: 'administrador' };
+  const payload = { id: 1, rol: 'administrador' };
   const primero = generateAccessToken(payload, 'secreto', '1h');
   const segundo = generateAccessToken(payload, 'secreto', '1h');
 
@@ -68,7 +68,7 @@ function testVerifyAccessTokenInvalido() {
 // isTokenExpired con token vencido -> true (hoy inyectado)
 function testIsTokenExpiredTokenVencido() {
   const tokenVencido = generateAccessToken(
-    { id: 1, usuario: 'admin', rol: 'administrador' },
+    { id: 1, rol: 'administrador' },
     'secreto',
     '1s'
   );
@@ -83,7 +83,7 @@ function testIsTokenExpiredTokenVencido() {
 // isTokenExpired con token válido -> false (hoy inyectado)
 function testIsTokenExpiredTokenValido() {
   const tokenValido = generateAccessToken(
-    { id: 1, usuario: 'admin', rol: 'administrador' },
+    { id: 1, rol: 'administrador' },
     'secreto',
     '1h'
   );

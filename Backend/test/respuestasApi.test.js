@@ -92,8 +92,7 @@ async function testLoginDevuelveIdNumerico() {
     assert.strictEqual(respuesta.statusCode, 200, `el login de ${etiqueta} debe responder 200`);
     assert.ok(respuesta.body.token, `el login de ${etiqueta} debe incluir el token de acceso`);
     assert.strictEqual(respuesta.body.rol, rol, `el login de ${etiqueta} debe incluir su rol`);
-    // El apoyo crea cada cuenta con el nombre igual a su usuario (rebanada 5b: el login ya no trae usuario).
-    assert.strictEqual(respuesta.body.nombre, cuenta.usuario, `el login de ${etiqueta} debe incluir su nombre`);
+    assert.strictEqual(respuesta.body.nombre, cuenta.nombre, `el login de ${etiqueta} debe incluir su nombre`);
 
     // RF-01 y criterio 1: el identificador es un número y es el de la cuenta que inició sesión.
     assert.ok(
@@ -125,9 +124,9 @@ async function testListaDeContadoresSoloIdYNombre() {
 
   // Se afirma sobre los contadores propios de esta prueba, nunca sobre la lista completa.
   const propios = respuesta.body.contadores.filter(
-    (fila) => fila.nombre === contador.usuario || fila.nombre === usuarioSistema.usuario
+    (fila) => fila.nombre === contador.nombre || fila.nombre === usuarioSistema.nombre
   );
-  const propio = propios.find((fila) => fila.nombre === contador.usuario);
+  const propio = propios.find((fila) => fila.nombre === contador.nombre);
   assert.ok(propio, 'la lista debe incluir el contador propio creado en esta prueba');
 
   // RF-32: cada contador tiene exactamente las claves id y nombre, ninguna otra.

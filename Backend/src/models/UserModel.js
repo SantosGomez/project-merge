@@ -2,18 +2,6 @@ const { query } = require('../config/db');
 const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 
 /**
- * Busca un usuario por su nombre de usuario (distingue mayúsculas/minúsculas).
- * RF-01, RF-03, RF-36.
- * @param {string} usuario - Nombre de usuario.
- * @returns {Promise<Object|null>} El usuario encontrado o null.
- */
-async function findByUsername(usuario) {
-  const rows = await query('SELECT * FROM usuarios WHERE usuario = ?', [usuario]);
-  // La colación de la tabla no distingue mayúsculas: la coincidencia exacta se exige aquí (RF-36)
-  return rows.find((fila) => fila.usuario === usuario) || null;
-}
-
-/**
  * Busca una cuenta por su correo de acceso, sin distinguir mayúsculas ni espacios extremos.
  * @param {string} correo - Correo con el que se inicia sesión.
  * @returns {Promise<Object|null>} La cuenta encontrada o null.
@@ -33,57 +21,17 @@ async function registrarUltimoAcceso(id, momento) {
 }
 
 /**
- * Indica si ya existe un usuario con ese nombre sin distinguir mayúsculas (RF-45).
- * @param {string} usuario - Nombre de usuario.
- * @returns {Promise<boolean>} true si existe una cuenta con ese nombre.
- */
-async function usuarioExisteIgnoreCase(usuario) {
-  const rows = await query('SELECT id FROM usuarios WHERE LOWER(usuario) = LOWER(?) LIMIT 1', [usuario]);
-  return rows.length > 0;
-}
-
-/**
- * Correo de acceso de una cuenta mientras el alta todavía pide «usuario»: el mismo
- * texto en minúsculas si ya es un correo, o `usuario@prueba.local` si no lo es.
- * Es la misma regla que aplica la migración a las cuentas existentes.
- * @param {string} usuario - Nombre de usuario.
- * @returns {string} correo en minúsculas.
- */
-function correoDeTransicion(usuario) {
-  const minusculas = usuario.toLowerCase();
-  return minusculas.includes('@') ? minusculas : `${minusculas}@prueba.local`;
-}
-
-/**
- * Crea un nuevo usuario y devuelve el ID insertado.
- * RF-27, RF-28.
- * @param {string} usuario - Nombre de usuario.
- * @param {string} passwordHash - Contraseña hasheada con Argon2id.
- * @param {string} rol - Rol del usuario (administrador, contador, usuarios_de_sistema).
- * @returns {Promise<number>} ID del usuario insertado.
- */
-async function create(usuario, passwordHash, rol) {
-  const ahora = formatLocalDate(nowLocal());
-  const result = await query(
-    `INSERT INTO usuarios (usuario, nombre, correo, password_hash, rol, creado_en, actualizado_en)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [usuario, usuario, correoDeTransicion(usuario), passwordHash, rol, ahora, ahora]
-  );
-  return result.insertId;
-}
-
-/**
  * Crea una cuenta con nombre y correo propios (login por correo) y devuelve su ID.
- * Mientras exista la columna `usuario`, guarda en ella el mismo correo.
+ * RF-27, RF-28.
  * @param {{ nombre: string, correo: string, passwordHash: string, rol: string }} datos
  * @returns {Promise<number>} ID del usuario insertado.
  */
-async function createConCorreo({ nombre, correo, passwordHash, rol }) {
+async function create({ nombre, correo, passwordHash, rol }) {
   const ahora = formatLocalDate(nowLocal());
   const result = await query(
-    `INSERT INTO usuarios (usuario, nombre, correo, password_hash, rol, creado_en, actualizado_en)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [correo, nombre, correo, passwordHash, rol, ahora, ahora]
+    `INSERT INTO usuarios (nombre, correo, password_hash, rol, creado_en, actualizado_en)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [nombre, correo, passwordHash, rol, ahora, ahora]
   );
   return result.insertId;
 }
@@ -145,12 +93,8 @@ async function updatePassword(id, hash) {
 }
 
 module.exports = {
-  correoDeTransicion,
-  createConCorreo,
   findByCorreo,
   registrarUltimoAcceso,
-  findByUsername,
-  usuarioExisteIgnoreCase,
   updatePassword,
   create,
   findById,

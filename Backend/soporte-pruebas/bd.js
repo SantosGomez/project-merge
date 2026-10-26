@@ -17,10 +17,10 @@ const LOCK_SEED = 'delgrow_pruebas_seed';
 // Contraseña fija de los usuarios de prueba (no es un dato sensible real).
 const PASSWORD_PRUEBA = 'PruebaClave123';
 
-// Memoria del proceso: ids de usuarios creados, nombres de usuarios dados de alta
+// Memoria del proceso: ids de cuentas creadas, correos de cuentas dadas de alta
 // por la API y ids de casos creados. Nunca se borra por prefijo.
 const usuariosCreados = [];
-const nombresRegistrados = [];
+const correosRegistrados = [];
 const casosCreados = [];
 
 /**
@@ -43,26 +43,27 @@ async function prepararBaseDeDatos() {
 }
 
 /**
- * Crea un usuario de prueba con nombre único y contraseña hasheada con Argon2id.
- * @param {string} rol - Rol del usuario (contador, administrador, usuarios_de_sistema).
- * @returns {Promise<{id: number, usuario: string, correo: string, password: string}>} Datos del usuario creado.
+ * Crea una cuenta de prueba con nombre y correo únicos y contraseña hasheada con Argon2id.
+ * @param {string} rol - Rol de la cuenta (contador, administrador, usuarios_de_sistema).
+ * @returns {Promise<{id: number, nombre: string, correo: string, password: string}>} Datos de la cuenta creada.
  */
 async function crearUsuarioDePrueba(rol) {
   const sufijo = crypto.randomBytes(4).toString('hex');
-  const usuario = `zz_test_${rol}_${sufijo}`;
+  const nombre = `zz_test_${rol}_${sufijo}`;
+  const correo = `${nombre}@prueba.local`;
   const passwordHash = await hashPassword(PASSWORD_PRUEBA);
-  const id = await UserModel.create(usuario, passwordHash, rol);
-  usuariosCreados.push({ id, usuario });
-  return { id, usuario, correo: UserModel.correoDeTransicion(usuario), password: PASSWORD_PRUEBA };
+  const id = await UserModel.create({ nombre, correo, passwordHash, rol });
+  usuariosCreados.push(id);
+  return { id, nombre, correo, password: PASSWORD_PRUEBA };
 }
 
 /**
- * Registra un usuario creado por la API dentro de una prueba para que la limpieza
- * lo borre. La limpieza resuelve el nombre a id cuando llega el momento.
- * @param {string} nombreUsuario - Nombre exacto del usuario creado.
+ * Registra una cuenta creada por la API dentro de una prueba para que la limpieza
+ * la borre. La limpieza resuelve el correo a id cuando llega el momento.
+ * @param {string} correo - Correo de la cuenta creada.
  */
-function registrarUsuarioCreado(nombreUsuario) {
-  nombresRegistrados.push(nombreUsuario);
+function registrarUsuarioCreado(correo) {
+  correosRegistrados.push(correo);
 }
 
 /**
@@ -104,9 +105,9 @@ async function envejecerSesion(token, minutos) {
  * @returns {Promise<Array<number>>} Ids únicos.
  */
 async function idsDeUsuariosRegistrados() {
-  const ids = usuariosCreados.map((usuario) => usuario.id);
-  for (const nombre of nombresRegistrados) {
-    const fila = await UserModel.findByUsername(nombre);
+  const ids = [...usuariosCreados];
+  for (const correo of correosRegistrados) {
+    const fila = await UserModel.findByCorreo(correo);
     if (fila) {
       ids.push(fila.id);
     }
@@ -137,7 +138,7 @@ async function limpiarDatosDePrueba() {
   }
 
   usuariosCreados.length = 0;
-  nombresRegistrados.length = 0;
+  correosRegistrados.length = 0;
   casosCreados.length = 0;
 }
 

@@ -9,8 +9,9 @@ const {
   cerrarBaseDeDatos,
 } = require('../soporte-pruebas/bd');
 const UserModel = require('../src/models/UserModel');
+const { query } = require('../src/config/db');
 
-const { findByUsername, create, findById, findAll } = UserModel;
+const { create, findById, findAll } = UserModel;
 
 /**
  * Pruebas del modelo de usuarios (consultas SQL contra MariaDB).
@@ -31,45 +32,34 @@ function nombreDePrueba(prefijo) {
   return `zz_test_${prefijo}_${crypto.randomBytes(4).toString('hex')}`;
 }
 
-async function testFindByUsernameDevuelveUsuarioExistente() {
-  const propio = await crearUsuarioDePrueba('administrador');
-  const usuario = await findByUsername(propio.usuario);
-  assert.ok(usuario, 'findByUsername debe devolver el usuario cuando existe');
-  assert.strictEqual(usuario.usuario, propio.usuario);
-  assert.ok(usuario.password_hash, 'el usuario debe tener password_hash');
-  assert.strictEqual(usuario.rol, 'administrador');
-}
-
-async function testFindByUsernameDevuelveNullCuandoNoExiste() {
-  const usuario = await findByUsername('usuario_que_no_existe_xyz');
-  assert.strictEqual(
-    usuario,
-    null,
-    'findByUsername debe devolver null cuando el usuario no existe'
-  );
-}
-
-async function testCreateInsertaUsuarioYDevuelveId() {
-  const nombre = nombreDePrueba('usuario_create');
-  const id = await create(nombre, 'hash_prueba_t5', 'contador');
-  registrarUsuarioCreado(nombre);
-  assert.strictEqual(
-    typeof id,
-    'number',
-    'create debe devolver el id numérico del usuario insertado'
-  );
-  assert.ok(id > 0, 'el id devuelto por create debe ser mayor que cero');
-  const usuario = await findById(id);
-  assert.ok(usuario, 'el registro insertado debe existir con el id devuelto');
-  assert.strictEqual(usuario.id, id);
-  assert.strictEqual(usuario.usuario, nombre);
-  assert.strictEqual(usuario.rol, 'contador');
+// ---------- Rebanada 5c: create pide nombre y correo y ya no escribe la columna usuario ----------
+async function testCreateCreaLaCuentaPorCorreo() {
+  const correos = [`${nombreDePrueba('create')}@prueba.local`, `${nombreDePrueba('create')}@prueba.local`];
+  const ids = [];
+  try {
+    // Dos altas seguidas: si la columna usuario siguiera siendo obligatoria y única, la segunda fallaría.
+    for (const correo of correos) {
+      ids.push(await create({ nombre: 'Zz Cuenta Create', correo, passwordHash: 'hash_prueba_5c', rol: 'contador' }));
+    }
+    for (const [i, id] of ids.entries()) {
+      assert.strictEqual(typeof id, 'number', 'create devuelve el id numérico');
+      const cuenta = await findById(id);
+      assert.strictEqual(cuenta.nombre, 'Zz Cuenta Create');
+      assert.strictEqual(cuenta.correo, correos[i]);
+      assert.strictEqual(cuenta.rol, 'contador');
+      assert.ok(cuenta.actualizado_en, 'actualizado_en se llena al crear');
+      assert.strictEqual(cuenta.usuario ?? null, null, 'no escribe la columna usuario');
+    }
+  } finally {
+    if (ids.length > 0) await query('DELETE FROM usuarios WHERE id IN (?)', [ids]);
+  }
 }
 
 async function testFindByIdDevuelveUsuarioExistente() {
   const nombre = nombreDePrueba('usuario_findid');
-  const id = await create(nombre, 'hash_prueba_t5', 'contador');
-  registrarUsuarioCreado(nombre);
+  const correo = `${nombre}@prueba.local`;
+  const id = await create({ nombre, correo, passwordHash: 'hash_prueba_t5', rol: 'contador' });
+  registrarUsuarioCreado(correo);
   const usuario = await findById(id);
   assert.ok(usuario, 'findById debe devolver el usuario cuando existe');
   assert.strictEqual(usuario.id, id);
@@ -115,64 +105,6 @@ async function testFindAllPorRolContadorSoloDevuelveContadores() {
   });
 }
 
-// ---------- RF-36, criterio 31: findByUsername distingue mayúsculas ----------
-async function testFindByUsernameDistingueMayusculas() {
-  const nombre = nombreDePrueba('ana');
-  await create(nombre, 'hash_prueba_t12', 'contador');
-  registrarUsuarioCreado(nombre);
-
-  const conOtraCapitalizacion = await findByUsername(nombre.toUpperCase());
-  assert.strictEqual(
-    conOtraCapitalizacion,
-    null,
-    'findByUsername debe devolver null si el nombre solo coincide sin distinguir mayúsculas'
-  );
-
-  const exacto = await findByUsername(nombre);
-  assert.ok(exacto, 'findByUsername debe devolver la cuenta con el nombre exacto');
-  assert.strictEqual(exacto.usuario, nombre, 'la cuenta devuelta debe tener el nombre exacto');
-}
-
-// ---------- RF-45, criterio 40: duplicados sin distinguir mayúsculas ----------
-async function testUsuarioExisteIgnoreCase() {
-  assert.strictEqual(
-    typeof UserModel.usuarioExisteIgnoreCase,
-    'function',
-    'UserModel debe exponer usuarioExisteIgnoreCase'
-  );
-
-  const nombre = nombreDePrueba('ana');
-  await create(nombre, 'hash_prueba_t12', 'contador');
-  registrarUsuarioCreado(nombre);
-
-  assert.strictEqual(
-    await UserModel.usuarioExisteIgnoreCase(nombre.toUpperCase()),
-    true,
-    'debe encontrar la cuenta aunque el nombre llegue con otra capitalización'
-  );
-  assert.strictEqual(
-    await UserModel.usuarioExisteIgnoreCase(nombreDePrueba('no_existe')),
-    false,
-    'debe devolver false con un nombre que no existe'
-  );
-}
-
-async function testCreateDaCorreoNombreYActualizacionDeTransicion() {
-  const nombre = nombreDePrueba('Usuario_Transicion');
-  const id = await create(nombre, 'hash_prueba_correo', 'contador');
-  registrarUsuarioCreado(nombre);
-  const usuario = await findById(id);
-  // Mientras el alta pide «usuario», ese texto (en minúsculas) también es el correo de acceso.
-  assert.strictEqual(usuario.correo, `${nombre.toLowerCase()}@prueba.local`);
-  assert.strictEqual(usuario.nombre, nombre);
-  assert.ok(usuario.actualizado_en, 'actualizado_en se llena al crear');
-
-  const conCorreo = `${nombreDePrueba('conarroba')}@Ejemplo.MX`;
-  const id2 = await create(conCorreo, 'hash_prueba_correo', 'contador');
-  registrarUsuarioCreado(conCorreo);
-  assert.strictEqual((await findById(id2)).correo, conCorreo.toLowerCase(), 'si ya es correo se usa tal cual');
-}
-
 describe('UserModel', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -183,14 +115,9 @@ describe('UserModel', () => {
     await cerrarBaseDeDatos();
   });
 
-  test('findByUsername devuelve el usuario cuando existe', testFindByUsernameDevuelveUsuarioExistente);
-  test('findByUsername devuelve null cuando no existe', testFindByUsernameDevuelveNullCuandoNoExiste);
-  test('create inserta el usuario y devuelve su id', testCreateInsertaUsuarioYDevuelveId);
-  test('create da correo, nombre y actualizado_en a la cuenta nueva', testCreateDaCorreoNombreYActualizacionDeTransicion);
+  test('create crea la cuenta con nombre y correo, sin usuario, y devuelve su id', testCreateCreaLaCuentaPorCorreo);
   test('findById devuelve el usuario cuando existe', testFindByIdDevuelveUsuarioExistente);
   test('findById devuelve null cuando no existe', testFindByIdDevuelveNullCuandoNoExiste);
   test('findAll devuelve un array de usuarios', testFindAllDevuelveArray);
   test('findAll por rol contador solo devuelve contadores', testFindAllPorRolContadorSoloDevuelveContadores);
-  test('findByUsername solo devuelve la cuenta con el nombre exacto', testFindByUsernameDistingueMayusculas);
-  test('usuarioExisteIgnoreCase encuentra el nombre sin distinguir mayúsculas', testUsuarioExisteIgnoreCase);
 });

@@ -238,7 +238,7 @@ async function testLoginConCorreoDevuelveNombreYCorreo() {
   });
   assert.strictEqual(respuesta.statusCode, 200, 'debe entrar con el correo');
   assert.strictEqual(respuesta.body.correo, contador.correo, 'la respuesta trae el correo');
-  assert.strictEqual(respuesta.body.nombre, contador.usuario, 'la respuesta trae el nombre');
+  assert.strictEqual(respuesta.body.nombre, contador.nombre, 'la respuesta trae el nombre');
 }
 
 async function testLoginConCorreoSinImportarMayusculasNiEspacios() {

@@ -328,7 +328,7 @@ test('los ganchos son opcionales: sin registrar no se lanza al hacer peticiones'
 // --- respuesta correcta ----------------------------------------------------
 
 test('una respuesta correcta se entrega tal cual a quien llama', async () => {
-  const datos = { contadores: [{ id: 1, usuario: 'ana' }] }
+  const datos = { contadores: [{ id: 1, nombre: 'ana' }] }
   const { api } = crearApi({
     almacen: crearAlmacenFalso(),
     adaptador: crearAdaptador((config) => respuestaHttp(config, { datos })),

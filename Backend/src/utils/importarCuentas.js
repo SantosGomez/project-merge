@@ -51,7 +51,7 @@ async function importarCuentas(cuentas) {
       continue;
     }
 
-    await UserModel.createConCorreo({
+    await UserModel.create({
       nombre: datos.nombre,
       correo: datos.correo,
       passwordHash: await hashPassword(datos.password),

@@ -57,10 +57,9 @@ async function testListarContadoresComoAdmin() {
 
   // La lista trae todos los contadores de la base: se afirma la presencia de los propios,
   // nunca una cantidad total (otros archivos de prueba y el seed también aparecen).
-  // El apoyo crea cada cuenta con el nombre igual a su usuario, así que ese es el nombre esperado.
   const nombres = respuesta.body.contadores.map((fila) => fila.nombre);
-  assert.ok(nombres.includes(contador.usuario), 'la lista debe incluir el contador propio');
-  assert.ok(nombres.includes(contadorConCasos.usuario), 'la lista debe incluir el contador propio con casos');
+  assert.ok(nombres.includes(contador.nombre), 'la lista debe incluir el contador propio');
+  assert.ok(nombres.includes(contadorConCasos.nombre), 'la lista debe incluir el contador propio con casos');
 
   // Cada fila trae solo { id, nombre }: el usuario de acceso ya no se expone.
   for (const fila of respuesta.body.contadores) {
