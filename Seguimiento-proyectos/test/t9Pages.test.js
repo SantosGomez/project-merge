@@ -457,3 +457,35 @@ describe('Formulario de caso más horizontal: filas 2, 2, 1', () => {
     assert.match(cssRule(caseFormSource, '.registro-caso__ancho-completo'), /grid-column: 1 \/ -1/)
   })
 })
+
+describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
+  const pagina = read('../src/pages/AdminDashboardPage.vue')
+  const existeComponente = existsSync(fileURLToPath(new URL('../src/components/ResumenEquipo.vue', import.meta.url)))
+  const componente = existeComponente ? read('../src/components/ResumenEquipo.vue') : ''
+
+  it('las tarjetas van arriba, fuera de los estados de la lista: si la lista falla, el resumen sigue', () => {
+    const plantilla = pagina.slice(0, pagina.indexOf('</template>\n\n<script'))
+    const resumen = plantilla.indexOf('<ResumenEquipo')
+    assert.ok(resumen >= 0, 'la página usa ResumenEquipo')
+    assert.ok(resumen < plantilla.indexOf('<ScreenLoader'), 'antes de la carga de la lista')
+    assert.match(plantilla, /<ResumenEquipo\s[^>]*:resumen="resumen"[^>]*:cargando="cargandoResumen"[^>]*:error="errorResumen"[^>]*@reintentar="cargarResumen"/)
+  })
+
+  it('el resumen se pide aparte con getResumenEquipo y su error no toca el store de la lista', () => {
+    const cargar = pagina.slice(pagina.indexOf('const cargarResumen'), pagina.indexOf('\n}', pagina.indexOf('const cargarResumen')))
+    assert.match(cargar, /resumen\.value = await getResumenEquipo\(\)/)
+    assert.match(cargar, /errorResumen\.value = fallo/)
+    assert.doesNotMatch(cargar, /contadoresStore/)
+    assert.match(pagina, /onMounted\(async \(\) => \{\s*cargarResumen\(\)/, 'se lanza sin esperar a la lista')
+  })
+
+  it('ResumenEquipo pinta una tarjeta por cada elemento de tarjetasResumen, con tooltip y estados de carga y error', () => {
+    assert.ok(existeComponente, 'existe components/ResumenEquipo.vue')
+    assert.match(componente, /tarjetasResumen\(props\.resumen\)/)
+    assert.match(componente, /v-for="tarjeta in tarjetas"/)
+    assert.match(componente, /<q-tooltip[^>]*>\{\{ tarjeta\.ayuda \}\}<\/q-tooltip>/)
+    assert.match(componente, /<ScreenLoader/)
+    assert.match(componente, /<ErrorState[\s\S]*?@retry="emit\('reintentar'\)"/)
+    assert.match(componente, /aria-labelledby="resumen-equipo-titulo"/)
+  })
+})

@@ -22,6 +22,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - «Cliente Test 1» (id 10) está asignado a `admin_seed`, un administrador: dato raro, revisar con el usuario.
 - `userModel.test.js` por debajo de su mínimo en `verificarPruebas.js`.
 - Renombrar «Finalizado» a «Completado» (pedido original) y resaltar casos vencidos: no hechos.
+- Rediseño del dashboard (definido con el usuario 2026-10-26): 3 tarjetas KPI de todo el equipo, solo informativas con tooltip (Vencidos = vencimiento antes de hoy y no finalizado; Abiertos = Pendiente + En proceso con desglose; Prioridad Alta abierta) + dona «Casos por estado», sin librería (SVG/Quasar); lista y detalle se conservan debajo. **Rebanada 1 hecha, sin commit:** `GET /contadores/resumen` (solo admin) → `{ equipo, por_contador }` de una consulta (`CaseModel.resumenPorContador(hoy)`, LEFT JOIN de contadores con ceros; solo rol contador). Se eligió devolver `por_contador` para probar exacto con la base compartida en paralelo (el total es la suma de las filas) y para sustituir más adelante las 1 + N peticiones de conteos. Frontend: `getResumenEquipo` (counterService), `tarjetasResumen` (filasVista), `components/ResumenEquipo.vue`; la página lo carga aparte de la lista (su error no la oculta). Backend 225, frontend 430; verificado en navegador con datos `zz_test_` (ya borrados). Falta la rebanada 2: dona por estado con los mismos datos.
 
 ## Backend (lo esencial)
 

@@ -143,3 +143,25 @@ test('getCasosPorContador rechaza con tres partes si la respuesta no trae casos'
 
   await assert.rejects(servicio.getCasosPorContador(7), esErrorDeTresPartes('respuesta_inesperada'))
 })
+
+// --- Dashboard: resumen del equipo (KPIs) ------------------------------------
+
+test('getResumenEquipo hace GET /contadores/resumen y devuelve el total del equipo como números', async () => {
+  const api = crearApiFalsa({
+    datos: {
+      equipo: { pendiente: '3', en_proceso: 2, finalizado: 7, abiertos: 5, vencidos: 1, alta_abiertos: 2 },
+      por_contador: [],
+    },
+  })
+  const servicio = crearCounterService({ api })
+
+  const resumen = await servicio.getResumenEquipo()
+
+  assert.deepEqual(api.llamadas, [{ metodo: 'GET', url: '/contadores/resumen' }])
+  assert.deepEqual(resumen, { pendiente: 3, en_proceso: 2, finalizado: 7, abiertos: 5, vencidos: 1, alta_abiertos: 2 })
+})
+
+test('getResumenEquipo rechaza con tres partes si la respuesta no trae el total del equipo', async () => {
+  const servicio = crearCounterService({ api: crearApiFalsa({ datos: { por_contador: [] } }) })
+  await assert.rejects(servicio.getResumenEquipo(), esErrorDeTresPartes('respuesta_inesperada'))
+})

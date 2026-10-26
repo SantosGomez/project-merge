@@ -114,3 +114,43 @@ export const casosAFilas = (casos = []) => {
 
   return casos.map(casoAFila).filter((fila) => fila !== null)
 }
+
+/**
+ * Tarjetas KPI del dashboard a partir del resumen del equipo (`GET /contadores/resumen`).
+ * Cada tarjeta trae su número, una línea de desglose y la ayuda del tooltip que explica cómo se cuenta.
+ * Un dato que falte cuenta como 0.
+ * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos }`.
+ * @returns {Array<{ clave: string, titulo: string, valor: number, detalle: string, ayuda: string, alerta: boolean }>}
+ */
+export const tarjetasResumen = (resumen) => {
+  const dato = (campo) => Number(resumen?.[campo]) || 0
+  const vencidos = dato('vencidos')
+
+  return [
+    {
+      clave: 'vencidos',
+      titulo: 'Vencidos',
+      valor: vencidos,
+      detalle: 'Sin finalizar y con la fecha de vencimiento ya pasada',
+      ayuda:
+        'Casos de todo el equipo cuya fecha de vencimiento es anterior a hoy y que todavía no están en estado Finalizado.',
+      alerta: vencidos > 0,
+    },
+    {
+      clave: 'abiertos',
+      titulo: 'Abiertos',
+      valor: dato('abiertos'),
+      detalle: `Pendientes: ${dato('pendiente')} · En proceso: ${dato('en_proceso')}`,
+      ayuda: 'Casos de todo el equipo que no están finalizados: la suma de los Pendientes y los En proceso.',
+      alerta: false,
+    },
+    {
+      clave: 'alta_abiertos',
+      titulo: 'Prioridad Alta abierta',
+      valor: dato('alta_abiertos'),
+      detalle: 'Casos de prioridad Alta sin finalizar',
+      ayuda: 'Casos de todo el equipo con prioridad Alta que todavía no están en estado Finalizado.',
+      alerta: false,
+    },
+  ]
+}

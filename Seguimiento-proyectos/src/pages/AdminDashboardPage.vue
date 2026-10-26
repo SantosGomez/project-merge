@@ -21,6 +21,13 @@
         </q-btn>
       </div>
 
+      <ResumenEquipo
+        :resumen="resumen"
+        :cargando="cargandoResumen"
+        :error="errorResumen"
+        @reintentar="cargarResumen"
+      />
+
       <ScreenLoader
         v-if="estadoPantalla === SCREEN_STATES.loading"
         text="Cargando los contadores del equipo y los conteos de sus casos…"
@@ -114,13 +121,15 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import CaseRow from '../components/CaseRow.vue'
 import CounterCountsRow from '../components/CounterCountsRow.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import ResumenEquipo from '../components/ResumenEquipo.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
+import { getResumenEquipo } from '../services/counterService.js'
 import { useCountersStore } from '../stores/counters.js'
 import { casosAFilas, contadorAFila } from '../utils/filasVista.js'
 import { SCREEN_STATES } from '../utils/screenState.js'
@@ -163,7 +172,29 @@ const seleccionar = (contadorId) => contadoresStore.seleccionarContador(contador
 /** Reintenta la carga completa; P-2 vuelve sin contador seleccionado (RF-36). */
 const reintentar = () => contadoresStore.reintentar()
 
+/*
+ * Tarjetas KPI del equipo: se piden aparte de la lista y con su propio estado, así un fallo
+ * del resumen no oculta la lista de contadores ni al revés.
+ */
+const resumen = ref(null)
+const cargandoResumen = ref(false)
+const errorResumen = ref(null)
+
+const cargarResumen = async () => {
+  cargandoResumen.value = true
+  errorResumen.value = null
+  try {
+    resumen.value = await getResumenEquipo()
+  } catch (fallo) {
+    errorResumen.value = fallo
+  } finally {
+    cargandoResumen.value = false
+  }
+}
+
 onMounted(async () => {
+  cargarResumen()
+
   /*
    * RF-17: P-3 deja el contador elegido en el store antes de abrir P-2. La carga de P-2
    * reinicia la selección, así que se guarda aquí y se restablece al terminar, siempre que

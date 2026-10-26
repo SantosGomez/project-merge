@@ -2,7 +2,7 @@ const UserModel = require('../models/UserModel');
 const CaseModel = require('../models/CaseModel');
 const { buildError } = require('../utils/errorUtils');
 const { parseCounterId } = require('../utils/validationUtils');
-const { casoConFechasLocales } = require('../utils/dateUtils');
+const { casoConFechasLocales, formatearFechaISO, nowLocal } = require('../utils/dateUtils');
 
 // Devuelve el caso con sus fechas como texto en hora local YYYY-MM-DD HH:mm:ss (RF-48, RNF-2).
 // Serializador compartido de dateUtils (mismo que usa CaseController).
@@ -54,6 +54,21 @@ async function countCasesByStatus(req, res) {
 }
 
 /**
+ * Resumen de casos del equipo para los KPIs del dashboard (solo administrador): el total
+ * del equipo y el desglose por contador, de una sola consulta. El total es la suma de las filas.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function teamSummary(req, res) {
+  const porContador = await CaseModel.resumenPorContador(formatearFechaISO(nowLocal()));
+  const equipo = { pendiente: 0, en_proceso: 0, finalizado: 0, abiertos: 0, vencidos: 0, alta_abiertos: 0 };
+  for (const fila of porContador) {
+    for (const campo of Object.keys(equipo)) equipo[campo] += fila[campo];
+  }
+  return res.status(200).json({ equipo, por_contador: porContador });
+}
+
+/**
  * Devuelve los casos de un contador (solo administrador).
  * RF-14, RF-16, RF-24.
  * @param {Object} req - Petición Express con params.id del contador.
@@ -98,4 +113,4 @@ async function getMyCases(req, res) {
   return res.status(200).json({ casos: casos.map(conFechasLocales) });
 }
 
-module.exports = { listCounters, countCasesByStatus, getCasesByCounter, getMyCases };
+module.exports = { listCounters, teamSummary, countCasesByStatus, getCasesByCounter, getMyCases };

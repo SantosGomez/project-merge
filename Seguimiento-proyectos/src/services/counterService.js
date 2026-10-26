@@ -73,7 +73,27 @@ export const crearCounterService = (opciones = {}) => {
     return traducirCasos(casos, 'los casos del contador')
   }
 
-  return { listCounters, getConteosPorEstado, getCasosPorContador }
+  /**
+   * GET /contadores/resumen: total de casos del equipo para los KPIs del dashboard.
+   * @returns {Promise<{ pendiente: number, en_proceso: number, finalizado: number, abiertos: number, vencidos: number, alta_abiertos: number }>}
+   */
+  const getResumenEquipo = async () => {
+    const { data } = await api.get('/contadores/resumen')
+    const equipo = data?.equipo
+    if (equipo === null || typeof equipo !== 'object') {
+      throw crearErrorInesperado('el resumen de casos del equipo')
+    }
+    return {
+      pendiente: Number(equipo.pendiente) || 0,
+      en_proceso: Number(equipo.en_proceso) || 0,
+      finalizado: Number(equipo.finalizado) || 0,
+      abiertos: Number(equipo.abiertos) || 0,
+      vencidos: Number(equipo.vencidos) || 0,
+      alta_abiertos: Number(equipo.alta_abiertos) || 0,
+    }
+  }
+
+  return { listCounters, getConteosPorEstado, getCasosPorContador, getResumenEquipo }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -82,3 +102,4 @@ const servicioPorDefecto = crearCounterService()
 export const listCounters = servicioPorDefecto.listCounters
 export const getConteosPorEstado = servicioPorDefecto.getConteosPorEstado
 export const getCasosPorContador = servicioPorDefecto.getCasosPorContador
+export const getResumenEquipo = servicioPorDefecto.getResumenEquipo

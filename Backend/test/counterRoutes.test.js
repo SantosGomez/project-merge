@@ -9,7 +9,8 @@ const {
 } = require('../soporte-pruebas/bd');
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { query } = require('../src/config/db');
-const { formatLocalDate } = require('../src/utils/dateUtils');
+const { formatLocalDate, formatearFechaISO, nowLocal } = require('../src/utils/dateUtils');
+const CaseModel = require('../src/models/CaseModel');
 
 // Formato de hora local de RNF-2: sin `T`, sin `Z` y sin milisegundos.
 const FORMATO_FECHA_LOCAL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
@@ -32,6 +33,7 @@ let servidor;
 let administrador;
 let contador;
 let contadorConCasos;
+let contadorResumen;
 let tokenAdmin;
 let tokenContador;
 
@@ -173,6 +175,58 @@ async function testFechasDeCasosEnHoraLocal() {
   }
 }
 
+// ---------- Dashboard: resumen de casos del equipo (KPIs) ----------
+const CAMPOS_RESUMEN = ['abiertos', 'alta_abiertos', 'en_proceso', 'finalizado', 'pendiente', 'vencidos'];
+
+/** Fecha AAAA-MM-DD a `dias` de hoy (negativo = pasado), en hora local. */
+function fechaDesdeHoy(dias) {
+  const fecha = nowLocal();
+  fecha.setDate(fecha.getDate() + dias);
+  return formatearFechaISO(fecha);
+}
+
+async function testResumenDelEquipo() {
+  const respuesta = await peticion(servidor.puerto, 'GET', '/contadores/resumen', null, tokenAdmin);
+  assert.strictEqual(respuesta.statusCode, 200, 'el administrador recibe el resumen');
+  const { equipo, por_contador: porContador } = respuesta.body;
+  assert.ok(Array.isArray(porContador), 'trae el desglose por contador');
+
+  // Conteos exactos del contador propio (casos creados en `before`).
+  const propio = porContador.find((fila) => fila.contador_id === contadorResumen.id);
+  assert.deepStrictEqual(
+    propio,
+    { contador_id: contadorResumen.id, pendiente: 2, en_proceso: 2, finalizado: 1, abiertos: 4, vencidos: 2, alta_abiertos: 2 },
+    'vencido = vencimiento antes de hoy y no finalizado; alta abierta = Alta no finalizada'
+  );
+
+  // Un contador sin casos aparece con todo en cero.
+  const sinCasos = porContador.find((fila) => fila.contador_id === contador.id);
+  assert.deepStrictEqual(
+    CAMPOS_RESUMEN.map((campo) => sinCasos[campo]),
+    [0, 0, 0, 0, 0, 0],
+    'el contador sin casos tiene ceros'
+  );
+
+  // Solo cuentan los casos de contadores: el caso del administrador de prueba no aparece.
+  assert.ok(!porContador.some((fila) => fila.contador_id === administrador.id), 'sin cuentas que no son contador');
+
+  // El total del equipo es la suma de las filas de la misma respuesta.
+  for (const campo of CAMPOS_RESUMEN) {
+    const suma = porContador.reduce((total, fila) => total + fila[campo], 0);
+    assert.strictEqual(equipo[campo], suma, `equipo.${campo} es la suma por contador`);
+  }
+  assert.deepStrictEqual(Object.keys(equipo).sort(), CAMPOS_RESUMEN, 'el equipo trae solo los campos del resumen');
+}
+
+async function testResumenSoloAdministrador() {
+  const comoContador = await peticion(servidor.puerto, 'GET', '/contadores/resumen', null, tokenContador);
+  assert.strictEqual(comoContador.statusCode, 403, 'un contador recibe acceso denegado');
+  assert.strictEqual(comoContador.body.equipo, undefined, 'y no recibe el resumen');
+
+  const sinSesion = await peticion(servidor.puerto, 'GET', '/contadores/resumen', null, null);
+  assert.strictEqual(sinSesion.statusCode, 401, 'sin sesión se responde 401');
+}
+
 describe('rutas de contadores', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -187,6 +241,25 @@ describe('rutas de contadores', () => {
     await crearCasoDePrueba(contadorConCasos.id, { cliente: 'Cliente pendiente uno', estado: 'Pendiente' });
     await crearCasoDePrueba(contadorConCasos.id, { cliente: 'Cliente pendiente dos', estado: 'Pendiente' });
     await crearCasoDePrueba(contadorConCasos.id, { cliente: 'Cliente finalizado', estado: 'Finalizado' });
+
+    // Resumen: 2 vencidos (Pendiente y En proceso), uno que vence hoy (no vencido), un finalizado
+    // vencido (no cuenta) y uno futuro; 2 de prioridad Alta abiertos. Más un caso del administrador.
+    contadorResumen = await crearUsuarioDePrueba('contador');
+    const casoResumen = (estado, prioridad, dias) =>
+      CaseModel.create({
+        contador_id: contadorResumen.id,
+        cliente: `zz_test_resumen ${estado} ${prioridad}`,
+        estado,
+        prioridad,
+        fecha_inicio: fechaDesdeHoy(-30),
+        fecha_vencimiento: fechaDesdeHoy(dias),
+      });
+    await casoResumen('Pendiente', 'Alta', -1);
+    await casoResumen('En proceso', 'Media', -1);
+    await casoResumen('En proceso', 'Alta', 0);
+    await casoResumen('Finalizado', 'Alta', -1);
+    await casoResumen('Pendiente', 'Baja', 1);
+    await crearCasoDePrueba(administrador.id, { cliente: 'zz_test_resumen caso de admin' });
   });
 
   after(async () => {
@@ -201,4 +274,6 @@ describe('rutas de contadores', () => {
   test('un contador inexistente responde 404 en conteos y en casos', testContadorInexistenteDevuelve404);
   test('el administrador lee exactamente los casos propios del contador', testCasosDeContadorComoAdmin);
   test('las fechas de los casos de un contador llegan en hora local YYYY-MM-DD HH:mm:ss', testFechasDeCasosEnHoraLocal);
+  test('el resumen del equipo cuenta exacto por contador y el total es su suma', testResumenDelEquipo);
+  test('el resumen del equipo es solo para el administrador', testResumenSoloAdministrador);
 });

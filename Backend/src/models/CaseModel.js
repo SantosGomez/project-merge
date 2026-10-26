@@ -54,6 +54,41 @@ async function countByStatus(contadorId) {
   return conteos;
 }
 
+/** Campos del resumen de casos de un contador (dashboard del administrador). */
+const CAMPOS_RESUMEN = ['pendiente', 'en_proceso', 'finalizado', 'abiertos', 'vencidos', 'alta_abiertos'];
+
+/**
+ * Resumen de casos de cada contador en una sola consulta, con ceros para quien no tiene casos.
+ * Vencido = vencimiento anterior a `hoy` y no finalizado; alta abierta = prioridad Alta no finalizada.
+ * Solo cuentan las cuentas con rol contador.
+ * @param {string} hoy - Fecha AAAA-MM-DD de hoy en hora local.
+ * @returns {Promise<Array<{contador_id: number, pendiente: number, en_proceso: number, finalizado: number, abiertos: number, vencidos: number, alta_abiertos: number}>>}
+ */
+async function resumenPorContador(hoy) {
+  const rows = await query(
+    `SELECT u.id AS contador_id,
+            SUM(c.estado = 'Pendiente') AS pendiente,
+            SUM(c.estado = 'En proceso') AS en_proceso,
+            SUM(c.estado = 'Finalizado') AS finalizado,
+            SUM(c.estado <> 'Finalizado') AS abiertos,
+            SUM(c.estado <> 'Finalizado' AND c.fecha_vencimiento < ?) AS vencidos,
+            SUM(c.estado <> 'Finalizado' AND c.prioridad = 'Alta') AS alta_abiertos
+     FROM usuarios u
+     LEFT JOIN casos c ON c.contador_id = u.id
+     WHERE u.rol = 'contador'
+     GROUP BY u.id
+     ORDER BY u.id`,
+    [hoy]
+  );
+
+  // SUM llega como texto (DECIMAL) o null sin casos: se normaliza a número.
+  return rows.map((row) => {
+    const fila = { contador_id: row.contador_id };
+    for (const campo of CAMPOS_RESUMEN) fila[campo] = Number(row[campo]) || 0;
+    return fila;
+  });
+}
+
 /**
  * Crea un nuevo caso y devuelve el ID insertado.
  * RF-17, RF-18.
@@ -153,4 +188,4 @@ async function updatePatch(id, campos = {}) {
   ]);
 }
 
-module.exports = { findById, findByCounter, countByStatus, create, updateStatus, updatePriority, updatePatch };
+module.exports = { findById, findByCounter, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };

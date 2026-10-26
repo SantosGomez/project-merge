@@ -13,6 +13,7 @@ import {
   contadorAFila,
   usuarioAFila,
   compararUltimoAcceso,
+  tarjetasResumen,
 } from '../src/utils/filasVista.js'
 import { STATUSES } from '../src/utils/constants.js'
 
@@ -179,4 +180,39 @@ test('compararUltimoAcceso ordena por fecha y trata «Nunca» como el acceso má
     '2026-10-26 18:30:00',
   ])
   assert.equal(compararUltimoAcceso('Nunca', 'Nunca'), 0)
+})
+
+test('tarjetasResumen arma las 3 tarjetas KPI del dashboard con su número, desglose y ayuda', () => {
+  const tarjetas = tarjetasResumen({
+    pendiente: 3,
+    en_proceso: 2,
+    finalizado: 7,
+    abiertos: 5,
+    vencidos: 1,
+    alta_abiertos: 4,
+  })
+
+  assert.deepEqual(
+    tarjetas.map(({ clave, titulo, valor, detalle }) => ({ clave, titulo, valor, detalle })),
+    [
+      { clave: 'vencidos', titulo: 'Vencidos', valor: 1, detalle: 'Sin finalizar y con la fecha de vencimiento ya pasada' },
+      { clave: 'abiertos', titulo: 'Abiertos', valor: 5, detalle: 'Pendientes: 3 · En proceso: 2' },
+      { clave: 'alta_abiertos', titulo: 'Prioridad Alta abierta', valor: 4, detalle: 'Casos de prioridad Alta sin finalizar' },
+    ],
+  )
+  for (const tarjeta of tarjetas) {
+    assert.ok(tarjeta.ayuda.length > 20, `«${tarjeta.titulo}» explica cómo se cuenta`)
+  }
+})
+
+test('tarjetasResumen marca «Vencidos» como alerta solo cuando hay alguno', () => {
+  const alerta = (resumen) => tarjetasResumen(resumen).find((t) => t.clave === 'vencidos').alerta
+  assert.equal(alerta({ vencidos: 2 }), true)
+  assert.equal(alerta({ vencidos: 0 }), false)
+})
+
+test('tarjetasResumen muestra 0 cuando falta un dato', () => {
+  const tarjetas = tarjetasResumen({})
+  assert.deepEqual(tarjetas.map((t) => t.valor), [0, 0, 0])
+  assert.equal(tarjetas[1].detalle, 'Pendientes: 0 · En proceso: 0')
 })
