@@ -6,7 +6,7 @@
 
 import { describe, it, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 
 import { createPinia, setActivePinia } from 'pinia'
@@ -20,7 +20,8 @@ const read = (relativePath) =>
   readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8')
 
 const directorySource = read('../src/pages/CountersDirectoryPage.vue')
-const newCaseSource = read('../src/pages/NewCasePage.vue')
+const caseFormSource = read('../src/components/CaseFormDialog.vue')
+const myCasesSource = read('../src/pages/MyCasesPage.vue')
 const quasarConfig = readFileSync(fileURLToPath(new URL('../quasar.config.js', import.meta.url)), 'utf8')
 
 /** Devuelve la regla CSS de un selector dentro del bloque <style scoped> del archivo. */
@@ -82,61 +83,126 @@ describe('Directorio de usuarios (rebanada 1) — revisión estática de P-3 (RF
   })
 })
 
-describe('T9 — revisión estática de P-4 (RF-19 a RF-25, RF-43)', () => {
-  it('el formulario pide cliente y prioridad (RF-19, RF-20)', () => {
-    assert.match(newCaseSource, /Registro de caso/)
-    assert.match(newCaseSource, /v-model="client"/)
-    assert.match(newCaseSource, /v-model="priority"/)
-    assert.match(newCaseSource, /PriorityTag/)
-  })
+describe('T9 — registro de caso en diálogo (P-4, RF-19 a RF-25, RF-43)', () => {
+  it('el diálogo pide cliente y prioridad y muestra estado y contador de solo lectura (RF-19, RF-20)', () => {
+    assert.match(caseFormSource, /<q-dialog/)
+    assert.match(caseFormSource, /Registrar caso/)
+    assert.match(caseFormSource, /v-model="client"/)
+    assert.match(caseFormSource, /v-model="priority"/)
+    assert.match(caseFormSource, /PriorityTag/)
 
-  it('el estado y el contador asignado se muestran como información no editable (RF-19)', () => {
-    assert.match(newCaseSource, /readonly-info/)
-    assert.match(newCaseSource, /<dt>Estado<\/dt>/)
-    assert.match(newCaseSource, /<dt>Contador asignado<\/dt>/)
+    assert.match(caseFormSource, /readonly-info/)
+    assert.match(caseFormSource, /<dt>Estado<\/dt>/)
+    assert.match(caseFormSource, /<dt>Contador asignado<\/dt>/)
     // El bloque de solo lectura no contiene entradas de formulario.
-    const block = newCaseSource.slice(
-      newCaseSource.indexOf('<dl class="readonly-info">'),
-      newCaseSource.indexOf('</dl>'),
+    const block = caseFormSource.slice(
+      caseFormSource.indexOf('<dl class="readonly-info">'),
+      caseFormSource.indexOf('</dl>'),
     )
     assert.doesNotMatch(block, /q-input|q-select|<input|<select/)
   })
 
   it('valida con los códigos de CASE_ERROR_CODES y mensajes en español (RF-22 a RF-24)', () => {
-    assert.match(newCaseSource, /CASE_ERROR_CODES\.clientRequired/)
-    assert.match(newCaseSource, /CASE_ERROR_CODES\.clientTooLong/)
-    assert.match(newCaseSource, /CASE_ERROR_CODES\.priorityRequired/)
-    assert.match(newCaseSource, /El cliente es obligatorio\./)
-    assert.match(newCaseSource, /El cliente supera los 80 caracteres permitidos\./)
-    assert.match(newCaseSource, /Se debe elegir una prioridad\./)
+    assert.match(caseFormSource, /CASE_ERROR_CODES\.clientRequired/)
+    assert.match(caseFormSource, /CASE_ERROR_CODES\.clientTooLong/)
+    assert.match(caseFormSource, /CASE_ERROR_CODES\.priorityRequired/)
+    assert.match(caseFormSource, /El cliente es obligatorio\./)
+    assert.match(caseFormSource, /El cliente supera los 80 caracteres permitidos\./)
+    assert.match(caseFormSource, /Se debe elegir una prioridad\./)
   })
 
-  it('delega el alta en el store y limpia el formulario al confirmar (RF-21)', () => {
-    assert.match(newCaseSource, /cases\.crearCaso\(/)
-    assert.match(newCaseSource, /client\.value = ''/)
-    assert.match(newCaseSource, /priority\.value = ''/)
-    assert.match(newCaseSource, /successMessage\.value = true/)
+  it('registra con el store, limpia y cierra el diálogo al confirmar (RF-21)', () => {
+    assert.match(caseFormSource, /cases\.crearCaso\(/)
+    assert.match(caseFormSource, /client\.value = ''/)
+    assert.match(caseFormSource, /priority\.value = ''/)
+    assert.match(caseFormSource, /dialogoAbierto\.value = false/)
+    assert.match(caseFormSource, /emit\('registrado'/)
   })
 
-  it('ofrece el control Ver mis casos hacia P-5 (RF-44)', () => {
-    assert.match(newCaseSource, /label="Ver mis casos"/)
-    assert.match(newCaseSource, /:to="\{ name: 'contador-casos' \}"/)
+  it('se cierra al registrar y ofrece Cancelar, sin el atajo «Ver mis casos» (RF-44)', () => {
+    assert.match(caseFormSource, /label="Cancelar"/)
+    assert.doesNotMatch(caseFormSource, /Ver mis casos/)
+  })
+
+  it('no se puede cerrar mientras se guarda y los errores se reintentan sin perder lo escrito', () => {
+    assert.match(caseFormSource, /:persistent="cases\.guardando"/)
+    assert.match(caseFormSource, /:disable="cases\.guardando"/)
+    assert.match(caseFormSource, /<ErrorState/)
+    assert.match(caseFormSource, /@retry="submitCase"/)
+  })
+
+  it('el diálogo tiene nombre accesible y enfoca el cliente al abrirse', () => {
+    const inicio = caseFormSource.indexOf('<q-dialog')
+    const apertura = caseFormSource.slice(inicio, caseFormSource.indexOf('>', inicio) + 1)
+    assert.match(apertura, /aria-labelledby="registro-caso-titulo"/)
+    assert.doesNotMatch(apertura, /role="dialog"/, 'el rol lo pone Quasar, no se duplica')
+    assert.match(caseFormSource, /id="registro-caso-titulo"/)
+    assert.match(caseFormSource, /clienteInput\.value\?\.focus\(\)/)
   })
 
   it('no fija anchos que desborden en pantallas de 360 px', () => {
     // Los contenedores permiten encogerse: ningún ancho fijo en píxeles.
-    for (const selector of ['.new-case-page', '.new-case-panel', '.new-case-form', '.form-group']) {
-      const rule = cssRule(newCaseSource, selector)
+    for (const selector of ['.registro-caso', '.registro-caso__form', '.form-group']) {
+      const rule = cssRule(caseFormSource, selector)
       assert.doesNotMatch(rule, /(?:^|[\s;])width:\s*\d+px/, `${selector} no fija el ancho`)
       assert.match(rule, /min-width: 0/, `${selector} puede encogerse`)
     }
 
     // La fila de solo lectura se reparte en varias líneas si no cabe.
-    const rowRule = cssRule(newCaseSource, '.readonly-row')
+    const rowRule = cssRule(caseFormSource, '.readonly-row')
     assert.match(rowRule, /flex-wrap: wrap/)
-    const valueRule = cssRule(newCaseSource, '.readonly-row dd')
+    const valueRule = cssRule(caseFormSource, '.readonly-row dd')
     assert.match(valueRule, /overflow-wrap: anywhere/)
     assert.match(valueRule, /min-width: 0/)
+  })
+})
+
+describe('Mis casos — registro en diálogo (P-5)', () => {
+  it('el botón de la cabecera y el estado vacío abren el diálogo en vez de navegar', () => {
+    assert.match(myCasesSource, /<CaseFormDialog/)
+    assert.match(myCasesSource, /v-model="dialogoRegistroAbierto"/)
+    assert.match(myCasesSource, /@click="abrirRegistro"/)
+    assert.match(myCasesSource, /@action="abrirRegistro"/)
+    assert.doesNotMatch(myCasesSource, /name: 'contador-registro'/)
+    assert.doesNotMatch(myCasesSource, /useRouter|router\.push/, 'ya no navega a otra pantalla')
+  })
+
+  it('al registrar muestra el aviso y recarga la lista si estaba en error', () => {
+    assert.match(myCasesSource, /@registrado="alRegistrar"/)
+    assert.match(myCasesSource, /Caso registrado\./)
+    assert.match(myCasesSource, /if \(cases\.error\)/)
+    assert.match(myCasesSource, /cases\.reintentar\(\)/)
+  })
+
+  it('el botón de registro se desactiva mientras hay otro guardado en curso', () => {
+    const inicio = myCasesSource.indexOf('class="my-cases-page__register-btn')
+    const boton = myCasesSource.slice(inicio, myCasesSource.indexOf('</q-btn>', inicio))
+    assert.match(boton, /:disable="cases\.guardando"/)
+    assert.match(boton, /<q-tooltip>/)
+  })
+})
+
+describe('Registro de caso unificado (historia 10) — verificación estática', () => {
+  const rutas = read('../src/router/index.js')
+
+  it('la pantalla antigua ya no existe y su ruta redirige a Mis casos', () => {
+    assert.equal(
+      existsSync(fileURLToPath(new URL('../src/pages/NewCasePage.vue', import.meta.url))),
+      false,
+      'se retiró la pantalla de registro',
+    )
+    assert.match(
+      rutas,
+      /path: 'contador\/registro',[\s\S]*?redirect: \{ name: 'contador-casos' \}/,
+      'la dirección antigua lleva a Mis casos',
+    )
+  })
+
+  it('Mis casos ya no muestra «Volver» hacia el registro', () => {
+    const inicio = rutas.indexOf("path: 'contador/casos'")
+    const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
+    assert.match(ruta, /titulo: 'Mis casos'/, 'título de la pantalla')
+    assert.doesNotMatch(ruta, /volverA:/, 'es la pantalla principal del contador')
   })
 })
 
@@ -255,11 +321,11 @@ describe('Sesión sin usuario (rebanada 5b) — verificación estática', () => 
 
   it('el registro de casos muestra como contador asignado el nombre de la sesión', () => {
     assert.match(
-      newCaseSource,
+      caseFormSource,
       /session\.nombreVisible \? \{ id: session\.id, name: session\.nombreVisible \} : null/,
       'contador asignado con el nombre',
     )
-    assert.doesNotMatch(newCaseSource, /session\.usuario/, 'ya no lee el usuario de la sesión')
+    assert.doesNotMatch(caseFormSource, /session\.usuario/, 'ya no lee el usuario de la sesión')
   })
 
   it('el guard copia el nombre de la sesión a la identidad de la maqueta', () => {

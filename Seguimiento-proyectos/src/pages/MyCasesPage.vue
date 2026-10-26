@@ -12,8 +12,12 @@
         unelevated
         icon="add_circle"
         label="Registrar caso"
-        :to="{ name: 'contador-registro' }"
-      />
+        aria-haspopup="dialog"
+        :disable="cases.guardando"
+        @click="abrirRegistro"
+      >
+        <q-tooltip>Abre el formulario para registrar un caso nuevo.</q-tooltip>
+      </q-btn>
     </div>
 
     <ScreenLoader v-if="screenStateName === SCREEN_STATES.loading" text="Cargando tus casos…" />
@@ -30,7 +34,7 @@
         title="No tienes casos registrados"
         message="Aún no hay casos asignados a tu cuenta. Usa el control «Registrar caso» para registrar el primero y empezar a gestionar tu carga."
         action-label="Registrar caso"
-        @action="openNewCase"
+        @action="abrirRegistro"
       />
 
       <ul v-else class="case-list">
@@ -81,13 +85,15 @@
         <p class="confirmation-banner__text">{{ confirmation }}</p>
       </div>
     </div>
+
+    <CaseFormDialog v-model="dialogoRegistroAbierto" @registrado="alRegistrar" />
   </q-page>
 </template>
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 
+import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CaseRow from '../components/CaseRow.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
@@ -98,7 +104,6 @@ import { casosAFilas } from '../utils/filasVista.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const cases = useCasesStore()
-const router = useRouter()
 
 const filas = computed(() => casosAFilas(cases.casos))
 
@@ -111,6 +116,7 @@ const screenStateName = computed(() =>
 )
 
 const confirmation = ref('')
+const dialogoRegistroAbierto = ref(false)
 const errorCambio = ref(null)
 const ultimoCambio = ref(null)
 
@@ -155,8 +161,19 @@ const changePriority = async (caseId, newPriority) => {
   }
 }
 
-const openNewCase = () => {
-  router.push({ name: 'contador-registro' })
+const abrirRegistro = () => {
+  // El diálogo se prepara solo al abrirse; aquí se descarta el aviso anterior.
+  confirmation.value = ''
+  dialogoRegistroAbierto.value = true
+}
+
+const alRegistrar = async () => {
+  confirmation.value = 'Caso registrado.'
+
+  // Si la lista no había cargado, se recarga para que el caso nuevo quede visible.
+  if (cases.error) {
+    await cases.reintentar()
+  }
 }
 
 const retry = async () => {

@@ -10,7 +10,6 @@ import AdminDashboardPage from '../pages/AdminDashboardPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
-import NewCasePage from '../pages/NewCasePage.vue'
 import NewUserPage from '../pages/NewUserPage.vue'
 import ResetPasswordPage from '../pages/ResetPasswordPage.vue'
 import LoginLayout from '../layouts/LoginLayout.vue'
@@ -72,15 +71,8 @@ const routes = [
       },
       {
         path: 'contador/registro',
-        name: 'contador-registro',
-        component: NewCasePage,
-        meta: {
-          requiereSesion: true,
-          perfil: PROFILES.contador,
-          screenId: SCREEN_IDS.newCase,
-          titulo: 'Registro de caso',
-          volverA: 'contador-casos',
-        },
+        // La pantalla de registro se unificó en «Mis casos» como diálogo.
+        redirect: { name: 'contador-casos' },
       },
       {
         path: 'contador/casos',
@@ -91,7 +83,6 @@ const routes = [
           perfil: PROFILES.contador,
           screenId: SCREEN_IDS.myCases,
           titulo: 'Mis casos',
-          volverA: 'contador-registro',
         },
       },
       {

@@ -16,11 +16,13 @@ Expensive decisions: modelo de roles (ya existe: administrador, contador y usuar
 8. Como usuario de escritorio, quiero fijar o soltar el menú abierto con un clic en el logo y que se recuerde la próxima vez, para elegir cómo prefiero trabajar. Requires: #7
 9. Como usuario de sistema, quiero una sección «Usuarios» en el menú para dar de alta cuentas y restablecer contraseñas, para administrar el acceso sin ver los casos de los contadores. Requires: #2
    - 9b. Como usuario de sistema, quiero restablecer la contraseña de una cuenta escribiendo su correo en la sección «Usuarios», para devolverle el acceso a quien la olvidó sin ver los casos de los contadores. Requires: 9a
+10. Como contador, quiero registrar un caso desde «Mis casos» en un diálogo, para no salir de mi lista y ver el caso nuevo al instante. Requires: #2
 
 Notas acordadas:
 - #2: solo administrador («Administración») y contador («Mis casos»). `usuarios_de_sistema` no ve «Administración»: hoy no tiene pantallas y las rutas de contadores exigen administrador; su sección llega con la #9.
 - 9b: el correo va en el cuerpo (`PATCH /usuarios/restablecer-contrasena` con `{ correo, password }`), sin campo de confirmación; sin listar cuentas, sin pantalla para el administrador y sin envío de correos.
 - #8: el logo muestra cursor de mano y un tooltip («Fijar menú abierto» / «Volver a menú compacto») y se activa también con el teclado.
+- #10: «Registrar caso» abre un diálogo dentro de «Mis casos» (no una pantalla aparte); al guardar se cierra, avisa «Caso registrado.» y la lista muestra el caso nuevo. La dirección antigua `contador/registro` redirige a «Mis casos». Mientras guarda, el diálogo no se puede cerrar; si falla, el error se muestra dentro con «Reintentar» y conserva lo escrito.
 
 ## Pendiente aparte
 - Pantallas de alta de usuarios y de restablecer contraseña (el backend ya existe): las cubre la #9 para `usuarios_de_sistema`. Si el administrador también debe usarlas, se decide al refinar la #9.

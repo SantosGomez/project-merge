@@ -124,24 +124,6 @@
               v-ripple
               class="q-item--nav"
               active-class="q-item--nav-activo"
-              :to="{ name: 'contador-registro' }"
-              aria-label="Ir al registro de caso"
-            >
-              <q-item-section avatar>
-                <q-icon name="add_circle" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Registro de caso</q-item-label>
-                <q-item-label caption>Crear nuevo caso</q-item-label>
-              </q-item-section>
-              <q-tooltip>Ir al registro de caso</q-tooltip>
-            </q-item>
-
-            <q-item
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
               :to="{ name: 'contador-casos' }"
               aria-label="Ir a mis casos"
             >
@@ -150,7 +132,7 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label>Mis casos</q-item-label>
-                <q-item-label caption>Revisar y editar</q-item-label>
+                <q-item-label caption>Registrar, revisar y editar</q-item-label>
               </q-item-section>
               <q-tooltip>Ir a mis casos</q-tooltip>
             </q-item>

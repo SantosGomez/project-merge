@@ -1,42 +1,31 @@
 <template>
-  <q-page class="new-case-page">
-    <div class="new-case-page__head">
-      <p class="new-case-page__lead">
-        Registra un nuevo caso para el contador asignado. El estado inicial siempre es Pendiente.
-      </p>
-    </div>
-
-    <ScreenLoader
-      v-if="screenStateName === SCREEN_STATES.loading"
-      text="Cargando el registro de caso…"
-    />
-
-    <ErrorState
-      v-else-if="screenStateName === SCREEN_STATES.error"
-      :detail="mensajeError"
-      @retry="retry"
-    />
-
-    <div v-else class="new-case-page__body">
-      <section class="new-case-panel" aria-labelledby="new-case-title">
-        <div class="new-case-panel__head">
-          <h2 id="new-case-title" class="new-case-panel__title">Registro de caso</h2>
-          <p class="new-case-panel__help">
-            Completa los campos obligatorios y envía para agregar el caso.
+  <q-dialog
+    v-model="dialogoAbierto"
+    :persistent="cases.guardando"
+    aria-labelledby="registro-caso-titulo"
+    @show="enfocarCliente"
+  >
+    <q-card class="registro-caso">
+      <form
+        class="registro-caso__form"
+        @submit.prevent="submitCase"
+        novalidate
+        aria-label="Formulario de registro de caso"
+      >
+        <q-card-section class="registro-caso__head">
+          <h2 id="registro-caso-titulo" class="registro-caso__title">Registrar caso</h2>
+          <p class="registro-caso__help">
+            Completa los campos obligatorios. El estado inicial siempre es Pendiente.
           </p>
-        </div>
+        </q-card-section>
 
-        <form
-          class="new-case-form"
-          @submit.prevent="submitCase"
-          novalidate
-          aria-label="Formulario de registro de caso"
-        >
+        <q-card-section class="registro-caso__body">
           <div class="form-group">
             <label for="client-field" class="form-label"
               >Cliente <span aria-label="obligatorio" class="required-mark">*</span></label
             >
             <q-input
+              ref="clienteInput"
               for="client-field"
               v-model="client"
               type="text"
@@ -127,58 +116,65 @@
             </div>
           </dl>
 
-          <div class="form-actions">
-            <q-btn
-              type="submit"
-              color="primary"
-              label="Registrar caso"
-              icon="add_circle"
-              no-caps
-              unelevated
-              class="control-touch"
-              :loading="cases.guardando"
-              :disable="cases.guardando"
-            />
-          </div>
-        </form>
+          <ErrorState
+            v-if="errorGuardado"
+            class="registro-caso__error"
+            title="No se pudo registrar el caso"
+            :detail="mensajeError"
+            @retry="submitCase"
+          />
+        </q-card-section>
 
-        <div v-if="successMessage" class="success-banner" role="status" aria-live="polite">
-          <q-icon name="check_circle" color="positive" size="24px" />
-          <div>
-            <p class="success-banner__title">Caso registrado</p>
-            <p class="success-banner__message">
-              Se agregó el caso a tu cuenta. El formulario está limpio.
-            </p>
-          </div>
+        <q-card-actions align="right" class="registro-caso__actions">
           <q-btn
+            flat
+            no-caps
+            label="Cancelar"
+            class="control-touch"
+            :disable="cases.guardando"
+            @click="cerrar"
+          >
+            <q-tooltip>Cierra el formulario sin registrar el caso.</q-tooltip>
+          </q-btn>
+          <q-btn
+            type="submit"
             color="primary"
-            label="Ver mis casos"
-            icon="visibility"
+            label="Registrar caso"
+            icon="add_circle"
             no-caps
             unelevated
-            :to="{ name: 'contador-casos' }"
             class="control-touch"
-          />
-        </div>
-      </section>
-    </div>
-  </q-page>
+            :loading="cases.guardando"
+            :disable="cases.guardando"
+          >
+            <q-tooltip>Guarda el caso en tu lista con estado Pendiente.</q-tooltip>
+          </q-btn>
+        </q-card-actions>
+      </form>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
-import ErrorState from '../components/ErrorState.vue'
-import PriorityTag from '../components/PriorityTag.vue'
-import ScreenLoader from '../components/ScreenLoader.vue'
-import { PRIORITIES, PRIORITY_LABELS } from '../utils/constants.js'
+import ErrorState from './ErrorState.vue'
+import PriorityTag from './PriorityTag.vue'
 import { CASE_ERROR_CODES } from '../utils/caseRules.js'
-import { STATUS_LABELS, STATUSES } from '../utils/constants.js'
+import { PRIORITIES, PRIORITY_LABELS, STATUS_LABELS, STATUSES } from '../utils/constants.js'
+import { prioridadABackend } from '../utils/traduccionBackend.js'
+import { validarCliente, validarPrioridad } from '../utils/validators.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
-import { SCREEN_STATES, screenState } from '../utils/screenState.js'
-import { validarCliente, validarPrioridad } from '../utils/validators.js'
-import { prioridadABackend } from '../utils/traduccionBackend.js'
+
+/*
+ * Registro de caso en un diálogo dentro de «Mis casos» (P-5).
+ * El formulario y sus reglas son los de la antigua pantalla P-4; el store ya
+ * agrega el caso a la lista local, así que la pantalla se entera al cerrar.
+ */
+const dialogoAbierto = defineModel({ type: Boolean, default: false })
+
+const emit = defineEmits(['registrado'])
 
 const cases = useCasesStore()
 const session = useSessionStore()
@@ -186,22 +182,11 @@ const session = useSessionStore()
 const client = ref('')
 const priority = ref('')
 const formError = ref(null)
-const successMessage = ref(false)
-
-const cargando = ref(true)
-const errorCarga = ref(null)
 const errorGuardado = ref(null)
+const clienteInput = ref(null)
 
 const assignedCounter = computed(() =>
   session.nombreVisible ? { id: session.id, name: session.nombreVisible } : null,
-)
-
-const screenStateName = computed(() =>
-  screenState({
-    loading: cargando.value,
-    error: errorCarga.value || errorGuardado.value,
-    rows: assignedCounter.value ? [assignedCounter.value] : [],
-  }),
 )
 
 const priorityOptions = computed(() =>
@@ -214,20 +199,42 @@ const assignedCounterName = computed(() =>
 
 const statusLabel = STATUS_LABELS[STATUSES[0]]
 
-const mensajeError = computed(() => {
-  const error = errorCarga.value || errorGuardado.value
-  return error?.mensaje ?? 'el registro de caso.'
-})
+const mensajeError = computed(
+  () => errorGuardado.value?.mensaje ?? 'el registro del caso.',
+)
 
 const clearFormError = () => {
   formError.value = null
+}
+
+const reiniciarFormulario = () => {
+  client.value = ''
+  priority.value = ''
+  formError.value = null
+  errorGuardado.value = null
+}
+
+const enfocarCliente = () => {
+  nextTick(() => clienteInput.value?.focus())
+}
+
+// Al abrir se limpia lo que quedó de la vez anterior; al cerrar no se toca nada.
+watch(dialogoAbierto, (abierto) => {
+  if (abierto) {
+    reiniciarFormulario()
+  }
+})
+
+const cerrar = () => {
+  // Mientras el alta está en curso, el diálogo no se puede cerrar.
+  if (cases.guardando) return
+  dialogoAbierto.value = false
 }
 
 const submitCase = async () => {
   if (cases.guardando) return
 
   clearFormError()
-  successMessage.value = false
   errorGuardado.value = null
 
   const clienteLimpio = client.value.trim()
@@ -260,82 +267,56 @@ const submitCase = async () => {
   const resultado = await cases.crearCaso(clienteLimpio, prioridadBackend)
 
   if (!resultado.ok) {
-    errorGuardado.value = resultado.error
+    errorGuardado.value = resultado.error ?? null
     return
   }
 
-  successMessage.value = true
-  client.value = ''
-  priority.value = ''
+  reiniciarFormulario()
+  dialogoAbierto.value = false
+  emit('registrado', resultado.caso)
 }
-
-const retry = async () => {
-  if (errorGuardado.value) {
-    await submitCase()
-    return
-  }
-
-  errorCarga.value = null
-  cargando.value = false
-}
-
-onMounted(() => {
-  cargando.value = true
-  // Preparación síncrona del formulario: no hay datos que obtener del backend.
-  cargando.value = false
-})
 </script>
 
 <style scoped>
-.new-case-page {
-  padding: 16px;
+.registro-caso {
+  width: min(560px, calc(100vw - 32px));
   min-width: 0;
 }
 
-.new-case-page__head {
-  margin-bottom: 16px;
-}
-
-.new-case-page__lead {
-  margin: 0;
-  color: #334e68;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.new-case-panel {
+.registro-caso__form {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 12px;
-  border: 1px solid #dbe4ee;
-  border-radius: 12px;
-  background: #f7f9fc;
 }
 
-.new-case-panel__head {
-  margin-bottom: 12px;
+.registro-caso__head {
+  padding-bottom: 0;
 }
 
-.new-case-panel__title {
+.registro-caso__title {
   margin: 0 0 6px;
   color: #102a43;
   font-size: 1.15rem;
   line-height: 1.25;
 }
 
-.new-case-panel__help {
+.registro-caso__help {
   margin: 0;
   color: #486581;
   font-size: 0.85rem;
   line-height: 1.45;
 }
 
-.new-case-form {
+.registro-caso__body {
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+.registro-caso__actions {
+  min-width: 0;
+  padding: 8px 16px 16px;
 }
 
 .form-group {
@@ -400,33 +381,6 @@ onMounted(() => {
   overflow-wrap: anywhere;
 }
 
-.form-actions {
-  margin-top: 4px;
-}
-
-.success-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  margin-top: 16px;
-  border: 1px solid #d4edda;
-  border-radius: 10px;
-  background: #e8f5e9;
-}
-
-.success-banner__title {
-  margin: 0 0 2px;
-  font-weight: 700;
-  color: #1b5e20;
-}
-
-.success-banner__message {
-  margin: 0;
-  color: #2e7d32;
-  font-size: 0.95rem;
-}
-
 .priority-selected {
   display: inline-flex;
 }
@@ -434,11 +388,5 @@ onMounted(() => {
 .control-touch {
   min-width: 44px;
   min-height: 44px;
-}
-
-@media (min-width: 1024px) {
-  .new-case-page {
-    padding: 20px 24px;
-  }
 }
 </style>

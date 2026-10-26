@@ -142,7 +142,7 @@ describe('Drawer sidebar — verificación estática', () => {
     )
   })
 
-  it('el contador ve solo la sección «Mis casos» con Registro de caso y Mis casos, y no las opciones del administrador', () => {
+  it('el contador ve solo la sección «Mis casos» con la opción Mis casos y no las opciones del administrador', () => {
     const inicioContador = src.indexOf('<template v-if="session.esContador">')
     const finContador = src.indexOf('</template>', inicioContador)
     assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.esContador">')
@@ -150,8 +150,11 @@ describe('Drawer sidebar — verificación estática', () => {
 
     const bloqueContador = src.slice(inicioContador, finContador)
     assert.match(bloqueContador, /header>Mis casos<\/q-item-label>/, 'falta el título Mis casos')
-    assert.ok(bloqueContador.includes("name: 'contador-registro'"), 'falta Registro de caso')
     assert.ok(bloqueContador.includes("name: 'contador-casos'"), 'falta Mis casos')
+    assert.ok(
+      !src.includes("name: 'contador-registro'"),
+      'el registro ya no es una pantalla aparte del menú',
+    )
     assert.ok(
       !bloqueContador.includes("name: 'admin-dashboard'"),
       'el contador no ve Dashboard admin',
@@ -165,12 +168,7 @@ describe('Drawer sidebar — verificación estática', () => {
 
     const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
     const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '').replace(bloqueSistema, '')
-    for (const ruta of [
-      'admin-dashboard',
-      'admin-directorio',
-      'contador-registro',
-      'contador-casos',
-    ]) {
+    for (const ruta of ['admin-dashboard', 'admin-directorio', 'contador-casos']) {
       assert.ok(
         !sinBloques.includes(`name: '${ruta}'`),
         `la opción ${ruta} quedó fuera de su bloque de rol`,
@@ -363,8 +361,14 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.match(etiqueta, /:disable="cerrandoSesion"/, 'la opción del pie se desactiva al cerrar')
   })
 
-  it('tiene los 4 links internos con rutas aprobadas', () => {
-    const routes = ['admin-dashboard', 'admin-directorio', 'contador-registro', 'contador-casos']
+  it('tiene los links internos con rutas aprobadas', () => {
+    const routes = [
+      'admin-dashboard',
+      'admin-directorio',
+      'contador-casos',
+      'usuarios-alta',
+      'usuarios-restablecer',
+    ]
     for (const r of routes) {
       assert.ok(src.includes(r), `falta ruta ${r}`)
       assert.ok(src.includes(`name: '${r}'`), `falta name '${r}'`)
@@ -378,12 +382,10 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(ripple >= 4, `se esperan al menos 4 v-ripple, hay ${ripple}`)
     assert.ok(src.includes('dashboard'), 'falta icono dashboard')
     assert.ok(src.includes('group'), 'falta icono group')
-    assert.ok(src.includes('add_circle'), 'falta icono add_circle')
     assert.ok(src.includes('list_alt'), 'falta icono list_alt')
     assert.ok(src.includes('aria-label='), 'falta aria-label en items')
     assert.ok(src.includes('Ir al dashboard del administrador'), 'falta aria-label dashboard')
     assert.ok(src.includes('Ir al directorio de contadores'), 'falta aria-label directorio')
-    assert.ok(src.includes('Ir al registro de caso'), 'falta aria-label registro')
     assert.ok(src.includes('Ir a mis casos'), 'falta aria-label mis casos')
   })
 

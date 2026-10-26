@@ -29,7 +29,7 @@ Es una herramienta que permite gestionar el estado de los contadores, para saber
 ├── src/
 │ ├── components/ # Componentes reutilizables
 │ ├── layouts/ # Layouts de la aplicación
-│ ├── pages/ # Páginas de la aplicación (las cuales seria: vista de login, vista de un dashboard de casos por contador, vista de lista de contadores, vista de formulario para el registro de los casos para contadores, vista donde se muestran los casos que tiene cada contador donde el puede modificar y ver el estado de los casos esa informacion se refleja en el dashboard para admins.)
+│ ├── pages/ # Páginas de la aplicación (vista de login, dashboard de casos, directorio de contadores, «Mis casos» del contador y alta/restablecimiento de usuarios.)
 │ ├── services/ # Servicios de la aplicación
 │ ├── utils/ # Funciones auxiliares globales
 │ ├── store/ # Stores de la aplicación
@@ -99,6 +99,7 @@ npm run build
 - Lo que es fácil hacer mal y el agente no puede deducir leyendo el código.
 - Lee `docs/constitution.md` antes de tocar código.
 - solo aplicar los cambios o modificaciones que sean aprobadas por el usuario.
+- El registro de caso del contador vive en un diálogo dentro de «Mis casos» (`components/CaseFormDialog.vue`). No crear una pantalla aparte ni un ítem de menú para registrarlo; `contador/registro` solo redirige a «Mis casos».
 - <Limites: que no tocar, que no agregar ni modificar sin preguntar.>
 
 ## Forma de trabajar
