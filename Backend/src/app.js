@@ -31,6 +31,11 @@ function crearApp(opciones) {
   app.disable('x-powered-by');
   app.use(helmet());
 
+  // Detrás de Nginx: confiar en el primer proxy para que el límite de login vea la IP real
+  if (process.env.TRUST_PROXY === '1') {
+    app.set('trust proxy', 1);
+  }
+
   // 1.º Rechaza las peticiones de orígenes no permitidos (RF-34)
   app.use(createOriginGuard(origenesPermitidos));
 

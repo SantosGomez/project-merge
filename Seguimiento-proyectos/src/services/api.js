@@ -23,8 +23,9 @@
 import axios from 'axios'
 import { construirError } from '../utils/mensajes.js'
 
-/** URL del backend real (spec 002). */
-export const URL_BASE_API = 'http://localhost:3000'
+/** URL del backend real (spec 002). En Docker se compila con API_URL=/api (Nginx la reenvía al backend). */
+// Sin `?.`: el compilador solo sustituye la expresión exacta import.meta.env.API_URL
+export const URL_BASE_API = (import.meta.env && import.meta.env.API_URL) || 'http://localhost:3000'
 
 /** Límite de espera de cada petición: 15 s (decisión 13 del plan). */
 export const TIEMPO_LIMITE_MS = 15000

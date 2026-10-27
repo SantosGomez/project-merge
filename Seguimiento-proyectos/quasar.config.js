@@ -40,6 +40,9 @@ export default defineConfig((/* ctx */) => {
       filenameBasedRouting: true,
 
       vueRouterMode: 'hash', // available values: 'hash', 'history'
+
+      // URL de la API; sin valor, api.js usa http://localhost:3000 (desarrollo y Electron)
+      defineEnv: { API_URL: process.env.API_URL || '' },
       // vueRouterBase,
 
       // publicPath: '/',

@@ -23,3 +23,6 @@ Thumbs.db
 # Datos personales de cuentas reales (nombres, correos, contraseñas): nunca se suben
 *.xlsx
 *.local.json
+
+# Plantilla de variables de Docker (sin claves reales)
+!.env.example
