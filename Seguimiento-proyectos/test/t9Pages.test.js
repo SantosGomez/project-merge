@@ -311,11 +311,13 @@ describe('Login por correo — verificación estática de P-1', () => {
 
 describe('Contadores por nombre (rebanada 5a) — verificación estática', () => {
   const dashboard = read('../src/pages/AdminDashboardPage.vue')
+  const rutaDetalle = '../src/components/DetalleContador.vue'
+  const detalle = existsSync(fileURLToPath(new URL(rutaDetalle, import.meta.url))) ? read(rutaDetalle) : ''
 
   it('el dashboard nombra al contador seleccionado con su nombre, no con su usuario', () => {
-    assert.match(dashboard, /Casos importantes de \{\{ contadorSeleccionado\.nombre \}\}/, 'texto del detalle')
-    assert.match(dashboard, /El contador \$\{contadorSeleccionado\.nombre\} no tiene casos/, 'aviso sin casos')
-    assert.doesNotMatch(dashboard, /contadorSeleccionado\.usuario/, 'ya no lee el usuario')
+    assert.match(detalle, /Casos importantes de \{\{ contador\.nombre \}\}/, 'texto del detalle')
+    assert.match(detalle, /El contador \$\{contador\.nombre\} no tiene casos/, 'aviso sin casos')
+    assert.doesNotMatch(dashboard + detalle, /contador(Seleccionado)?\.usuario/, 'ya no lee el usuario')
   })
 })
 
@@ -401,7 +403,9 @@ describe('Editar caso — fila con fechas y botón «Editar»', () => {
 
   it('el tablero del administrador sigue sin acciones en la fila', () => {
     const admin = read('../src/pages/AdminDashboardPage.vue')
-    assert.match(admin, /<CasoItem[^>]*solo-lectura/)
+    const rutaDetalle = '../src/components/DetalleContador.vue'
+    const detalle = existsSync(fileURLToPath(new URL(rutaDetalle, import.meta.url))) ? read(rutaDetalle) : ''
+    assert.match(detalle, /<CasoItem[^>]*solo-lectura/)
     assert.doesNotMatch(admin, /abrirEdicion|guardarCambio/)
     // En solo lectura no hay estrella, selector de estado ni «Editar».
     assert.match(casoItemSource, /<q-item-section v-if="!soloLectura" avatar/)
@@ -532,5 +536,40 @@ describe('Dashboard: dona «Casos por estado» (rediseño, rebanada 2)', () => {
   it('ResumenEquipo la muestra con los mismos datos, junto a las tarjetas', () => {
     assert.match(resumen, /<DonaEstados :resumen="resumen" \/>/)
     assert.match(resumen, /import DonaEstados from '\.\/DonaEstados\.vue'/)
+  })
+})
+
+describe('Dashboard: detalle del contador en diálogo en celular y tableta', () => {
+  const pagina = read('../src/pages/AdminDashboardPage.vue')
+  const plantilla = pagina.split('<script')[0]
+  const ruta = '../src/components/DetalleContador.vue'
+  const existe = existsSync(fileURLToPath(new URL(ruta, import.meta.url)))
+  const detalle = existe ? read(ruta) : ''
+
+  it('DetalleContador pinta el detalle una sola vez: carga, vacío, filtros, casos y paginación', () => {
+    assert.ok(existe, 'existe components/DetalleContador.vue')
+    assert.match(detalle, /defineModel\('filtros'/)
+    assert.match(detalle, /<ScreenLoader/)
+    assert.match(detalle, /<EmptyState/)
+    assert.match(detalle, /<FiltrosCasos[^>]*v-model="filtros"/)
+    assert.match(detalle, /<q-pagination[\s\S]*?emit\('cambiar-pagina', p\)/)
+  })
+
+  it('en escritorio el detalle sigue en el panel al lado de la lista', () => {
+    assert.match(pagina, /import DetalleContador from '\.\.\/components\/DetalleContador\.vue'/)
+    assert.match(pagina, /const pantallaChica = computed\(\(\) => \$q\.screen\.lt\.md\)/)
+    assert.match(plantilla, /<section\s+v-if="!pantallaChica"[\s\S]*?<DetalleContador/)
+  })
+
+  it('en celular y tableta el detalle se abre en un q-dialog que sube desde abajo, con botón para cerrar', () => {
+    assert.match(plantilla, /<q-dialog\s+v-if="pantallaChica"\s+v-model="dialogoDetalle"\s+position="bottom"/)
+    assert.match(plantilla, /<q-dialog[\s\S]*?<DetalleContador[\s\S]*?<\/q-dialog>/)
+    assert.match(plantilla, /<q-btn[^>]*v-close-popup[^>]*aria-label="Cerrar el detalle de casos"/)
+    assert.match(pagina, /if \(pantallaChica\.value\) dialogoDetalle\.value = true/)
+    assert.doesNotMatch(pagina, /scrollIntoView/, 'ya no baja la página hasta el detalle')
+  })
+
+  it('si la selección se pierde (error y reintento) el diálogo se cierra', () => {
+    assert.match(pagina, /watch\(contadorSeleccionado, \(contador\) => \{\s*if \(!contador\) dialogoDetalle\.value = false/)
   })
 })

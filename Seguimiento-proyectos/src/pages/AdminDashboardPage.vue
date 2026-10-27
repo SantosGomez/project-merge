@@ -100,93 +100,87 @@
           </div>
         </section>
 
-        <section ref="panelDetalle" class="dashboard-panel" aria-labelledby="counter-detail-title">
+        <!-- Escritorio: el detalle queda al lado de la lista. -->
+        <section
+          v-if="!pantallaChica"
+          class="dashboard-panel"
+          aria-labelledby="counter-detail-title"
+        >
           <div class="dashboard-panel__head">
             <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
-
-            <p v-if="contadorSeleccionado" class="dashboard-panel__help">
-              Casos importantes de {{ contadorSeleccionado.nombre }}. Esta vista es de solo consulta: no
-              permite cambiar el estado ni la prioridad.
-            </p>
-            <p v-else class="dashboard-panel__help">
-              Selecciona un contador de la lista para ver el cliente, el estado y la prioridad de cada
-              uno de sus casos importantes.
-            </p>
           </div>
 
           <div class="dashboard-panel__body">
-            <p v-if="!contadorSeleccionado" class="dashboard-panel__prompt" role="status">
-              Todavía no hay un contador seleccionado. Elige uno de la lista para ver sus casos.
-            </p>
-
-            <ScreenLoader
-              v-else-if="estadoDetalle === SCREEN_STATES.loading"
-              text="Cargando los casos del contador seleccionado…"
+            <DetalleContador
+              v-model:filtros="filtrosDetalle"
+              :contador="contadorSeleccionado"
+              :estado="estadoDetalle"
+              :filas="filasDetalle"
+              :paginacion="paginacionDetalle"
+              @cambiar-pagina="(p) => (paginaDetalle = p)"
             />
-
-            <!--
-              El estado de error del detalle no llega aquí: el store lo comparte con la carga
-              general y la pantalla muestra el ErrorState completo, que al reintentar vuelve sin
-              contador seleccionado (RF-36).
-            -->
-            <EmptyState
-              v-else-if="estadoDetalle === SCREEN_STATES.empty"
-              title="Este contador no tiene casos importantes"
-              :message="`El contador ${contadorSeleccionado.nombre} no tiene casos marcados como importantes. Selecciona otro contador de la lista para ver su detalle.`"
-            />
-
-            <template v-else>
-              <FiltrosCasos
-                v-model="filtrosDetalle"
-                :estados="ESTADOS_DETALLE"
-                :con-interruptores="false"
-              />
-
-              <p v-if="paginacionDetalle.totalPaginas === 0" class="dashboard-panel__prompt" role="status">
-                {{ contadorSeleccionado.nombre }} no tiene casos importantes en estado
-                {{ STATUS_LABELS[filtrosDetalle.estado] }}. Elige otro estado o «Todos».
-              </p>
-
-              <q-list v-else bordered separator class="case-list" aria-label="Casos importantes del contador">
-                <CasoItem v-for="caso in filasDetalle" :key="caso.id" :caso="caso" solo-lectura />
-              </q-list>
-
-              <div v-if="paginacionDetalle.totalPaginas > 0" class="detalle-paginacion">
-                <p class="detalle-paginacion__texto" aria-live="polite">{{ paginacionDetalle.texto }}</p>
-                <q-pagination
-                  v-if="paginacionDetalle.totalPaginas > 1"
-                  :model-value="paginacionDetalle.pagina"
-                  :max="paginacionDetalle.totalPaginas"
-                  :max-pages="5"
-                  direction-links
-                  boundary-numbers
-                  color="primary"
-                  active-design="unelevated"
-                  @update:model-value="(p) => (paginaDetalle = p)"
-                />
-              </div>
-            </template>
           </div>
         </section>
       </div>
+
+      <!--
+        Celular y tableta: el detalle sube desde abajo en un diálogo, así no hay que bajar
+        hasta el final de la página para verlo ni volver a subir para elegir otro contador.
+      -->
+      <q-dialog
+        v-if="pantallaChica"
+        v-model="dialogoDetalle"
+        position="bottom"
+        aria-labelledby="dialogo-detalle-titulo"
+      >
+        <q-card class="detalle-dialogo">
+          <q-card-section class="detalle-dialogo__cabecera">
+            <h2 id="dialogo-detalle-titulo" class="detalle-dialogo__titulo">
+              Casos de {{ contadorSeleccionado?.nombre }}
+            </h2>
+            <q-btn
+              v-close-popup
+              flat
+              round
+              icon="close"
+              aria-label="Cerrar el detalle de casos"
+              class="control-touch"
+            >
+              <q-tooltip>Cierra el detalle y vuelve a la lista de contadores.</q-tooltip>
+            </q-btn>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section class="detalle-dialogo__cuerpo">
+            <DetalleContador
+              v-model:filtros="filtrosDetalle"
+              :contador="contadorSeleccionado"
+              :estado="estadoDetalle"
+              :filas="filasDetalle"
+              :paginacion="paginacionDetalle"
+              @cambiar-pagina="(p) => (paginaDetalle = p)"
+            />
+          </q-card-section>
+        </q-card>
+      </q-dialog>
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useQuasar } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue'
 
-import CasoItem from '../components/CasoItem.vue'
 import CounterCountsRow from '../components/CounterCountsRow.vue'
+import DetalleContador from '../components/DetalleContador.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
-import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { getResumenEquipo } from '../services/counterService.js'
 import { useSessionStore } from '../stores/session.js'
 import { useCountersStore } from '../stores/counters.js'
-import { STATUS_LABELS } from '../utils/constants.js'
 import { casoAFila, contadorAFila } from '../utils/filasVista.js'
 import { FILTROS_INICIALES, filtrarCasos, filtrarContadores, hoyLocal, paginar } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES } from '../utils/screenState.js'
@@ -224,9 +218,6 @@ const contadoresVisibles = computed(() => filtrarContadores(contadores.value, bu
  * Filtro de estado del detalle. Los chips y los conteos del contador seleccionado comparten
  * este valor: tocar un conteo lo cambia y el chip correspondiente se marca, y al revés.
  */
-
-
-const ESTADOS_DETALLE = ['todos', 'pendiente', 'en_proceso', 'finalizado']
 const filtrosDetalle = ref({ ...FILTROS_INICIALES, estado: 'todos' })
 const paginaDetalle = ref(1)
 const POR_PAGINA_DETALLE = 10
@@ -255,25 +246,25 @@ const mensajeError = computed(
   () => contadoresStore.error?.mensaje ?? 'la carga de los contadores y de sus conteos.',
 )
 
-const panelDetalle = ref(null)
+/** Celular y tableta (menos de 1024 px): el detalle se abre en un diálogo en vez del panel. */
+const $q = useQuasar()
+const pantallaChica = computed(() => $q.screen.lt.md)
+const dialogoDetalle = ref(false)
 
-// En celular y tableta el detalle queda debajo de la lista: se lleva la vista hasta él.
-const mostrarDetalle = async () => {
-  await nextTick()
-  if (window.matchMedia('(max-width: 1023px)').matches) {
-    panelDetalle.value?.scrollIntoView({ block: 'start' })
-  }
-}
+// Sin contador seleccionado (falló la carga y se reintentó) no hay detalle que mostrar.
+watch(contadorSeleccionado, (contador) => {
+  if (!contador) dialogoDetalle.value = false
+})
 
 /** Selecciona un contador; por defecto, con todos sus casos importantes (RF-13, RF-15). */
 const seleccionar = async (contadorId, estado = 'todos') => {
   filtrosDetalle.value = { ...filtrosDetalle.value, estado }
+  // Se abre antes de cargar para que la carga se vea dentro del diálogo.
+  if (pantallaChica.value) dialogoDetalle.value = true
   // Si ya era el seleccionado no se vuelve a pedir el detalle: solo cambia el filtro.
   if (contadorId !== contadoresStore.contadorSeleccionadoId) {
     await contadoresStore.seleccionarContador(contadorId)
   }
-  // Después de cargar: con la página ya completa, el desplazamiento llega hasta el detalle.
-  mostrarDetalle()
 }
 
 /** Tocar un conteo filtra por ese estado; tocar otra vez el conteo activo quita el filtro. */
@@ -429,23 +420,10 @@ onMounted(async () => {
   background: #f7f9fc;
 }
 
-.counter-search__resultado,
-.detalle-paginacion__texto {
+.counter-search__resultado {
   margin: -4px 0 0;
   color: #334e68;
   font-size: 0.85rem;
-}
-
-.detalle-paginacion {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.detalle-paginacion__texto {
-  margin: 0;
 }
 
 .dashboard-panel__prompt {
@@ -470,11 +448,40 @@ onMounted(async () => {
   min-width: 0;
 }
 
-.case-list {
-  overflow: hidden;
-  border-color: #dbe4ee;
-  border-radius: 10px;
-  background: #ffffff;
+/* Diálogo del detalle (celular y tableta): sube desde abajo y deja ver la lista arriba. */
+.detalle-dialogo {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  border-radius: 16px 16px 0 0;
+  background: var(--dg-fondo-panel);
+}
+
+.detalle-dialogo__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+}
+
+.detalle-dialogo__titulo {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--dg-texto);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* Solo los casos se desplazan; la cabecera con el botón de cerrar queda siempre a la vista. */
+.detalle-dialogo__cuerpo {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* RNF-02: una columna con 720 px de ancho como máximo, centrada, entre 600 y 1023 px. */
