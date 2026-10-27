@@ -11,19 +11,6 @@
             @click="drawerOpen = !drawerOpen"
           />
 
-          <q-btn
-            v-if="backRouteName && !accessDenied"
-            flat
-            no-caps
-            icon="arrow_back"
-            text-color="white"
-            class="control-touch"
-            :to="{ name: backRouteName }"
-            :aria-label="`Volver a ${backTitle}`"
-          >
-            <q-tooltip>Volver a {{ backTitle }}</q-tooltip>
-          </q-btn>
-
           <h1 class="layout-bar__title">
             {{ pageTitle }}
             <q-tooltip>{{ pageTitle }}</q-tooltip>
@@ -269,7 +256,6 @@ import { accessDenied } from '../router/accessState.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
-import { decidirAcceso } from '../utils/accessRules.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
 import { guardarMenuFijado, leerMenuFijado } from '../utils/preferenciaMenu.js'
 
@@ -316,25 +302,7 @@ const dialogoCierreAbierto = ref(false)
 const cerrandoSesion = ref(false)
 
 const pageTitle = computed(() => route.meta.titulo ?? 'Pantalla')
-// «Volver» solo se ofrece si la sesión puede abrir la pantalla de destino.
-const backRouteName = computed(() => {
-  const destino = route.meta.volverA ?? null
-  if (!destino) return null
 
-  const meta = router.resolve({ name: destino }).meta
-  const decision = decidirAcceso({
-    ruta: { requiereSesion: meta.requiereSesion === true, perfil: meta.perfil ?? null },
-    sesion: { autenticado: session.autenticado, rol: session.rol },
-  })
-  return decision.accion === 'permitir' ? destino : null
-})
-const backTitle = computed(() => {
-  if (!backRouteName.value) {
-    return 'la pantalla anterior'
-  }
-
-  return router.resolve({ name: backRouteName.value }).meta.titulo ?? 'la pantalla anterior'
-})
 
 const iniciales = computed(() => formatearIniciales(session.nombreVisible))
 const rolLegible = computed(() => formatearRol(session.rol))
