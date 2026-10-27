@@ -27,4 +27,28 @@ async function query(sql, params) {
   return rows;
 }
 
-module.exports = { query, pool };
+/**
+ * Ejecuta varias consultas en una sola transacción: si una falla, no se guarda ninguna.
+ * @param {(ejecutar: (sql: string, params?: Array) => Promise<Array>) => Promise<*>} trabajo
+ *   recibe una función con la misma forma que `query`, ligada a la transacción.
+ * @returns {Promise<*>} lo que devuelva `trabajo`.
+ */
+async function conTransaccion(trabajo) {
+  const conexion = await pool.getConnection();
+  try {
+    await conexion.beginTransaction();
+    const resultado = await trabajo(async (sql, params) => {
+      const [rows] = await conexion.query(sql, params || []);
+      return rows;
+    });
+    await conexion.commit();
+    return resultado;
+  } catch (error) {
+    await conexion.rollback();
+    throw error;
+  } finally {
+    conexion.release();
+  }
+}
+
+module.exports = { query, pool, conTransaccion };

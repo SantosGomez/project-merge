@@ -34,6 +34,7 @@ const MINIMOS = {
   'originUtils.test.js': 7,
   'ownershipMiddleware.test.js': 4,
   'passwordUtils.test.js': 4,
+  'prioridadAdmin.test.js': 6,
   'respuestasApi.test.js': 3,
   'roleMiddleware.test.js': 8,
   'seed.test.js': 3,

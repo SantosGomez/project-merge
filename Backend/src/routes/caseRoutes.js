@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
-const { requireContador } = require('../middlewares/roleMiddleware');
+const { requireAdmin, requireContador } = require('../middlewares/roleMiddleware');
 const { checkCaseOwnership } = require('../middlewares/ownershipMiddleware');
-const { createCase, updateCase } = require('../controllers/CaseController');
+const { createCase, updateCase, cambiarPrioridadComoAdmin } = require('../controllers/CaseController');
 const { getMyCases } = require('../controllers/CounterController');
 const { asyncHandler } = require('../utils/asyncHandler');
 
@@ -12,6 +12,9 @@ router.post('/', authenticateToken, requireContador, asyncHandler(createCase));
 
 // PATCH /casos/:id — Cambiar estado y/o prioridad de caso propio (solo contador, checkCaseOwnership) (RF-22)
 router.patch('/:id', authenticateToken, requireContador, asyncHandler(checkCaseOwnership), asyncHandler(updateCase));
+
+// PATCH /casos/:id/prioridad — El administrador cambia la prioridad del caso de cualquier contador y lo avisa
+router.patch('/:id/prioridad', authenticateToken, requireAdmin, asyncHandler(cambiarPrioridadComoAdmin));
 
 // GET /casos/mis-casos — Leer los propios casos del contador autenticado (RF-15, RF-24)
 router.get('/mis-casos', authenticateToken, asyncHandler(getMyCases));

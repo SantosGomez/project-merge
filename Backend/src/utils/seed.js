@@ -62,6 +62,22 @@ async function crearTablasSiNoExisten() {
       FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     ) ENGINE=InnoDB
   `);
+
+  // Avisos dentro de la app (p. ej. el administrador cambió la prioridad de un caso).
+  // Se borran solos con su cuenta o su caso para no bloquear esos borrados.
+  await query(`
+    CREATE TABLE IF NOT EXISTS notificaciones (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      caso_id INT NULL,
+      mensaje VARCHAR(500) NOT NULL,
+      leida TINYINT(1) NOT NULL DEFAULT 0,
+      creado_en DATETIME NOT NULL,
+      INDEX idx_notificaciones_usuario (usuario_id, leida),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      FOREIGN KEY (caso_id) REFERENCES casos(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB
+  `);
 }
 
 /** Indica si la tabla usuarios todavía tiene la columna `usuario` (bases anteriores a la 5c). */

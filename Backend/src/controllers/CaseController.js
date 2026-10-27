@@ -1,10 +1,14 @@
 const CaseModel = require('../models/CaseModel');
+const NotificacionModel = require('../models/NotificacionModel');
+const UserModel = require('../models/UserModel');
+const { conTransaccion } = require('../config/db');
 const {
   validarCampoTexto,
   validarTextoOpcional,
   validateNewCaseInput,
   validateStatus,
   validatePriority,
+  parseCounterId,
 } = require('../utils/validationUtils');
 const { buildError } = require('../utils/errorUtils');
 const {
@@ -255,4 +259,59 @@ async function updateCase(req, res) {
   });
 }
 
-module.exports = { createCase, updateCase };
+/** AAAA-MM-DD → DD-MM-AAAA, el formato que ven las personas. */
+function fechaParaAviso(fechaISO) {
+  const [anio, mes, dia] = fechaISO.split('-');
+  return `${dia}-${mes}-${anio}`;
+}
+
+/**
+ * El administrador cambia la prioridad del caso de cualquier contador.
+ * Recalcula el vencimiento desde la fecha de inicio y avisa al dueño del caso;
+ * el cambio y el aviso se guardan juntos. Con la misma prioridad no hace nada.
+ * @param {Object} req - Petición Express con params.id y cuerpo { prioridad }.
+ * @param {Object} res - Respuesta Express.
+ */
+async function cambiarPrioridadComoAdmin(req, res) {
+  const { prioridad } = req.body;
+
+  if (prioridad === undefined) {
+    return res.status(400).json(buildError(...MENSAJES_ENTRADA_CASO.prioridad_requerida));
+  }
+  if (validarCampoTexto(prioridad, 'prioridad').estado === 'tipo_invalido') {
+    return res.status(400).json(buildError(...MENSAJES_ENTRADA_CASO.prioridad_tipo_invalida));
+  }
+  if (!validatePriority(prioridad)) {
+    return res.status(400).json(buildError(...MENSAJES_ENTRADA_CASO.prioridad_invalida));
+  }
+
+  // Solo ids de dígitos: MariaDB convertiría '12abc' en 12 y cambiaría otro caso (RF-35)
+  const casoId = parseCounterId(req.params.id);
+  const casoActual = casoId ? await CaseModel.findById(casoId) : null;
+  if (!casoActual) {
+    return res.status(404).json(
+      buildError('No se encontró el caso', 'ID del caso', 'Verifique que el ID del caso sea correcto')
+    );
+  }
+
+  if (prioridad !== casoActual.prioridad) {
+    const fechaVencimiento = calcularFechaVencimiento(casoActual.fecha_inicio ?? nowLocal(), prioridad);
+    const administrador = await UserModel.findById(req.user.id);
+    const mensaje =
+      `${administrador.nombre} cambió la prioridad de «${casoActual.cliente}» de ${casoActual.prioridad} a ${prioridad}. ` +
+      `Ahora vence el ${fechaParaAviso(fechaVencimiento)}.`;
+
+    await conTransaccion(async (ejecutar) => {
+      await CaseModel.updatePatch(casoActual.id, { prioridad, fecha_vencimiento: fechaVencimiento }, ejecutar);
+      await NotificacionModel.crear({ usuarioId: casoActual.contador_id, casoId: casoActual.id, mensaje }, ejecutar);
+    });
+  }
+
+  const caso = await CaseModel.findById(casoActual.id);
+  return res.status(200).json({
+    mensaje: 'Prioridad actualizada correctamente',
+    caso: conFechasLocales(caso),
+  });
+}
+
+module.exports = { createCase, updateCase, cambiarPrioridadComoAdmin };

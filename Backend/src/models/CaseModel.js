@@ -170,9 +170,10 @@ const COLUMNAS_EDITABLES = [
  * @param {number} id - ID del caso.
  * @param {Object} campos - { cliente, estado, prioridad, fecha_inicio, fecha_vencimiento (AAAA-MM-DD),
  *   descripcion, observaciones }, todos opcionales; null guarda NULL.
+ * @param {Function} [ejecutar] - `query` o la función de una transacción (`conTransaccion`).
  * @returns {Promise<void>}
  */
-async function updatePatch(id, campos = {}) {
+async function updatePatch(id, campos = {}, ejecutar = query) {
   const asignaciones = [];
   const valores = [];
   for (const columna of COLUMNAS_EDITABLES) {
@@ -194,7 +195,7 @@ async function updatePatch(id, campos = {}) {
     valores.push(ahora);
   }
 
-  await query(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
+  await ejecutar(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
 module.exports = { findById, findByCounter, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
