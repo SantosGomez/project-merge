@@ -168,15 +168,17 @@ test('getResumenEquipo rechaza con tres partes si la respuesta no trae el total 
 
 // --- solo casos importantes (dashboard del administrador) ------------------
 
-test('getConteosPorEstado y getCasosPorContador piden solo los importantes con soloImportantes', async () => {
-  const api = crearApiFalsa({ datos: { pendiente: 1, en_proceso: 0, finalizado: 0, casos: [] } })
+test('getConteosPorEstado, getCasosPorContador y getResumenEquipo piden solo los importantes con soloImportantes', async () => {
+  const api = crearApiFalsa({ datos: { pendiente: 1, en_proceso: 0, finalizado: 0, casos: [], equipo: {} } })
   const servicio = crearCounterService({ api })
 
   await servicio.getConteosPorEstado(7, { soloImportantes: true })
   await servicio.getCasosPorContador(7, { soloImportantes: true })
+  await servicio.getResumenEquipo({ soloImportantes: true })
 
   assert.deepEqual(api.llamadas.map((llamada) => llamada.url), [
     '/contadores/7/conteos?importantes=true',
     '/contadores/7/casos?importantes=true',
+    '/contadores/resumen?importantes=true',
   ])
 })

@@ -288,7 +288,7 @@ const cargarResumen = async () => {
   cargandoResumen.value = true
   errorResumen.value = null
   try {
-    resumen.value = await getResumenEquipo()
+    resumen.value = await getResumenEquipo({ soloImportantes: true })
   } catch (fallo) {
     errorResumen.value = fallo
   } finally {

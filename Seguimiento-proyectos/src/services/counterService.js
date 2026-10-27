@@ -80,10 +80,11 @@ export const crearCounterService = (opciones = {}) => {
 
   /**
    * GET /contadores/resumen: total de casos del equipo para los KPIs del dashboard.
+   * @param {{ soloImportantes?: boolean }} [opciones] - devolver solo los casos importantes.
    * @returns {Promise<{ pendiente: number, en_proceso: number, finalizado: number, abiertos: number, vencidos: number, alta_abiertos: number }>}
    */
-  const getResumenEquipo = async () => {
-    const { data } = await api.get('/contadores/resumen')
+  const getResumenEquipo = async (opciones) => {
+    const { data } = await api.get(`/contadores/resumen${filtroImportantes(opciones)}`)
     const equipo = data?.equipo
     if (equipo === null || typeof equipo !== 'object') {
       throw crearErrorInesperado('el resumen de casos del equipo')
