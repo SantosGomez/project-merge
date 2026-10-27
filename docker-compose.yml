@@ -11,6 +11,9 @@ services:
       MARIADB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en .env}
       TZ: ${TZ}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    # Solo esta PC (Workbench); 3307 para no chocar con el MySQL de XAMPP
+    ports:
+      - "127.0.0.1:${PUERTO_DB:-3307}:3306"
     volumes:
       - db_datos:/var/lib/mysql
     healthcheck:
