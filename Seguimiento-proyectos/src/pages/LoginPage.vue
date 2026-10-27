@@ -1,43 +1,19 @@
 <template>
   <main class="login-page">
     <div class="login-page__card">
+      <!-- Login sencillo por decisión del usuario: logo, bienvenida y formulario. -->
       <div class="login-page__intro">
-        <p class="login-page__eyebrow">DelGrow · Estado Contadores</p>
-        <h1 class="login-page__title">Inicio de sesión</h1>
-        <p class="login-page__lead">
-          Entra con tu cuenta para ver el estado de los casos que corresponde a tu perfil.
-        </p>
-
-        <!-- Ayuda siempre visible: sirve con puntero, teclado y toque (RNF-03). -->
-        <section class="login-page__help" aria-labelledby="login-help-title">
-          <h2 id="login-help-title" class="login-page__help-title">Cómo funciona el acceso</h2>
-          <q-list dense class="login-page__help-list">
-            <q-item class="login-page__help-item">
-              <q-item-section avatar class="login-page__help-icono">
-                <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="login-page__help-texto">El perfil lo determina la cuenta con la que entras: no se elige a mano.</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item class="login-page__help-item">
-              <q-item-section avatar class="login-page__help-icono">
-                <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="login-page__help-texto">La sesión sigue activa mientras la pestaña esté abierta; al recargar se valida de nuevo con el servidor.</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item class="login-page__help-item">
-              <q-item-section avatar class="login-page__help-icono">
-                <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="login-page__help-texto">Si pasas 30 minutos sin actividad, la sesión caduca y hay que iniciar sesión otra vez.</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </section>
+        <q-img
+          class="login-page__logo"
+          src="logos/PNG/DELGROW_LOGO-OF.png"
+          alt="DelGrow Business Solutions"
+          fit="cover"
+          width="240px"
+          height="52px"
+          no-spinner
+        />
+        <h1 class="login-page__title">Bienvenido</h1>
+        <p class="login-page__lead">Inicia sesión con tu cuenta para ver tus casos.</p>
       </div>
 
       <section class="login-page__panel" aria-label="Formulario de inicio de sesión">
@@ -117,7 +93,6 @@
               v-model="form.username"
               class="login-form__control"
               label="Correo"
-              hint="Correo de tu cuenta, por ejemplo nombre@delgrow.mx."
               type="email"
               autocomplete="email"
               autofocus
@@ -152,8 +127,7 @@
               v-model="form.password"
               class="login-form__control"
               label="Contraseña"
-              hint="Contraseña de tu cuenta."
-              type="password"
+              :type="verContrasena ? 'text' : 'password'"
               autocomplete="current-password"
               outlined
               :error="missing.password"
@@ -165,6 +139,18 @@
                 <q-icon name="lock" aria-hidden="true" />
               </template>
               <template #append>
+                <q-btn
+                  class="login-form__ver-contrasena"
+                  flat
+                  round
+                  dense
+                  :icon="verContrasena ? 'visibility_off' : 'visibility'"
+                  :aria-label="verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                  :aria-pressed="verContrasena"
+                  @click="verContrasena = !verContrasena"
+                >
+                  <q-tooltip>{{ verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña' }}</q-tooltip>
+                </q-btn>
                 <q-icon
                   name="info"
                   class="login-form__help-icon"
@@ -225,6 +211,8 @@ const enviando = ref(false)
 const validandoArranque = ref(false)
 const usernameInput = ref(null)
 const passwordInput = ref(null)
+/** Botón del ojo: la contraseña empieza oculta. */
+const verContrasena = ref(false)
 
 /** Aviso persistente fijado por el cierre voluntario (RF-46/RF-47). */
 const avisoSesion = computed(() => sesion.avisoSesion)
@@ -397,20 +385,18 @@ const submit = async () => {
   box-shadow: 0 12px 32px rgb(16 42 67 / 12%);
 }
 
-.login-page__eyebrow {
-  margin: 0 0 8px;
-  color: var(--dg-acento);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  overflow-wrap: anywhere;
+/* El PNG trae margen blanco arriba y abajo: fit="cover" lo recorta. */
+.login-page__logo {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto 24px;
 }
 
 .login-page__title {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   color: var(--dg-texto);
-  font-size: clamp(1.6rem, 6vw, 2rem);
-  line-height: 1.2;
+  font-size: 1.5rem;
+  line-height: 1.25;
   text-wrap: balance;
 }
 
@@ -425,51 +411,10 @@ const submit = async () => {
 }
 
 .login-page__lead {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   color: var(--dg-texto-secundario);
   font-size: 1rem;
   line-height: 1.5;
-}
-
-.login-page__help {
-  margin-bottom: 24px;
-  padding: 16px;
-  border-left: 4px solid var(--dg-acento);
-  border-radius: 8px;
-  background: var(--dg-fondo-hover);
-}
-
-.login-page__help-title {
-  margin: 0 0 8px;
-  color: var(--dg-texto);
-  font-size: 1rem;
-}
-
-.login-page__help-list {
-  color: var(--dg-texto-secundario);
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-/* Sin el alto mínimo ni el relleno de q-item: cada punto ocupa lo que su texto. */
-.login-page__help-item {
-  min-height: 0;
-  padding: 0;
-}
-
-.login-page__help-item + .login-page__help-item {
-  margin-top: 6px;
-}
-
-.login-page__help-icono {
-  min-width: 26px;
-  padding-top: 2px;
-  justify-content: flex-start;
-}
-
-/* q-item-label trae line-height de 1.2em con !important; se conserva el 1.5 de la ayuda. */
-.login-page__help-texto {
-  line-height: 1.5 !important;
 }
 
 .notice {
@@ -540,6 +485,10 @@ const submit = async () => {
   outline-offset: 2px;
 }
 
+.login-form__ver-contrasena {
+  color: var(--dg-texto-secundario);
+}
+
 .login-form__help-icon:focus-visible {
   outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
@@ -547,35 +496,16 @@ const submit = async () => {
 
 /* El botón de Quasar trae la clase `no-outline`, que anula el contorno; se refuerza a propósito. */
 .login-form__submit:focus-visible,
+.login-form__ver-contrasena:focus-visible,
 .notice__action:focus-visible {
   outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 
+/* Misma tarjeta de 440 px en todas las pantallas; solo crece el relleno. */
 @media (min-width: 600px) {
-  .login-page {
-    max-width: 720px;
-  }
-
   .login-page__card {
-    padding: 32px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .login-page {
-    max-width: 960px;
-  }
-
-  .login-page__card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
-    gap: 48px;
     padding: 40px;
-  }
-
-  .login-page__help {
-    margin-bottom: 0;
   }
 }
 </style>

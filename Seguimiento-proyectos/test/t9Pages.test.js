@@ -300,6 +300,24 @@ describe('Login por correo — verificación estática de P-1', () => {
     assert.doesNotMatch(campo, /label="Usuario"/, 'ya no pide el usuario')
   })
 
+  it('es un login sencillo: logo de DelGrow, sin cuadro de ayuda ni textos bajo los campos', () => {
+    const plantilla = login.split('<script')[0]
+    assert.match(plantilla, /<q-img[^>]*src="logos\/PNG\/DELGROW_LOGO-OF\.png"[^>]*alt="DelGrow Business Solutions"/)
+    assert.doesNotMatch(plantilla, /Cómo funciona el acceso|login-page__help|<q-list/, 'sin cuadro de ayuda (decisión del usuario)')
+    assert.doesNotMatch(plantilla, /\bhint=/, 'sin texto de ayuda bajo los campos')
+    assert.match(plantilla, /aria-label="Ayuda sobre el campo contraseña"/, 'el tooltip de cada campo se conserva')
+  })
+
+  it('la contraseña se puede mostrar u ocultar con un botón accesible', () => {
+    const plantilla = login.split('<script')[0]
+    const contrasena = plantilla.slice(plantilla.indexOf('ref="passwordInput"'), plantilla.indexOf('</q-input>', plantilla.indexOf('ref="passwordInput"')))
+    assert.match(contrasena, /:type="verContrasena \? 'text' : 'password'"/)
+    assert.match(contrasena, /<q-btn[^>]*:aria-label="verContrasena \? 'Ocultar contraseña' : 'Mostrar contraseña'"/)
+    assert.match(contrasena, /:aria-pressed="verContrasena"/)
+    assert.match(contrasena, /@click="verContrasena = !verContrasena"/)
+    assert.match(login, /const verContrasena = ref\(false\)/, 'empieza oculta')
+  })
+
   it('los avisos hablan de correo, no de usuario', () => {
     assert.ok(login.includes('Falta el correo. Escríbelo para iniciar sesión.'), 'aviso de campo vacío')
     assert.ok(

@@ -54,8 +54,8 @@ describe('Rebanada 2: piezas pequeñas', () => {
     assert.match(etiqueta, /<q-tooltip v-if="tooltip">/)
   })
 
-  it('las ayudas de login, acceso denegado y sesión caducada son q-list con un q-item por punto', () => {
-    for (const ruta of ['pages/LoginPage.vue', 'components/AccessDenied.vue', 'components/AvisoSesionCaducada.vue']) {
+  it('las ayudas de acceso denegado y sesión caducada son q-list con un q-item por punto', () => {
+    for (const ruta of ['components/AccessDenied.vue', 'components/AvisoSesionCaducada.vue']) {
       const plantilla = leer(ruta).split('<script')[0]
       assert.match(plantilla, /<q-list[^>]*dense/, `${ruta}: lista de Quasar`)
       assert.equal((plantilla.match(/<q-item[\s>]/g) ?? []).length, 3, `${ruta}: los tres puntos de ayuda`)
