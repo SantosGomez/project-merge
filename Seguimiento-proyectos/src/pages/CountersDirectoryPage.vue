@@ -244,7 +244,7 @@ const columnas = [
   { name: 'acciones', label: 'Acciones', field: 'id', align: 'left' },
 ]
 
-const paginacion = ref({ rowsPerPage: 25 })
+const paginacion = ref({ rowsPerPage: 12 })
 
 // q-select no muestra como elegida una opción con valor null: «Todos» usa su propio valor.
 const TODOS_LOS_ROLES = 'todos'
