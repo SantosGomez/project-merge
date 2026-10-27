@@ -93,6 +93,8 @@ npm run build
 - los textos de las vistas no tienen que ser ambiguos para que todas los usuarios puedan entender
 - tener tooltips para dar contexto al usuario y evitar ambiguedad.
 - Identidad visual: la app se llama «Seguimiento de Proyectos» y comparte el diseño de las demás apps de Grupo DelGrow S.C. (menú lateral oscuro de altura completa con logo, nombre de la empresa y de la app, secciones por rol y usuario con cierre de sesión al pie).
+- Componentes de Quasar en todas las vistas (`q-btn`, `q-list`/`q-item`, `q-card`, `q-chip`/`q-badge`, `q-form`, `q-input`…). HTML nativo solo cuando Quasar no tiene equivalente; la única excepción acordada es el SVG de la dona «Casos por estado» (`DonaEstados.vue`), que va dentro de un `q-card`.
+- Colores desde la paleta `$dg-colores` de `src/css/quasar.variables.scss` (`color="dg-acento"`, clases `text-dg-*`/`bg-dg-*` o `var(--dg-*)`), nunca un hexadecimal suelto en un componente. Un color nuevo se agrega a la paleta y, si es texto sobre fondo, a los pares de contraste de `test/paletaColores.test.js`.
 
 ## Reglas de dominio / trampas conocidas
 

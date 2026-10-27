@@ -78,3 +78,21 @@ body {
   outline: 2px solid currentColor !important;
   outline-offset: -2px;
 }
+
+// Paleta de la app ($dg-colores en quasar.variables.scss): variables CSS y clases de color
+// con el mismo formato que las de Quasar, para usar `color="dg-..."` o `text-color="dg-..."`.
+:root {
+  @each $nombre, $color in $dg-colores {
+    --dg-#{$nombre}: #{$color};
+  }
+}
+
+@each $nombre, $color in $dg-colores {
+  .text-dg-#{$nombre} {
+    color: var(--dg-#{$nombre}) !important;
+  }
+
+  .bg-dg-#{$nombre} {
+    background: var(--dg-#{$nombre}) !important;
+  }
+}

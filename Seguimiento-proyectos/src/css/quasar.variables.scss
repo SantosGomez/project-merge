@@ -28,3 +28,51 @@ $negative: #c10015;
 $info: #31ccec;
 $warning: #f2c037;
 
+// Paleta de la app por papel. `app.scss` la publica como variables CSS (`--dg-texto`) y como
+// clases de color de Quasar (`text-dg-texto`, `bg-dg-texto`), así se usa `color="dg-acento"`
+// en los componentes en vez de repetir el hexadecimal. Los pares de texto y fondo cumplen
+// contraste WCAG de 4.5:1 (test/paletaColores.test.js).
+$dg-colores: (
+  // Textos
+  texto: #102a43,
+  texto-secundario: #334e68,
+  texto-tenue: #486581,
+  // Interacción: anillo de foco y color de selección
+  foco: #0b5cad,
+  acento: #1f5f99,
+  // Bordes
+  borde: #dbe4ee,
+  borde-fuerte: #c9d4e0,
+  borde-discontinuo: #b9c4d0,
+  // Fondos
+  superficie: #ffffff,
+  fondo-panel: #f7f9fc,
+  fondo-suave: #f5f8fb,
+  fondo-hover: #f0f6fc,
+  fondo-seleccion: #e6f0fb,
+  // Error y éxito
+  error: #a3231b,
+  error-oscuro: #7a1f1a,
+  error-fondo: #fdecea,
+  exito: #1b5e20,
+  exito-fondo: #e6f4ea,
+  // Caso importante
+  importante: #b45309,
+  importante-texto: #8a4b00,
+  importante-fondo: #fff4d6,
+  // Estados del caso (dona y etiquetas)
+  estado-pendiente: #b45309,
+  estado-en-proceso: #1f5f99,
+  estado-finalizado: #2f855a,
+  // Prioridades (texto, fondo y borde de la etiqueta)
+  prioridad-alta: #b71c1c,
+  prioridad-alta-fondo: #fde7e9,
+  prioridad-alta-borde: #c2655f,
+  prioridad-media: #8a5800,
+  prioridad-media-fondo: #fff4d6,
+  prioridad-media-borde: #a97c14,
+  prioridad-baja: #1b5e20,
+  prioridad-baja-fondo: #e6f4ea,
+  prioridad-baja-borde: #3f6b4d,
+);
+
