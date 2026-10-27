@@ -146,7 +146,8 @@ export const validarContrasenaNueva = (nueva, confirmacion) => {
   if (errores.nueva === null && normalizar(nueva).length < MIN_PASSWORD_LENGTH) {
     errores.nueva = 'password_corta'
   }
-  if (errores.nueva === null && errores.confirmacion === null && normalizar(nueva) !== normalizar(confirmacion)) {
+  // Se avisa en cuanto la confirmación no coincide, aunque la nueva todavía no cumpla el mínimo.
+  if (errores.confirmacion === null && normalizar(nueva) !== normalizar(confirmacion)) {
     errores.confirmacion = 'confirmacion_distinta'
   }
 

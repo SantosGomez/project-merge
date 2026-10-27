@@ -247,6 +247,13 @@ test('validarContrasenaNueva pide la nueva con 8 o más y la confirmación igual
   })
 })
 
+test('validarContrasenaNueva avisa que no coinciden aunque la nueva todavía sea corta', () => {
+  assert.deepEqual(validarContrasenaNueva('Corta1', 'Corta2'), {
+    valido: false,
+    errores: { nueva: 'password_corta', confirmacion: 'confirmacion_distinta' },
+  })
+})
+
 // --- validarRestablecimiento (historia 9b) ---------------------------------
 
 test('validarRestablecimiento acepta un correo con forma de correo y una contraseña de 8, sin contar espacios', () => {

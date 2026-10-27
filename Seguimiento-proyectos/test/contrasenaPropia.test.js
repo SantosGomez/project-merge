@@ -28,8 +28,28 @@ describe('Página «Crea tu contraseña»', () => {
     assert.equal((plantilla.match(/:aria-pressed="ver(Nueva|Confirmacion)"/g) ?? []).length, 2)
   })
 
-  it('valida con validarContrasenaNueva y guarda con crearContrasenaPropia', () => {
+  it('valida con reglas de Quasar que usan validarContrasenaNueva, sin errores puestos a mano', () => {
+    const nueva = plantilla.slice(plantilla.indexOf('ref="nuevaInput"'), plantilla.indexOf('</q-input>'))
+    const confirmacion = plantilla.slice(plantilla.indexOf('ref="confirmacionInput"'))
+    assert.match(nueva, /:rules="\[reglaNueva\]"/)
+    assert.match(nueva, /\blazy-rules\b/, 'la nueva se revisa al salir del campo')
+    assert.match(confirmacion, /:rules="\[reglaConfirmacion\]"/)
+    assert.doesNotMatch(confirmacion.split('</q-input>')[0], /lazy-rules/, 'la confirmación se revisa mientras se escribe')
+    assert.doesNotMatch(plantilla, /:error="|:error-message="/, 'los errores los pone QInput con sus reglas')
     assert.match(pagina, /validarContrasenaNueva\(/)
+  })
+
+  it('la confirmación usa una regla asíncrona (Promise) y se vuelve a validar si cambia la nueva', () => {
+    assert.match(pagina, /const reglaConfirmacion = \(valor\) =>\s*new Promise\(/)
+    assert.match(pagina, /watch\(\s*\(\) => form\.nueva,[\s\S]*?confirmacionInput\.value\?\.validate\(\)/)
+  })
+
+  it('muestra visualmente cuando las contraseñas coinciden', () => {
+    assert.match(plantilla, /<q-icon[^>]*v-if="coinciden"[^>]*name="check_circle"[^>]*aria-label="Las contraseñas coinciden"/)
+    assert.match(plantilla, /:hint="coinciden \? 'Las contraseñas coinciden\.' : undefined"/)
+  })
+
+  it('guarda con crearContrasenaPropia', () => {
     assert.match(pagina, /sesion\.crearContrasenaPropia\(/)
     assert.match(plantilla, /<q-form[^>]*novalidate[^>]*@submit="guardar"/)
     assert.match(plantilla, /:label="guardando \? 'Guardando…' : 'Guardar contraseña'"/)

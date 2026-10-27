@@ -31,9 +31,9 @@
           autocomplete="new-password"
           autofocus
           outlined
-          :error="!!errores.nueva"
-          :error-message="errores.nueva"
-          @update:model-value="alEscribir('nueva')"
+          :rules="[reglaNueva]"
+          lazy-rules
+          @update:model-value="alEscribir"
         >
           <template #prepend>
             <q-icon name="lock" aria-hidden="true" />
@@ -73,14 +73,21 @@
           :type="verConfirmacion ? 'text' : 'password'"
           autocomplete="new-password"
           outlined
-          :error="!!errores.confirmacion"
-          :error-message="errores.confirmacion"
-          @update:model-value="alEscribir('confirmacion')"
+          :rules="[reglaConfirmacion]"
+          :hint="coinciden ? 'Las contraseñas coinciden.' : undefined"
+          @update:model-value="alEscribir"
         >
           <template #prepend>
             <q-icon name="lock" aria-hidden="true" />
           </template>
           <template #append>
+            <q-icon
+              v-if="coinciden"
+              name="check_circle"
+              color="dg-exito-oscuro"
+              role="img"
+              aria-label="Las contraseñas coinciden"
+            />
             <q-btn
               class="cambio-form__ver"
               flat
@@ -136,7 +143,7 @@
 </template>
 
 <script setup>
-import { nextTick, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
@@ -158,37 +165,63 @@ const MENSAJES = {
   confirmacion_distinta: 'Las contraseñas no coinciden. Escríbelas igual.',
 }
 
+/** Espera de la regla asíncrona: deja terminar de escribir antes de comparar. */
+const ESPERA_CONFIRMACION_MS = 300
+
 const form = reactive({ nueva: '', confirmacion: '' })
-const errores = reactive({ nueva: null, confirmacion: null })
 const errorServidor = ref('')
 const guardando = ref(false)
 const cerrando = ref(false)
 const verNueva = ref(false)
 const verConfirmacion = ref(false)
-const nuevaInput = ref(null)
 const confirmacionInput = ref(null)
 
-/** Escribir retira el error de ese campo y el del servidor. */
-const alEscribir = (campo) => {
-  errores[campo] = null
+/*
+ * Reglas de QInput: devuelven true o el mensaje de error, con la misma lógica
+ * (validarContrasenaNueva) que se revisa antes de enviar.
+ */
+const reglaNueva = (valor) =>
+  MENSAJES[validarContrasenaNueva(valor, form.confirmacion).errores.nueva] ?? true
+
+// Regla asíncrona: compara cuando se deja de escribir unos milisegundos.
+const reglaConfirmacion = (valor) =>
+  new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(MENSAJES[validarContrasenaNueva(form.nueva, valor).errores.confirmacion] ?? true)
+    }, ESPERA_CONFIRMACION_MS)
+  })
+
+/** Las dos contraseñas están escritas y son iguales (aviso visual en verde). */
+const coinciden = computed(
+  () =>
+    form.confirmacion.trim() !== '' &&
+    validarContrasenaNueva(form.nueva, form.confirmacion).errores.confirmacion === null,
+)
+
+// Si cambia la nueva después de confirmar, la confirmación se vuelve a revisar.
+watch(
+  () => form.nueva,
+  () => {
+    if (form.confirmacion !== '') {
+      confirmacionInput.value?.validate()
+    }
+  },
+)
+
+/** Escribir retira el error del servidor. */
+const alEscribir = () => {
   errorServidor.value = ''
 }
 
-/** Valida, guarda la contraseña nueva y abre la pantalla principal del perfil. */
+/**
+ * Guarda la contraseña nueva y abre la pantalla principal del perfil. QForm solo
+ * llama aquí si las reglas pasaron; se revisa otra vez por si cambió algo.
+ */
 const guardar = async () => {
-  if (guardando.value) {
+  if (guardando.value || !validarContrasenaNueva(form.nueva, form.confirmacion).valido) {
     return
   }
   errorServidor.value = ''
-
-  const revision = validarContrasenaNueva(form.nueva, form.confirmacion)
-  errores.nueva = MENSAJES[revision.errores.nueva] ?? null
-  errores.confirmacion = MENSAJES[revision.errores.confirmacion] ?? null
-  if (!revision.valido) {
-    await nextTick()
-    ;(errores.nueva ? nuevaInput : confirmacionInput).value?.focus()
-    return
-  }
 
   guardando.value = true
   let resultado
