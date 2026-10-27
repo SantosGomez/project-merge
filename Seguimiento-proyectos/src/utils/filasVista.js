@@ -59,6 +59,8 @@ export const usuarioAFila = (usuario) => {
     nombre: usuario.nombre ?? '',
     correo: usuario.correo ?? '',
     rol: formatearRol(usuario.rol),
+    /** Rol tal como lo guarda el backend; lo usa el filtro por rol. */
+    rolClave: usuario.rol ?? null,
     ultimoAcceso: usuario.ultimo_acceso_en ?? 'Nunca',
     puedeVerCasos: usuario.rol === PROFILES.contador,
   }

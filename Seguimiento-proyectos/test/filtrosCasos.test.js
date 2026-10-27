@@ -10,6 +10,7 @@ import {
   hoyLocal,
   filtrarCasos,
   filtrarContadores,
+  filtrarUsuarios,
   paginar,
 } from '../src/utils/filtrosCasos.js'
 
@@ -120,4 +121,34 @@ test('filtrarContadores sin texto (o solo espacios) devuelve todos y no encuentr
   assert.deepEqual(ids(filtrarContadores(CONTADORES, '   ')), [1, 2, 3])
   assert.deepEqual(ids(filtrarContadores(CONTADORES, null)), [1, 2, 3])
   assert.deepEqual(filtrarContadores(CONTADORES, 'pedro'), [])
+})
+
+// --- filtrarUsuarios (directorio de usuarios) ------------------------------
+
+const USUARIOS = [
+  { id: 1, nombre: 'Ana Karen Ramírez', correo: 'kramirez@delgrow.mx', rolClave: 'administrador' },
+  { id: 2, nombre: 'Luis Méndez', correo: 'lmendez@delgrow.mx', rolClave: 'contador' },
+  { id: 3, nombre: 'Sofía Ortiz', correo: 'sortiz@delgrow.mx', rolClave: 'contador' },
+  { id: 4, nombre: 'Sistemas', correo: 'soporte@delgrow.mx', rolClave: 'usuarios_de_sistema' },
+]
+
+test('filtrarUsuarios busca en nombre y correo sin importar mayúsculas ni acentos', () => {
+  assert.deepEqual(ids(filtrarUsuarios(USUARIOS, { texto: 'ramirez', rol: null })), [1])
+  assert.deepEqual(ids(filtrarUsuarios(USUARIOS, { texto: 'MÉNDEZ', rol: null })), [2])
+  assert.deepEqual(ids(filtrarUsuarios(USUARIOS, { texto: 'soporte@', rol: null })), [4], 'busca en el correo')
+  assert.deepEqual(ids(filtrarUsuarios(USUARIOS, { texto: '  sofia  ', rol: null })), [3], 'ignora espacios extremos')
+})
+
+test('filtrarUsuarios filtra por rol y combina el rol con el texto', () => {
+  assert.deepEqual(ids(filtrarUsuarios(USUARIOS, { texto: '', rol: 'contador' })), [2, 3])
+  assert.deepEqual(ids(filtrarUsuarios(USUARIOS, { texto: 'sofia', rol: 'contador' })), [3])
+  assert.deepEqual(ids(filtrarUsuarios(USUARIOS, { texto: 'sofia', rol: 'administrador' })), [])
+})
+
+test('filtrarUsuarios sin filtros devuelve todos en el mismo orden y no modifica la lista', () => {
+  const copia = USUARIOS.map((usuario) => ({ ...usuario }))
+  const resultado = filtrarUsuarios(USUARIOS, { texto: null, rol: null })
+  assert.deepEqual(ids(resultado), [1, 2, 3, 4])
+  assert.notEqual(resultado, USUARIOS, 'arreglo nuevo')
+  assert.deepEqual(USUARIOS, copia)
 })

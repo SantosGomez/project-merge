@@ -167,3 +167,40 @@ describe('Directorio de usuarios (revisión): diálogos accesibles y texto del m
     assert.equal(opciones.length, 2, 'administrador y usuario de sistema')
   })
 })
+
+describe('Directorio de usuarios: filtros de búsqueda y rol', () => {
+  const pagina = read('../src/pages/CountersDirectoryPage.vue')
+  const plantilla = pagina.split('<script')[0]
+
+  it('tiene buscador por nombre o correo con lupa, ✕ para borrar y tooltip', () => {
+    const buscador = plantilla.slice(plantilla.indexOf('v-model="filtros.texto"'), plantilla.indexOf('</q-input>'))
+    assert.match(buscador, /label="Buscar por nombre o correo"/)
+    assert.match(buscador, /\bclearable\b/)
+    assert.match(buscador, /debounce="300"/)
+    assert.match(buscador, /<q-icon name="search"/)
+    assert.match(buscador, /<q-tooltip>/)
+  })
+
+  it('tiene lista de rol con «Todos los roles» y los tres roles', () => {
+    assert.match(plantilla, /<q-select[^>]*v-model="filtros\.rol"[^>]*:options="OPCIONES_ROL"/)
+    for (const texto of ['Todos los roles', 'Administrador', 'Contador', 'Usuario de sistema']) {
+      assert.ok(pagina.includes(`label: '${texto}'`), texto)
+    }
+  })
+
+  it('la tabla muestra las filas filtradas y avisa cuando nada coincide', () => {
+    assert.match(pagina, /const filasFiltradas = computed\(\(\) =>\s*filtrarUsuarios\(filas\.value, \{/)
+    assert.match(pagina, /rol: filtros\.value\.rol === TODOS_LOS_ROLES \? null : filtros\.value\.rol/)
+    assert.match(plantilla, /:rows="filasFiltradas"/)
+    assert.match(plantilla, /no-data-label="Ningún usuario coincide con los filtros\."/)
+  })
+
+  it('muestra cuántas cuentas se ven y «Limpiar filtros» solo con filtros activos', () => {
+    assert.match(plantilla, /Mostrando \{\{ filasFiltradas\.length \}\} de \{\{ filas\.length \}\} cuentas/)
+    assert.match(plantilla, /<q-btn[^>]*v-if="hayFiltros"[^>]*label="Limpiar filtros"/)
+  })
+
+  it('al cambiar un filtro vuelve a la página 1', () => {
+    assert.match(pagina, /watch\(\s*filtros,[\s\S]*?paginacion\.value\.page = 1/)
+  })
+})

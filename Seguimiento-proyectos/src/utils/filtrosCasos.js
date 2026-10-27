@@ -110,3 +110,19 @@ export const filtrarContadores = (contadores, texto) => {
   const buscado = normalizar(texto)
   return contadores.filter((contador) => normalizar(contador.nombre).includes(buscado))
 }
+
+/**
+ * Filas del directorio cuyo nombre o correo contiene el texto buscado (sin importar
+ * mayúsculas ni acentos) y que tienen el rol elegido. Sin texto ni rol devuelve todas.
+ * @param {Array<{ nombre: string, correo: string, rolClave: string }>} filas
+ * @param {{ texto: string|null, rol: string|null }} filtros - rol con el valor del backend.
+ * @returns {Array<Object>} arreglo nuevo, en el mismo orden.
+ */
+export const filtrarUsuarios = (filas, { texto, rol }) => {
+  const buscado = normalizar(texto)
+  return filas.filter(
+    (fila) =>
+      (!rol || fila.rolClave === rol) &&
+      (normalizar(fila.nombre).includes(buscado) || normalizar(fila.correo).includes(buscado)),
+  )
+}

@@ -59,14 +59,63 @@
           flat
           bordered
           aria-label="Cuentas del equipo"
-          :rows="filas"
+          :rows="filasFiltradas"
           :columns="columnas"
           row-key="id"
           :grid="$q.screen.lt.sm"
           v-model:pagination="paginacion"
           :rows-per-page-options="[10, 25, 50, 0]"
-          no-data-label="No hay cuentas que mostrar"
+          no-data-label="Ningún usuario coincide con los filtros."
         >
+          <template #top>
+            <div class="directory-filtros">
+              <q-input
+                v-model="filtros.texto"
+                class="directory-filtros__buscar"
+                label="Buscar por nombre o correo"
+                outlined
+                dense
+                clearable
+                debounce="300"
+              >
+                <template #prepend>
+                  <q-icon name="search" aria-hidden="true" />
+                </template>
+                <q-tooltip>Escribe parte del nombre o del correo; no importan mayúsculas ni acentos.</q-tooltip>
+              </q-input>
+              <q-select
+                v-model="filtros.rol"
+                class="directory-filtros__rol"
+                :options="OPCIONES_ROL"
+                label="Rol"
+                outlined
+                dense
+                emit-value
+                map-options
+              >
+                <q-tooltip>Muestra solo las cuentas del rol elegido.</q-tooltip>
+              </q-select>
+              <div class="directory-filtros__resumen">
+                <p class="directory-filtros__conteo" role="status">
+                  Mostrando {{ filasFiltradas.length }} de {{ filas.length }} cuentas
+                </p>
+                <q-btn
+                  v-if="hayFiltros"
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="filter_alt_off"
+                  label="Limpiar filtros"
+                  class="control-touch"
+                  @click="limpiarFiltros"
+                >
+                  <q-tooltip>Quita la búsqueda y el rol elegido.</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+          </template>
+
           <template #body-cell-acciones="props">
             <q-td :props="props">
               <q-btn
@@ -148,7 +197,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
@@ -161,7 +210,9 @@ import { listarUsuarios } from '../services/userService.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
+import { PROFILES } from '../utils/constants.js'
 import { compararUltimoAcceso, usuarioAFila } from '../utils/filasVista.js'
+import { filtrarUsuarios } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const router = useRouter()
@@ -194,6 +245,43 @@ const columnas = [
 ]
 
 const paginacion = ref({ rowsPerPage: 25 })
+
+// q-select no muestra como elegida una opción con valor null: «Todos» usa su propio valor.
+const TODOS_LOS_ROLES = 'todos'
+
+const OPCIONES_ROL = [
+  { label: 'Todos los roles', value: TODOS_LOS_ROLES },
+  { label: 'Administrador', value: PROFILES.administrador },
+  { label: 'Contador', value: PROFILES.contador },
+  { label: 'Usuario de sistema', value: PROFILES.sistema },
+]
+
+const filtros = ref({ texto: '', rol: TODOS_LOS_ROLES })
+
+/** Filas que coinciden con la búsqueda y el rol elegidos. */
+const filasFiltradas = computed(() =>
+  filtrarUsuarios(filas.value, {
+    texto: filtros.value.texto,
+    rol: filtros.value.rol === TODOS_LOS_ROLES ? null : filtros.value.rol,
+  }),
+)
+
+const hayFiltros = computed(
+  () => Boolean(filtros.value.texto?.trim()) || filtros.value.rol !== TODOS_LOS_ROLES,
+)
+
+const limpiarFiltros = () => {
+  filtros.value = { texto: '', rol: TODOS_LOS_ROLES }
+}
+
+// Con otros filtros la página actual puede quedar vacía: se vuelve a la primera.
+watch(
+  filtros,
+  () => {
+    paginacion.value.page = 1
+  },
+  { deep: true },
+)
 
 const screenStateName = computed(() =>
   screenState({
@@ -327,6 +415,47 @@ onMounted(() => {
 .directory-table :deep(.directory-cell) {
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+/* Filtros: apilados en celular y en una sola fila cuando hay espacio. */
+.directory-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.directory-filtros__buscar {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.directory-filtros__rol {
+  flex: 1 1 180px;
+  max-width: 260px;
+  min-width: 0;
+}
+
+.directory-filtros__resumen {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+
+.directory-filtros__conteo {
+  margin: 0;
+  color: var(--dg-texto-secundario);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 599px) {
+  .directory-filtros__rol {
+    max-width: none;
+  }
 }
 
 .directory-card-wrap {

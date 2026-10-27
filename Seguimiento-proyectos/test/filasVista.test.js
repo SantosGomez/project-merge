@@ -144,6 +144,7 @@ test('usuarioAFila arma la fila con nombre, correo, rol legible y último acceso
     nombre: 'Ana Karen Ramírez',
     correo: 'kramirez@delgrow.mx',
     rol: 'Administrador',
+    rolClave: 'administrador',
     ultimoAcceso: '2026-10-26 09:05:00',
     puedeVerCasos: false,
   })
