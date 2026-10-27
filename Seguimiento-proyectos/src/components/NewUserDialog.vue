@@ -1,11 +1,11 @@
 <template>
   <q-dialog v-model="dialogoAbierto" :persistent="guardando" aria-labelledby="nuevo-usuario-titulo">
     <q-card class="nuevo-usuario">
-      <form
+      <q-form
         class="nuevo-usuario__form"
         novalidate
         aria-label="Formulario de alta de usuario"
-        @submit.prevent="darDeAlta"
+        @submit="darDeAlta"
       >
         <q-card-section>
           <h2 id="nuevo-usuario-titulo" class="nuevo-usuario__title">Nuevo usuario</h2>
@@ -143,7 +143,7 @@
             <q-tooltip>Crea la cuenta con los datos del formulario.</q-tooltip>
           </q-btn>
         </q-card-actions>
-      </form>
+      </q-form>
     </q-card>
   </q-dialog>
 </template>
@@ -252,14 +252,14 @@ const darDeAlta = async () => {
 
 .nuevo-usuario__title {
   margin: 0 0 6px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.15rem;
   line-height: 1.25;
 }
 
 .nuevo-usuario__help {
   margin: 0;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
   line-height: 1.45;
 }
@@ -274,17 +274,17 @@ const darDeAlta = async () => {
 .form-label {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #102a43;
+  color: var(--dg-texto);
 }
 
 .required-mark {
-  color: #a3231b;
+  color: var(--dg-error);
   font-weight: 700;
 }
 
 .form-help {
   margin: 0 0 4px;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
 }
 
@@ -292,8 +292,8 @@ const darDeAlta = async () => {
   margin: 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #fde8e8;
-  color: #8a1c1c;
+  background: var(--dg-error-aviso-fondo);
+  color: var(--dg-error-aviso-texto);
   font-size: 0.9rem;
 }
 

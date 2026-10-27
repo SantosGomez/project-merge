@@ -6,11 +6,11 @@
     @show="enfocarCliente"
   >
     <q-card class="registro-caso">
-      <form
+      <q-form
         class="registro-caso__form"
-        @submit.prevent="submitCase"
         novalidate
         :aria-label="textos.formulario"
+        @submit="submitCase"
       >
         <q-card-section class="registro-caso__head">
           <h2 id="registro-caso-titulo" class="registro-caso__title">{{ textos.titulo }}</h2>
@@ -33,30 +33,12 @@
               dense
               counter
               aria-required="true"
-              aria-describedby="client-help client-error"
-              :error="
-                !!formError &&
-                (formError.code === 'client_required' || formError.code === 'client_too_long')
-              "
+              aria-describedby="client-help"
+              :error="!!errorDeCampo('client_required', 'client_too_long')"
+              :error-message="errorDeCampo('client_required', 'client_too_long')"
               @update:model-value="clearFormError()"
             />
             <p id="client-help" class="form-help">Máximo 80 caracteres visibles.</p>
-            <p
-              v-if="formError && formError.code === 'client_required'"
-              id="client-error"
-              class="form-error"
-              role="alert"
-            >
-              El cliente es obligatorio.
-            </p>
-            <p
-              v-if="formError && formError.code === 'client_too_long'"
-              id="client-error"
-              class="form-error"
-              role="alert"
-            >
-              El cliente supera los 80 caracteres permitidos.
-            </p>
           </div>
 
           <div class="form-group">
@@ -75,8 +57,9 @@
               emit-value
               map-options
               aria-required="true"
-              aria-describedby="priority-help priority-error"
-              :error="!!formError && formError.code === 'priority_required'"
+              aria-describedby="priority-help"
+              :error="!!errorDeCampo('priority_required')"
+              :error-message="errorDeCampo('priority_required')"
               @update:model-value="clearFormError()"
             >
               <template #option="scope">
@@ -93,14 +76,6 @@
               </template>
             </q-select>
             <p id="priority-help" class="form-help">Selecciona una de las tres opciones.</p>
-            <p
-              v-if="formError && formError.code === 'priority_required'"
-              id="priority-error"
-              class="form-error"
-              role="alert"
-            >
-              Se debe elegir una prioridad.
-            </p>
           </div>
 
           <div class="form-group">
@@ -118,19 +93,12 @@
               dense
               counter
               :aria-required="modoEdicion ? 'true' : 'false'"
-              aria-describedby="fecha-inicio-help fecha-inicio-error"
-              :error="!!formError && formError.code === 'fecha_inicio_invalido'"
+              aria-describedby="fecha-inicio-help"
+              :error="!!errorDeCampo('fecha_inicio_invalido')"
+              :error-message="errorDeCampo('fecha_inicio_invalido')"
               @update:model-value="clearFormError()"
             />
             <p id="fecha-inicio-help" class="form-help">{{ textos.ayudaFecha }}</p>
-            <p
-              v-if="formError && formError.code === 'fecha_inicio_invalido'"
-              id="fecha-inicio-error"
-              class="form-error"
-              role="alert"
-            >
-              {{ formError.message }}
-            </p>
           </div>
 
           <div class="form-group registro-caso__estado">
@@ -174,17 +142,11 @@
               dense
               rows="3"
               maxlength="1000"
-              aria-describedby="descripcion-help descripcion-error"
+              aria-describedby="descripcion-help"
+              :error="!!errorDeCampo('descripcion_demasiado_largo')"
+              :error-message="errorDeCampo('descripcion_demasiado_largo')"
             />
             <p id="descripcion-help" class="form-help">Máximo 1000 caracteres.</p>
-            <p
-              v-if="formError && formError.code === 'descripcion_demasiado_largo'"
-              id="descripcion-error"
-              class="form-error"
-              role="alert"
-            >
-              La descripción no debe superar los 1000 caracteres.
-            </p>
           </div>
 
           <div class="form-group">
@@ -197,17 +159,11 @@
               dense
               rows="3"
               maxlength="2000"
-              aria-describedby="observaciones-help observaciones-error"
+              aria-describedby="observaciones-help"
+              :error="!!errorDeCampo('observaciones_demasiado_largo')"
+              :error-message="errorDeCampo('observaciones_demasiado_largo')"
             />
             <p id="observaciones-help" class="form-help">Máximo 2000 caracteres.</p>
-            <p
-              v-if="formError && formError.code === 'observaciones_demasiado_largo'"
-              id="observaciones-error"
-              class="form-error"
-              role="alert"
-            >
-              Las observaciones no deben superar los 2000 caracteres.
-            </p>
           </div>
 
           <div class="form-group registro-caso__ancho-completo">
@@ -275,7 +231,7 @@
             <q-tooltip>{{ textos.tooltipBoton }}</q-tooltip>
           </q-btn>
         </q-card-actions>
-      </form>
+      </q-form>
     </q-card>
   </q-dialog>
 </template>
@@ -394,6 +350,10 @@ const mensajeError = computed(() => errorGuardado.value?.mensaje ?? textos.value
 const clearFormError = () => {
   formError.value = null
 }
+
+/** Mensaje que va bajo el campo (error-message) si el error actual es de ese campo; si no, null. */
+const errorDeCampo = (...codigos) =>
+  codigos.includes(formError.value?.code) ? formError.value.message : null
 
 // Registro: formulario vacío. Edición: los valores actuales del caso.
 const reiniciarFormulario = () => {
@@ -551,14 +511,14 @@ const submitCase = async () => {
 
 .registro-caso__title {
   margin: 0 0 6px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.15rem;
   line-height: 1.25;
 }
 
 .registro-caso__help {
   margin: 0;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
   line-height: 1.45;
 }
@@ -588,10 +548,10 @@ const submitCase = async () => {
   min-height: 40px;
   margin: 0;
   padding: 0 12px;
-  border: 1px dashed #c9d4e0;
+  border: 1px dashed var(--dg-borde-fuerte);
   border-radius: 4px;
-  background: #f5f8fb;
-  color: #102a43;
+  background: var(--dg-fondo-suave);
+  color: var(--dg-texto);
   font-weight: 600;
 }
 
@@ -610,25 +570,20 @@ const submitCase = async () => {
 .form-label {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #102a43;
+  color: var(--dg-texto);
 }
 
 .required-mark {
-  color: #a3231b;
+  color: var(--dg-error);
   font-weight: 700;
 }
 
 .form-help {
   margin: 0 0 4px;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
 }
 
-.form-error {
-  margin: 4px 0 0;
-  color: #a3231b;
-  font-size: 0.85rem;
-}
 
 .readonly-info {
   grid-column: 1 / -1;
@@ -636,8 +591,8 @@ const submitCase = async () => {
   flex-direction: column;
   gap: 6px;
   padding: 10px 12px;
-  background: #e6f0fb;
-  border: 1px solid #c9d4e0;
+  background: var(--dg-fondo-seleccion);
+  border: 1px solid var(--dg-borde-fuerte);
   border-radius: 8px;
   font-size: 0.9rem;
   min-width: 0;
@@ -650,14 +605,14 @@ const submitCase = async () => {
 }
 
 .readonly-row dt {
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-weight: 600;
   min-width: 140px;
 }
 
 .readonly-row dd {
   margin: 0;
-  color: #102a43;
+  color: var(--dg-texto);
   font-weight: 600;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -666,7 +621,7 @@ const submitCase = async () => {
 .registro-caso__importante {
   align-self: flex-start;
   min-height: 44px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-weight: 600;
 }
 

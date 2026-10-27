@@ -1,11 +1,11 @@
 <template>
   <q-dialog v-model="dialogoAbierto" :persistent="guardando" aria-labelledby="restablecer-titulo">
     <q-card class="restablecer">
-      <form
+      <q-form
         class="restablecer__form"
         novalidate
         aria-label="Formulario para restablecer la contraseña"
-        @submit.prevent="restablecer"
+        @submit="restablecer"
       >
         <q-card-section>
           <h2 id="restablecer-titulo" class="restablecer__title">Restablecer contraseña</h2>
@@ -78,7 +78,7 @@
             <q-tooltip>Guarda la contraseña nueva de esta cuenta.</q-tooltip>
           </q-btn>
         </q-card-actions>
-      </form>
+      </q-form>
     </q-card>
   </q-dialog>
 </template>
@@ -174,14 +174,14 @@ const restablecer = async () => {
 
 .restablecer__title {
   margin: 0 0 6px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.15rem;
   line-height: 1.25;
 }
 
 .restablecer__help {
   margin: 0;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
   line-height: 1.45;
 }
@@ -192,9 +192,9 @@ const restablecer = async () => {
   gap: 6px;
   margin: 0;
   padding: 10px 12px;
-  border: 1px solid #dbe4ee;
+  border: 1px solid var(--dg-borde);
   border-radius: 8px;
-  background: #f7f9fc;
+  background: var(--dg-fondo-panel);
 }
 
 /* Correos y nombres largos se parten en varias líneas en lugar de desbordar. */
@@ -207,14 +207,14 @@ const restablecer = async () => {
 
 .restablecer__dato dt {
   font-weight: 600;
-  color: #102a43;
+  color: var(--dg-texto);
 }
 
 .restablecer__dato dd {
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
 }
 
 .form-group {
@@ -227,17 +227,17 @@ const restablecer = async () => {
 .form-label {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #102a43;
+  color: var(--dg-texto);
 }
 
 .required-mark {
-  color: #a3231b;
+  color: var(--dg-error);
   font-weight: 700;
 }
 
 .form-help {
   margin: 0 0 4px;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
 }
 
@@ -245,8 +245,8 @@ const restablecer = async () => {
   margin: 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #fde8e8;
-  color: #8a1c1c;
+  background: var(--dg-error-aviso-fondo);
+  color: var(--dg-error-aviso-texto);
   font-size: 0.9rem;
 }
 

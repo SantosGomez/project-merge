@@ -22,6 +22,10 @@ const MIGRADOS = [
   'components/CounterCountsRow.vue',
   'components/ResumenEquipo.vue',
   'components/DonaEstados.vue',
+  // Rebanada 5: formularios
+  'components/CaseFormDialog.vue',
+  'components/NewUserDialog.vue',
+  'components/ResetPasswordDialog.vue',
 ]
 
 describe('Archivos migrados a Quasar', () => {
@@ -101,5 +105,45 @@ describe('Rebanada 4: filas de contadores, tarjetas del resumen y dona', () => {
     const plantilla = leer('components/DonaEstados.vue').split('<script')[0]
     assert.match(plantilla, /<q-card[^>]*tag="figure"[\s\S]*<svg/)
     assert.match(plantilla, /<q-list[^>]*tag="ul"[^>]*class="dona-estados__leyenda"[\s\S]*?<q-item[^>]*tag="li"/)
+  })
+})
+
+describe('Rebanada 5: formularios', () => {
+  const FORMULARIOS = [
+    'pages/LoginPage.vue',
+    'components/CaseFormDialog.vue',
+    'components/NewUserDialog.vue',
+    'components/ResetPasswordDialog.vue',
+  ]
+
+  for (const ruta of FORMULARIOS) {
+    it(`${ruta} usa q-form (sin <form> nativo) y envía con @submit`, () => {
+      const plantilla = leer(ruta).split('<script')[0]
+      assert.doesNotMatch(plantilla, /<form[\s>]/)
+      assert.match(plantilla, /<q-form[^>]*\bnovalidate\b[^>]*@submit="/)
+    })
+  }
+
+  it('el login muestra la falta de correo y de contraseña con error-message de cada campo', () => {
+    const plantilla = leer('pages/LoginPage.vue').split('<script')[0]
+    assert.doesNotMatch(plantilla, /login-form__error/)
+    assert.match(plantilla, /:error="missing\.username"[\s\S]*?error-message="Falta el correo\. Escríbelo para iniciar sesión\."/)
+    assert.match(plantilla, /:error="missing\.password"[\s\S]*?error-message="Falta la contraseña\. Escríbela para iniciar sesión\."/)
+  })
+
+  it('el formulario de caso muestra cada error bajo su campo con error-message, sin párrafos aparte', () => {
+    const componente = leer('components/CaseFormDialog.vue')
+    const plantilla = componente.split('<script')[0]
+    assert.doesNotMatch(plantilla, /class="form-error"/)
+    for (const codigos of [
+      "'client_required', 'client_too_long'",
+      "'priority_required'",
+      "'fecha_inicio_invalido'",
+      "'descripcion_demasiado_largo'",
+      "'observaciones_demasiado_largo'",
+    ]) {
+      assert.ok(plantilla.includes(`:error-message="errorDeCampo(${codigos})"`), `error-message de ${codigos}`)
+    }
+    assert.match(componente, /codigos\.includes\(formError\.value\?\.code\) \? formError\.value\.message : null/)
   })
 })

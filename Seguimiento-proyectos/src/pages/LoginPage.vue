@@ -110,7 +110,7 @@
           />
         </q-banner>
 
-        <form class="login-form" novalidate :aria-busy="enviando" @submit.prevent="submit">
+        <q-form class="login-form" novalidate :aria-busy="enviando" @submit="submit">
           <div class="login-form__field">
             <q-input
               ref="usernameInput"
@@ -123,8 +123,8 @@
               autofocus
               outlined
               :error="missing.username"
+              error-message="Falta el correo. Escríbelo para iniciar sesión."
               :aria-invalid="missing.username"
-              :aria-describedby="missing.username ? 'login-username-error' : undefined"
               @update:model-value="alEscribir('username')"
             >
               <template #prepend>
@@ -144,10 +144,6 @@
                 </q-icon>
               </template>
             </q-input>
-
-            <p v-if="missing.username" id="login-username-error" class="login-form__error" role="alert">
-              Falta el correo. Escríbelo para iniciar sesión.
-            </p>
           </div>
 
           <div class="login-form__field">
@@ -161,8 +157,8 @@
               autocomplete="current-password"
               outlined
               :error="missing.password"
+              error-message="Falta la contraseña. Escríbela para iniciar sesión."
               :aria-invalid="missing.password"
-              :aria-describedby="missing.password ? 'login-password-error' : undefined"
               @update:model-value="alEscribir('password')"
             >
               <template #prepend>
@@ -183,10 +179,6 @@
                 </q-icon>
               </template>
             </q-input>
-
-            <p v-if="missing.password" id="login-password-error" class="login-form__error" role="alert">
-              Falta la contraseña. Escríbela para iniciar sesión.
-            </p>
           </div>
 
           <q-btn
@@ -200,7 +192,7 @@
             :loading="enviando"
             :disable="enviando"
           />
-        </form>
+        </q-form>
       </section>
     </div>
   </main>
@@ -514,13 +506,6 @@ const submit = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.login-form__error {
-  margin: 4px 0 0;
-  color: var(--dg-error-campo);
-  font-size: 0.9rem;
-  line-height: 1.4;
 }
 
 .login-form__help-icon {
