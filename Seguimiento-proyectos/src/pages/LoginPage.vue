@@ -403,7 +403,6 @@ const submit = async () => {
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
@@ -412,6 +411,17 @@ const submit = async () => {
   color: var(--dg-texto);
   font-size: clamp(1.6rem, 6vw, 2rem);
   line-height: 1.2;
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page__card,
+  .login-form__control,
+  .login-form__submit,
+  .notice {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 .login-page__lead {

@@ -15,7 +15,7 @@
 
 <style scoped>
 .login-layout {
-  background: linear-gradient(135deg, #eef4fb 0%, #f7f9fc 45%, #e8f0f7 100%);
+  background: linear-gradient(135deg, var(--dg-fondo-suave) 0%, var(--dg-fondo-panel) 45%, var(--dg-fondo-hover) 100%);
 }
 
 .login-layout__page {
