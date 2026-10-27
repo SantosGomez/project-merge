@@ -46,4 +46,6 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - Una prueba que pasa sin el cambio no prueba nada: fijar la fecha exacta esperada (p. ej. `^2027-01-21`), no solo el año.
 - El MCP del navegador se puede perder: mantener servidores hasta el final de la verificación.
 
+- **Bienvenida AdminDashboard: colores a paleta `$dg-colores` (2026-10-27).** Reemplazados 3 hex sueltos en `<style scoped>` de `AdminDashboardPage.vue` por `var(--dg-texto)`, `var(--dg-texto-tenue)` y `var(--dg-foco)` para cumplir AGENTS.md (línea 97). Sin cambios de estructura ni lógica. Pruebas frontend: 492/495 (las 3 fallas son preexistentes del «Volver» del encabezado).
+
 Nada sensible en esta memoria.

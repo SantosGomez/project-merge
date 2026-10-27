@@ -2,12 +2,16 @@
   <q-page class="dashboard-page">
     <div class="dashboard-page__inner">
       <div class="dashboard-page__head">
-        <p class="dashboard-page__lead">
-          Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el detalle
-          de sus casos. Esta pantalla es de solo consulta: aquí no se cambia el estado ni la
-          prioridad de ningún caso.
-        </p>
-
+        <div class="dashboard-page__title-area">
+          <h1 class="dashboard-page__title">
+            Buen día, bienvenido<template v-if="session.nombreVisible"> Contador {{ session.nombreVisible }}</template>
+          </h1>
+          <p class="dashboard-page__lead">
+            Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el detalle
+            de sus casos. Esta pantalla es de solo consulta: aquí no se cambia el estado ni la
+            prioridad de ningún caso.
+          </p>
+        </div>
         <q-btn
           class="dashboard-page__directory-btn control-touch"
           color="primary"
@@ -180,6 +184,7 @@ import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { getResumenEquipo } from '../services/counterService.js'
+import { useSessionStore } from '../stores/session.js'
 import { useCountersStore } from '../stores/counters.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { casoAFila, contadorAFila } from '../utils/filasVista.js'
@@ -197,6 +202,7 @@ import { SCREEN_STATES } from '../utils/screenState.js'
  * el ErrorState ofrece reintentar y P-2 vuelve sin contador seleccionado (RF-36).
  */
 const contadoresStore = useCountersStore()
+const session = useSessionStore()
 
 /** Contadores registrados, tal como los entrega el servicio (`{ id, nombre }`). */
 const contadores = computed(() => contadoresStore.contadores)
@@ -218,11 +224,12 @@ const contadoresVisibles = computed(() => filtrarContadores(contadores.value, bu
  * Filtro de estado del detalle. Los chips y los conteos del contador seleccionado comparten
  * este valor: tocar un conteo lo cambia y el chip correspondiente se marca, y al revés.
  */
+
+
 const ESTADOS_DETALLE = ['todos', 'pendiente', 'en_proceso', 'finalizado']
 const filtrosDetalle = ref({ ...FILTROS_INICIALES, estado: 'todos' })
 const paginaDetalle = ref(1)
 const POR_PAGINA_DETALLE = 10
-
 /** Estado marcado en los conteos del contador seleccionado (null con «Todos»). */
 const estadoConteoActivo = computed(() =>
   filtrosDetalle.value.estado === 'todos' ? null : filtrosDetalle.value.estado,
@@ -335,16 +342,28 @@ onMounted(async () => {
 .dashboard-page__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  margin-bottom: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.dashboard-page__title-area {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.dashboard-page__title {
+  margin: 0 0 6px;
+  color: var(--dg-texto);
+  font-size: clamp(1.35rem, 3.5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .dashboard-page__lead {
-  flex: 1 1 260px;
-  min-width: 0;
   margin: 0;
-  color: #334e68;
+  color: var(--dg-texto-tenue);
   font-size: 0.95rem;
   line-height: 1.5;
 }
@@ -356,7 +375,7 @@ onMounted(async () => {
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-07). */
 .dashboard-page__directory-btn:focus-visible {
-  outline: 3px solid #0b5cad !important;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 
