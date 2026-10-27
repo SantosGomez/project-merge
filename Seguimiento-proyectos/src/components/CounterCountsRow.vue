@@ -1,8 +1,12 @@
 <template>
-  <li class="counter-row-item">
+  <q-item tag="li" class="counter-row-item">
     <div class="counter-row" :class="{ 'counter-row--selected': selected }">
-      <button
-        type="button"
+      <q-btn
+        flat
+        no-caps
+        align="left"
+        padding="2px 0"
+        :ripple="false"
         class="counter-row__select"
         :aria-pressed="selected"
         @click="emit('select')"
@@ -11,13 +15,17 @@
           <span class="counter-row__name">{{ counter.name }}</span>
           <span v-if="selected" class="counter-row__selected-mark">Seleccionado</span>
         </span>
-      </button>
+      </q-btn>
 
       <span class="counter-row__counts">
-        <button
+        <q-btn
           v-for="status in STATUSES"
           :key="status"
-          type="button"
+          flat
+          no-caps
+          stack
+          padding="4px 8px"
+          :ripple="false"
           class="counter-row__count"
           :class="{ 'counter-row__count--activo': estadoActivo === status }"
           :aria-pressed="estadoActivo === status ? 'true' : 'false'"
@@ -29,10 +37,10 @@
 
           <!-- Ayuda contextual de cada conteo: qué cuenta y que filtra al tocarlo (RNF-03). -->
           <q-tooltip v-if="ayudaConteo(status)">{{ ayudaConteo(status) }}</q-tooltip>
-        </button>
+        </q-btn>
       </span>
     </div>
-  </li>
+  </q-item>
 </template>
 
 <script setup>
@@ -76,8 +84,11 @@ const emit = defineEmits(['select', 'filtrar'])
 </script>
 
 <style scoped>
+/* q-item trae relleno y alto mínimo propios; la fila interior ya los define. */
 .counter-row-item {
+  min-height: 0;
   margin: 0;
+  padding: 0;
 }
 
 .counter-row {
@@ -89,54 +100,56 @@ const emit = defineEmits(['select', 'filtrar'])
   width: 100%;
   min-height: 64px;
   padding: 10px 12px;
-  border: 1px solid #c9d4e0;
+  border: 1px solid var(--dg-borde-fuerte);
   border-radius: 10px;
-  background: #ffffff;
-  color: #102a43;
+  background: var(--dg-superficie);
+  color: var(--dg-texto);
 }
 
 .counter-row:hover {
-  border-color: #1f5f99;
-  background: #f0f6fc;
+  border-color: var(--dg-acento);
+  background: var(--dg-fondo-hover);
+}
+
+/* Sin el sombreado de q-btn al pasar el puntero o al enfocar: el estado se marca con borde y fondo. */
+.counter-row__select :deep(.q-focus-helper),
+.counter-row__count :deep(.q-focus-helper) {
+  display: none;
 }
 
 /* Control de selección de la fila: nombre y marca; área táctil de 44 px de alto (RNF-02). */
 .counter-row__select {
-  display: flex;
   flex: 1 1 180px;
-  flex-direction: column;
-  align-items: flex-start;
   align-self: stretch;
-  justify-content: center;
   min-width: 0;
   min-height: 44px;
-  padding: 2px 0;
-  border: 0;
-  background: transparent;
+  border-radius: 0;
   color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
-/* El foco de teclado siempre es visible (RNF-07). */
+/* El foco de teclado siempre es visible (RNF-07); q-btn trae `no-outline`. */
 .counter-row__select:focus-visible {
-  outline: 3px solid #0b5cad;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 
 /* El contador seleccionado se distingue también con texto, no solo con color. */
 .counter-row--selected {
-  border-color: #1f5f99;
-  background: #e6f0fb;
-  box-shadow: inset 4px 0 0 #1f5f99;
+  border-color: var(--dg-acento);
+  background: var(--dg-fondo-seleccion);
+  box-shadow: inset 4px 0 0 var(--dg-acento);
 }
 
 .counter-row__identity {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
   min-width: 0;
+  text-align: left;
 }
 
 .counter-row__name {
@@ -147,7 +160,7 @@ const emit = defineEmits(['select', 'filtrar'])
 }
 
 .counter-row__selected-mark {
-  color: #1f5f99;
+  color: var(--dg-acento);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -161,46 +174,41 @@ const emit = defineEmits(['select', 'filtrar'])
 }
 
 .counter-row__count {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   min-width: 68px;
   min-height: 44px;
-  padding: 4px 8px;
-  border: 1px solid #dbe4ee;
+  border: 1px solid var(--dg-borde);
   border-radius: 8px;
-  background: #f4f7fb;
-  font: inherit;
-  cursor: pointer;
+  background: var(--dg-fondo-suave);
+  font-size: inherit;
+  font-weight: 400;
+  line-height: inherit;
 }
 
 .counter-row__count:hover {
-  border-color: #1f5f99;
-  background: #ffffff;
+  border-color: var(--dg-acento);
+  background: var(--dg-superficie);
 }
 
 /* Conteo por el que se filtra el detalle: borde y fondo azules, además de aria-pressed. */
 .counter-row__count--activo,
 .counter-row__count--activo:hover {
-  border-color: #1f5f99;
-  background: #1f5f99;
+  border-color: var(--dg-acento);
+  background: var(--dg-acento);
 }
 
 .counter-row__count--activo .counter-row__count-value,
 .counter-row__count--activo .counter-row__count-label {
-  color: #ffffff;
+  color: var(--dg-superficie);
 }
 
 /* Cada conteo es un botón con foco visible (RNF-03, RNF-07). */
 .counter-row__count:focus-visible {
-  outline: 3px solid #0b5cad;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 
 .counter-row__count-value {
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -208,7 +216,7 @@ const emit = defineEmits(['select', 'filtrar'])
 }
 
 .counter-row__count-label {
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.72rem;
   line-height: 1.2;
   white-space: nowrap;

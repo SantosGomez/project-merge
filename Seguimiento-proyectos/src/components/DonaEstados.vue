@@ -1,5 +1,6 @@
 <template>
-  <figure class="dona-estados" aria-labelledby="dona-estados-titulo">
+  <!-- Excepción acordada: la gráfica es un SVG propio dentro de un q-card (AGENTS.md). -->
+  <q-card flat tag="figure" class="dona-estados" aria-labelledby="dona-estados-titulo">
     <figcaption id="dona-estados-titulo" class="dona-estados__titulo">Casos por estado</figcaption>
 
     <p v-if="dona.total === 0" class="dona-estados__vacio">Sin casos registrados</p>
@@ -26,8 +27,8 @@
         <text x="21" y="26.5" class="dona-estados__total-etiqueta">casos</text>
       </svg>
 
-      <ul class="dona-estados__leyenda">
-        <li v-for="segmento in dona.segmentos" :key="segmento.clave" class="dona-estados__item">
+      <q-list tag="ul" class="dona-estados__leyenda">
+        <q-item v-for="segmento in dona.segmentos" :key="segmento.clave" tag="li" class="dona-estados__item">
           <span
             class="dona-estados__muestra"
             :style="{ background: segmento.color }"
@@ -35,10 +36,10 @@
           />
           <span class="dona-estados__etiqueta">{{ segmento.etiqueta }}</span>
           <span class="dona-estados__cifra">{{ segmento.valor }} · {{ segmento.porcentaje }}%</span>
-        </li>
-      </ul>
+        </q-item>
+      </q-list>
     </div>
-  </figure>
+  </q-card>
 </template>
 
 <script setup>
@@ -73,20 +74,20 @@ const descripcion = computed(
   min-width: 0;
   margin: 0;
   padding: 14px 16px;
-  border: 1px solid #dbe4ee;
+  border: 1px solid var(--dg-borde);
   border-radius: 12px;
-  background: #f7f9fc;
+  background: var(--dg-fondo-panel);
 }
 
 .dona-estados__titulo {
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.9rem;
   font-weight: 600;
 }
 
 .dona-estados__vacio {
   margin: 0;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.9rem;
 }
 
@@ -105,14 +106,14 @@ const descripcion = computed(
 }
 
 .dona-estados__total {
-  fill: #102a43;
+  fill: var(--dg-texto);
   font-size: 9px;
   font-weight: 700;
   text-anchor: middle;
 }
 
 .dona-estados__total-etiqueta {
-  fill: #486581;
+  fill: var(--dg-texto-tenue);
   font-size: 4px;
   text-anchor: middle;
 }
@@ -127,11 +128,13 @@ const descripcion = computed(
   min-width: 0;
 }
 
+/* q-item trae relleno y alto mínimo propios; la leyenda es compacta. */
 .dona-estados__item {
-  display: flex;
   align-items: center;
   gap: 8px;
-  color: #102a43;
+  min-height: 0;
+  padding: 0;
+  color: var(--dg-texto);
   font-size: 0.9rem;
 }
 
@@ -143,6 +146,6 @@ const descripcion = computed(
 }
 
 .dona-estados__cifra {
-  color: #486581;
+  color: var(--dg-texto-tenue);
 }
 </style>

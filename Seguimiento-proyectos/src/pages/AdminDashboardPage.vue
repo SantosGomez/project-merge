@@ -81,7 +81,7 @@
               Ningún contador coincide con «{{ busqueda }}». Revisa el nombre o borra la búsqueda.
             </p>
 
-            <ul v-else class="counter-list">
+            <q-list v-else tag="ul" class="counter-list">
               <CounterCountsRow
                 v-for="contador in contadoresVisibles"
                 :key="contador.id"
@@ -92,7 +92,7 @@
                 @select="seleccionar(contador.id)"
                 @filtrar="(estado) => filtrarPorConteo(contador.id, estado)"
               />
-            </ul>
+            </q-list>
           </div>
         </section>
 

@@ -11,20 +11,24 @@
     />
 
     <div v-else-if="resumen" class="resumen-equipo__contenido">
-      <ul class="resumen-equipo__tarjetas">
-        <li
+      <q-list tag="ul" class="resumen-equipo__tarjetas">
+        <q-card
+          flat
+          tag="li"
           v-for="tarjeta in tarjetas"
           :key="tarjeta.clave"
           class="resumen-tarjeta"
           :class="{ 'resumen-tarjeta--alerta': tarjeta.alerta }"
           tabindex="0"
         >
-          <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
-          <p class="resumen-tarjeta__valor">{{ tarjeta.valor }}</p>
-          <p class="resumen-tarjeta__detalle">{{ tarjeta.detalle }}</p>
+          <q-card-section class="resumen-tarjeta__cuerpo">
+            <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
+            <p class="resumen-tarjeta__valor">{{ tarjeta.valor }}</p>
+            <p class="resumen-tarjeta__detalle">{{ tarjeta.detalle }}</p>
+          </q-card-section>
           <q-tooltip max-width="280px">{{ tarjeta.ayuda }}</q-tooltip>
-        </li>
-      </ul>
+        </q-card>
+      </q-list>
 
       <DonaEstados :resumen="resumen" />
     </div>
@@ -67,7 +71,7 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen))
 
 .resumen-equipo__titulo {
   margin: 0;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.15rem;
   line-height: 1.25;
 }
@@ -98,15 +102,18 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen))
 }
 
 .resumen-tarjeta {
+  min-width: 0;
+  border: 1px solid var(--dg-borde);
+  border-left: 4px solid var(--q-primary);
+  border-radius: 12px;
+  background: var(--dg-fondo-panel);
+}
+
+.resumen-tarjeta__cuerpo {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0;
   padding: 14px 16px;
-  border: 1px solid #dbe4ee;
-  border-left: 4px solid var(--q-primary);
-  border-radius: 12px;
-  background: #f7f9fc;
 }
 
 .resumen-tarjeta:focus-visible {
@@ -115,32 +122,32 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen))
 }
 
 .resumen-tarjeta--alerta {
-  border-left-color: #a3231b;
-  background: #fdf2f2;
+  border-left-color: var(--dg-error);
+  background: var(--dg-error-fondo-suave);
 }
 
 .resumen-tarjeta__titulo {
   margin: 0;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.9rem;
   font-weight: 600;
 }
 
 .resumen-tarjeta__valor {
   margin: 0;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.1;
 }
 
 .resumen-tarjeta--alerta .resumen-tarjeta__valor {
-  color: #a3231b;
+  color: var(--dg-error);
 }
 
 .resumen-tarjeta__detalle {
   margin: 0;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
   line-height: 1.4;
   overflow-wrap: anywhere;

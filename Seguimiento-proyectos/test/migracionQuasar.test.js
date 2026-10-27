@@ -18,6 +18,10 @@ const MIGRADOS = [
   // Rebanada 3: avisos de vacío y de error de carga
   'components/EmptyState.vue',
   'components/ErrorState.vue',
+  // Rebanada 4: filas de contadores, tarjetas del resumen y dona
+  'components/CounterCountsRow.vue',
+  'components/ResumenEquipo.vue',
+  'components/DonaEstados.vue',
 ]
 
 describe('Archivos migrados a Quasar', () => {
@@ -69,5 +73,33 @@ describe('Rebanada 3: avisos de vacío y de error', () => {
     assert.match(plantilla, /<q-banner[^>]*role="alert"/)
     assert.match(plantilla, /<q-banner[^>]*:aria-labelledby="titleId"/)
     assert.match(plantilla, /<template #action>[\s\S]*@click="emit\('retry'\)"/)
+  })
+})
+
+describe('Rebanada 4: filas de contadores, tarjetas del resumen y dona', () => {
+  it('cada fila de contador es un q-item de lista con q-btn para el nombre y para cada conteo', () => {
+    const plantilla = leer('components/CounterCountsRow.vue').split('<script')[0]
+    assert.match(plantilla, /<q-item[^>]*tag="li"/, 'conserva la semántica de lista')
+    assert.match(plantilla, /<q-btn[^>]*class="counter-row__select[\s\S]*?:aria-pressed="selected"[\s\S]*?@click="emit\('select'\)"/)
+    assert.match(plantilla, /<q-btn[\s\S]*?v-for="status in STATUSES"[\s\S]*?:aria-pressed=[\s\S]*?@click="emit\('filtrar', status\)"/)
+    assert.match(plantilla, /<q-tooltip v-if="ayudaConteo\(status\)">/)
+  })
+
+  it('la lista de contadores del dashboard es un q-list que se lee como lista', () => {
+    const plantilla = leer('pages/AdminDashboardPage.vue').split('<script')[0]
+    assert.match(plantilla, /<q-list[^>]*tag="ul"[^>]*class="counter-list"/)
+  })
+
+  it('las tarjetas del resumen son q-card dentro de un q-list, con foco para leer su ayuda', () => {
+    const plantilla = leer('components/ResumenEquipo.vue').split('<script')[0]
+    assert.match(plantilla, /<q-list[^>]*tag="ul"[^>]*class="resumen-equipo__tarjetas"/)
+    assert.match(plantilla, /<q-card[^>]*tag="li"[^>]*v-for="tarjeta in tarjetas"[\s\S]*?tabindex="0"/)
+    assert.match(plantilla, /<q-card-section/)
+  })
+
+  it('la dona es un SVG dentro de un q-card (excepción acordada) y su leyenda es un q-list', () => {
+    const plantilla = leer('components/DonaEstados.vue').split('<script')[0]
+    assert.match(plantilla, /<q-card[^>]*tag="figure"[\s\S]*<svg/)
+    assert.match(plantilla, /<q-list[^>]*tag="ul"[^>]*class="dona-estados__leyenda"[\s\S]*?<q-item[^>]*tag="li"/)
   })
 })
