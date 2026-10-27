@@ -51,7 +51,11 @@
     >
       <div class="drawer-marca">
         <!-- Siempre el mismo botón: crearlo o destruirlo al cruzar 1024 px perdía el foco. -->
-        <button
+        <q-btn
+          flat
+          unelevated
+          padding="0"
+          :ripple="false"
           type="button"
           class="drawer-marca__logo-boton"
           aria-label="Fijar menú abierto"
@@ -67,7 +71,7 @@
             height="64"
           />
           <q-tooltip v-if="esEscritorio">{{ textoBotonMenu }}</q-tooltip>
-        </button>
+        </q-btn>
         <div class="drawer-marca__textos">
           <p class="drawer-marca__empresa">Grupo DelGrow S.C.</p>
           <p class="drawer-marca__app">Seguimiento de Proyectos</p>
@@ -508,9 +512,15 @@ onBeforeUnmount(() => {
   cursor: default;
 }
 
+/* La regla global de q-btn (app.scss) usa !important; aquí se conserva el anillo secundario. */
 .drawer-marca__logo-boton:focus-visible {
-  outline: 3px solid var(--q-secondary);
+  outline: 3px solid var(--q-secondary) !important;
   outline-offset: 2px;
+}
+
+/* Sin el sombreado de q-btn al pasar el puntero: el logo se ve igual que antes. */
+.drawer-marca__logo-boton :deep(.q-focus-helper) {
+  display: none;
 }
 
 .drawer-marca__textos {
@@ -524,13 +534,13 @@ onBeforeUnmount(() => {
 }
 
 .drawer-marca__empresa {
-  color: #ffffff;
+  color: var(--dg-texto-claro);
   font-size: 0.95rem;
   font-weight: 600;
 }
 
 .drawer-marca__app {
-  color: #c9cfd8;
+  color: var(--dg-texto-claro-tenue);
   font-size: 0.8rem;
 }
 
@@ -578,7 +588,7 @@ onBeforeUnmount(() => {
 }
 
 .drawer-usuario__nombre {
-  color: #ffffff;
+  color: var(--dg-texto-claro);
   font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
@@ -603,7 +613,7 @@ onBeforeUnmount(() => {
 }
 
 .q-item--nav {
-  color: #ffffff;
+  color: var(--dg-texto-claro);
 }
 
 .q-item--nav .q-icon {
@@ -611,7 +621,7 @@ onBeforeUnmount(() => {
 }
 
 .q-item--nav .q-item__label--caption {
-  color: #c9cfd8;
+  color: var(--dg-texto-claro-tenue);
 }
 
 .q-item--nav-activo {
@@ -645,7 +655,7 @@ onBeforeUnmount(() => {
 
 .dialogo-cierre__texto {
   margin: 0;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   line-height: 1.5;
 }
 </style>

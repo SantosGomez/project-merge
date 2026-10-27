@@ -11,18 +11,32 @@
         <!-- Ayuda siempre visible: sirve con puntero, teclado y toque (RNF-03). -->
         <section class="login-page__help" aria-labelledby="login-help-title">
           <h2 id="login-help-title" class="login-page__help-title">Cómo funciona el acceso</h2>
-          <ul class="login-page__help-list">
-            <li>
-              El perfil lo determina la cuenta con la que entras: no se elige a mano.
-            </li>
-            <li>
-              La sesión sigue activa mientras la pestaña esté abierta; al recargar se valida de
-              nuevo con el servidor.
-            </li>
-            <li>
-              Si pasas 30 minutos sin actividad, la sesión caduca y hay que iniciar sesión otra vez.
-            </li>
-          </ul>
+          <q-list dense class="login-page__help-list">
+            <q-item class="login-page__help-item">
+              <q-item-section avatar class="login-page__help-icono">
+                <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="login-page__help-texto">El perfil lo determina la cuenta con la que entras: no se elige a mano.</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item class="login-page__help-item">
+              <q-item-section avatar class="login-page__help-icono">
+                <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="login-page__help-texto">La sesión sigue activa mientras la pestaña esté abierta; al recargar se valida de nuevo con el servidor.</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item class="login-page__help-item">
+              <q-item-section avatar class="login-page__help-icono">
+                <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="login-page__help-texto">Si pasas 30 minutos sin actividad, la sesión caduca y hay que iniciar sesión otra vez.</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
         </section>
       </div>
 
@@ -387,13 +401,13 @@ const submit = async () => {
   width: 100%;
   padding: 24px;
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--dg-superficie);
   box-shadow: 0 12px 32px rgb(16 42 67 / 12%);
 }
 
 .login-page__eyebrow {
   margin: 0 0 8px;
-  color: #1f5f99;
+  color: var(--dg-acento);
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -403,14 +417,14 @@ const submit = async () => {
 
 .login-page__title {
   margin: 0 0 8px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: clamp(1.6rem, 6vw, 2rem);
   line-height: 1.2;
 }
 
 .login-page__lead {
   margin: 0 0 20px;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 1rem;
   line-height: 1.5;
 }
@@ -418,27 +432,42 @@ const submit = async () => {
 .login-page__help {
   margin-bottom: 24px;
   padding: 16px;
-  border-left: 4px solid #1f5f99;
+  border-left: 4px solid var(--dg-acento);
   border-radius: 8px;
-  background: #f0f6fc;
+  background: var(--dg-fondo-hover);
 }
 
 .login-page__help-title {
   margin: 0 0 8px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1rem;
 }
 
 .login-page__help-list {
-  margin: 0;
-  padding-left: 20px;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
-.login-page__help-list li + li {
+/* Sin el alto mínimo ni el relleno de q-item: cada punto ocupa lo que su texto. */
+.login-page__help-item {
+  min-height: 0;
+  padding: 0;
+}
+
+.login-page__help-item + .login-page__help-item {
   margin-top: 6px;
+}
+
+.login-page__help-icono {
+  min-width: 26px;
+  padding-top: 2px;
+  justify-content: flex-start;
+}
+
+/* q-item-label trae line-height de 1.2em con !important; se conserva el 1.5 de la ayuda. */
+.login-page__help-texto {
+  line-height: 1.5 !important;
 }
 
 .notice {
@@ -458,27 +487,27 @@ const submit = async () => {
 }
 
 .notice--expired {
-  border-left: 4px solid #8a5800;
-  background: #fff4d6;
-  color: #4a3300;
+  border-left: 4px solid var(--dg-aviso-borde);
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
 }
 
 .notice--required {
-  border-left: 4px solid #1a5f9e;
-  background: #e6f0fb;
-  color: #0d3c61;
+  border-left: 4px solid var(--dg-info-borde);
+  background: var(--dg-info-fondo);
+  color: var(--dg-info-texto);
 }
 
 .notice--closed {
-  border-left: 4px solid #1f6b3a;
-  background: #e6f4ea;
-  color: #124724;
+  border-left: 4px solid var(--dg-exito-borde);
+  background: var(--dg-exito-fondo);
+  color: var(--dg-exito-oscuro);
 }
 
 .notice--invalid {
-  border-left: 4px solid #a3231b;
-  background: #fdecea;
-  color: #7a1f1a;
+  border-left: 4px solid var(--dg-error);
+  background: var(--dg-error-fondo);
+  color: var(--dg-error-oscuro);
 }
 
 .login-form {
@@ -489,14 +518,14 @@ const submit = async () => {
 
 .login-form__error {
   margin: 4px 0 0;
-  color: #8c1d18;
+  color: var(--dg-error-campo);
   font-size: 0.9rem;
   line-height: 1.4;
 }
 
 .login-form__help-icon {
   cursor: help;
-  color: #1f5f99;
+  color: var(--dg-acento);
 }
 
 .login-form__submit {
@@ -512,19 +541,19 @@ const submit = async () => {
 
 /* Foco visible en todo el formulario (RNF-07). */
 .login-form__control :deep(.q-field__control:focus-within) {
-  outline: 3px solid #0b5cad;
+  outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
 }
 
 .login-form__help-icon:focus-visible {
-  outline: 3px solid #0b5cad;
+  outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
 }
 
 /* El botón de Quasar trae la clase `no-outline`, que anula el contorno; se refuerza a propósito. */
 .login-form__submit:focus-visible,
 .notice__action:focus-visible {
-  outline: 3px solid #0b5cad !important;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 

@@ -286,10 +286,13 @@ describe('Drawer sidebar — verificación estática', () => {
       `contraste del cian (iniciales y rol): ${contraste(secondary, primary).toFixed(2)}:1`,
     )
 
-    assert.match(cssRule('.drawer-usuario__nombre'), /color:\s*#ffffff/i, 'el nombre es blanco')
+    // El blanco sale de la paleta (texto-claro), como todos los colores tras la migración a Quasar.
+    assert.match(cssRule('.drawer-usuario__nombre'), /color:\s*var\(--dg-texto-claro\)/, 'el nombre es blanco')
+    const blanco = variables.match(/\n\s*texto-claro:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    assert.equal(blanco, '#ffffff', 'texto-claro es blanco')
     assert.ok(
-      contraste('#ffffff', primary) >= MINIMO_WCAG,
-      `contraste del nombre: ${contraste('#ffffff', primary).toFixed(2)}:1`,
+      contraste(blanco, primary) >= MINIMO_WCAG,
+      `contraste del nombre: ${contraste(blanco, primary).toFixed(2)}:1`,
     )
 
     assert.match(
@@ -394,8 +397,11 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(primary, 'quasar.variables.scss declara $primary')
     assert.ok(secondary, 'quasar.variables.scss declara $secondary')
 
-    const colorHex = (selector) =>
-      cssRule(selector).match(/(?<![-\w])color:\s*(#[0-9a-fA-F]{6})/)?.[1]
+    // Desde la migración a Quasar los colores salen de la paleta: var(--dg-*) se busca en $dg-colores.
+    const colorHex = (selector) => {
+      const nombre = cssRule(selector).match(/(?<![-\w])color:\s*var\(--dg-([\w-]+)\)/)?.[1]
+      return nombre && variables.match(new RegExp(`\\n\\s*${nombre}:\\s*(#[0-9a-fA-F]{6})`))?.[1]
+    }
     const colorSecundario = (selector) => {
       assert.match(
         cssRule(selector),
@@ -549,8 +555,9 @@ describe('Drawer compacto — verificación estática', () => {
     assert.ok(!src.includes('.q-drawer--mobile'), 'el compacto no define reglas para el móvil')
   })
 
+  // Desde la migración a Quasar el logo es un q-btn (rebanada 2); las reglas no cambian.
   it('el logo es un botón con mano, nombre accesible y tooltip según el estado', () => {
-    const boton = src.match(/<button[\s\S]*?<\/button>/)?.[0] ?? ''
+    const boton = src.match(/<q-btn[^>]*drawer-marca__logo-boton[\s\S]*?<\/q-btn>/)?.[0] ?? ''
     assert.ok(boton, 'falta el botón del logo')
 
     assert.match(boton, /type="button"/, 'es un botón real')
@@ -597,8 +604,8 @@ describe('Drawer compacto — verificación estática', () => {
 
   it('el logo es siempre el mismo botón; por debajo de 1024 px queda sin acción', () => {
     // Crear o destruir el botón al cruzar 1024 px hacía perder el foco del teclado.
-    const boton = src.match(/<button[\s\S]*?<\/button>/)?.[0] ?? ''
-    const apertura = boton.match(/<button[^>]*>/)?.[0] ?? ''
+    const boton = src.match(/<q-btn[^>]*drawer-marca__logo-boton[\s\S]*?<\/q-btn>/)?.[0] ?? ''
+    const apertura = boton.match(/<q-btn[^>]*>/)?.[0] ?? ''
     assert.doesNotMatch(apertura, /v-if=/, 'el botón no se crea ni se destruye por ancho')
     assert.equal((src.match(/class="drawer-marca__logo"/g) ?? []).length, 1, 'un solo logo')
 

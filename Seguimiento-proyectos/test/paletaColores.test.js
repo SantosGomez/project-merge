@@ -40,6 +40,12 @@ const NOMBRES = [
   'prioridad-alta', 'prioridad-alta-fondo', 'prioridad-alta-borde',
   'prioridad-media', 'prioridad-media-fondo', 'prioridad-media-borde',
   'prioridad-baja', 'prioridad-baja-fondo', 'prioridad-baja-borde',
+  // Rebanada 2: gris neutro, avisos del login, error de campo y textos sobre el menú oscuro
+  'neutro-fondo', 'neutro-borde',
+  'aviso-texto', 'aviso-fondo', 'aviso-borde',
+  'info-texto', 'info-fondo', 'info-borde',
+  'exito-oscuro', 'exito-borde', 'error-campo',
+  'texto-claro', 'texto-claro-tenue',
 ]
 
 test('la paleta $dg-colores define cada color por su papel en formato #rrggbb', () => {
@@ -66,7 +72,19 @@ const PARES_DE_TEXTO = [
   ['exito', 'exito-fondo'], ['importante-texto', 'importante-fondo'],
   ['prioridad-alta', 'prioridad-alta-fondo'], ['prioridad-media', 'prioridad-media-fondo'],
   ['prioridad-baja', 'prioridad-baja-fondo'],
+  ['texto-secundario', 'neutro-fondo'], ['aviso-texto', 'aviso-fondo'], ['info-texto', 'info-fondo'],
+  ['exito-oscuro', 'exito-fondo'], ['error-oscuro', 'error-fondo'], ['error-campo', 'superficie'],
 ]
+
+// Textos del menú lateral sobre su fondo oscuro ($primary de Quasar).
+const primario = () => variables.match(/\$primary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+
+for (const texto of ['texto-claro', 'texto-claro-tenue']) {
+  test(`«${texto}» sobre el menú ($primary) tiene contraste de al menos 4.5:1`, () => {
+    const razon = contraste(paleta()[texto], primario())
+    assert.ok(razon >= 4.5, `contraste ${razon.toFixed(2)}:1`)
+  })
+}
 
 for (const [texto, fondo] of PARES_DE_TEXTO) {
   test(`«${texto}» sobre «${fondo}» tiene contraste de al menos 4.5:1`, () => {

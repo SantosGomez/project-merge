@@ -33,17 +33,32 @@
       <h3 id="aviso-sesion-help-title" class="aviso-sesion__help-title">
         Por qué ves este aviso
       </h3>
-      <ul class="aviso-sesion__help-list">
-        <li>
-          La sesión se cerró automáticamente tras 30 minutos sin actividad o porque el token expiró.
-        </li>
-        <li>
-          El token ya no está guardado en esta pestaña, así que no se muestran datos ni la carga.
-        </li>
-        <li>
-          Pulsa «Ir a inicio de sesión» y vuelve a entrar con tu cuenta.
-        </li>
-      </ul>
+      <q-list dense class="aviso-sesion__help-list">
+        <q-item class="aviso-sesion__help-item">
+          <q-item-section avatar class="aviso-sesion__help-icono">
+            <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="aviso-sesion__help-texto">La sesión se cerró automáticamente tras 30 minutos sin actividad o porque el token expiró.</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item class="aviso-sesion__help-item">
+          <q-item-section avatar class="aviso-sesion__help-icono">
+            <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="aviso-sesion__help-texto">El token ya no está guardado en esta pestaña, así que no se muestran datos ni la carga.</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item class="aviso-sesion__help-item">
+          <q-item-section avatar class="aviso-sesion__help-icono">
+            <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="aviso-sesion__help-texto">Pulsa «Ir a inicio de sesión» y vuelve a entrar con tu cuenta.</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
     </section>
   </section>
 </template>
@@ -64,20 +79,20 @@ const titleId = useId()
 
 .aviso-sesion__title {
   margin: 0 0 12px;
-  color: #7a1f1a;
+  color: var(--dg-error-oscuro);
   font-size: clamp(1.3rem, 5vw, 1.6rem);
   line-height: 1.2;
 }
 
 .aviso-sesion__part {
   margin: 0 0 8px;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 1rem;
   line-height: 1.5;
 }
 
 .aviso-sesion__part-label {
-  color: #7a1f1a;
+  color: var(--dg-error-oscuro);
   font-weight: 600;
 }
 
@@ -88,35 +103,50 @@ const titleId = useId()
 }
 
 .aviso-sesion__button:focus-visible {
-  outline: 3px solid #0b5cad !important;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 
 .aviso-sesion__help {
   margin-top: 24px;
   padding: 16px;
-  border-left: 4px solid #1f5f99;
+  border-left: 4px solid var(--dg-acento);
   border-radius: 8px;
-  background: #f0f6fc;
+  background: var(--dg-fondo-hover);
   text-align: left;
 }
 
 .aviso-sesion__help-title {
   margin: 0 0 8px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1rem;
 }
 
 .aviso-sesion__help-list {
-  margin: 0;
-  padding-left: 20px;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
-.aviso-sesion__help-list li + li {
+/* Sin el alto mínimo ni el relleno de q-item: cada punto ocupa lo que su texto. */
+.aviso-sesion__help-item {
+  min-height: 0;
+  padding: 0;
+}
+
+.aviso-sesion__help-item + .aviso-sesion__help-item {
   margin-top: 6px;
+}
+
+.aviso-sesion__help-icono {
+  min-width: 26px;
+  padding-top: 2px;
+  justify-content: flex-start;
+}
+
+/* q-item-label trae line-height de 1.2em con !important; se conserva el 1.5 de la ayuda. */
+.aviso-sesion__help-texto {
+  line-height: 1.5 !important;
 }
 
 .control-touch {

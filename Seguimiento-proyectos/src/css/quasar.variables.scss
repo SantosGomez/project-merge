@@ -74,5 +74,22 @@ $dg-colores: (
   prioridad-baja: #1b5e20,
   prioridad-baja-fondo: #e6f4ea,
   prioridad-baja-borde: #3f6b4d,
+  // Gris neutro (prioridad no prevista)
+  neutro-fondo: #eceff4,
+  neutro-borde: #6b7a8d,
+  // Avisos del inicio de sesión: sesión caducada (aviso), sesión requerida (info) y cerrada (éxito)
+  aviso-texto: #4a3300,
+  aviso-fondo: #fff4d6,
+  aviso-borde: #8a5800,
+  info-texto: #0d3c61,
+  info-fondo: #e6f0fb,
+  info-borde: #1a5f9e,
+  exito-oscuro: #124724,
+  exito-borde: #1f6b3a,
+  // Error bajo un campo del formulario
+  error-campo: #8c1d18,
+  // Textos sobre el menú lateral oscuro ($primary)
+  texto-claro: #ffffff,
+  texto-claro-tenue: #c9cfd8,
 );
 

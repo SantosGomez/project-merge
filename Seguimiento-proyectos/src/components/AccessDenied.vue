@@ -23,20 +23,32 @@
       <h3 id="access-denied-help-title" class="access-denied__help-title">
         Por qué ves este aviso
       </h3>
-      <ul class="access-denied__help-list">
-        <li>
-          Tu sesión es de perfil <strong>{{ profileLabel }}</strong> y esta pantalla no pertenece a
-          ese perfil.
-        </li>
-        <li>
-          El perfil lo determina la cuenta de ejemplo con la que iniciaste sesión: no se elige a
-          mano.
-        </li>
-        <li>
-          La maqueta no ofrece ningún control que lleve a una pantalla del otro perfil: cada cuenta
-          de ejemplo solo abre las pantallas de su perfil.
-        </li>
-      </ul>
+      <q-list dense class="access-denied__help-list">
+        <q-item class="access-denied__help-item">
+          <q-item-section avatar class="access-denied__help-icono">
+            <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="access-denied__help-texto">Tu sesión es de perfil <strong>{{ profileLabel }}</strong> y esta pantalla no pertenece a ese perfil.</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item class="access-denied__help-item">
+          <q-item-section avatar class="access-denied__help-icono">
+            <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="access-denied__help-texto">El perfil lo determina la cuenta de ejemplo con la que iniciaste sesión: no se elige a mano.</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item class="access-denied__help-item">
+          <q-item-section avatar class="access-denied__help-icono">
+            <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="access-denied__help-texto">La maqueta no ofrece ningún control que lleve a una pantalla del otro perfil: cada cuenta de ejemplo solo abre las pantallas de su perfil.</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
     </section>
   </section>
 </template>
@@ -75,14 +87,14 @@ const titleId = useId()
 
 .access-denied__title {
   margin: 0 0 12px;
-  color: #7a1f1a;
+  color: var(--dg-error-oscuro);
   font-size: clamp(1.3rem, 5vw, 1.6rem);
   line-height: 1.2;
 }
 
 .access-denied__message {
   margin: 0 0 20px;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 1rem;
   line-height: 1.5;
 }
@@ -94,34 +106,49 @@ const titleId = useId()
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-8). */
 .access-denied__action:focus-visible {
-  outline: 3px solid #0b5cad !important;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 
 .access-denied__help {
   margin-top: 24px;
   padding: 16px;
-  border-left: 4px solid #1f5f99;
+  border-left: 4px solid var(--dg-acento);
   border-radius: 8px;
-  background: #f0f6fc;
+  background: var(--dg-fondo-hover);
   text-align: left;
 }
 
 .access-denied__help-title {
   margin: 0 0 8px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1rem;
 }
 
 .access-denied__help-list {
-  margin: 0;
-  padding-left: 20px;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
-.access-denied__help-list li + li {
+/* Sin el alto mínimo ni el relleno de q-item: cada punto ocupa lo que su texto. */
+.access-denied__help-item {
+  min-height: 0;
+  padding: 0;
+}
+
+.access-denied__help-item + .access-denied__help-item {
   margin-top: 6px;
+}
+
+.access-denied__help-icono {
+  min-width: 26px;
+  padding-top: 2px;
+  justify-content: flex-start;
+}
+
+/* q-item-label trae line-height de 1.2em con !important; se conserva el 1.5 de la ayuda. */
+.access-denied__help-texto {
+  line-height: 1.5 !important;
 }
 </style>

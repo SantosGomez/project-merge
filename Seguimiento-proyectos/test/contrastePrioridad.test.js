@@ -1,13 +1,19 @@
-// Contraste de las etiquetas de prioridad (RNF-06, criterio 26): lee los colores reales de
-// PriorityTag.vue y calcula la razón de contraste con la fórmula de la WCAG 2.
+// Contraste de las etiquetas de prioridad (RNF-06, criterio 26). Desde la migración a Quasar los
+// colores de PriorityTag.vue salen de la paleta $dg-colores (quasar.variables.scss): aquí se leen
+// de la paleta y se calcula la razón de contraste con la fórmula de la WCAG 2.
 
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-const MINIMO_WCAG = 4.5
+const MINIMO_TEXTO = 4.5
+// El borde es un elemento no textual: WCAG 1.4.11 pide 3:1 con el fondo de la etiqueta.
+const MINIMO_BORDE = 3
 
-const css = readFileSync(new URL('../src/components/PriorityTag.vue', import.meta.url), 'utf8')
+const variables = readFileSync(new URL('../src/css/quasar.variables.scss', import.meta.url), 'utf8')
+
+/** Color `#rrggbb` de un nombre de la paleta. */
+const colorDe = (nombre) => variables.match(new RegExp(`\\n\\s*${nombre}:\\s*(#[0-9a-fA-F]{6})`))?.[1]
 
 /** Luminancia relativa de un color `#rrggbb` según la WCAG 2. */
 const luminancia = (hex) => {
@@ -25,26 +31,32 @@ const contraste = (a, b) => {
   return (claro + 0.05) / (oscuro + 0.05)
 }
 
-/** Colores de texto y de fondo declarados para una clase de color de la etiqueta. */
-const coloresDe = (color) => {
-  const bloque = css.match(new RegExp(`\\.priority-tag--${color}\\s*\\{([^}]*)\\}`))
-
-  assert.ok(bloque, `PriorityTag.vue declara la clase priority-tag--${color}`)
-
-  return {
-    texto: bloque[1].match(/(?<![-\w])color:\s*(#[0-9a-fA-F]{6})/)?.[1],
-    fondo: bloque[1].match(/background:\s*(#[0-9a-fA-F]{6})/)?.[1],
-  }
+// Cada prioridad y el gris neutro de una prioridad no prevista: texto, fondo y borde.
+const ETIQUETAS = {
+  alta: ['prioridad-alta', 'prioridad-alta-fondo', 'prioridad-alta-borde'],
+  media: ['prioridad-media', 'prioridad-media-fondo', 'prioridad-media-borde'],
+  baja: ['prioridad-baja', 'prioridad-baja-fondo', 'prioridad-baja-borde'],
+  desconocida: ['texto-secundario', 'neutro-fondo', 'neutro-borde'],
 }
 
-for (const color of ['red', 'amber', 'green', 'unknown']) {
-  test(`la etiqueta ${color} tiene contraste de texto de al menos 4.5:1 (RNF-06)`, () => {
-    const { texto, fondo } = coloresDe(color)
+for (const [prioridad, [texto, fondo, borde]] of Object.entries(ETIQUETAS)) {
+  test(`la etiqueta ${prioridad} tiene contraste de texto de al menos 4.5:1 (RNF-06)`, () => {
+    const [colorTexto, colorFondo] = [colorDe(texto), colorDe(fondo)]
 
-    assert.ok(texto && fondo, 'la clase declara color de texto y de fondo en formato #rrggbb')
+    assert.ok(colorTexto && colorFondo, `la paleta define ${texto} y ${fondo}`)
     assert.ok(
-      contraste(texto, fondo) >= MINIMO_WCAG,
-      `contraste ${contraste(texto, fondo).toFixed(2)}:1 de ${texto} sobre ${fondo}`,
+      contraste(colorTexto, colorFondo) >= MINIMO_TEXTO,
+      `contraste ${contraste(colorTexto, colorFondo).toFixed(2)}:1 de ${colorTexto} sobre ${colorFondo}`,
+    )
+  })
+
+  test(`el borde de la etiqueta ${prioridad} se distingue de su fondo (3:1)`, () => {
+    const [colorBorde, colorFondo] = [colorDe(borde), colorDe(fondo)]
+
+    assert.ok(colorBorde, `la paleta define ${borde}`)
+    assert.ok(
+      contraste(colorBorde, colorFondo) >= MINIMO_BORDE,
+      `contraste ${contraste(colorBorde, colorFondo).toFixed(2)}:1 de ${colorBorde} sobre ${colorFondo}`,
     )
   })
 }
