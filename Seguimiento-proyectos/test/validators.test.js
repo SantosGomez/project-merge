@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import { MAX_CLIENT_LENGTH } from '../src/utils/constants.js'
 import {
   validarAltaUsuario,
+  validarContrasenaNueva,
   validarRestablecimiento,
   validarCliente,
   validarCredenciales,
@@ -220,6 +221,30 @@ test('validarAltaUsuario exige elegir uno de los tres roles', () => {
   for (const rol of [null, undefined, '', 'Administrador', 'invitado']) {
     assert.equal(validarAlta({ rol }).errores.rol, 'rol_requerido', `«${rol}» no es un rol válido`)
   }
+})
+
+// --- validarContrasenaNueva (contraseña propia tras el primer login) -------
+
+test('validarContrasenaNueva acepta 8 o más caracteres confirmados, sin contar espacios extremos', () => {
+  assert.deepEqual(validarContrasenaNueva(' MiClave2 ', 'MiClave2'), {
+    valido: true,
+    errores: { nueva: null, confirmacion: null },
+  })
+})
+
+test('validarContrasenaNueva pide la nueva con 8 o más y la confirmación igual', () => {
+  assert.deepEqual(validarContrasenaNueva('', ''), {
+    valido: false,
+    errores: { nueva: 'password_requerida', confirmacion: 'confirmacion_requerida' },
+  })
+  assert.deepEqual(validarContrasenaNueva('Corta1', 'Corta1'), {
+    valido: false,
+    errores: { nueva: 'password_corta', confirmacion: null },
+  })
+  assert.deepEqual(validarContrasenaNueva('MiClave22', 'MiClave23'), {
+    valido: false,
+    errores: { nueva: null, confirmacion: 'confirmacion_distinta' },
+  })
 })
 
 // --- validarRestablecimiento (historia 9b) ---------------------------------

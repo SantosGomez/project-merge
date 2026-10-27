@@ -46,7 +46,9 @@
             >
               <q-tooltip>Contraseña nueva de la cuenta; compártela con la persona por un medio seguro.</q-tooltip>
             </q-input>
-            <p id="restablecer-password-ayuda" class="form-help">Al menos 8 caracteres.</p>
+            <p id="restablecer-password-ayuda" class="form-help">
+              Al menos 8 caracteres. La persona creará su propia contraseña al entrar.
+            </p>
           </div>
 
           <p v-if="errorGeneral" class="error-banner" role="alert">{{ errorGeneral }}</p>

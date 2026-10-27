@@ -11,6 +11,7 @@ import { isTokenExpirado } from '../src/services/authService.js'
 import {
   INTERVALO_INACTIVIDAD_MS,
   LIMITE_INACTIVIDAD_MINUTOS,
+  RUTA_CAMBIO_CONTRASENA,
   TEXTO_AVISO_CIERRE,
   TEXTO_AVISO_REVOCACION,
   crearSessionStore,
@@ -102,7 +103,13 @@ const crearProgramadorFalso = () => {
 }
 
 // AuthService falso con almacén propio; registra login/logout y sus tokens.
-const crearAuthFalsa = ({ inicial = {}, sesionLogin, errorLogin, resultadoLogout } = {}) => {
+const crearAuthFalsa = ({
+  inicial = {},
+  sesionLogin,
+  errorLogin,
+  resultadoLogout,
+  errorCambio,
+} = {}) => {
   const almacen = crearAlmacenFalso(inicial)
   const llamadas = []
 
@@ -113,12 +120,21 @@ const crearAuthFalsa = ({ inicial = {}, sesionLogin, errorLogin, resultadoLogout
     getRol: () => almacen.getItem(CLAVES_SESION.rol),
     getNombre: () => almacen.getItem(CLAVES_SESION.nombre),
     getId: () => almacen.getItem(CLAVES_SESION.id),
+    getCambioPendiente: () => almacen.getItem(CLAVES_SESION.cambioPendiente) === '1',
     setToken: (token) => escribir(almacen, CLAVES_SESION.token, token),
     setSesion: (sesion) => {
       escribir(almacen, CLAVES_SESION.token, sesion.token)
       escribir(almacen, CLAVES_SESION.rol, sesion.rol)
       escribir(almacen, CLAVES_SESION.nombre, sesion.nombre)
       escribir(almacen, CLAVES_SESION.id, sesion.id)
+      escribir(almacen, CLAVES_SESION.cambioPendiente, sesion.debeCambiarContrasena ? '1' : null)
+    },
+    async cambiarContrasena(password) {
+      llamadas.push({ accion: 'cambiarContrasena', password })
+      if (errorCambio) {
+        throw errorCambio
+      }
+      almacen.removeItem(CLAVES_SESION.cambioPendiente)
     },
     limpiarSesion: () => {
       for (const clave of Object.values(CLAVES_SESION)) {
@@ -761,4 +777,102 @@ test('conectarServicios enlaza actividad y sesión expirada sin tocar api.js', a
 
   assert.equal(store.sesionCaducada, true)
   assert.equal(store.token, null)
+})
+
+// --- contraseña propia tras el primer inicio de sesión ---------------------
+
+test('iniciarSesion con contraseña asignada lleva a crear la contraseña propia', async () => {
+  const auth = crearAuthFalsa({
+    sesionLogin: {
+      token: tokenVigente(),
+      rol: 'contador',
+      id: 7,
+      nombre: 'Ana',
+      debeCambiarContrasena: true,
+    },
+  })
+  const { store } = montarSesion({ auth })
+
+  const resultado = await store.iniciarSesion('ana@delgrow.mx', 'AsignadaAdmin1')
+
+  assert.equal(resultado.ok, true)
+  assert.equal(resultado.pantallaPrincipal, RUTA_CAMBIO_CONTRASENA)
+  assert.equal(store.debeCambiarContrasena, true)
+})
+
+test('iniciarSesion sin marca conserva la pantalla principal del perfil', async () => {
+  const { store } = montarSesion()
+
+  const resultado = await store.iniciarSesion('admin_seed', 'clave')
+
+  assert.equal(resultado.pantallaPrincipal, '/admin/dashboard')
+  assert.equal(store.debeCambiarContrasena, false)
+})
+
+test('al recargar con la marca guardada no se hace la lectura protegida y se va a crear la contraseña', async () => {
+  const auth = crearAuthFalsa({
+    inicial: {
+      ...almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 7, nombre: 'Ana' }),
+      [CLAVES_SESION.cambioPendiente]: '1',
+    },
+  })
+  const { store, casos } = montarSesion({ auth })
+
+  const resultado = await store.restaurarSesion()
+
+  assert.equal(resultado.estado, 'valida')
+  assert.equal(resultado.pantallaPrincipal, RUTA_CAMBIO_CONTRASENA)
+  assert.equal(casos.llamadas.length, 0, 'la API la bloquearía con 403')
+  assert.equal(store.debeCambiarContrasena, true)
+})
+
+test('crearContrasenaPropia guarda la nueva, quita la marca y devuelve la pantalla del perfil', async () => {
+  const auth = crearAuthFalsa({
+    inicial: {
+      ...almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 7, nombre: 'Ana' }),
+      [CLAVES_SESION.cambioPendiente]: '1',
+    },
+  })
+  const { store } = montarSesion({ auth })
+  store.aplicarSesionGuardada()
+
+  const resultado = await store.crearContrasenaPropia('MiClavePropia2')
+
+  assert.deepEqual(resultado, { ok: true, pantallaPrincipal: '/contador/casos' })
+  assert.deepEqual(auth.llamadas.at(-1), { accion: 'cambiarContrasena', password: 'MiClavePropia2' })
+  assert.equal(store.debeCambiarContrasena, false)
+})
+
+test('crearContrasenaPropia con error lo devuelve y conserva la marca', async () => {
+  const error = { estado: 'solicitud_invalida', mensaje: 'Contraseña inválida', codigoHttp: 400 }
+  const auth = crearAuthFalsa({
+    inicial: {
+      ...almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 7, nombre: 'Ana' }),
+      [CLAVES_SESION.cambioPendiente]: '1',
+    },
+    errorCambio: error,
+  })
+  const { store } = montarSesion({ auth })
+  store.aplicarSesionGuardada()
+
+  const resultado = await store.crearContrasenaPropia('Corta1')
+
+  assert.deepEqual(resultado, { ok: false, error })
+  assert.equal(store.debeCambiarContrasena, true)
+})
+
+test('limpiar la sesión también quita la marca de cambio pendiente', () => {
+  const auth = crearAuthFalsa({
+    inicial: {
+      ...almacenConSesion({ token: tokenVigente(), rol: 'contador', id: 7, nombre: 'Ana' }),
+      [CLAVES_SESION.cambioPendiente]: '1',
+    },
+  })
+  const { store } = montarSesion({ auth })
+  store.aplicarSesionGuardada()
+
+  store.caducarSesion()
+
+  assert.equal(store.debeCambiarContrasena, false)
+  assert.equal(auth.almacen.getItem(CLAVES_SESION.cambioPendiente), null)
 })

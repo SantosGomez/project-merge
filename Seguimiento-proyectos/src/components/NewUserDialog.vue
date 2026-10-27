@@ -84,7 +84,9 @@
             >
               <q-tooltip>Contraseña inicial de la cuenta; compártela con la persona por un medio seguro.</q-tooltip>
             </q-input>
-            <p id="nuevo-password-ayuda" class="form-help">Al menos 8 caracteres.</p>
+            <p id="nuevo-password-ayuda" class="form-help">
+              Al menos 8 caracteres. La persona creará su propia contraseña al entrar.
+            </p>
           </div>
 
           <div class="form-group">

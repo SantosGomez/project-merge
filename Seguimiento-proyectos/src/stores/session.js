@@ -20,6 +20,8 @@ import {
   registrarOnSesionExpirada as registrarSesionExpiradaPorDefecto,
 } from '../services/api.js'
 import {
+  cambiarContrasena as cambiarContrasenaPorDefecto,
+  getCambioPendiente as getCambioPendientePorDefecto,
   getNombre as getNombrePorDefecto,
   getId as getIdPorDefecto,
   getRol as getRolPorDefecto,
@@ -48,6 +50,9 @@ export const PANTALLA_PRINCIPAL = Object.freeze({
   contador: '/contador/casos',
   usuarios_de_sistema: '/admin/directorio',
 })
+
+/** Pantalla donde la persona crea su contraseña tras entrar con la asignada. */
+export const RUTA_CAMBIO_CONTRASENA = '/cambiar-contrasena'
 
 /** Tipos de aviso persistente de cierre (RF-46 con revocación, RF-47 sin ella). */
 export const TIPOS_AVISO = Object.freeze({
@@ -101,10 +106,12 @@ const comoFecha = (valor) => (valor instanceof Date ? valor : new Date(valor))
 const authServicePorDefecto = {
   login: loginPorDefecto,
   logout: logoutPorDefecto,
+  cambiarContrasena: cambiarContrasenaPorDefecto,
   getToken: getTokenPorDefecto,
   getRol: getRolPorDefecto,
   getNombre: getNombrePorDefecto,
   getId: getIdPorDefecto,
+  getCambioPendiente: getCambioPendientePorDefecto,
   setToken: setTokenPorDefecto,
   setSesion: setSesionPorDefecto,
   limpiarSesion: limpiarSesionPorDefecto,
@@ -146,6 +153,8 @@ export const crearSessionStore = (dependencias = {}) => {
         /** Nombre de la persona para el menú (login por correo); null en sesiones anteriores. */
         nombre: authService.getNombre(),
         id: authService.getId(),
+        /** La persona entró con la contraseña asignada y debe crear la suya. */
+        debeCambiarContrasena: authService.getCambioPendiente(),
         /** Expiración del token en segundos (campo `exp`), si se puede leer. */
         exp: expiracionDeToken(token),
         /** Bandera de sesión caducada por inactividad, `exp` o 401 (RF-07/43). */
@@ -178,6 +187,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.rol = authService.getRol()
         this.nombre = authService.getNombre()
         this.id = authService.getId()
+        this.debeCambiarContrasena = authService.getCambioPendiente()
         this.exp = expiracionDeToken(this.token)
       },
 
@@ -187,6 +197,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.rol = null
         this.nombre = null
         this.id = null
+        this.debeCambiarContrasena = false
         this.exp = null
         this.ultimaActividad = null
       },
@@ -306,6 +317,15 @@ export const crearSessionStore = (dependencias = {}) => {
           return { estado: 'acceso_denegado', rol: this.rol }
         }
 
+        // Con la contraseña asignada la API responde 403 a toda lectura: se va directo a
+        // crearla. Si el token ya no sirve, el 401 al guardarla caduca la sesión.
+        if (this.debeCambiarContrasena) {
+          this.sesionCaducada = false
+          this.marcarActividad(momento)
+          this.iniciarTemporizador()
+          return { estado: 'valida', rol: this.rol, pantallaPrincipal: RUTA_CAMBIO_CONTRASENA }
+        }
+
         try {
           if (this.rol === 'administrador') {
             await contadores.listCounters()
@@ -383,9 +403,26 @@ export const crearSessionStore = (dependencias = {}) => {
           ok: true,
           rol: this.rol,
           id: this.id,
-          pantallaPrincipal: pantalla,
+          // Con la contraseña asignada, primero se crea la propia.
+          pantallaPrincipal: pantalla !== null && this.debeCambiarContrasena ? RUTA_CAMBIO_CONTRASENA : pantalla,
           accesoDenegado: pantalla === null,
         }
+      },
+
+      /**
+       * Reemplaza la contraseña asignada por una propia y quita la marca.
+       * @param {string} password - contraseña nueva.
+       * @returns {Promise<{ ok: true, pantallaPrincipal: string|null } | { ok: false, error: Object }>}
+       */
+      async crearContrasenaPropia(password) {
+        try {
+          await authService.cambiarContrasena(password)
+        } catch (error) {
+          return { ok: false, error }
+        }
+
+        this.debeCambiarContrasena = false
+        return { ok: true, pantallaPrincipal: PANTALLA_PRINCIPAL[this.rol] ?? null }
       },
 
       /**

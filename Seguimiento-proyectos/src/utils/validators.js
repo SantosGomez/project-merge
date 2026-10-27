@@ -132,6 +132,27 @@ export const validarAltaUsuario = (nombre, correo, password, rol) => {
   return { valido: Object.values(errores).every((error) => error === null), errores }
 }
 
+/** Valida la contraseña propia que crea la persona tras entrar con la asignada:
+ * de al menos 8 (sin contar espacios extremos, como el login) y confirmada igual.
+ * Que sea distinta a la asignada lo comprueba el backend.
+ * @returns {{ valido: boolean, errores: { nueva: string|null, confirmacion: string|null } }}
+ */
+export const validarContrasenaNueva = (nueva, confirmacion) => {
+  const errores = {
+    nueva: normalizar(nueva).length === 0 ? 'password_requerida' : null,
+    confirmacion: normalizar(confirmacion).length === 0 ? 'confirmacion_requerida' : null,
+  }
+
+  if (errores.nueva === null && normalizar(nueva).length < MIN_PASSWORD_LENGTH) {
+    errores.nueva = 'password_corta'
+  }
+  if (errores.nueva === null && errores.confirmacion === null && normalizar(nueva) !== normalizar(confirmacion)) {
+    errores.confirmacion = 'confirmacion_distinta'
+  }
+
+  return { valido: Object.values(errores).every((error) => error === null), errores }
+}
+
 /** Valida el restablecimiento de contraseña (historia 9b) con las mismas reglas que el alta:
  * correo obligatorio, de hasta 150 caracteres y con forma de correo; contraseña de al menos 8.
  * @returns {{ valido: boolean, errores: { correo: string|null, password: string|null } }}

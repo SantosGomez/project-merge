@@ -4,7 +4,7 @@
 // inyectar para probarlo sin navegador y sin red.
 //
 // Contrato que consume la capa superior (T4/T5/T7):
-// - `login` resuelve `{ token, rol, id, nombre }` y ya dejó la sesión guardada;
+// - `login` resuelve `{ token, rol, id, nombre, debeCambiarContrasena }` y ya dejó la sesión guardada;
 //   si falla, rechaza con el error normalizado de `api.js`.
 // - `logout` NUNCA rechaza: resuelve `{ ok: true, mensaje }` o
 //   `{ ok: false, error }`. No limpia sessionStorage (4.8: el cierre local lo
@@ -103,21 +103,26 @@ export const crearAuthService = (opciones = {}) => {
   const getRol = () => leer(CLAVES_SESION.rol)
   const getNombre = () => leer(CLAVES_SESION.nombre)
   const getId = () => leer(CLAVES_SESION.id)
+  /** true si la persona entró con la contraseña que le asignó el administrador. */
+  const getCambioPendiente = () => leer(CLAVES_SESION.cambioPendiente) === '1'
 
   const setToken = (token) => escribir(CLAVES_SESION.token, token)
   const setRol = (rol) => escribir(CLAVES_SESION.rol, rol)
   const setNombre = (nombre) => escribir(CLAVES_SESION.nombre, nombre)
   const setId = (id) => escribir(CLAVES_SESION.id, id)
+  const setCambioPendiente = (pendiente) =>
+    escribir(CLAVES_SESION.cambioPendiente, pendiente ? '1' : null)
 
   /**
    * Guarda la sesión completa (RF-02, RF-42).
-   * @param {{ token: string, rol: string, id?: number|string, nombre?: string|null }} sesion
+   * @param {{ token: string, rol: string, id?: number|string, nombre?: string|null, debeCambiarContrasena?: boolean }} sesion
    */
   const setSesion = (sesion) => {
     setToken(sesion.token)
     setRol(sesion.rol)
     setNombre(sesion.nombre)
     setId(sesion.id)
+    setCambioPendiente(sesion.debeCambiarContrasena)
   }
 
   /**
@@ -148,9 +153,20 @@ export const crearAuthService = (opciones = {}) => {
       rol: data.rol,
       id: data.id,
       nombre: data.nombre ?? null,
+      debeCambiarContrasena: data.debe_cambiar_contrasena === true,
     }
     setSesion(sesion)
     return sesion
+  }
+
+  /**
+   * Reemplaza la contraseña asignada por el administrador (PATCH /auth/contrasena)
+   * y quita la marca guardada. Si falla, rechaza con el error normalizado y la marca sigue.
+   * @param {string} password - contraseña nueva.
+   */
+  const cambiarContrasena = async (password) => {
+    await api.patch('/auth/contrasena', { password })
+    setCambioPendiente(false)
   }
 
   /**
@@ -176,10 +192,12 @@ export const crearAuthService = (opciones = {}) => {
   return {
     login,
     logout,
+    cambiarContrasena,
     getToken,
     getRol,
     getNombre,
     getId,
+    getCambioPendiente,
     setSesion,
     setToken,
     setRol,
@@ -195,6 +213,8 @@ const servicioPorDefecto = crearAuthService()
 
 export const login = servicioPorDefecto.login
 export const logout = servicioPorDefecto.logout
+export const cambiarContrasena = servicioPorDefecto.cambiarContrasena
+export const getCambioPendiente = servicioPorDefecto.getCambioPendiente
 export const getToken = servicioPorDefecto.getToken
 export const getRol = servicioPorDefecto.getRol
 export const getNombre = servicioPorDefecto.getNombre

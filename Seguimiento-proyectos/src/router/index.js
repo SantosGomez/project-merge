@@ -7,6 +7,7 @@ import {
 } from 'vue-router'
 
 import AdminDashboardPage from '../pages/AdminDashboardPage.vue'
+import CambiarContrasenaPage from '../pages/CambiarContrasenaPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
@@ -14,7 +15,7 @@ import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
 import { useSessionStore } from '../stores/session.js'
-import { PANTALLA_PRINCIPAL_POR_ROL, decidirAcceso } from '../utils/accessRules.js'
+import { decidirAcceso } from '../utils/accessRules.js'
 import { PROFILES } from '../utils/constants.js'
 import { accessDenied, arranqueFallido } from './accessState.js'
 
@@ -34,6 +35,19 @@ const routes = [
         name: 'login',
         component: LoginPage,
         meta: { titulo: 'Inicio de sesión' },
+      },
+    ],
+  },
+  {
+    // Tras entrar con la contraseña que asignó el administrador, la persona crea la suya.
+    path: '/cambiar-contrasena',
+    component: LoginLayout,
+    children: [
+      {
+        path: '',
+        name: 'cambiar-contrasena',
+        component: CambiarContrasenaPage,
+        meta: { requiereSesion: true, titulo: 'Crea tu contraseña' },
       },
     ],
   },
@@ -165,15 +179,26 @@ export default defineRouter((/* { store, ssrContext } */) => {
         return { name: 'login', query: { aviso: 'perfil' }, replace: true }
       }
 
-      // Recarga con token vigente: se abre la pantalla principal del perfil (RF-44).
+      // Recarga con token vigente: se abre la pantalla principal del perfil (RF-44),
+      // o la de crear contraseña si la cuenta aún usa la asignada.
       if (resultado.estado === 'valida' && to.name === 'login') {
-        return { name: PANTALLA_PRINCIPAL_POR_ROL[resultado.rol], replace: true }
+        return { path: resultado.pantallaPrincipal, replace: true }
       }
     } else {
       await arranque
     }
 
     sincronizarIdentidadMaqueta(sesion)
+
+    // Con la contraseña asignada solo se puede crear la propia (o volver al login).
+    if (sesion.autenticado && sesion.debeCambiarContrasena && !['cambiar-contrasena', 'login'].includes(to.name)) {
+      return { name: 'cambiar-contrasena', replace: true }
+    }
+    if (to.name === 'cambiar-contrasena' && !sesion.debeCambiarContrasena) {
+      return sesion.pantallaPrincipal
+        ? { path: sesion.pantallaPrincipal, replace: true }
+        : { name: 'login', replace: true }
+    }
 
     const decision = decidirAcceso({
       ruta: { requiereSesion: to.meta.requiereSesion === true, perfil: to.meta.perfil ?? null },

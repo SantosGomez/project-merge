@@ -35,6 +35,13 @@ const crearApiFalsa = ({ datos, error } = {}) => {
       }
       return { data: datos }
     },
+    async patch(url, cuerpo) {
+      llamadas.push({ metodo: 'PATCH', url, cuerpo })
+      if (error) {
+        throw error
+      }
+      return { data: datos }
+    },
   }
 }
 
@@ -83,13 +90,60 @@ test('login hace POST /auth/login y guarda token, rol, id y nombre en el almacé
   assert.deepEqual(api.llamadas, [
     { url: '/auth/login', cuerpo: { correo: 'admin_seed', password: 'clave-falsa' } },
   ])
-  assert.deepEqual(sesion, DATOS_SESION, 'login devuelve los datos de la sesión')
+  assert.deepEqual(
+    sesion,
+    { ...DATOS_SESION, debeCambiarContrasena: false },
+    'login devuelve los datos de la sesión',
+  )
   assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
   assert.equal(almacen.getItem(CLAVES_SESION.id), '5')
   assert.equal(almacen.getItem(CLAVES_SESION.nombre), 'Admin Seed')
   assert.ok(!('usuario' in CLAVES_SESION), 'la sesión ya no tiene clave de usuario')
   assert.equal(almacen.getItem('delgrow_usuario'), null, 'no se guarda el usuario')
+})
+
+test('login guarda la marca de contraseña asignada cuando el backend la manda', async () => {
+  const api = crearApiFalsa({ datos: { ...DATOS_SESION, debe_cambiar_contrasena: true } })
+  const almacen = crearAlmacenFalso()
+  const servicio = crearAuthService({ api, almacen })
+
+  const sesion = await servicio.login('nuevo@delgrow.mx', 'AsignadaAdmin1')
+
+  assert.equal(sesion.debeCambiarContrasena, true)
+  assert.equal(servicio.getCambioPendiente(), true, 'la marca sobrevive a recargar la página')
+})
+
+test('sin marca no se guarda la clave de cambio pendiente', async () => {
+  const almacen = crearAlmacenFalso()
+  const servicio = crearAuthService({ api: crearApiFalsa({ datos: DATOS_SESION }), almacen })
+
+  await servicio.login('admin_seed', 'clave-falsa')
+
+  assert.equal(servicio.getCambioPendiente(), false)
+  assert.equal(almacen.getItem(CLAVES_SESION.cambioPendiente), null)
+})
+
+test('cambiarContrasena hace PATCH /auth/contrasena y quita la marca guardada', async () => {
+  const api = crearApiFalsa({ datos: { mensaje: 'Contraseña actualizada correctamente' } })
+  const almacen = crearAlmacenFalso({ [CLAVES_SESION.cambioPendiente]: '1' })
+  const servicio = crearAuthService({ api, almacen })
+
+  await servicio.cambiarContrasena('MiClavePropia2')
+
+  assert.deepEqual(api.llamadas, [
+    { metodo: 'PATCH', url: '/auth/contrasena', cuerpo: { password: 'MiClavePropia2' } },
+  ])
+  assert.equal(servicio.getCambioPendiente(), false)
+})
+
+test('cambiarContrasena propaga el error y conserva la marca', async () => {
+  const error = { estado: 'solicitud_invalida', mensaje: 'Contraseña inválida', codigoHttp: 400 }
+  const almacen = crearAlmacenFalso({ [CLAVES_SESION.cambioPendiente]: '1' })
+  const servicio = crearAuthService({ api: crearApiFalsa({ error }), almacen })
+
+  await assert.rejects(() => servicio.cambiarContrasena('Corta1'), error)
+  assert.equal(servicio.getCambioPendiente(), true)
 })
 
 test('las claves de sesión llevan el prefijo delgrow_ para no mezclarse con otros datos', () => {

@@ -36,6 +36,8 @@ export const CLAVES_SESION = Object.freeze({
   rol: 'delgrow_rol',
   nombre: 'delgrow_nombre',
   id: 'delgrow_id',
+  /** '1' mientras la persona deba crear su propia contraseña. */
+  cambioPendiente: 'delgrow_cambio_contrasena',
 })
 
 /** Clasificación de los errores que entregan los servicios a las pantallas. */
