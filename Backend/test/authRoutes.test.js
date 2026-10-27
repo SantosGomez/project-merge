@@ -27,7 +27,7 @@ const { hashPassword } = require('../src/utils/passwordUtils');
 let servidor;
 let contador;
 
-// ---------- RF-01: login válido devuelve token, rol, id, nombre y correo (sin usuario, rebanada 5b) ----------
+// ---------- RF-01: login válido devuelve token, rol, id, nombre, correo y si debe cambiar la contraseña (sin usuario, rebanada 5b) ----------
 async function testLoginValidoDevuelveToken() {
   const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
     correo: contador.correo,
@@ -39,9 +39,10 @@ async function testLoginValidoDevuelveToken() {
   assert.strictEqual(respuesta.body.rol, 'contador', 'debe incluir el rol del usuario');
   assert.deepStrictEqual(
     Object.keys(respuesta.body).sort(),
-    ['correo', 'id', 'nombre', 'rol', 'token'],
-    'la respuesta trae token, rol, id, nombre y correo, sin el usuario'
+    ['correo', 'debe_cambiar_contrasena', 'id', 'nombre', 'rol', 'token'],
+    'la respuesta trae token, rol, id, nombre, correo y la marca de cambio, sin el usuario'
   );
+  assert.strictEqual(respuesta.body.debe_cambiar_contrasena, false, 'una cuenta de prueba no tiene cambio pendiente');
 }
 
 // ---------- Rebanada 5b: la carga del token identifica la cuenta por id y rol, sin usuario ----------
@@ -322,7 +323,7 @@ describe('rutas de autenticación', () => {
     await cerrarBaseDeDatos();
   });
 
-  test('el login válido devuelve token, rol, id, nombre y correo, sin usuario', testLoginValidoDevuelveToken);
+  test('el login válido devuelve token, rol, id, nombre, correo y debe_cambiar_contrasena, sin usuario', testLoginValidoDevuelveToken);
   test('el token del login lleva id y rol, sin usuario', testTokenDelLoginSinUsuario);
   test('el login con correo devuelve nombre y correo', testLoginConCorreoDevuelveNombreYCorreo);
   test('el correo no distingue mayúsculas ni espacios extremos', testLoginConCorreoSinImportarMayusculasNiEspacios);

@@ -78,9 +78,10 @@ async function createUser(req, res) {
     );
   }
 
-  // 4. Hashear contraseña con Argon2id (RNF-1) y crear la cuenta (RF-28)
+  // 4. Hashear contraseña con Argon2id (RNF-1) y crear la cuenta (RF-28);
+  //    la contraseña la eligió el administrador, así que la persona creará la suya al entrar
   const passwordHash = await hashPassword(password);
-  await UserModel.create({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol });
+  await UserModel.create({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol, debeCambiarContrasena: true });
 
   // 5. Responder 201 con mensaje de alta exitosa (RF-28)
   return res.status(201).json({ mensaje: 'Usuario dado de alta correctamente' });
@@ -126,9 +127,10 @@ async function resetPassword(req, res) {
     );
   }
 
-  // 3. Guardar la contraseña nueva con Argon2id e invalidar todas sus sesiones (RNF-1, RF-42)
+  // 3. Guardar la contraseña nueva con Argon2id e invalidar todas sus sesiones (RNF-1, RF-42);
+  //    al entrar con ella, la persona deberá crear la suya
   const hash = await hashPassword(password);
-  await UserModel.updatePassword(cuenta.id, hash);
+  await UserModel.updatePassword(cuenta.id, hash, true);
   await SessionModel.revocarSesionesDeUsuario(cuenta.id);
 
   // 4. Aviso de éxito sin ningún dato de acceso (RF-33); `cuentaPropia` avisa al frontend que su sesión ya se revocó

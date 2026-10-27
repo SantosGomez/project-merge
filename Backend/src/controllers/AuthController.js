@@ -1,10 +1,10 @@
 const jwt = require('jsonwebtoken');
-const { validateLoginInput } = require('../utils/validationUtils');
+const { validateLoginInput, validarCampoTexto } = require('../utils/validationUtils');
 const { generateAccessToken } = require('../utils/tokenUtils');
 const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
-const { verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
+const { hashPassword, verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
 const { nowLocal } = require('../utils/dateUtils');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
@@ -68,14 +68,60 @@ async function login(req, res) {
     // La sesión ya quedó registrada: se responde igual.
   }
 
-  // 6. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06)
+  // 6. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06), y si debe crear su contraseña
   return res.status(200).json({
     token,
     rol: cuenta.rol,
     id: cuenta.id,
     nombre: cuenta.nombre,
     correo: cuenta.correo,
+    debe_cambiar_contrasena: Boolean(cuenta.debe_cambiar_contrasena),
   });
+}
+
+/**
+ * La persona reemplaza la contraseña que le asignó el administrador por una propia.
+ * Solo funciona mientras la cuenta tiene el cambio pendiente: así una sesión abierta
+ * no puede cambiar la contraseña en cualquier momento sin pedir la actual.
+ * @param {Object} req - Petición Express con cuerpo { password }.
+ * @param {Object} res - Respuesta Express.
+ */
+async function cambiarContrasena(req, res) {
+  if (!req.debeCambiarContrasena) {
+    return res.status(403).json(
+      buildError('No hay un cambio de contraseña pendiente', 'contraseña', 'Pida al administrador que la restablezca')
+    );
+  }
+
+  // 1. La nueva sigue la misma regla que el alta: texto de al menos 8 caracteres (RF-37, RF-44)
+  const { password } = req.body;
+  const campo = validarCampoTexto(password, 'contraseña');
+  if (campo.estado === 'tipo_invalido') {
+    return res.status(400).json(
+      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe enviarse como texto')
+    );
+  }
+  if (campo.estado !== 'valido' || password.length < 8) {
+    return res.status(400).json(
+      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')
+    );
+  }
+
+  // 2. Debe ser distinta a la que asignó el administrador
+  const cuenta = await UserModel.findById(req.user.id);
+  if (await verifyPassword(password, cuenta.password_hash)) {
+    return res.status(400).json(
+      buildError(
+        'La contraseña nueva es igual a la asignada',
+        'contraseña',
+        'Escriba una contraseña distinta a la que le dio el administrador'
+      )
+    );
+  }
+
+  // 3. Guardar con Argon2id y quitar la marca; la sesión actual sigue abierta (RNF-1)
+  await UserModel.updatePassword(cuenta.id, await hashPassword(password), false);
+  return res.status(200).json({ mensaje: 'Contraseña actualizada correctamente' });
 }
 
 /**
@@ -112,4 +158,4 @@ async function logout(req, res) {
   return res.status(200).json({ mensaje: 'Sesión cerrada correctamente' });
 }
 
-module.exports = { login, logout };
+module.exports = { login, logout, cambiarContrasena };

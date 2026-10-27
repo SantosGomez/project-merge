@@ -21,6 +21,7 @@ const MINIMOS = {
   'appCors.test.js': 4,
   'authMiddleware.test.js': 13,
   'authRoutes.test.js': 9,
+  'cambioContrasena.test.js': 8,
   'caseModel.test.js': 8,
   'caseRoutes.test.js': 9,
   'counterRoutes.test.js': 6,

@@ -23,15 +23,16 @@ async function registrarUltimoAcceso(id, momento) {
 /**
  * Crea una cuenta con nombre y correo propios (login por correo) y devuelve su ID.
  * RF-27, RF-28.
- * @param {{ nombre: string, correo: string, passwordHash: string, rol: string }} datos
+ * @param {{ nombre: string, correo: string, passwordHash: string, rol: string, debeCambiarContrasena?: boolean }} datos
+ *   debeCambiarContrasena: la persona crea su propia contraseña tras el primer inicio de sesión.
  * @returns {Promise<number>} ID del usuario insertado.
  */
-async function create({ nombre, correo, passwordHash, rol }) {
+async function create({ nombre, correo, passwordHash, rol, debeCambiarContrasena = false }) {
   const ahora = formatLocalDate(nowLocal());
   const result = await query(
-    `INSERT INTO usuarios (nombre, correo, password_hash, rol, creado_en, actualizado_en)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [nombre, correo, passwordHash, rol, ahora, ahora]
+    `INSERT INTO usuarios (nombre, correo, password_hash, rol, creado_en, actualizado_en, debe_cambiar_contrasena)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [nombre, correo, passwordHash, rol, ahora, ahora, debeCambiarContrasena ? 1 : 0]
   );
   return result.insertId;
 }
@@ -96,9 +97,14 @@ async function findCounterById(id) {
  * Guarda la contraseña nueva (ya hasheada) de un usuario (RF-42).
  * @param {number} id - ID del usuario.
  * @param {string} hash - Contraseña hasheada con Argon2id.
+ * @param {boolean} debeCambiarContrasena - true si la asignó el administrador (la persona
+ *   debe crear la suya); false si la creó la propia persona.
  */
-async function updatePassword(id, hash) {
-  await query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [hash, id]);
+async function updatePassword(id, hash, debeCambiarContrasena) {
+  await query(
+    'UPDATE usuarios SET password_hash = ?, debe_cambiar_contrasena = ?, actualizado_en = ? WHERE id = ?',
+    [hash, debeCambiarContrasena ? 1 : 0, formatLocalDate(nowLocal()), id]
+  );
 }
 
 module.exports = {

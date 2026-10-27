@@ -12,8 +12,9 @@ const INACTIVIDAD_MINUTOS = 30;
  * @param {Object} req - Objeto de petición Express (o mock en tests).
  * @param {Object} res - Objeto de respuesta Express (o mock en tests).
  * @param {Function} next - Función siguiente del middleware.
+ * @param {boolean} permitirCambioPendiente - si deja pasar a una cuenta que aún debe crear su contraseña.
  */
-async function authenticateToken(req, res, next) {
+async function autenticar(req, res, next, permitirCambioPendiente) {
   // 1. Extraer token de la cabecera Authorization: Bearer <token>
   const authHeader = req.headers && req.headers.authorization;
   if (!authHeader) {
@@ -98,16 +99,35 @@ async function authenticateToken(req, res, next) {
     return;
   }
 
-  // 6. Adjuntar datos del usuario al request
+  // 6. Con la contraseña que asignó el administrador solo se puede crear la propia o cerrar sesión
+  if (sesion.debe_cambiar_contrasena && !permitirCambioPendiente) {
+    res.status(403).json(
+      buildError('Debe cambiar su contraseña', 'contraseña asignada', 'Cree su propia contraseña para continuar')
+    );
+    return;
+  }
+
+  // 7. Adjuntar datos del usuario al request
   req.user = {
     id: resultado.payload.id,
     rol: resultado.payload.rol,
   };
   // jti de la sesión, disponible para el cierre de sesión (RF-41)
   req.jti = jti;
+  req.debeCambiarContrasena = Boolean(sesion.debe_cambiar_contrasena);
 
-  // 7. Continuar al siguiente middleware o controlador
+  // 8. Continuar al siguiente middleware o controlador
   next();
 }
 
-module.exports = { authenticateToken };
+/** Autenticación de todas las rutas: bloquea a quien aún debe crear su contraseña. */
+async function authenticateToken(req, res, next) {
+  return autenticar(req, res, next, false);
+}
+
+/** Autenticación del cierre de sesión y del cambio de contraseña: deja pasar el cambio pendiente. */
+async function autenticarConCambioPendiente(req, res, next) {
+  return autenticar(req, res, next, true);
+}
+
+module.exports = { authenticateToken, autenticarConCambioPendiente };

@@ -371,14 +371,16 @@ async function testRestablecerConContrasenaInvalida() {
 
 // ---------- RF-42, criterio 44: cuenta de administrador, cuenta del seed y cuenta propia ----------
 // Usa su propio administrador: restablecer la cuenta propia revoca el token del solicitante.
-// contador_seed se deja con su hash y sus sesiones como estaban.
+// contador_seed se deja con su hash, su marca de cambio de contraseña y sus sesiones como estaban.
 async function testRestablecerAdministradorSeedYPropia() {
   const solicitante = await crearUsuarioDePrueba('administrador');
   const otroAdministrador = await crearUsuarioDePrueba('administrador');
   const tokenSolicitante = await iniciarSesion(servidor.puerto, solicitante.correo, solicitante.password);
   const nueva = 'NuevaClave2026';
 
-  const [seed] = await query('SELECT id, password_hash FROM usuarios WHERE correo = ?', ['contador_seed@prueba.local']);
+  const [seed] = await query('SELECT id, password_hash, debe_cambiar_contrasena FROM usuarios WHERE correo = ?', [
+    'contador_seed@prueba.local',
+  ]);
   assert.ok(seed, 'la cuenta contador_seed debe existir');
   const sesionesSeed = await query('SELECT jti, revocado FROM sesiones WHERE usuario_id = ?', [seed.id]);
   const tokensSeed = [];
@@ -402,7 +404,11 @@ async function testRestablecerAdministradorSeedYPropia() {
     await afirmarSesionCaducada(tokenSolicitante, 'cuenta propia');
     assert.strictEqual(await estadoDelLogin(solicitante.correo, nueva), 200, 'debe entrar con su contraseña nueva');
   } finally {
-    await query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [seed.password_hash, seed.id]);
+    await query('UPDATE usuarios SET password_hash = ?, debe_cambiar_contrasena = ? WHERE id = ?', [
+      seed.password_hash,
+      seed.debe_cambiar_contrasena,
+      seed.id,
+    ]);
     for (const sesion of sesionesSeed.filter((fila) => Number(fila.revocado) === 0)) {
       await query('UPDATE sesiones SET revocado = 0 WHERE jti = ?', [sesion.jti]);
     }

@@ -2,14 +2,19 @@ const { query } = require('../config/db');
 const { findById: findUserById } = require('./UserModel');
 
 /**
- * Obtiene una sesión por su token (jti).
+ * Obtiene una sesión por su token (jti), con la marca de cambio de contraseña de su cuenta.
  * Solo existen las sesiones que el inicio de sesión registró en la tabla `sesiones`.
  * Un fallo de la base de datos se propaga: quien llama decide la respuesta (RF-40).
  * @param {string} token - Identificador de la sesión (jti).
- * @returns {Promise<Object|null>} Datos de la sesión o null si no existe.
+ * @returns {Promise<Object|null>} Datos de la sesión (más `debe_cambiar_contrasena`) o null si no existe.
  */
 async function obtenerSesion(token) {
-  const rows = await query('SELECT * FROM sesiones WHERE jti = ?', [token]);
+  const rows = await query(
+    `SELECT s.*, u.debe_cambiar_contrasena
+     FROM sesiones s LEFT JOIN usuarios u ON u.id = s.usuario_id
+     WHERE s.jti = ?`,
+    [token]
+  );
   if (rows.length > 0) {
     return rows[0];
   }

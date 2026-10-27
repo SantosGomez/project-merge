@@ -145,7 +145,7 @@ async function testConsultaDeSesionFalla() {
   const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const respuesta = await conFalloDeBd(
-    (sql) => sql.startsWith('SELECT * FROM sesiones'),
+    (sql) => /^SELECT s\.\*[\s\S]*FROM sesiones s/.test(sql),
     () => peticion(servidor.puerto, 'GET', '/casos/mis-casos', undefined, token)
   );
 

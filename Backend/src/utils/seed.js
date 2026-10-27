@@ -28,6 +28,7 @@ async function crearTablasSiNoExisten() {
       creado_en DATETIME NOT NULL,
       actualizado_en DATETIME NULL,
       ultimo_acceso_en DATETIME NULL,
+      debe_cambiar_contrasena TINYINT(1) NOT NULL DEFAULT 0,
       UNIQUE KEY uq_usuarios_correo (correo)
     ) ENGINE=InnoDB
   `);
@@ -80,7 +81,8 @@ async function migrarUsuarios() {
       ADD COLUMN IF NOT EXISTS nombre VARCHAR(150) NULL AFTER id,
       ADD COLUMN IF NOT EXISTS correo VARCHAR(150) NULL AFTER nombre,
       ADD COLUMN IF NOT EXISTS actualizado_en DATETIME NULL AFTER creado_en,
-      ADD COLUMN IF NOT EXISTS ultimo_acceso_en DATETIME NULL AFTER actualizado_en
+      ADD COLUMN IF NOT EXISTS ultimo_acceso_en DATETIME NULL AFTER actualizado_en,
+      ADD COLUMN IF NOT EXISTS debe_cambiar_contrasena TINYINT(1) NOT NULL DEFAULT 0 AFTER ultimo_acceso_en
   `);
 
   if (await columnaUsuarioExiste()) {
