@@ -63,7 +63,10 @@ async function countCasesByStatus(req, res) {
  * @param {Object} res - Respuesta Express.
  */
 async function teamSummary(req, res) {
-  const porContador = await CaseModel.resumenPorContador(formatearFechaISO(nowLocal()));
+  const porContador = await CaseModel.resumenPorContador(
+    formatearFechaISO(nowLocal()),
+    { soloImportantes: pideSoloImportantes(req) }
+  );
   const equipo = { pendiente: 0, en_proceso: 0, finalizado: 0, abiertos: 0, vencidos: 0, alta_abiertos: 0 };
   for (const fila of porContador) {
     for (const campo of Object.keys(equipo)) equipo[campo] += fila[campo];

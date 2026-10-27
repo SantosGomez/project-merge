@@ -76,33 +76,36 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen))
   line-height: 1.25;
 }
 
-/* Tarjetas y dona en una fila; en pantallas angostas la dona baja debajo de las tarjetas. */
+/* Tarjetas y dona en una sola fila en escritorio; en pantallas angostas se adapta. */
 .resumen-equipo__contenido {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: 12px;
   min-width: 0;
 }
 
-.resumen-equipo__contenido > .dona-estados {
-  flex: 1 1 280px;
-}
-
-/* Una columna en celular; tres en cuanto caben. */
 .resumen-equipo__tarjetas {
-  flex: 3 1 480px;
-  align-content: start;
+  flex: 3 1 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
+  min-width: 0;
+}
+
+.resumen-equipo__contenido :deep(.dona-estados),
+.resumen-equipo__contenido > .dona-estados {
+  flex: 1.3 1 300px;
+  min-width: 280px;
 }
 
 .resumen-tarjeta {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--dg-borde);
   border-left: 4px solid var(--q-primary);
   border-radius: 12px;
@@ -114,6 +117,7 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen))
   flex-direction: column;
   gap: 4px;
   padding: 14px 16px;
+  flex: 1;
 }
 
 .resumen-tarjeta:focus-visible {
@@ -151,5 +155,26 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen))
   font-size: 0.85rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+  .resumen-equipo__contenido {
+    flex-wrap: wrap;
+  }
+
+  .resumen-equipo__tarjetas {
+    flex: 1 1 100%;
+  }
+
+  .resumen-equipo__contenido :deep(.dona-estados),
+  .resumen-equipo__contenido > .dona-estados {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .resumen-equipo__tarjetas {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

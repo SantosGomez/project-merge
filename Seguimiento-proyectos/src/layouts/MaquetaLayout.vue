@@ -201,20 +201,6 @@
 
     <q-page-container class="contenedor-paginas">
       <header v-if="$q.screen.gt.sm" class="page-header">
-        <q-btn
-          v-if="backRouteName && !accessDenied"
-          flat
-          no-caps
-          color="primary"
-          icon="arrow_back"
-          label="Volver"
-          class="control-touch"
-          :to="{ name: backRouteName }"
-          :aria-label="`Volver a ${backTitle}`"
-        >
-          <q-tooltip>Vuelve a {{ backTitle }}, la pantalla anterior del recorrido.</q-tooltip>
-        </q-btn>
-
         <h1 class="page-header__title">{{ pageTitle }}</h1>
       </header>
 

@@ -70,6 +70,7 @@ const descripcion = computed(
 .dona-estados {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 8px;
   min-width: 0;
   margin: 0;
@@ -91,17 +92,17 @@ const descripcion = computed(
   font-size: 0.9rem;
 }
 
-/* La leyenda baja debajo de la gráfica cuando no cabe al lado. */
+/* Gráfica y leyenda lado a lado de forma compacta */
 .dona-estados__cuerpo {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .dona-estados__grafica {
-  width: 120px;
-  height: 120px;
+  width: 90px;
+  height: 90px;
   flex: 0 0 auto;
 }
 

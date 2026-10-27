@@ -64,9 +64,11 @@ const CAMPOS_RESUMEN = ['pendiente', 'en_proceso', 'finalizado', 'abiertos', 've
  * Vencido = vencimiento anterior a `hoy` y no finalizado; alta abierta = prioridad Alta no finalizada.
  * Solo cuentan las cuentas con rol contador.
  * @param {string} hoy - Fecha AAAA-MM-DD de hoy en hora local.
+ * @param {{ soloImportantes?: boolean }} [opciones] - contar solo los casos marcados como importantes.
  * @returns {Promise<Array<{contador_id: number, pendiente: number, en_proceso: number, finalizado: number, abiertos: number, vencidos: number, alta_abiertos: number}>>}
  */
-async function resumenPorContador(hoy) {
+async function resumenPorContador(hoy, { soloImportantes = false } = {}) {
+  const filtroImportante = soloImportantes ? ' AND c.importante = 1' : '';
   const rows = await query(
     `SELECT u.id AS contador_id,
             SUM(c.estado = 'Pendiente') AS pendiente,
@@ -76,7 +78,7 @@ async function resumenPorContador(hoy) {
             SUM(c.estado <> 'Finalizado' AND c.fecha_vencimiento < ?) AS vencidos,
             SUM(c.estado <> 'Finalizado' AND c.prioridad = 'Alta') AS alta_abiertos
      FROM usuarios u
-     LEFT JOIN casos c ON c.contador_id = u.id
+     LEFT JOIN casos c ON c.contador_id = u.id${filtroImportante}
      WHERE u.rol = 'contador'
      GROUP BY u.id
      ORDER BY u.id`,

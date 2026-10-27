@@ -271,6 +271,31 @@ async function testCasosSoloImportantes() {
   assert.strictEqual(todos.body.casos.length, 4, 'sin el parámetro devuelve todos');
 }
 
+async function testResumenSoloImportantes() {
+  const contador = await contadorConImportantes();
+  const ruta = '/contadores/resumen';
+
+  const importantes = await peticion(servidor.puerto, 'GET', `${ruta}?importantes=true`, null, tokenAdmin);
+  const todos = await peticion(servidor.puerto, 'GET', ruta, null, tokenAdmin);
+
+  assert.strictEqual(importantes.statusCode, 200);
+  assert.strictEqual(todos.statusCode, 200);
+
+  const filaImportantes = importantes.body.por_contador.find((f) => f.contador_id === contador.id);
+  const filaTodos = todos.body.por_contador.find((f) => f.contador_id === contador.id);
+
+  assert.deepStrictEqual(
+    [filaImportantes.pendiente, filaImportantes.en_proceso, filaImportantes.finalizado, filaImportantes.abiertos],
+    [1, 1, 0, 2],
+    'con importantes=true el resumen solo cuenta los importantes'
+  );
+  assert.deepStrictEqual(
+    [filaTodos.pendiente, filaTodos.en_proceso, filaTodos.finalizado, filaTodos.abiertos],
+    [2, 1, 1, 3],
+    'sin el parámetro el resumen cuenta todos'
+  );
+}
+
 describe('rutas de contadores', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -322,4 +347,5 @@ describe('rutas de contadores', () => {
   test('el resumen del equipo es solo para el administrador', testResumenSoloAdministrador);
   test('los conteos con importantes=true cuentan solo los casos importantes', testConteosSoloImportantes);
   test('los casos con importantes=true devuelven solo los importantes', testCasosSoloImportantes);
+  test('el resumen con importantes=true cuenta solo los casos importantes', testResumenSoloImportantes);
 });
