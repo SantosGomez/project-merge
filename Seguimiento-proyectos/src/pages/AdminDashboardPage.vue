@@ -117,7 +117,9 @@
               :estado="estadoDetalle"
               :filas="filasDetalle"
               :paginacion="paginacionDetalle"
+              :guardando="guardandoPrioridad"
               @cambiar-pagina="(p) => (paginaDetalle = p)"
+              @cambiar-prioridad="cambiarPrioridad"
             />
           </div>
         </section>
@@ -159,7 +161,9 @@
               :estado="estadoDetalle"
               :filas="filasDetalle"
               :paginacion="paginacionDetalle"
+              :guardando="guardandoPrioridad"
               @cambiar-pagina="(p) => (paginaDetalle = p)"
+              @cambiar-prioridad="cambiarPrioridad"
             />
           </q-card-section>
         </q-card>
@@ -178,9 +182,12 @@ import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
+import { cambiarPrioridadComoAdmin } from '../services/caseService.js'
 import { getResumenEquipo } from '../services/counterService.js'
 import { useSessionStore } from '../stores/session.js'
 import { useCountersStore } from '../stores/counters.js'
+import { PRIORITY_LABELS } from '../utils/constants.js'
+import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { casoAFila, contadorAFila } from '../utils/filasVista.js'
 import { FILTROS_INICIALES, filtrarCasos, filtrarContadores, hoyLocal, paginar } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES } from '../utils/screenState.js'
@@ -188,8 +195,9 @@ import { SCREEN_STATES } from '../utils/screenState.js'
 /*
  * P-2 Dashboard del administrador (RF-11 a RF-15, RF-34 a RF-36, RF-38, RF-39, RNF-02,
  * RNF-03, RNF-08, RNF-09). Obtiene la lista de contadores y sus conteos del backend a
- * través del store, muestra el detalle del contador seleccionado y solo permite consultar:
- * no hay ningún control para cambiar estado ni prioridad (RF-13).
+ * través del store y muestra el detalle del contador seleccionado. El estado no se cambia
+ * aquí (RF-13); la prioridad sí: se confirma, el backend recalcula el vencimiento y avisa
+ * al contador.
  *
  * Al abrir la pantalla se repite la carga completa y no se muestran datos anteriores
  * (RF-34). Si la carga falla, el store descarta los conteos parciales y la selección;
@@ -275,6 +283,47 @@ const filtrarPorConteo = (contadorId, estado) => {
 
 /** Reintenta la carga completa; P-2 vuelve sin contador seleccionado (RF-36). */
 const reintentar = () => contadoresStore.reintentar()
+
+/** Mientras se guarda un cambio de prioridad no se aceptan otros. */
+const guardandoPrioridad = ref(false)
+
+/**
+ * Pide confirmación y cambia la prioridad del caso. El backend recalcula el vencimiento
+ * y avisa al contador; el detalle se actualiza sin recargarse y el resumen se vuelve a pedir.
+ * @param {Object} caso - fila de CasoItem (`casoAFila`).
+ * @param {string} prioridad - 'alta' | 'media' | 'baja'.
+ */
+const cambiarPrioridad = (caso, prioridad) => {
+  if (prioridad === caso.priority || guardandoPrioridad.value) return
+
+  const nombreContador = contadorSeleccionado.value?.nombre ?? 'el contador'
+  $q
+    .dialog({
+      title: 'Cambiar prioridad',
+      message:
+        `La prioridad de «${caso.client}» pasará de ${PRIORITY_LABELS[caso.priority]} a ` +
+        `${PRIORITY_LABELS[prioridad]}: se recalculará la fecha de vencimiento y se avisará a ${nombreContador}.`,
+      cancel: { label: 'Cancelar', flat: true, noCaps: true },
+      ok: { label: 'Cambiar prioridad', color: 'primary', unelevated: true, noCaps: true },
+      persistent: true,
+    })
+    .onOk(async () => {
+      guardandoPrioridad.value = true
+      try {
+        const actualizado = await cambiarPrioridadComoAdmin(caso.id, prioridad)
+        contadoresStore.reemplazarCasoDetalle(actualizado)
+        $q.notify({
+          type: 'positive',
+          message: `Prioridad actualizada. Ahora vence el ${fechaParaFormulario(actualizado.fecha_vencimiento)}. Se avisó a ${nombreContador}.`,
+        })
+        cargarResumen()
+      } catch (fallo) {
+        $q.notify({ type: 'negative', message: fallo?.mensaje ?? 'No se pudo cambiar la prioridad. Inténtalo de nuevo.' })
+      } finally {
+        guardandoPrioridad.value = false
+      }
+    })
+}
 
 /*
  * Tarjetas KPI del equipo: se piden aparte de la lista y con su propio estado, así un fallo

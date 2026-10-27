@@ -28,6 +28,8 @@
             {{ pageTitle }}
             <q-tooltip>{{ pageTitle }}</q-tooltip>
           </h1>
+
+          <CampanaAvisos v-if="session.esContador" clara />
         </div>
       </div>
     </q-header>
@@ -202,6 +204,7 @@
     <q-page-container class="contenedor-paginas">
       <header v-if="$q.screen.gt.sm" class="page-header">
         <h1 class="page-header__title">{{ pageTitle }}</h1>
+        <CampanaAvisos v-if="session.esContador" class="page-header__campana" />
       </header>
 
       <q-page v-if="session.sesionCaducada" class="access-page">
@@ -260,6 +263,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
 import AccessDenied from '../components/AccessDenied.vue'
+import CampanaAvisos from '../components/CampanaAvisos.vue'
 import AvisoSesionCaducada from '../components/AvisoSesionCaducada.vue'
 import { accessDenied } from '../router/accessState.js'
 import { useCasesStore } from '../stores/cases.js'
@@ -439,6 +443,11 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   padding: 20px 24px 0;
+}
+
+/* La campanita del contador va al extremo derecho del encabezado. */
+.page-header__campana {
+  margin-left: auto;
 }
 
 .page-header__title {

@@ -60,6 +60,24 @@
     </q-item-section>
 
     <q-item-section v-if="soloLectura" side class="caso-item__acciones">
+      <q-select
+        v-if="puedeCambiarPrioridad"
+        dense
+        outlined
+        :model-value="caso.priority"
+        :options="opcionesPrioridad"
+        option-label="label"
+        option-value="value"
+        emit-value
+        map-options
+        label="Prioridad"
+        :aria-label="`Cambiar la prioridad del caso de ${caso.client}`"
+        :disable="deshabilitado"
+        class="caso-item__estado"
+        @update:model-value="(prioridad) => emit('cambiar-prioridad', prioridad)"
+      >
+        <q-tooltip>Cambia la prioridad; se recalcula el vencimiento y se avisa al contador.</q-tooltip>
+      </q-select>
       <span class="caso-item__estado-fijo" tabindex="0">
         {{ STATUS_LABELS[caso.status] ?? caso.status }}
         <q-tooltip>Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.</q-tooltip>
@@ -106,13 +124,14 @@
 import { computed } from 'vue'
 
 import PriorityTag from './PriorityTag.vue'
-import { STATUSES, STATUS_LABELS } from '../utils/constants.js'
+import { PRIORITIES, PRIORITY_LABELS, STATUSES, STATUS_LABELS } from '../utils/constants.js'
 
 /*
  * Un caso de «Mis casos» como QItem: estrella de importante, datos del caso y acciones rápidas
  * (estado y Editar). La prioridad se ve como etiqueta y se cambia desde «Editar».
- * En `solo-lectura` (dashboard del administrador) no hay controles: el estado se muestra como texto
- * y, por ahora, no se muestran la estrella, «Importante», «Vencido» ni «En proceso desde».
+ * En `solo-lectura` (dashboard del administrador) el estado se muestra como texto y no se muestran
+ * la estrella, «Importante», «Vencido» ni «En proceso desde»; con `puede-cambiar-prioridad`
+ * aparece un selector de prioridad (el administrador la cambia y se avisa al contador).
  */
 const props = defineProps({
   /** Fila de `casoAFila` más `vencido` (boolean). */
@@ -130,13 +149,19 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /** En la vista de consulta, el administrador puede cambiar la prioridad. */
+  puedeCambiarPrioridad: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
 
-const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar'])
+const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar', 'cambiar-prioridad'])
 
 const opcionesEstado = STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s }))
+const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p }))
 </script>
 
 <style scoped>

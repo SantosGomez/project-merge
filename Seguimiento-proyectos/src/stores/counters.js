@@ -208,6 +208,17 @@ export const crearCountersStore = (dependencias = {}) => {
         }
       },
 
+      /**
+       * Pone en el detalle el caso que devolvió el backend tras cambiar su prioridad,
+       * sin volver a pedir el detalle. Un caso que no está en el detalle no se agrega.
+       * @param {Object} casoActualizado - caso traducido (con `id`).
+       */
+      reemplazarCasoDetalle(casoActualizado) {
+        this.casosDetalle = this.casosDetalle.map((caso) =>
+          caso.id === casoActualizado.id ? casoActualizado : caso,
+        )
+      },
+
       /** Quita la selección y su detalle sin tocar la lista (RF-36). */
       limpiarSeleccion() {
         this.contadorSeleccionadoId = null

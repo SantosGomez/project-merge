@@ -187,7 +187,24 @@ export const crearCaseService = (opciones = {}) => {
     return leerCaso(data, 'el caso actualizado')
   }
 
-  return { getMisCasos, crearCaso, actualizarCaso }
+  /**
+   * El administrador cambia la prioridad del caso de un contador (PATCH /casos/:id/prioridad).
+   * El backend recalcula el vencimiento y avisa al dueño del caso.
+   * @param {number} id - caso.
+   * @param {string} prioridad - 'alta' | 'media' | 'baja'.
+   * @returns {Promise<Object>} caso actualizado, ya traducido.
+   */
+  const cambiarPrioridadComoAdmin = async (id, prioridad) => {
+    const prioridadBackend = prioridadParaEnviar(prioridad)
+    if (prioridadBackend === null) {
+      throw errorDePrioridadInvalida()
+    }
+
+    const { data } = await api.patch(`/casos/${id}/prioridad`, { prioridad: prioridadBackend })
+    return leerCaso(data, 'el caso con la prioridad nueva')
+  }
+
+  return { getMisCasos, crearCaso, actualizarCaso, cambiarPrioridadComoAdmin }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -196,3 +213,4 @@ const servicioPorDefecto = crearCaseService()
 export const getMisCasos = servicioPorDefecto.getMisCasos
 export const crearCaso = servicioPorDefecto.crearCaso
 export const actualizarCaso = servicioPorDefecto.actualizarCaso
+export const cambiarPrioridadComoAdmin = servicioPorDefecto.cambiarPrioridadComoAdmin

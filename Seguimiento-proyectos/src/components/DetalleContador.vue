@@ -1,8 +1,8 @@
 <template>
   <div class="detalle-contador">
     <p v-if="contador" class="detalle-contador__ayuda">
-      Casos importantes de {{ contador.nombre }}. Esta vista es de solo consulta: no permite cambiar
-      el estado ni la prioridad.
+      Casos importantes de {{ contador.nombre }}. Puedes cambiar la prioridad de cada caso: se
+      recalcula su vencimiento y se avisa a {{ contador.nombre }}. El estado solo lo cambia el contador.
     </p>
     <p v-else class="detalle-contador__ayuda">
       Selecciona un contador de la lista para ver el cliente, el estado y la prioridad de cada uno
@@ -38,7 +38,15 @@
       </p>
 
       <q-list v-else bordered separator class="detalle-contador__casos" aria-label="Casos importantes del contador">
-        <CasoItem v-for="caso in filas" :key="caso.id" :caso="caso" solo-lectura />
+        <CasoItem
+          v-for="caso in filas"
+          :key="caso.id"
+          :caso="caso"
+          solo-lectura
+          puede-cambiar-prioridad
+          :deshabilitado="guardando"
+          @cambiar-prioridad="(prioridad) => emit('cambiar-prioridad', caso, prioridad)"
+        />
       </q-list>
 
       <div v-if="paginacion.totalPaginas > 0" class="detalle-contador__paginacion">
@@ -69,7 +77,8 @@ import { SCREEN_STATES } from '../utils/screenState.js'
 
 /*
  * Detalle de casos importantes del contador seleccionado en el dashboard del administrador
- * (RF-13, RF-14). Solo pinta: la página decide el contador, filtra y pagina. Se usa en el panel
+ * (RF-13, RF-14). Solo pinta: la página decide el contador, filtra, pagina y guarda el cambio de
+ * prioridad (este componente solo lo emite). Se usa en el panel
  * de escritorio y en el diálogo de celular y tableta, así el detalle se escribe una sola vez.
  */
 defineProps({
@@ -81,12 +90,14 @@ defineProps({
   filas: { type: Array, default: () => [] },
   /** Resultado de `paginar`: `{ pagina, totalPaginas, texto }`. */
   paginacion: { type: Object, required: true },
+  /** Mientras se guarda un cambio de prioridad, no se aceptan otros. */
+  guardando: { type: Boolean, default: false },
 })
 
 /** Filtro de estado del detalle; lo comparten los chips y los conteos de la fila del contador. */
 const filtros = defineModel('filtros', { type: Object, required: true })
 
-const emit = defineEmits(['cambiar-pagina'])
+const emit = defineEmits(['cambiar-pagina', 'cambiar-prioridad'])
 
 const ESTADOS_DETALLE = ['todos', 'pendiente', 'en_proceso', 'finalizado']
 </script>

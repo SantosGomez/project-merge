@@ -368,3 +368,31 @@ test('actualizarCaso envía importante (también false) y solo ese campo', async
 
   assert.deepEqual(api.llamadas[0].cuerpo, { importante: false })
 })
+
+// --- cambiarPrioridadComoAdmin (el administrador cambia la prioridad y se avisa) ---
+
+test('cambiarPrioridadComoAdmin hace PATCH /casos/:id/prioridad y devuelve el caso traducido', async () => {
+  const api = crearApiFalsa({
+    PATCH: async () => ({
+      data: {
+        mensaje: 'Prioridad actualizada correctamente',
+        caso: casoDeBackend({ prioridad: 'Alta', fecha_vencimiento: '2026-11-09 00:00:00' }),
+      },
+    }),
+  })
+  const servicio = crearCaseService({ api })
+
+  const caso = await servicio.cambiarPrioridadComoAdmin(9, 'alta')
+
+  assert.deepEqual(api.llamadas, [{ metodo: 'PATCH', url: '/casos/9/prioridad', cuerpo: { prioridad: 'Alta' } }])
+  assert.equal(caso.prioridad, 'alta')
+  assert.equal(caso.fecha_vencimiento, '2026-11-09 00:00:00')
+})
+
+test('cambiarPrioridadComoAdmin rechaza con tres partes y no llama al backend si la prioridad es desconocida', async () => {
+  const api = crearApiFalsa()
+  const servicio = crearCaseService({ api })
+
+  await assert.rejects(() => servicio.cambiarPrioridadComoAdmin(9, 'urgente'), esErrorDeTresPartes('datos_invalidos'))
+  assert.equal(api.llamadas.length, 0)
+})

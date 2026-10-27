@@ -423,3 +423,25 @@ test('un error tard�o tras reiniciar no deja error (guardia de versi�n)', as
   assert.deepEqual(store.contadores, [])
   assert.equal(store.error, null)
 })
+
+// --- prioridad cambiada por el administrador ---------------------------------
+
+test('reemplazarCasoDetalle pone el caso actualizado en el detalle sin recargarlo', async () => {
+  const servicio = crearServicioFalso({
+    contadores: [{ id: 3, nombre: 'ana' }],
+    casos: { 3: [caso({ id: 9, prioridad: 'media' }), caso({ id: 10, cliente: 'Otro' })] },
+  })
+  const store = montarStore(servicio)
+  await store.seleccionarContador(3)
+  const llamadasAntes = servicio.llamadas.length
+
+  store.reemplazarCasoDetalle(caso({ id: 9, prioridad: 'alta', fecha_vencimiento: '2026-11-09 00:00:00' }))
+
+  assert.equal(store.casosDetalle[0].prioridad, 'alta')
+  assert.equal(store.casosDetalle[0].fecha_vencimiento, '2026-11-09 00:00:00')
+  assert.equal(store.casosDetalle[1].cliente, 'Otro', 'los demás casos no cambian')
+  assert.equal(servicio.llamadas.length, llamadasAntes, 'no vuelve a pedir el detalle')
+
+  store.reemplazarCasoDetalle(caso({ id: 999 }))
+  assert.equal(store.casosDetalle.length, 2, 'un caso que no está en el detalle no se agrega')
+})
