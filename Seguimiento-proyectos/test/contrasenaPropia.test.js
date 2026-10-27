@@ -44,9 +44,21 @@ describe('Página «Crea tu contraseña»', () => {
     assert.match(pagina, /watch\(\s*\(\) => form\.nueva,[\s\S]*?confirmacionInput\.value\?\.validate\(\)/)
   })
 
-  it('muestra visualmente cuando las contraseñas coinciden', () => {
-    assert.match(plantilla, /<q-icon[^>]*v-if="coinciden"[^>]*name="check_circle"[^>]*aria-label="Las contraseñas coinciden"/)
+  it('cuando coinciden, los dos campos muestran palomita, borde y texto en verde', () => {
+    const iconos = plantilla.match(/<q-icon[^>]*v-if="coinciden"[^>]*name="check_circle"[^>]*color="dg-exito-oscuro"/g) ?? []
+    assert.equal(iconos.length, 2, 'una palomita en cada campo')
+    assert.equal(
+      (plantilla.match(/:class="\{ 'cambio-form__control--coinciden': coinciden \}"/g) ?? []).length,
+      2,
+      'los dos campos se marcan en verde',
+    )
     assert.match(plantilla, /:hint="coinciden \? 'Las contraseñas coinciden\.' : undefined"/)
+    assert.match(pagina, /\.cambio-form__control--coinciden :deep\(\.q-field__control::before\)[\s\S]*?var\(--dg-exito-oscuro\)/)
+    assert.match(pagina, /\.cambio-form__control--coinciden :deep\(\.q-field__bottom\)[\s\S]*?var\(--dg-exito-oscuro\)/)
+  })
+
+  it('el verde solo aparece si además la contraseña es válida (nunca junto a un error)', () => {
+    assert.match(pagina, /const coinciden = computed\(\s*\(\) =>\s*form\.confirmacion\.trim\(\) !== '' && validarContrasenaNueva\(form\.nueva, form\.confirmacion\)\.valido/)
   })
 
   it('guarda con crearContrasenaPropia', () => {

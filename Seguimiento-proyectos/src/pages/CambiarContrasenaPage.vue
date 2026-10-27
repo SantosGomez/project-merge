@@ -26,11 +26,13 @@
           ref="nuevaInput"
           v-model="form.nueva"
           class="cambio-form__control"
+          :class="{ 'cambio-form__control--coinciden': coinciden }"
           label="Contraseña nueva"
           :type="verNueva ? 'text' : 'password'"
           autocomplete="new-password"
           autofocus
           outlined
+          :color="coinciden ? 'dg-exito-oscuro' : undefined"
           :rules="[reglaNueva]"
           lazy-rules
           @update:model-value="alEscribir"
@@ -39,6 +41,13 @@
             <q-icon name="lock" aria-hidden="true" />
           </template>
           <template #append>
+            <q-icon
+              v-if="coinciden"
+              name="check_circle"
+              color="dg-exito-oscuro"
+              role="img"
+              aria-label="Las contraseñas coinciden"
+            />
             <q-btn
               class="cambio-form__ver"
               flat
@@ -69,10 +78,12 @@
           ref="confirmacionInput"
           v-model="form.confirmacion"
           class="cambio-form__control"
+          :class="{ 'cambio-form__control--coinciden': coinciden }"
           label="Confirmar contraseña"
           :type="verConfirmacion ? 'text' : 'password'"
           autocomplete="new-password"
           outlined
+          :color="coinciden ? 'dg-exito-oscuro' : undefined"
           :rules="[reglaConfirmacion]"
           :hint="coinciden ? 'Las contraseñas coinciden.' : undefined"
           @update:model-value="alEscribir"
@@ -191,11 +202,12 @@ const reglaConfirmacion = (valor) =>
     }, ESPERA_CONFIRMACION_MS)
   })
 
-/** Las dos contraseñas están escritas y son iguales (aviso visual en verde). */
+/**
+ * Las dos contraseñas son iguales y válidas: los campos se marcan en verde.
+ * Exige que todo sea válido para que el verde nunca aparezca junto a un error.
+ */
 const coinciden = computed(
-  () =>
-    form.confirmacion.trim() !== '' &&
-    validarContrasenaNueva(form.nueva, form.confirmacion).errores.confirmacion === null,
+  () => form.confirmacion.trim() !== '' && validarContrasenaNueva(form.nueva, form.confirmacion).valido,
 )
 
 // Si cambia la nueva después de confirmar, la confirmación se vuelve a revisar.
@@ -316,6 +328,15 @@ const salir = async () => {
 
 .cambio-form__ver {
   color: var(--dg-texto-secundario);
+}
+
+/* Contraseñas iguales y válidas: borde y texto de ayuda en verde. */
+.cambio-form__control--coinciden :deep(.q-field__control::before) {
+  border-color: var(--dg-exito-oscuro);
+}
+
+.cambio-form__control--coinciden :deep(.q-field__bottom) {
+  color: var(--dg-exito-oscuro);
 }
 
 .cambio-form__help-icon {
