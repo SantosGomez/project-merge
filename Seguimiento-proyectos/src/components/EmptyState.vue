@@ -1,23 +1,25 @@
 <template>
-  <section class="empty-state" role="status" :aria-labelledby="titleId">
-    <h2 :id="titleId" class="empty-state__title">{{ title }}</h2>
-    <p class="empty-state__message">{{ message }}</p>
+  <q-card flat class="empty-state" role="status" :aria-labelledby="titleId">
+    <q-card-section>
+      <h2 :id="titleId" class="empty-state__title">{{ title }}</h2>
+      <p class="empty-state__message">{{ message }}</p>
 
-    <div v-if="$slots.action" class="empty-state__action">
-      <slot name="action" />
-    </div>
+      <div v-if="$slots.action" class="empty-state__action">
+        <slot name="action" />
+      </div>
 
-    <!-- Control de acción opcional sin slot, para pantallas que solo necesitan un botón. -->
-    <div v-else-if="actionLabel" class="empty-state__action">
-      <q-btn
-        class="empty-state__button control-touch"
-        color="primary"
-        no-caps
-        :label="actionLabel"
-        @click="emit('action')"
-      />
-    </div>
-  </section>
+      <!-- Control de acción opcional sin slot, para pantallas que solo necesitan un botón. -->
+      <div v-else-if="actionLabel" class="empty-state__action">
+        <q-btn
+          class="empty-state__button control-touch"
+          color="primary"
+          no-caps
+          :label="actionLabel"
+          @click="emit('action')"
+        />
+      </div>
+    </q-card-section>
+  </q-card>
 </template>
 
 <script setup>
@@ -53,23 +55,23 @@ const titleId = useId()
 
 <style scoped>
 .empty-state {
-  padding: 24px 16px;
-  border: 1px dashed #b9c4d0;
+  padding: 8px 0;
+  border: 1px dashed var(--dg-borde-discontinuo);
   border-radius: 12px;
-  background: #f7f9fc;
+  background: var(--dg-fondo-panel);
   text-align: center;
 }
 
 .empty-state__title {
   margin: 0 0 8px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.15rem;
 }
 
 .empty-state__message {
   max-width: 40em;
   margin: 0 auto;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
   line-height: 1.5;
 }
@@ -85,7 +87,7 @@ const titleId = useId()
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-8). */
 .empty-state__button:focus-visible {
-  outline: 3px solid #0b5cad !important;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 </style>

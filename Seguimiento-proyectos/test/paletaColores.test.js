@@ -46,6 +46,8 @@ const NOMBRES = [
   'info-texto', 'info-fondo', 'info-borde',
   'exito-oscuro', 'exito-borde', 'error-campo',
   'texto-claro', 'texto-claro-tenue',
+  // Rebanada 3: texto y borde suave del aviso de error de carga (ErrorState)
+  'error-texto', 'error-borde-suave',
 ]
 
 test('la paleta $dg-colores define cada color por su papel en formato #rrggbb', () => {
@@ -74,6 +76,7 @@ const PARES_DE_TEXTO = [
   ['prioridad-baja', 'prioridad-baja-fondo'],
   ['texto-secundario', 'neutro-fondo'], ['aviso-texto', 'aviso-fondo'], ['info-texto', 'info-fondo'],
   ['exito-oscuro', 'exito-fondo'], ['error-oscuro', 'error-fondo'], ['error-campo', 'superficie'],
+  ['error-texto', 'error-fondo'],
 ]
 
 // Textos del menú lateral sobre su fondo oscuro ($primary de Quasar).

@@ -15,6 +15,9 @@ const MIGRADOS = [
   'components/AvisoSesionCaducada.vue',
   'pages/LoginPage.vue',
   'layouts/MaquetaLayout.vue',
+  // Rebanada 3: avisos de vacío y de error de carga
+  'components/EmptyState.vue',
+  'components/ErrorState.vue',
 ]
 
 describe('Archivos migrados a Quasar', () => {
@@ -49,5 +52,22 @@ describe('Rebanada 2: piezas pequeñas', () => {
       assert.match(plantilla, /<q-list[^>]*dense/, `${ruta}: lista de Quasar`)
       assert.equal((plantilla.match(/<q-item[\s>]/g) ?? []).length, 3, `${ruta}: los tres puntos de ayuda`)
     }
+  })
+})
+
+describe('Rebanada 3: avisos de vacío y de error', () => {
+  it('EmptyState es un q-card plano que se anuncia como estado, con su título enlazado', () => {
+    const plantilla = leer('components/EmptyState.vue').split('<script')[0]
+    assert.match(plantilla, /<q-card[^>]*\bflat\b/)
+    assert.match(plantilla, /<q-card[^>]*role="status"/)
+    assert.match(plantilla, /<q-card[^>]*:aria-labelledby="titleId"/)
+    assert.match(plantilla, /<q-card-section/)
+  })
+
+  it('ErrorState es un q-banner que se anuncia como alerta, con el reintento en su ranura de acción', () => {
+    const plantilla = leer('components/ErrorState.vue').split('<script')[0]
+    assert.match(plantilla, /<q-banner[^>]*role="alert"/)
+    assert.match(plantilla, /<q-banner[^>]*:aria-labelledby="titleId"/)
+    assert.match(plantilla, /<template #action>[\s\S]*@click="emit\('retry'\)"/)
   })
 })

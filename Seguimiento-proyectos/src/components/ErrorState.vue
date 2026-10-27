@@ -1,5 +1,5 @@
 <template>
-  <section class="error-state" role="alert" :aria-labelledby="titleId">
+  <q-banner class="error-state" role="alert" :aria-labelledby="titleId">
     <h2 :id="titleId" class="error-state__title">{{ title }}</h2>
 
     <!--
@@ -27,15 +27,17 @@
       </p>
     </template>
 
-    <q-btn
-      class="error-state__button control-touch"
-      color="primary"
-      no-caps
-      icon="refresh"
-      :label="retryLabel"
-      @click="emit('retry')"
-    />
-  </section>
+    <template #action>
+      <q-btn
+        class="error-state__button control-touch"
+        color="primary"
+        no-caps
+        icon="refresh"
+        :label="retryLabel"
+        @click="emit('retry')"
+      />
+    </template>
+  </q-banner>
 </template>
 
 <script setup>
@@ -73,37 +75,46 @@ const mensajeCompleto = computed(() => {
 <style scoped>
 .error-state {
   padding: 24px 16px;
-  border: 1px solid #e6b4b8;
-  border-left: 6px solid #a3231b;
+  border: 1px solid var(--dg-error-borde-suave);
+  border-left: 6px solid var(--dg-error);
   border-radius: 12px;
-  background: #fdecea;
+  background: var(--dg-error-fondo);
+}
+
+/* La ranura de acción de q-banner va a la derecha; el botón queda alineado al texto. */
+.error-state :deep(.q-banner__actions) {
+  justify-content: flex-start;
+  padding-left: 0;
+}
+
+.error-state :deep(.q-banner__actions .q-btn) {
+  margin: 12px 0 0;
 }
 
 .error-state__title {
   margin: 0 0 12px;
-  color: #7a1f1a;
+  color: var(--dg-error-oscuro);
   font-size: 1.15rem;
 }
 
 .error-state__part {
   margin: 0 0 8px;
-  color: #4a2c29;
+  color: var(--dg-error-texto);
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
 .error-state__part-label {
-  color: #7a1f1a;
+  color: var(--dg-error-oscuro);
 }
 
 .error-state__button {
   min-width: 44px;
   min-height: 44px;
-  margin-top: 12px;
 }
 
 .error-state__button:focus-visible {
-  outline: 3px solid #0b5cad !important;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 </style>
