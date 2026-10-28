@@ -174,9 +174,23 @@ export default defineConfig((/* ctx */) => {
       // manifestFilename: 'manifest.json',
       // extendPWAManifestJson (json) {},
       // useCredentialsForManifestTag: true,
-      // injectPWAMetaTags: false,
+      // Etiquetas del head sin los íconos de Quasar (mask-icon y apple 120/152/167);
+      // el apple-touch-icon de 180 px ya está en index.html.
+      injectPWAMetaTags ({ pwaManifest }) {
+        return (
+          `<meta name="theme-color" content="${pwaManifest.theme_color}">` +
+          '<meta name="mobile-web-app-capable" content="yes">' +
+          '<meta name="apple-mobile-web-app-capable" content="yes">' +
+          '<meta name="apple-mobile-web-app-status-bar-style" content="default">' +
+          `<meta name="apple-mobile-web-app-title" content="${pwaManifest.short_name}">`
+        )
+      },
       // extendPWACustomSWConf (rolldownConf) {},
-      // extendPWAGenerateSWOptions (cfg) {},
+      // La API siempre va a la red (nunca devuelve index.html) y los logos (8 MB) no se precargan.
+      extendPWAGenerateSWOptions (cfg) {
+        cfg.navigateFallbackDenylist.push(/^\/api\//)
+        cfg.globIgnores.push('logos/**', '**/Thumbs.db')
+      },
       // extendPWAInjectManifestOptions (cfg) {},
       // extendPWASwTsConfig (tsConfig) {}
     },
