@@ -51,3 +51,19 @@ export const fechaParaFormulario = (fecha) => {
   const iso = typeof fecha === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha.trim()) : null
   return iso ? `${iso[3]}-${iso[2]}-${iso[1]}` : ''
 }
+
+/**
+ * Días que el calendario del vencimiento deja elegir: desde la fecha de inicio en adelante
+ * (sin inicio, desde hoy). Si el inicio está a medio escribir no bloquea nada; al guardar
+ * se valida igual.
+ * @param {string} dia - día del calendario q-date en AAAA/MM/DD.
+ * @param {string} fechaInicio - fecha de inicio del formulario (DD-MM-AAAA o vacía).
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @returns {boolean}
+ */
+export const diaPermitidoParaVencimiento = (dia, fechaInicio, hoy) => {
+  const textoInicio = typeof fechaInicio === 'string' ? fechaInicio.trim() : ''
+  const inicio = textoInicio ? fechaADominioBackend(textoInicio) : hoy
+  if (!inicio) return true
+  return dia.replaceAll('/', '-') >= inicio
+}

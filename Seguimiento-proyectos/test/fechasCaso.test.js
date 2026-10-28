@@ -6,7 +6,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { fechaADominioBackend, fechaParaFormulario } from '../src/utils/fechasCaso.js'
+import { diaPermitidoParaVencimiento, fechaADominioBackend, fechaParaFormulario } from '../src/utils/fechasCaso.js'
 
 describe('fechaADominioBackend', () => {
   it('convierte el formato del formulario DD-MM-AAAA al de la base AAAA-MM-DD', () => {
@@ -54,5 +54,19 @@ describe('fechaParaFormulario', () => {
     assert.equal(fechaParaFormulario(null), '')
     assert.equal(fechaParaFormulario(undefined), '')
     assert.equal(fechaParaFormulario('mañana'), '')
+  })
+})
+
+describe('diaPermitidoParaVencimiento (calendario del vencimiento)', () => {
+  it('el calendario entrega AAAA/MM/DD: deja elegir desde la fecha de inicio en adelante', () => {
+    assert.equal(diaPermitidoParaVencimiento('2026/12/01', '01-12-2026', '2026-10-28'), true, 'el mismo día vale')
+    assert.equal(diaPermitidoParaVencimiento('2027/01/15', '01-12-2026', '2026-10-28'), true)
+    assert.equal(diaPermitidoParaVencimiento('2026/11/30', '01-12-2026', '2026-10-28'), false)
+  })
+
+  it('sin fecha de inicio compara con hoy, y con un inicio a medio escribir no bloquea nada', () => {
+    assert.equal(diaPermitidoParaVencimiento('2026/10/27', '', '2026-10-28'), false)
+    assert.equal(diaPermitidoParaVencimiento('2026/10/28', '  ', '2026-10-28'), true)
+    assert.equal(diaPermitidoParaVencimiento('2020/01/01', '01-12-20', '2026-10-28'), true)
   })
 })

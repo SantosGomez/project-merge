@@ -458,6 +458,22 @@ describe('Editar caso — CaseFormDialog en modo edición', () => {
     assert.match(caseFormSource, /fechaVencimiento\.value = fechaParaFormulario\(caso\?\.fecha_vencimiento\)/)
   })
 
+  it('las dos fechas se pueden elegir en un calendario q-date (DD-MM-YYYY) o escribir a mano', () => {
+    for (const [campo, modelo] of [['fecha-inicio-field', 'fechaInicio'], ['fecha-vencimiento-field', 'fechaVencimiento']]) {
+      const inicio = caseFormSource.indexOf(`for="${campo}"`)
+      const grupo = caseFormSource.slice(inicio, caseFormSource.indexOf('</q-input>', inicio))
+      assert.match(grupo, /<q-icon\s[^>]*name="event"[\s\S]*?<q-popup-proxy[\s\S]*?<q-date/, `${campo}: ícono que abre el calendario`)
+      assert.match(grupo, new RegExp(`<q-date[^>]*v-model="${modelo}"[^>]*mask="DD-MM-YYYY"`), `${campo}: mismo formato del campo`)
+      assert.match(grupo, /aria-label="Abrir calendario/, `${campo}: nombre accesible`)
+      assert.match(grupo, /<q-tooltip>/, `${campo}: tooltip del ícono`)
+      assert.match(grupo, /v-close-popup/, `${campo}: botón para cerrar el calendario`)
+    }
+    assert.match(caseFormSource, /:options="permitirVencimiento"/, 'el calendario del vencimiento bloquea días antes del inicio')
+    assert.match(caseFormSource, /:default-year-month="mesInicialVencimiento"/, 'y abre en el mes de la fecha de inicio')
+    assert.match(caseFormSource, /:breakpoint="700"/, 'en pantallas chicas se abre centrado')
+    assert.match(caseFormSource, /diaPermitidoParaVencimiento\(dia, fechaInicio\.value, hoyLocal\(\)\)/)
+  })
+
   it('la fecha de inicio ya no lleva el asterisco de obligatorio en el registro', () => {
     assert.doesNotMatch(caseFormSource, /<span aria-label="opcional">\*<\/span>/)
     assert.match(caseFormSource, /La fecha de inicio es obligatoria al editar/)

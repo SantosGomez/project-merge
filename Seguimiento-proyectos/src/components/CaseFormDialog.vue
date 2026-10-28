@@ -97,7 +97,31 @@
               :error="!!errorDeCampo('fecha_inicio_invalido')"
               :error-message="errorDeCampo('fecha_inicio_invalido')"
               @update:model-value="clearFormError()"
-            />
+            >
+              <template #append>
+                <q-icon
+                  name="event"
+                  class="registro-caso__calendario-icono"
+                  tabindex="0"
+                  role="button"
+                  aria-label="Abrir calendario de la fecha de inicio"
+                >
+                  <q-tooltip>Elegir la fecha de inicio en el calendario.</q-tooltip>
+                  <q-popup-proxy cover :breakpoint="700" transition-show="scale" transition-hide="scale">
+                    <q-date
+                      v-model="fechaInicio"
+                      mask="DD-MM-YYYY"
+                      today-btn
+                      @update:model-value="clearFormError()"
+                    >
+                      <div class="row justify-end">
+                        <q-btn v-close-popup label="Listo" color="primary" flat no-caps />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
             <p id="fecha-inicio-help" class="form-help">{{ textos.ayudaFecha }}</p>
           </div>
 
@@ -121,6 +145,28 @@
               @update:model-value="clearFormError()"
             >
               <template #append>
+                <q-icon
+                  name="event"
+                  class="registro-caso__calendario-icono"
+                  tabindex="0"
+                  role="button"
+                  aria-label="Abrir calendario de la fecha de vencimiento"
+                >
+                  <q-tooltip>Elegir la fecha de vencimiento en el calendario.</q-tooltip>
+                  <q-popup-proxy cover :breakpoint="700" transition-show="scale" transition-hide="scale">
+                    <q-date
+                      v-model="fechaVencimiento"
+                      mask="DD-MM-YYYY"
+                      :options="permitirVencimiento"
+                      :default-year-month="mesInicialVencimiento"
+                      @update:model-value="clearFormError()"
+                    >
+                      <div class="row justify-end">
+                        <q-btn v-close-popup label="Listo" color="primary" flat no-caps />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </q-icon>
                 <q-icon
                   name="info"
                   class="registro-caso__ayuda-icono"
@@ -274,7 +320,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import ErrorState from './ErrorState.vue'
 import PriorityTag from './PriorityTag.vue'
 import { CASE_ERROR_CODES, cambiosDelCaso } from '../utils/caseRules.js'
-import { fechaParaFormulario } from '../utils/fechasCaso.js'
+import { diaPermitidoParaVencimiento, fechaADominioBackend, fechaParaFormulario } from '../utils/fechasCaso.js'
 import { PRIORITIES, PRIORITY_LABELS, STATUS_LABELS, STATUSES, MAX_DESCRIPCION_LENGTH, MAX_OBSERVACIONES_LENGTH } from '../utils/constants.js'
 import { prioridadABackend } from '../utils/traduccionBackend.js'
 import { hoyLocal } from '../utils/filtrosCasos.js'
@@ -358,6 +404,15 @@ const fechaVencimiento = ref('')
 const descripcion = ref('')
 const observaciones = ref('')
 const importante = ref(false)
+
+// En el calendario del vencimiento solo se eligen días desde la fecha de inicio (o hoy).
+const permitirVencimiento = (dia) => diaPermitidoParaVencimiento(dia, fechaInicio.value, hoyLocal())
+
+// Sin vencimiento elegido, el calendario abre en el mes de la fecha de inicio (o el actual): AAAA/MM.
+const mesInicialVencimiento = computed(() => {
+  const inicio = fechaADominioBackend(fechaInicio.value) ?? hoyLocal()
+  return inicio.slice(0, 7).replace('-', '/')
+})
 
 // Solo lo que cambió respecto al caso guardado (vacío en el registro).
 const cambios = computed(() =>
@@ -680,6 +735,11 @@ const submitCase = async () => {
   min-height: 44px;
   color: var(--dg-texto);
   font-weight: 600;
+}
+
+.registro-caso__calendario-icono {
+  cursor: pointer;
+  color: var(--dg-acento);
 }
 
 .registro-caso__ayuda-icono {
