@@ -318,6 +318,18 @@ describe('Login por correo — verificación estática de P-1', () => {
     assert.match(login, /const verContrasena = ref\(false\)/, 'empieza oculta')
   })
 
+  it('tiene la casilla «Mantener sesión iniciada», desmarcada, con tooltip, y la envía al iniciar sesión', () => {
+    const plantilla = login.split('<script')[0]
+    const casilla = plantilla.slice(plantilla.indexOf('<q-checkbox'), plantilla.indexOf('</q-checkbox>'))
+    assert.match(casilla, /v-model="mantenerSesion"/)
+    assert.match(casilla, /label="Mantener sesión iniciada"/)
+    assert.match(casilla, /<q-tooltip>[\s\S]*7 días[\s\S]*<\/q-tooltip>/, 'el tooltip explica cuánto dura')
+    assert.ok(plantilla.indexOf('<q-checkbox') > plantilla.indexOf('ref="passwordInput"'), 'va después de la contraseña')
+    assert.ok(plantilla.indexOf('<q-checkbox') < plantilla.indexOf('type="submit"'), 'y antes del botón')
+    assert.match(login, /const mantenerSesion = ref\(false\)/, 'empieza desmarcada')
+    assert.match(login, /sesion\.iniciarSesion\(form\.username\.trim\(\), form\.password\.trim\(\), mantenerSesion\.value\)/)
+  })
+
   it('los avisos hablan de correo, no de usuario', () => {
     assert.ok(login.includes('Falta el correo. Escríbelo para iniciar sesión.'), 'aviso de campo vacío')
     assert.ok(

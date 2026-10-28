@@ -6,17 +6,24 @@ const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 const { hashPassword, verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
 const { nowLocal } = require('../utils/dateUtils');
-const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
+const { JWT_SECRET, JWT_EXPIRES_IN, JWT_EXPIRES_IN_PERSISTENTE } = require('../config/jwt');
 
 /**
  * Inicio de sesión con correo: valida credenciales, genera token JWT, registra sesión,
- * guarda el último acceso y devuelve token, rol, id, nombre y correo.
+ * guarda el último acceso y devuelve token, rol, id, nombre, correo y si la sesión es persistente.
+ * Con `mantener_sesion: true` la sesión aguanta 7 días sin uso y el token dura 30 días.
  * RF-01, RF-02, RF-03, RF-06.
- * @param {Object} req - Petición Express con cuerpo { correo, password }.
+ * @param {Object} req - Petición Express con cuerpo { correo, password, mantener_sesion? }.
  * @param {Object} res - Respuesta Express.
  */
 async function login(req, res) {
-  const { correo, password } = req.body;
+  const { correo, password, mantener_sesion: mantenerSesion } = req.body;
+
+  // «Mantener sesión iniciada» es opcional, pero si viene debe ser un booleano real
+  if (mantenerSesion !== undefined && typeof mantenerSesion !== 'boolean') {
+    return res.status(400).json(buildError('Dato inválido', 'mantener sesión', 'Envíe mantener_sesion como true o false'));
+  }
+  const persistente = mantenerSesion === true;
 
   // 1. Validar credenciales (RF-02, RF-37)
   const validacion = validateLoginInput(correo, password, 'correo');
@@ -47,14 +54,14 @@ async function login(req, res) {
   const token = generateAccessToken(
     { id: cuenta.id, rol: cuenta.rol },
     JWT_SECRET,
-    JWT_EXPIRES_IN
+    persistente ? JWT_EXPIRES_IN_PERSISTENTE : JWT_EXPIRES_IN
   );
 
   // 4. Registrar la sesión con el jti propio del token (RF-01, RF-41);
   //    sin sesión registrada no se entrega token (RF-38)
   const ahora = nowLocal();
   try {
-    await SessionModel.registrarSesion(jwt.decode(token).jti, cuenta.id, ahora);
+    await SessionModel.registrarSesion(jwt.decode(token).jti, cuenta.id, ahora, persistente);
   } catch (err) {
     return res.status(503).json(
       buildError('No se pudo registrar la sesión', 'inicio de sesión', 'Inténtelo nuevamente en unos momentos')
@@ -68,7 +75,8 @@ async function login(req, res) {
     // La sesión ya quedó registrada: se responde igual.
   }
 
-  // 6. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06), y si debe crear su contraseña
+  // 6. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06), si debe crear su contraseña
+  //    y si la sesión es persistente (el frontend decide dónde guardarla)
   return res.status(200).json({
     token,
     rol: cuenta.rol,
@@ -76,6 +84,7 @@ async function login(req, res) {
     nombre: cuenta.nombre,
     correo: cuenta.correo,
     debe_cambiar_contrasena: Boolean(cuenta.debe_cambiar_contrasena),
+    sesion_persistente: persistente,
   });
 }
 

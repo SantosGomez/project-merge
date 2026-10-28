@@ -58,6 +58,7 @@ async function crearTablasSiNoExisten() {
       usuario_id INT NOT NULL,
       ultima_actividad DATETIME NOT NULL,
       revocado TINYINT(1) NOT NULL DEFAULT 0,
+      persistente TINYINT(1) NOT NULL DEFAULT 0,
       creado_en DATETIME NOT NULL,
       FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     ) ENGINE=InnoDB
@@ -158,6 +159,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await crearTablasSiNoExisten();
   await migrarUsuarios();
   await migrarCasos();
+  await migrarSesiones();
 
   if (!cuentasDemo) return;
 
@@ -233,6 +235,16 @@ async function migrarImportanteYEnProceso() {
     await query("UPDATE casos SET en_proceso_en = IF(estado = 'En proceso', actualizado_en, NULL)");
   }
   await query('ALTER TABLE casos ADD IF NOT EXISTS en_proceso_en DATETIME NULL AFTER creado_en');
+}
+
+/**
+ * Sesión persistente («Mantener sesión iniciada»): las sesiones que ya existían quedan
+ * como no persistentes (30 min de inactividad). Idempotente.
+ */
+async function migrarSesiones() {
+  await query(
+    'ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS persistente TINYINT(1) NOT NULL DEFAULT 0 AFTER revocado'
+  );
 }
 
 module.exports = { seedDatabase, debeSembrarCuentasDemo };

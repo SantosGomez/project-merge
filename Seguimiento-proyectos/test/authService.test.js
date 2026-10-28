@@ -92,7 +92,7 @@ test('login hace POST /auth/login y guarda token, rol, id y nombre en el almacé
   ])
   assert.deepEqual(
     sesion,
-    { ...DATOS_SESION, debeCambiarContrasena: false },
+    { ...DATOS_SESION, debeCambiarContrasena: false, persistente: false },
     'login devuelve los datos de la sesión',
   )
   assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
@@ -322,4 +322,42 @@ test('logout devuelve un fallo sin lanzar cuando el backend no responde (RF-47)'
   assert.equal(resultado.ok, false)
   assert.equal(resultado.error, error, 'el fallo se devuelve para que la pantalla decida el aviso')
   assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso', 'logout no limpia la sesión')
+})
+
+// --- «Mantener sesión iniciada» --------------------------------------------
+
+test('login con la casilla envía mantener_sesion y deja la sesión marcada como persistente', async () => {
+  const api = crearApiFalsa({ datos: { ...DATOS_SESION, sesion_persistente: true } })
+  const almacen = crearAlmacenFalso()
+  const servicio = crearAuthService({ api, almacen })
+
+  const sesion = await servicio.login('admin@prueba.local', 'clave', true)
+
+  assert.deepEqual(api.llamadas[0].cuerpo, { correo: 'admin@prueba.local', password: 'clave', mantener_sesion: true })
+  assert.equal(sesion.persistente, true)
+  assert.equal(almacen.getItem(CLAVES_SESION.persistente), '1')
+  assert.equal(servicio.getPersistente(), true)
+})
+
+test('login sin la casilla no envía mantener_sesion ni marca la sesión', async () => {
+  const api = crearApiFalsa({ datos: { ...DATOS_SESION, sesion_persistente: false } })
+  const almacen = crearAlmacenFalso()
+  const servicio = crearAuthService({ api, almacen })
+
+  const sesion = await servicio.login('admin@prueba.local', 'clave')
+
+  assert.deepEqual(api.llamadas[0].cuerpo, { correo: 'admin@prueba.local', password: 'clave' })
+  assert.equal(sesion.persistente, false)
+  assert.equal(servicio.getPersistente(), false)
+})
+
+test('setSesion borra lo de la sesión anterior antes de guardar la nueva', () => {
+  const almacen = crearAlmacenFalso({ [CLAVES_SESION.persistente]: '1', [CLAVES_SESION.cambioPendiente]: '1' })
+  const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
+
+  servicio.setSesion({ token: 't', rol: 'contador', id: 3, nombre: 'C', persistente: false })
+
+  assert.equal(almacen.getItem(CLAVES_SESION.persistente), null)
+  assert.equal(almacen.getItem(CLAVES_SESION.cambioPendiente), null)
+  assert.equal(servicio.getToken(), 't')
 })

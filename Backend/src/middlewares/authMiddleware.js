@@ -5,6 +5,8 @@ const SessionModel = require('../models/SessionModel');
 const { JWT_SECRET } = require('../config/jwt');
 
 const INACTIVIDAD_MINUTOS = 30;
+// «Mantener sesión iniciada»: la sesión se cierra tras 7 días sin uso
+const INACTIVIDAD_PERSISTENTE_MINUTOS = 7 * 24 * 60;
 
 /**
  * Middleware de autenticación. Verifica el token de acceso, la sesión en BD,
@@ -72,9 +74,10 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
     return;
   }
 
-  // 4. Verificar inactividad de la sesión (RF-25)
+  // 4. Verificar inactividad de la sesión (RF-25); la persistente tiene un límite mayor
   const ahora = new Date();
-  if (isSessionInactive(sesion.ultima_actividad, ahora, INACTIVIDAD_MINUTOS)) {
+  const limiteMinutos = sesion.persistente ? INACTIVIDAD_PERSISTENTE_MINUTOS : INACTIVIDAD_MINUTOS;
+  if (isSessionInactive(sesion.ultima_actividad, ahora, limiteMinutos)) {
     try {
       await SessionModel.revocar(jti);
     } catch (err) {

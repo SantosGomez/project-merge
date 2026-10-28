@@ -23,5 +23,7 @@ function obtenerSecretoJwt(env) {
 // Fuente única del secreto y de la duración del token de acceso.
 const JWT_SECRET = obtenerSecretoJwt(process.env);
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
+// Sesión persistente: tope absoluto aunque se use a diario (la inactividad la cierra antes).
+const JWT_EXPIRES_IN_PERSISTENTE = process.env.JWT_EXPIRES_IN_PERSISTENTE || '30d';
 
-module.exports = { JWT_SECRET, JWT_EXPIRES_IN, obtenerSecretoJwt };
+module.exports = { JWT_SECRET, JWT_EXPIRES_IN, JWT_EXPIRES_IN_PERSISTENTE, obtenerSecretoJwt };

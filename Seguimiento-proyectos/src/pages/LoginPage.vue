@@ -167,6 +167,18 @@
             </q-input>
           </div>
 
+          <q-checkbox
+            v-model="mantenerSesion"
+            label="Mantener sesión iniciada"
+            class="login-form__mantener"
+            :disable="enviando"
+          >
+            <q-tooltip>
+              La sesión sigue abierta aunque cierres la app, hasta 7 días sin usarla. No la marques en
+              un equipo compartido.
+            </q-tooltip>
+          </q-checkbox>
+
           <q-btn
             type="submit"
             class="login-form__submit control-touch"
@@ -213,6 +225,8 @@ const usernameInput = ref(null)
 const passwordInput = ref(null)
 /** Botón del ojo: la contraseña empieza oculta. */
 const verContrasena = ref(false)
+/** «Mantener sesión iniciada»: desmarcada, para no dejar sesiones abiertas en equipos compartidos. */
+const mantenerSesion = ref(false)
 
 /** Aviso persistente fijado por el cierre voluntario (RF-46/RF-47). */
 const avisoSesion = computed(() => sesion.avisoSesion)
@@ -334,7 +348,7 @@ const submit = async () => {
 
   let resultado
   try {
-    resultado = await sesion.iniciarSesion(form.username.trim(), form.password.trim())
+    resultado = await sesion.iniciarSesion(form.username.trim(), form.password.trim(), mantenerSesion.value)
   } finally {
     enviando.value = false
   }
@@ -466,6 +480,13 @@ const submit = async () => {
 .login-form__help-icon {
   cursor: help;
   color: var(--dg-acento);
+}
+
+.login-form__mantener {
+  align-self: flex-start;
+  min-height: 44px;
+  margin: -8px 0 -8px -10px;
+  color: var(--dg-texto);
 }
 
 .login-form__submit {

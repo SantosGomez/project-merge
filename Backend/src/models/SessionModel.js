@@ -28,11 +28,12 @@ async function obtenerSesion(token) {
  * @param {string} jti - Identificador único de la sesión.
  * @param {number} usuarioId - ID del usuario propietario.
  * @param {Date} ultimaActividad - Fecha y hora de la última actividad.
+ * @param {boolean} [persistente] - «Mantener sesión iniciada»: 7 días de inactividad en vez de 30 min.
  */
-async function registrarSesion(jti, usuarioId, ultimaActividad) {
+async function registrarSesion(jti, usuarioId, ultimaActividad, persistente = false) {
   await query(
-    'INSERT INTO sesiones (jti, usuario_id, ultima_actividad, revocado, creado_en) VALUES (?, ?, ?, 0, ?)',
-    [jti, usuarioId, ultimaActividad, ultimaActividad]
+    'INSERT INTO sesiones (jti, usuario_id, ultima_actividad, revocado, persistente, creado_en) VALUES (?, ?, ?, 0, ?, ?)',
+    [jti, usuarioId, ultimaActividad, persistente ? 1 : 0, ultimaActividad]
   );
 }
 

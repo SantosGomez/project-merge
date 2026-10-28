@@ -1,4 +1,5 @@
-// Servicio de autenticación: login, logout y sesión en sessionStorage
+// Servicio de autenticación: login, logout y sesión en sessionStorage o, con
+// «Mantener sesión iniciada», en localStorage
 // (RF-01 a RF-10, RF-42 a RF-47).
 // Sin Vue, sin Quasar, sin stores y sin router. El almacén y la api se pueden
 // inyectar para probarlo sin navegador y sin red.
@@ -105,6 +106,8 @@ export const crearAuthService = (opciones = {}) => {
   const getId = () => leer(CLAVES_SESION.id)
   /** true si la persona entró con la contraseña que le asignó el administrador. */
   const getCambioPendiente = () => leer(CLAVES_SESION.cambioPendiente) === '1'
+  /** true si eligió «Mantener sesión iniciada» (la sesión sobrevive al cerrar la app). */
+  const getPersistente = () => leer(CLAVES_SESION.persistente) === '1'
 
   const setToken = (token) => escribir(CLAVES_SESION.token, token)
   const setRol = (rol) => escribir(CLAVES_SESION.rol, rol)
@@ -114,10 +117,14 @@ export const crearAuthService = (opciones = {}) => {
     escribir(CLAVES_SESION.cambioPendiente, pendiente ? '1' : null)
 
   /**
-   * Guarda la sesión completa (RF-02, RF-42).
-   * @param {{ token: string, rol: string, id?: number|string, nombre?: string|null, debeCambiarContrasena?: boolean }} sesion
+   * Guarda la sesión completa (RF-02, RF-42). Primero borra la anterior y fija la marca de
+   * sesión persistente, que decide si se guarda en sessionStorage o en localStorage.
+   * @param {{ token: string, rol: string, id?: number|string, nombre?: string|null,
+   *   debeCambiarContrasena?: boolean, persistente?: boolean }} sesion
    */
   const setSesion = (sesion) => {
+    limpiarSesion()
+    escribir(CLAVES_SESION.persistente, sesion.persistente ? '1' : null)
     setToken(sesion.token)
     setRol(sesion.rol)
     setNombre(sesion.nombre)
@@ -126,10 +133,10 @@ export const crearAuthService = (opciones = {}) => {
   }
 
   /**
-   * Elimina el token y los datos de sesión de sessionStorage (RF-07, RF-43).
+   * Elimina el token y los datos de sesión del almacén (RF-07, RF-43).
    * No llama al backend: la caducidad y el cierre de pestaña no revocan (RF-44).
    */
-  const limpiarSesion = () => {
+  function limpiarSesion() {
     for (const clave of Object.values(CLAVES_SESION)) {
       almacen.removeItem(clave)
     }
@@ -139,10 +146,12 @@ export const crearAuthService = (opciones = {}) => {
    * Inicia sesión con correo contra POST /auth/login y guarda la sesión (RF-01 a RF-04).
    * @param {string} correo
    * @param {string} password
-   * @returns {Promise<{ token: string, rol: string, id: number, nombre: string|null }>}
+   * @param {boolean} [mantenerSesion] - casilla «Mantener sesión iniciada».
+   * @returns {Promise<{ token: string, rol: string, id: number, nombre: string|null, persistente: boolean }>}
    */
-  const login = async (correo, password) => {
-    const { data } = await api.post('/auth/login', { correo, password })
+  const login = async (correo, password, mantenerSesion = false) => {
+    const cuerpo = mantenerSesion ? { correo, password, mantener_sesion: true } : { correo, password }
+    const { data } = await api.post('/auth/login', cuerpo)
 
     if (!data || typeof data.token !== 'string' || data.token.trim() === '') {
       throw crearErrorInesperado('el inicio de sesión')
@@ -154,6 +163,7 @@ export const crearAuthService = (opciones = {}) => {
       id: data.id,
       nombre: data.nombre ?? null,
       debeCambiarContrasena: data.debe_cambiar_contrasena === true,
+      persistente: data.sesion_persistente === true,
     }
     setSesion(sesion)
     return sesion
@@ -198,6 +208,7 @@ export const crearAuthService = (opciones = {}) => {
     getNombre,
     getId,
     getCambioPendiente,
+    getPersistente,
     setSesion,
     setToken,
     setRol,
@@ -215,6 +226,7 @@ export const login = servicioPorDefecto.login
 export const logout = servicioPorDefecto.logout
 export const cambiarContrasena = servicioPorDefecto.cambiarContrasena
 export const getCambioPendiente = servicioPorDefecto.getCambioPendiente
+export const getPersistente = servicioPorDefecto.getPersistente
 export const getToken = servicioPorDefecto.getToken
 export const getRol = servicioPorDefecto.getRol
 export const getNombre = servicioPorDefecto.getNombre

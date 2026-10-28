@@ -22,6 +22,7 @@ import {
 import {
   cambiarContrasena as cambiarContrasenaPorDefecto,
   getCambioPendiente as getCambioPendientePorDefecto,
+  getPersistente as getPersistentePorDefecto,
   getNombre as getNombrePorDefecto,
   getId as getIdPorDefecto,
   getRol as getRolPorDefecto,
@@ -40,6 +41,9 @@ import { construirError } from '../utils/mensajes.js'
 
 /** Minutos sin interacción tras los que la sesión caduca (RF-07). */
 export const LIMITE_INACTIVIDAD_MINUTOS = 30
+
+/** Con «Mantener sesión iniciada»: 7 días sin interacción (igual que el backend). */
+export const LIMITE_INACTIVIDAD_PERSISTENTE_MINUTOS = 7 * 24 * 60
 
 /** Cada cuánto comprueba el temporizador si la sesión superó el límite. */
 export const INTERVALO_INACTIVIDAD_MS = 60 * 1000
@@ -112,6 +116,7 @@ const authServicePorDefecto = {
   getNombre: getNombrePorDefecto,
   getId: getIdPorDefecto,
   getCambioPendiente: getCambioPendientePorDefecto,
+  getPersistente: getPersistentePorDefecto,
   setToken: setTokenPorDefecto,
   setSesion: setSesionPorDefecto,
   limpiarSesion: limpiarSesionPorDefecto,
@@ -155,6 +160,8 @@ export const crearSessionStore = (dependencias = {}) => {
         id: authService.getId(),
         /** La persona entró con la contraseña asignada y debe crear la suya. */
         debeCambiarContrasena: authService.getCambioPendiente(),
+        /** Eligió «Mantener sesión iniciada»: la sesión sobrevive al cerrar la app. */
+        persistente: authService.getPersistente(),
         /** Expiración del token en segundos (campo `exp`), si se puede leer. */
         exp: expiracionDeToken(token),
         /** Bandera de sesión caducada por inactividad, `exp` o 401 (RF-07/43). */
@@ -188,6 +195,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.nombre = authService.getNombre()
         this.id = authService.getId()
         this.debeCambiarContrasena = authService.getCambioPendiente()
+        this.persistente = authService.getPersistente()
         this.exp = expiracionDeToken(this.token)
       },
 
@@ -198,6 +206,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.nombre = null
         this.id = null
         this.debeCambiarContrasena = false
+        this.persistente = false
         this.exp = null
         this.ultimaActividad = null
       },
@@ -231,7 +240,8 @@ export const crearSessionStore = (dependencias = {}) => {
       },
 
       /**
-       * Comprueba si pasaron más de 30 minutos sin actividad; si es así caduca.
+       * Comprueba si pasó el límite sin actividad (30 minutos, o 7 días con «Mantener sesión
+       * iniciada»); si es así caduca.
        * Exactamente en el límite la sesión sigue viva (RF-07).
        * @param {Date} [hoy] - momento de la comprobación.
        * @returns {boolean} true si la sesión acaba de caducar.
@@ -241,7 +251,11 @@ export const crearSessionStore = (dependencias = {}) => {
           return false
         }
         if (
-          !estaInactivo(new Date(this.ultimaActividad), comoFecha(hoy), LIMITE_INACTIVIDAD_MINUTOS)
+          !estaInactivo(
+            new Date(this.ultimaActividad),
+            comoFecha(hoy),
+            this.persistente ? LIMITE_INACTIVIDAD_PERSISTENTE_MINUTOS : LIMITE_INACTIVIDAD_MINUTOS,
+          )
         ) {
           return false
         }
@@ -363,7 +377,7 @@ export const crearSessionStore = (dependencias = {}) => {
        * @param {string} password
        * @returns {Promise<Object>} resultado para la pantalla P-1.
        */
-      async iniciarSesion(correo, password) {
+      async iniciarSesion(correo, password, mantenerSesion = false) {
         // Enviar credenciales es la siguiente acción del usuario: limpia el aviso (RF-46/47).
         this.avisoSesion = null
 
@@ -371,7 +385,7 @@ export const crearSessionStore = (dependencias = {}) => {
         let nueva
 
         try {
-          nueva = await authService.login(correo, password)
+          nueva = await authService.login(correo, password, mantenerSesion)
         } catch (error) {
           return { ok: false, error }
         }

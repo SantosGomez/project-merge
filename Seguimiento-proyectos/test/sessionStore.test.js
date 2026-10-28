@@ -11,6 +11,7 @@ import { isTokenExpirado } from '../src/services/authService.js'
 import {
   INTERVALO_INACTIVIDAD_MS,
   LIMITE_INACTIVIDAD_MINUTOS,
+  LIMITE_INACTIVIDAD_PERSISTENTE_MINUTOS,
   RUTA_CAMBIO_CONTRASENA,
   TEXTO_AVISO_CIERRE,
   TEXTO_AVISO_REVOCACION,
@@ -121,6 +122,7 @@ const crearAuthFalsa = ({
     getNombre: () => almacen.getItem(CLAVES_SESION.nombre),
     getId: () => almacen.getItem(CLAVES_SESION.id),
     getCambioPendiente: () => almacen.getItem(CLAVES_SESION.cambioPendiente) === '1',
+    getPersistente: () => almacen.getItem(CLAVES_SESION.persistente) === '1',
     setToken: (token) => escribir(almacen, CLAVES_SESION.token, token),
     setSesion: (sesion) => {
       escribir(almacen, CLAVES_SESION.token, sesion.token)
@@ -128,6 +130,7 @@ const crearAuthFalsa = ({
       escribir(almacen, CLAVES_SESION.nombre, sesion.nombre)
       escribir(almacen, CLAVES_SESION.id, sesion.id)
       escribir(almacen, CLAVES_SESION.cambioPendiente, sesion.debeCambiarContrasena ? '1' : null)
+      escribir(almacen, CLAVES_SESION.persistente, sesion.persistente ? '1' : null)
     },
     async cambiarContrasena(password) {
       llamadas.push({ accion: 'cambiarContrasena', password })
@@ -142,8 +145,8 @@ const crearAuthFalsa = ({
       }
     },
     isTokenExpirado: (token, ahora) => isTokenExpirado(token, ahora),
-    async login(correo, password) {
-      llamadas.push({ accion: 'login', correo, password })
+    async login(correo, password, mantenerSesion = false) {
+      llamadas.push({ accion: 'login', correo, password, mantenerSesion })
       if (errorLogin) {
         throw errorLogin
       }
@@ -152,6 +155,7 @@ const crearAuthFalsa = ({
         rol: 'administrador',
         id: 5,
         nombre: correo,
+        persistente: mantenerSesion,
       }
       servicio.setSesion(sesion)
       return sesion
@@ -875,4 +879,56 @@ test('limpiar la sesión también quita la marca de cambio pendiente', () => {
 
   assert.equal(store.debeCambiarContrasena, false)
   assert.equal(auth.almacen.getItem(CLAVES_SESION.cambioPendiente), null)
+})
+
+// --- «Mantener sesión iniciada» --------------------------------------------
+
+test('iniciarSesion pasa la casilla al servicio y recuerda que la sesión es persistente', async () => {
+  const auth = crearAuthFalsa()
+  const { store } = montarSesion({ auth })
+
+  await store.iniciarSesion('admin_seed', 'clave', true)
+
+  assert.equal(auth.llamadas[0].mantenerSesion, true)
+  assert.equal(store.persistente, true)
+})
+
+test('una sesión persistente no caduca a los 30 minutos sino tras 7 días sin actividad', async () => {
+  const auth = crearAuthFalsa()
+  const { store, reloj } = montarSesion({ auth })
+
+  await store.iniciarSesion('admin_seed', 'clave', true)
+  reloj.avanzarMinutos(LIMITE_INACTIVIDAD_MINUTOS + 1)
+  assert.equal(store.comprobarInactividad(reloj.ahora()), false, 'sigue abierta tras 31 minutos')
+
+  reloj.avanzarMinutos(LIMITE_INACTIVIDAD_PERSISTENTE_MINUTOS)
+  assert.equal(store.comprobarInactividad(reloj.ahora()), true, 'caduca pasados 7 días')
+  assert.equal(store.persistente, false)
+})
+
+test('sin la casilla la sesión no es persistente y caduca a los 30 minutos como antes', async () => {
+  const auth = crearAuthFalsa()
+  const { store, reloj } = montarSesion({ auth })
+
+  await store.iniciarSesion('admin_seed', 'clave')
+  assert.equal(auth.llamadas[0].mantenerSesion, false)
+  assert.equal(store.persistente, false)
+
+  reloj.avanzarMinutos(LIMITE_INACTIVIDAD_MINUTOS + 1)
+  assert.equal(store.comprobarInactividad(reloj.ahora()), true)
+})
+
+test('al reabrir la app una sesión persistente guardada se restaura como persistente', async () => {
+  const auth = crearAuthFalsa({
+    inicial: {
+      ...almacenConSesion({ token: tokenVigente(), rol: 'administrador', id: 5, nombre: 'admin_seed' }),
+      [CLAVES_SESION.persistente]: '1',
+    },
+  })
+  const { store } = montarSesion({ auth })
+
+  const resultado = await store.restaurarSesion()
+
+  assert.equal(resultado.estado, 'valida')
+  assert.equal(store.persistente, true)
 })

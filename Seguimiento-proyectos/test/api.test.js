@@ -339,3 +339,31 @@ test('una respuesta correcta se entrega tal cual a quien llama', async () => {
   assert.equal(respuesta.status, 200)
   assert.deepEqual(respuesta.data, datos)
 })
+
+// --- almacén de sesión: sessionStorage o localStorage según «Mantener sesión» ----
+
+test('crearAlmacenSesion guarda en el temporal salvo que la sesión esté marcada como persistente', async () => {
+  const { crearAlmacenSesion } = await import('../src/services/api.js')
+  const temporal = crearAlmacenFalso()
+  const persistente = crearAlmacenFalso()
+  const almacen = crearAlmacenSesion(temporal, persistente)
+
+  almacen.setItem(CLAVES_SESION.token, 'normal')
+  assert.equal(temporal.getItem(CLAVES_SESION.token), 'normal')
+  assert.equal(persistente.getItem(CLAVES_SESION.token), null)
+
+  // La marca siempre vive en el persistente y desde ahí todo se guarda allá
+  almacen.removeItem(CLAVES_SESION.token)
+  almacen.setItem(CLAVES_SESION.persistente, '1')
+  almacen.setItem(CLAVES_SESION.token, 'recordada')
+  assert.equal(persistente.getItem(CLAVES_SESION.persistente), '1')
+  assert.equal(persistente.getItem(CLAVES_SESION.token), 'recordada')
+  assert.equal(temporal.getItem(CLAVES_SESION.token), null)
+  assert.equal(almacen.getItem(CLAVES_SESION.token), 'recordada', 'se lee de donde esté')
+
+  // Borrar quita la clave de los dos
+  temporal.setItem(CLAVES_SESION.token, 'vieja')
+  almacen.removeItem(CLAVES_SESION.token)
+  assert.equal(temporal.getItem(CLAVES_SESION.token), null)
+  assert.equal(persistente.getItem(CLAVES_SESION.token), null)
+})

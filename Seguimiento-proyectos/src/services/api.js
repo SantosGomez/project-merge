@@ -30,7 +30,7 @@ export const URL_BASE_API = (import.meta.env && import.meta.env.API_URL) || 'htt
 /** Límite de espera de cada petición: 15 s (decisión 13 del plan). */
 export const TIEMPO_LIMITE_MS = 15000
 
-/** Claves de sessionStorage de la sesión, con prefijo delgrow_ para no mezclarse. */
+/** Claves de la sesión en el almacén, con prefijo delgrow_ para no mezclarse. */
 export const CLAVES_SESION = Object.freeze({
   token: 'delgrow_token',
   rol: 'delgrow_rol',
@@ -38,6 +38,8 @@ export const CLAVES_SESION = Object.freeze({
   id: 'delgrow_id',
   /** '1' mientras la persona deba crear su propia contraseña. */
   cambioPendiente: 'delgrow_cambio_contrasena',
+  /** '1' si eligió «Mantener sesión iniciada»: la sesión vive en localStorage. */
+  persistente: 'delgrow_sesion_persistente',
 })
 
 /** Clasificación de los errores que entregan los servicios a las pantallas. */
@@ -73,13 +75,47 @@ const crearAlmacenMemoria = () => {
 let almacenMemoria = null
 
 /**
- * Devuelve sessionStorage del navegador (independiente por pestaña, RF-44) o,
- * si no existe (Node), un almacén en memoria compartido.
+ * Une el almacén temporal (sessionStorage: se borra al cerrar la app) y el persistente
+ * (localStorage). La marca CLAVES_SESION.persistente siempre vive en el persistente y decide
+ * dónde se escribe lo demás; se lee de donde esté y al borrar se quita de los dos.
+ * @param {Object} temporal - almacén con getItem/setItem/removeItem.
+ * @param {Object} persistente - almacén con getItem/setItem/removeItem.
+ * @returns {{ getItem: Function, setItem: Function, removeItem: Function }}
+ */
+export const crearAlmacenSesion = (temporal, persistente) => {
+  const destino = (clave) =>
+    clave === CLAVES_SESION.persistente || persistente.getItem(CLAVES_SESION.persistente) === '1'
+      ? persistente
+      : temporal
+  return {
+    getItem: (clave) => temporal.getItem(clave) ?? persistente.getItem(clave),
+    setItem: (clave, valor) => destino(clave).setItem(clave, valor),
+    removeItem: (clave) => {
+      temporal.removeItem(clave)
+      persistente.removeItem(clave)
+    },
+  }
+}
+
+// localStorage puede no existir (Node) o lanzar si el navegador bloquea el almacenamiento.
+const obtenerLocalStorage = () => {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Devuelve el almacén de la sesión: sessionStorage (independiente por pestaña, RF-44) unido a
+ * localStorage para «Mantener sesión iniciada». Sin localStorage, solo sessionStorage; sin
+ * ninguno (Node), un almacén en memoria compartido.
  * @returns {{ getItem: Function, setItem: Function, removeItem: Function }}
  */
 export const obtenerAlmacenPredeterminado = () => {
   if (globalThis.sessionStorage) {
-    return globalThis.sessionStorage
+    const local = obtenerLocalStorage()
+    return local ? crearAlmacenSesion(globalThis.sessionStorage, local) : globalThis.sessionStorage
   }
   if (!almacenMemoria) {
     almacenMemoria = crearAlmacenMemoria()

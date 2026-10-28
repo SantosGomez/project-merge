@@ -97,6 +97,16 @@ async function testMigracionAgregaColumnasDeLaCuenta() {
   assert.ok(indices.length > 0, 'el correo debe ser único');
 }
 
+async function testMigracionAgregaPersistenteASesiones() {
+  await seedDatabase({ cuentasDemo: false });
+  await seedDatabase({ cuentasDemo: false });
+  const [columna] = await query("SHOW COLUMNS FROM sesiones LIKE 'persistente'");
+  assert.ok(columna, 'la tabla sesiones tiene la columna persistente');
+  assert.match(columna.Type, /^tinyint\(1\)/);
+  assert.strictEqual(columna.Null, 'NO');
+  assert.strictEqual(String(columna.Default), '0', 'las sesiones existentes quedan como no persistentes');
+}
+
 async function testMigracionDaCorreoYNombreALasCuentasExistentes() {
   await seedDatabase({ cuentasDemo: true });
   const administrador = await findByCorreo(CORREO_ADMIN);
@@ -329,6 +339,7 @@ describe('seed de datos maestros', () => {
   test('no duplica usuarios al ejecutarse dos veces', testSeedNoDuplicaUsuariosAlEjecutarseDosVeces);
   test('la migración agrega nombre, correo único, actualizado_en y ultimo_acceso_en', testMigracionAgregaColumnasDeLaCuenta);
   test('la migración da correo y nombre a las cuentas existentes', testMigracionDaCorreoYNombreALasCuentasExistentes);
+  test('la migración agrega sesiones.persistente (0 por defecto) y se puede repetir', testMigracionAgregaPersistenteASesiones);
   test('la semilla reconoce sus cuentas por correo aunque no tengan usuario', testSeedReconoceSusCuentasPorCorreo);
   test('una base nueva crea la tabla usuarios sin la columna usuario', testCreateTableDeUsuariosSinUsuario);
   test('la bandera SEED_CUENTAS_DEMO solo se enciende con el valor exacto true', testBanderaDeCuentasDemo);

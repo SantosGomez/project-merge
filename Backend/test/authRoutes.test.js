@@ -39,8 +39,8 @@ async function testLoginValidoDevuelveToken() {
   assert.strictEqual(respuesta.body.rol, 'contador', 'debe incluir el rol del usuario');
   assert.deepStrictEqual(
     Object.keys(respuesta.body).sort(),
-    ['correo', 'debe_cambiar_contrasena', 'id', 'nombre', 'rol', 'token'],
-    'la respuesta trae token, rol, id, nombre, correo y la marca de cambio, sin el usuario'
+    ['correo', 'debe_cambiar_contrasena', 'id', 'nombre', 'rol', 'sesion_persistente', 'token'],
+    'la respuesta trae token, rol, id, nombre, correo, la marca de cambio y si la sesión es persistente, sin el usuario'
   );
   assert.strictEqual(respuesta.body.debe_cambiar_contrasena, false, 'una cuenta de prueba no tiene cambio pendiente');
 }
@@ -310,6 +310,69 @@ async function testLoginGuardaUltimoAcceso() {
   assert.ok(Math.abs(Number(filas[0].hace)) < 60, 'la fecha es la del inicio de sesión');
 }
 
+// ---------- Sesión persistente: casilla «Mantener sesión iniciada» del login ----------
+const DIA_SEGUNDOS = 24 * 60 * 60;
+
+async function filaSesion(token) {
+  const [filas] = await pool.query('SELECT persistente FROM sesiones WHERE jti = ?', [jwt.decode(token).jti]);
+  return filas[0];
+}
+
+async function testLoginConMantenerSesionEsPersistente() {
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    correo: contador.correo,
+    password: contador.password,
+    mantener_sesion: true,
+  });
+
+  assert.strictEqual(respuesta.statusCode, 200);
+  assert.strictEqual(respuesta.body.sesion_persistente, true, 'la respuesta confirma la sesión persistente');
+  assert.strictEqual((await filaSesion(respuesta.body.token)).persistente, 1, 'la sesión queda marcada en la tabla');
+  const { iat, exp } = jwt.decode(respuesta.body.token);
+  assert.strictEqual(exp - iat, 30 * DIA_SEGUNDOS, 'el token persistente vence a los 30 días como máximo');
+}
+
+async function testLoginSinMantenerSesionFuncionaComoAntes() {
+  const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+    correo: contador.correo,
+    password: contador.password,
+  });
+
+  assert.strictEqual(respuesta.statusCode, 200);
+  assert.strictEqual(respuesta.body.sesion_persistente, false);
+  assert.strictEqual((await filaSesion(respuesta.body.token)).persistente, 0);
+  const { iat, exp } = jwt.decode(respuesta.body.token);
+  assert.strictEqual(exp - iat, 2 * 60 * 60, 'sin la casilla el token sigue durando 2 horas');
+}
+
+async function testMantenerSesionNoBooleanoResponde400() {
+  for (const valor of ['true', 1, null, 'sí']) {
+    const respuesta = await peticion(servidor.puerto, 'POST', '/auth/login', {
+      correo: contador.correo,
+      password: contador.password,
+      mantener_sesion: valor,
+    });
+    assert.strictEqual(respuesta.statusCode, 400, `${JSON.stringify(valor)} debe responder 400`);
+    assert.match(respuesta.body.mensaje, /mantener sesión/);
+  }
+}
+
+async function testSesionPersistenteDuraSieteDiasSinUso() {
+  const credenciales = { correo: contador.correo, password: contador.password, mantener_sesion: true };
+  const tresDias = await peticion(servidor.puerto, 'POST', '/auth/login', credenciales);
+  const ochoDias = await peticion(servidor.puerto, 'POST', '/auth/login', credenciales);
+
+  await envejecerSesion(tresDias.body.token, 3 * 24 * 60);
+  await envejecerSesion(ochoDias.body.token, 7 * 24 * 60 + 1);
+
+  const conTresDias = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, tresDias.body.token);
+  assert.strictEqual(conTresDias.statusCode, 200, 'tras 3 días sin uso la sesión persistente sigue abierta');
+
+  const conOchoDias = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, ochoDias.body.token);
+  assert.strictEqual(conOchoDias.statusCode, 401, 'más de 7 días sin uso la cierra');
+  assert.match(conOchoDias.body.mensaje, /Sesión caducada por inactividad/);
+}
+
 describe('rutas de autenticación', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -338,4 +401,8 @@ describe('rutas de autenticación', () => {
   test('la contraseña con otra capitalización responde 401', testContrasenaDistingueMayusculas);
   test('la cuenta del seed entra con su correo en mayúsculas', testSeedEntraConCorreoEnMayusculas);
   test('caducar una sesión por inactividad no afecta a otra del mismo usuario', testCaducarUnaSesionNoAfectaAOtra);
+  test('con «mantener sesión» la sesión es persistente y el token dura 30 días', testLoginConMantenerSesionEsPersistente);
+  test('sin «mantener sesión» todo sigue como antes (2 h, 30 min)', testLoginSinMantenerSesionFuncionaComoAntes);
+  test('mantener_sesion que no es true/false responde 400', testMantenerSesionNoBooleanoResponde400);
+  test('la sesión persistente aguanta 7 días sin uso y no más', testSesionPersistenteDuraSieteDiasSinUso);
 });
