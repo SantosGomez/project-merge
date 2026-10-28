@@ -445,3 +445,58 @@ test('reemplazarCasoDetalle pone el caso actualizado en el detalle sin recargarl
   store.reemplazarCasoDetalle(caso({ id: 999 }))
   assert.equal(store.casosDetalle.length, 2, 'un caso que no está en el detalle no se agrega')
 })
+
+// --- tiempo real: refresco sin parpadeo ------------------------------------
+
+test('refrescarEnSilencio actualiza conteos y detalle del contador sin pasar por «cargando»', async () => {
+  const conteos = { 3: { pendiente: 1, en_proceso: 0, finalizado: 0 } }
+  const casos = { 3: [caso({ id: 9 })] }
+  const servicio = crearServicioFalso({ contadores: [{ id: 3, nombre: 'Ana' }, { id: 4, nombre: 'Beto' }], conteos, casos })
+  const store = montarStore(servicio)
+  await store.cargarContadores()
+  await store.seleccionarContador(3)
+
+  conteos[3] = { pendiente: 2, en_proceso: 0, finalizado: 0 }
+  casos[3] = [caso({ id: 9 }), caso({ id: 10 })]
+  const promesa = store.refrescarEnSilencio(3)
+  assert.equal(store.cargandoDetalle, false, 'no muestra la carga')
+  assert.equal(store.casosDetalle.length, 1, 'mientras tanto se ve el detalle anterior')
+  await promesa
+
+  assert.equal(store.conteosDe(3).pendiente, 2)
+  assert.equal(store.casosDetalle.length, 2)
+  assert.equal(store.contadorSeleccionadoId, 3, 'la selección se conserva')
+})
+
+test('refrescarEnSilencio de otro contador solo toca sus conteos, y sin id refresca todos', async () => {
+  const servicio = crearServicioFalso({ contadores: [{ id: 3, nombre: 'Ana' }, { id: 4, nombre: 'Beto' }] })
+  const store = montarStore(servicio)
+  await store.cargarContadores()
+  await store.seleccionarContador(3)
+  servicio.llamadas.length = 0
+
+  await store.refrescarEnSilencio(4)
+  assert.deepEqual(servicio.llamadas, [{ accion: 'conteos', id: 4 }], 'no pide el detalle de Ana')
+
+  servicio.llamadas.length = 0
+  await store.refrescarEnSilencio()
+  assert.deepEqual(
+    servicio.llamadas.map((l) => `${l.accion}:${l.id}`).sort(),
+    ['casos:3', 'conteos:3', 'conteos:4'],
+  )
+})
+
+test('refrescarEnSilencio ignora un fallo: la pantalla sigue como estaba y sin error', async () => {
+  const servicio = crearServicioFalso({ contadores: [{ id: 3, nombre: 'Ana' }], casos: { 3: [caso()] } })
+  const store = montarStore(servicio)
+  await store.cargarContadores()
+  await store.seleccionarContador(3)
+
+  servicio.getConteosPorEstado = async () => {
+    throw ERROR_DETALLE
+  }
+  await store.refrescarEnSilencio(3)
+
+  assert.equal(store.error, null)
+  assert.equal(store.casosDetalle.length, 1)
+})

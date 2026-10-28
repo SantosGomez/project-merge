@@ -9,6 +9,17 @@ const INACTIVIDAD_MINUTOS = 30;
 const INACTIVIDAD_PERSISTENTE_MINUTOS = 7 * 24 * 60;
 
 /**
+ * Indica si una sesión pasó su límite sin actividad (30 min, o 7 días si es persistente).
+ * @param {Object} sesion - fila de `sesiones` (ultima_actividad, persistente).
+ * @param {Date} ahora - momento de la comprobación.
+ * @returns {boolean}
+ */
+function sesionInactiva(sesion, ahora) {
+  const limiteMinutos = sesion.persistente ? INACTIVIDAD_PERSISTENTE_MINUTOS : INACTIVIDAD_MINUTOS;
+  return isSessionInactive(sesion.ultima_actividad, ahora, limiteMinutos);
+}
+
+/**
  * Middleware de autenticación. Verifica el token de acceso, la sesión en BD,
  * la inactividad y adjunta req.user (RF-04, RF-05, RF-06, RF-07, RF-25).
  * @param {Object} req - Objeto de petición Express (o mock en tests).
@@ -76,8 +87,7 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
 
   // 4. Verificar inactividad de la sesión (RF-25); la persistente tiene un límite mayor
   const ahora = new Date();
-  const limiteMinutos = sesion.persistente ? INACTIVIDAD_PERSISTENTE_MINUTOS : INACTIVIDAD_MINUTOS;
-  if (isSessionInactive(sesion.ultima_actividad, ahora, limiteMinutos)) {
+  if (sesionInactiva(sesion, ahora)) {
     try {
       await SessionModel.revocar(jti);
     } catch (err) {
@@ -133,4 +143,4 @@ async function autenticarConCambioPendiente(req, res, next) {
   return autenticar(req, res, next, true);
 }
 
-module.exports = { authenticateToken, autenticarConCambioPendiente };
+module.exports = { authenticateToken, autenticarConCambioPendiente, sesionInactiva };

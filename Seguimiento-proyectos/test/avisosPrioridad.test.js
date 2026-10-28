@@ -63,9 +63,9 @@ describe('Campanita de avisos del contador', () => {
     assert.match(campana, /marcarLeidas\(\)/)
   })
 
-  it('se actualiza cada minuto y deja de hacerlo al salir', () => {
-    assert.match(campana, /setInterval\(cargar, 60 \* 1000\)/)
-    assert.match(campana, /onBeforeUnmount\(\(\) => clearInterval\(/)
+  it('se actualiza al instante por tiempo real, cada 5 minutos como respaldo, y deja de hacerlo al salir', () => {
+    assert.match(campana, /setInterval\(cargar, 5 \* 60 \* 1000\)/)
+    assert.match(campana, /onBeforeUnmount\(\(\) => \{\s*clearInterval\(intervalo\)/)
   })
 
   it('el layout la muestra solo al contador, en el encabezado del celular y en el de escritorio', () => {

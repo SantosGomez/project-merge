@@ -9,6 +9,7 @@ const caseRoutes = require('./routes/caseRoutes');
 const counterRoutes = require('./routes/counterRoutes');
 const userRoutes = require('./routes/userRoutes');
 const notificacionRoutes = require('./routes/notificacionRoutes');
+const eventosRoutes = require('./routes/eventosRoutes');
 const { buildError } = require('./utils/errorUtils');
 
 /**
@@ -71,6 +72,7 @@ function crearApp(opciones) {
   app.use('/contadores', counterRoutes);
   app.use('/usuarios', userRoutes);
   app.use('/notificaciones', notificacionRoutes);
+  app.use('/eventos', eventosRoutes);
 
   // Middleware 404: ruta no encontrada
   app.use((req, res) => {

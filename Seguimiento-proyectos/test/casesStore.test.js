@@ -445,3 +445,42 @@ test('crearCaso pasa la fecha de vencimiento al servicio', async () => {
 
   assert.deepEqual(recibido, ['C', 'alta', '01-12-2026', undefined, undefined, false, '15-01-2027'])
 })
+
+// --- tiempo real: refresco sin parpadeo ------------------------------------
+
+test('refrescarEnSilencio vuelve a pedir mis casos sin vaciar la lista ni mostrar la carga', async () => {
+  const servicio = crearServicioFalso({ casos: [caso({ id: 9 })] })
+  const store = montarStore(servicio)
+  await store.cargarCasos()
+
+  servicio.getMisCasos = async () => [caso({ id: 9, prioridad: 'baja' }), caso({ id: 10 })]
+  const promesa = store.refrescarEnSilencio()
+  assert.equal(store.cargando, false)
+  assert.equal(store.casos.length, 1, 'mientras tanto se ve la lista anterior')
+  await promesa
+
+  assert.equal(store.casos.length, 2)
+  assert.equal(store.casos[0].prioridad, 'baja')
+})
+
+test('refrescarEnSilencio ignora un fallo y no refresca mientras se guarda un cambio', async () => {
+  const servicio = crearServicioFalso({ casos: [caso({ id: 9 })] })
+  const store = montarStore(servicio)
+  await store.cargarCasos()
+
+  servicio.getMisCasos = async () => {
+    throw new Error('sin red')
+  }
+  await store.refrescarEnSilencio()
+  assert.equal(store.error, null)
+  assert.equal(store.casos.length, 1)
+
+  let pedidos = 0
+  servicio.getMisCasos = async () => {
+    pedidos += 1
+    return []
+  }
+  store.guardando = true
+  await store.refrescarEnSilencio()
+  assert.equal(pedidos, 0, 'no pisa un cambio que se está guardando')
+})

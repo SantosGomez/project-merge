@@ -174,7 +174,7 @@
 
 <script setup>
 import { useQuasar } from 'quasar'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import CounterCountsRow from '../components/CounterCountsRow.vue'
 import DetalleContador from '../components/DetalleContador.vue'
@@ -184,6 +184,7 @@ import ResumenEquipo from '../components/ResumenEquipo.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { cambiarPrioridadComoAdmin } from '../services/caseService.js'
 import { getResumenEquipo } from '../services/counterService.js'
+import { eventos } from '../services/eventosService.js'
 import { useSessionStore } from '../stores/session.js'
 import { useCountersStore } from '../stores/counters.js'
 import { PRIORITY_LABELS } from '../utils/constants.js'
@@ -343,6 +344,23 @@ const cargarResumen = async () => {
     cargandoResumen.value = false
   }
 }
+
+/*
+ * Tiempo real: cuando un contador registra o edita un caso (o cambia una prioridad), el resumen
+ * y ese contador se actualizan solos, sin parpadeo. Al reconectarse se refresca todo por si se
+ * perdió algún aviso.
+ */
+const dejarDeEscuchar = [
+  eventos.escuchar('caso-actualizado', ({ contadorId }) => {
+    cargarResumen()
+    contadoresStore.refrescarEnSilencio(contadorId)
+  }),
+  eventos.escuchar('reconectado', () => {
+    cargarResumen()
+    contadoresStore.refrescarEnSilencio()
+  }),
+]
+onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
 onMounted(async () => {
   cargarResumen()

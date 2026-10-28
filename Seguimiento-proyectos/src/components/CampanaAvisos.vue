@@ -36,12 +36,14 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { eventos } from '../services/eventosService.js'
 import { getNotificaciones, marcarLeidas } from '../services/notificacionService.js'
 
 /*
  * Campanita del contador: muestra cuántos avisos no ha leído (p. ej. el administrador cambió
  * la prioridad de un caso) y la lista al tocarla. Al abrirla, los avisos se marcan como leídos.
- * Se actualiza al cambiar de pantalla y cada minuto.
+ * Se actualiza al instante cuando el servidor avisa (tiempo real), al cambiar de pantalla
+ * y, como respaldo, cada 5 minutos.
  */
 defineProps({
   /** Icono blanco para el encabezado oscuro del celular. */
@@ -77,12 +79,20 @@ const alAbrir = async () => {
 }
 
 let intervalo = null
+const dejarDeEscuchar = [
+  eventos.escuchar('aviso-nuevo', cargar),
+  // Si la conexión se cayó, pudo perderse algún aviso
+  eventos.escuchar('reconectado', cargar),
+]
 
 onMounted(() => {
   cargar()
-  intervalo = setInterval(cargar, 60 * 1000)
+  intervalo = setInterval(cargar, 5 * 60 * 1000)
 })
-onBeforeUnmount(() => clearInterval(intervalo))
+onBeforeUnmount(() => {
+  clearInterval(intervalo)
+  dejarDeEscuchar.forEach((dejar) => dejar())
+})
 
 watch(() => route.fullPath, cargar)
 </script>

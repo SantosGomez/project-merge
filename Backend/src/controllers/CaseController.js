@@ -11,6 +11,7 @@ const {
   parseCounterId,
 } = require('../utils/validationUtils');
 const { buildError } = require('../utils/errorUtils');
+const { eventos } = require('../utils/eventos');
 const {
   nowLocal,
   formatLocalDate,
@@ -182,6 +183,8 @@ async function createCase(req, res) {
   });
 
   const caso = await CaseModel.findById(casoId);
+  // Tiempo real: los administradores ven el caso nuevo sin recargar
+  eventos.enviarARol('administrador', 'caso-actualizado', { casoId, contadorId: req.user.id });
 
   return res.status(201).json({
     mensaje: 'Caso registrado correctamente',
@@ -307,6 +310,7 @@ async function updateCase(req, res) {
   });
 
   const caso = await CaseModel.findById(casoActual.id);
+  eventos.enviarARol('administrador', 'caso-actualizado', { casoId: casoActual.id, contadorId: casoActual.contador_id });
 
   return res.status(200).json({
     mensaje: 'Caso actualizado correctamente',
@@ -351,6 +355,9 @@ async function cambiarPrioridadComoAdmin(req, res) {
       await CaseModel.updatePatch(casoActual.id, { prioridad }, ejecutar);
       await NotificacionModel.crear({ usuarioId: casoActual.contador_id, casoId: casoActual.id, mensaje }, ejecutar);
     });
+    // Tiempo real: la campanita del dueño y los demás administradores se enteran al instante
+    eventos.enviarAUsuario(casoActual.contador_id, 'aviso-nuevo', { casoId: casoActual.id });
+    eventos.enviarARol('administrador', 'caso-actualizado', { casoId: casoActual.id, contadorId: casoActual.contador_id });
   }
 
   const caso = await CaseModel.findById(casoActual.id);

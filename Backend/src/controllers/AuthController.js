@@ -6,6 +6,7 @@ const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 const { hashPassword, verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
 const { nowLocal } = require('../utils/dateUtils');
+const { eventos } = require('../utils/eventos');
 const { JWT_SECRET, JWT_EXPIRES_IN, JWT_EXPIRES_IN_PERSISTENTE } = require('../config/jwt');
 
 /**
@@ -152,6 +153,8 @@ async function logout(req, res) {
   if (token) {
     try {
       await SessionModel.revocar(jwt.decode(token).jti);
+      // La conexión de tiempo real de esta sesión también se cierra
+      eventos.cerrarSesion(jwt.decode(token).jti);
     } catch (err) {
       return res.status(503).json(
         buildError(

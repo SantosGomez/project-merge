@@ -245,7 +245,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
@@ -253,6 +253,7 @@ import AccessDenied from '../components/AccessDenied.vue'
 import CampanaAvisos from '../components/CampanaAvisos.vue'
 import AvisoSesionCaducada from '../components/AvisoSesionCaducada.vue'
 import { accessDenied } from '../router/accessState.js'
+import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
@@ -339,6 +340,15 @@ const manejarActividad = () => {
   session.marcarActividad()
 }
 
+// Tiempo real: el servidor puede avisar que la sesión ya no vale (vencida o revocada)
+const dejarDeEscucharSesion = eventos.escuchar('sesion-cerrada', () => session.caducarSesion())
+
+// Al caducar o cerrar sesión se corta la conexión; al volver a entrar se abre otra
+watch(
+  () => session.autenticado,
+  (autenticado) => (autenticado ? eventos.conectar() : eventos.desconectar()),
+)
+
 onMounted(() => {
   // Reinicio del contador de inactividad con la interacción del usuario (RNF-02, RF-07).
   window.addEventListener('click', manejarActividad, true)
@@ -349,10 +359,13 @@ onMounted(() => {
   // El temporizador solo se arranca si hay sesión viva y no está caducada.
   if (session.autenticado && !session.sesionCaducada) {
     session.iniciarTemporizador()
+    eventos.conectar()
   }
 })
 
 onBeforeUnmount(() => {
+  eventos.desconectar()
+  dejarDeEscucharSesion()
   window.removeEventListener('click', manejarActividad, true)
   window.removeEventListener('keydown', manejarActividad, true)
   window.removeEventListener('pointerdown', manejarActividad, true)

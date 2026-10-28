@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 
 import CaseFormDialog from '../components/CaseFormDialog.vue'
@@ -114,6 +114,7 @@ import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
+import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
 import { casoAFila } from '../utils/filasVista.js'
 import {
@@ -222,6 +223,13 @@ const retry = async () => {
 onMounted(() => {
   cases.cargarCasos()
 })
+
+// Tiempo real: si el administrador cambia una prioridad, la lista se actualiza sola
+const dejarDeEscuchar = [
+  eventos.escuchar('aviso-nuevo', () => cases.refrescarEnSilencio()),
+  eventos.escuchar('reconectado', () => cases.refrescarEnSilencio()),
+]
+onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 </script>
 
 <style scoped>

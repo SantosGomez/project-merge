@@ -219,6 +219,39 @@ export const crearCountersStore = (dependencias = {}) => {
         )
       },
 
+      /**
+       * Tiempo real: vuelve a pedir los conteos (y el detalle, si es el contador seleccionado)
+       * sin pasar por «cargando» ni vaciar la pantalla. Sin id refresca todos los contadores.
+       * Un fallo se ignora: la pantalla sigue como estaba y el siguiente aviso lo reintenta.
+       * @param {number|string|null} [contadorId] - contador que cambió.
+       */
+      async refrescarEnSilencio(contadorId = null) {
+        const versionActual = version
+        const ids = contadorId === null ? this.contadores.map((contador) => contador.id) : [contadorId]
+        const seleccionado = this.contadorSeleccionadoId
+        const conDetalle = seleccionado !== null && ids.includes(seleccionado)
+
+        try {
+          const [conteos, casos] = await Promise.all([
+            Promise.all(ids.map((id) => servicio.getConteosPorEstado(id, SOLO_IMPORTANTES))),
+            conDetalle ? servicio.getCasosPorContador(seleccionado, SOLO_IMPORTANTES) : null,
+          ])
+          // Cerró sesión o recargó todo mientras tanto: no se aplica
+          if (versionActual !== version) return
+
+          const mapa = { ...this.conteosPorId }
+          ids.forEach((id, indice) => {
+            mapa[id] = normalizarConteos(conteos[indice])
+          })
+          this.conteosPorId = mapa
+          if (conDetalle && this.contadorSeleccionadoId === seleccionado) {
+            this.casosDetalle = casos
+          }
+        } catch {
+          // Silencioso a propósito: no se interrumpe lo que la persona está viendo
+        }
+      },
+
       /** Quita la selección y su detalle sin tocar la lista (RF-36). */
       limpiarSeleccion() {
         this.contadorSeleccionadoId = null

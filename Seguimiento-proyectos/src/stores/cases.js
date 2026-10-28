@@ -103,6 +103,22 @@ export const crearCasesStore = (dependencias = {}) => {
       },
 
       /**
+       * Tiempo real: vuelve a pedir mis casos sin vaciar la lista ni mostrar la carga.
+       * No se hace mientras se guarda un cambio, y un fallo se ignora (la lista sigue igual).
+       */
+      async refrescarEnSilencio() {
+        if (this.guardando) return
+        const versionActual = version
+        try {
+          const casos = await servicio.getMisCasos()
+          if (versionActual !== version || this.guardando) return
+          this.casos = casos
+        } catch {
+          // Silencioso a propósito: el siguiente aviso o la recarga lo reintentan
+        }
+      },
+
+      /**
        * Registra un caso propio y lo agrega a la lista local (RF-18 a RF-24).
        * El error de registro se devuelve para que P-4 muestre el ErrorState; no
        * se guarda como error de lectura de P-5.
