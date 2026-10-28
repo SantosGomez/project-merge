@@ -76,7 +76,7 @@
         class="caso-item__estado"
         @update:model-value="(prioridad) => emit('cambiar-prioridad', prioridad)"
       >
-        <q-tooltip>Cambia la prioridad; se recalcula el vencimiento y se avisa al contador.</q-tooltip>
+        <q-tooltip>Cambia la prioridad y avisa al contador. La fecha de vencimiento no cambia.</q-tooltip>
       </q-select>
       <span class="caso-item__estado-fijo" tabindex="0">
         {{ STATUS_LABELS[caso.status] ?? caso.status }}

@@ -9,10 +9,13 @@ const {
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { query } = require('../src/config/db');
 const CaseModel = require('../src/models/CaseModel');
-const { formatLocalDate } = require('../src/utils/dateUtils');
+const { formatLocalDate, formatearFechaISO } = require('../src/utils/dateUtils');
 
 // Formato de hora local de RNF-2: sin `T`, sin `Z` y sin milisegundos.
 const FORMATO_FECHA_LOCAL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
+// El contador captura el vencimiento; en las altas de prueba va después de cualquier fecha de inicio usada.
+const VENCE = '2027-02-26';
 
 /**
  * Pruebas de integración de las rutas de casos (caseRoutes).
@@ -56,7 +59,7 @@ async function testRegistrarCasoValido() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente de prueba', prioridad: 'Alta' },
+    { cliente: 'Cliente de prueba', prioridad: 'Alta', fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -119,7 +122,7 @@ async function testRegistroClienteDemasiadoLargoRechaza() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: clienteLargo, prioridad: 'Media' },
+    { cliente: clienteLargo, prioridad: 'Media', fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -134,7 +137,7 @@ async function testCambiarEstadoYPrioridadCasoPropio() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente para editar', prioridad: 'Media' },
+    { cliente: 'Cliente para editar', prioridad: 'Media', fecha_vencimiento: VENCE },
     tokenContador
   );
   assert.strictEqual(crearResp.statusCode, 201, 'caso debe crearse');
@@ -174,7 +177,7 @@ async function testCambiarCasoAjenoEsDenegado() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente caso ajeno', prioridad: 'Baja' },
+    { cliente: 'Cliente caso ajeno', prioridad: 'Baja', fecha_vencimiento: VENCE },
     tokenContador
   );
   assert.strictEqual(crearResp.statusCode, 201, 'el caso ajeno debe crearse');
@@ -252,7 +255,7 @@ async function testFechasDelCasoEnHoraLocal() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente con fechas', prioridad: 'Baja' },
+    { cliente: 'Cliente con fechas', prioridad: 'Baja', fecha_vencimiento: VENCE },
     tokenContador
   );
   assert.strictEqual(crearResp.statusCode, 201, 'el caso debe crearse');
@@ -285,7 +288,7 @@ async function testPerfilSeCompruebaAntesDelCaso() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente perfil antes del caso', prioridad: 'Media' },
+    { cliente: 'Cliente perfil antes del caso', prioridad: 'Media', fecha_vencimiento: VENCE },
     tokenContador
   );
   assert.strictEqual(crearResp.statusCode, 201, 'el caso del contador debe crearse');
@@ -322,7 +325,7 @@ async function testPerfilSeCompruebaAntesDelCaso() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente del administrador', prioridad: 'Alta' },
+    { cliente: 'Cliente del administrador', prioridad: 'Alta', fecha_vencimiento: VENCE },
     tokenAdmin
   );
   assert.strictEqual(registroAdmin.statusCode, 403, 'el administrador no debe poder registrar casos');
@@ -332,7 +335,7 @@ async function testPerfilSeCompruebaAntesDelCaso() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente de usuarios de sistema', prioridad: 'Alta' },
+    { cliente: 'Cliente de usuarios de sistema', prioridad: 'Alta', fecha_vencimiento: VENCE },
     tokenSistema
   );
   assert.strictEqual(registroSistema.statusCode, 403, 'usuarios_de_sistema no debe poder registrar casos');
@@ -351,7 +354,7 @@ async function testFechaInicioSeGuardaSinDesplazar() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente con fecha', prioridad: 'Alta', fecha_inicio: '31-12-2026' },
+    { cliente: 'Cliente con fecha', prioridad: 'Alta', fecha_inicio: '31-12-2026', fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -361,11 +364,64 @@ async function testFechaInicioSeGuardaSinDesplazar() {
     /^2026-12-31/,
     'la fecha de inicio no debe desplazarse al día anterior por la zona horaria'
   );
-  assert.match(
-    String(crear.body.caso.fecha_vencimiento),
-    /^2027-01-07/,
-    'el vencimiento se cuenta en 5 días hábiles desde el 31-12-2026 (Alta)'
+  assert.strictEqual(
+    String(crear.body.caso.fecha_vencimiento).slice(0, 10),
+    VENCE,
+    'el vencimiento es el que capturó el contador, no depende de la prioridad'
   );
+}
+
+// ---------- Vencimiento capturado por el contador ----------
+async function testVencimientoCapturadoEnDDMMAAAA() {
+  const crear = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente vence DD-MM', prioridad: 'Baja', fecha_inicio: '01-12-2026', fecha_vencimiento: '03-12-2026' },
+    tokenContador
+  );
+
+  assert.strictEqual(crear.statusCode, 201, 'acepta el vencimiento en DD-MM-AAAA');
+  assert.strictEqual(String(crear.body.caso.fecha_vencimiento).slice(0, 10), '2026-12-03', 'sin desplazarse un día');
+}
+
+async function testVencimientoFaltanteOInvalidoResponde400() {
+  const antes = await query('SELECT COUNT(*) AS total FROM casos WHERE contador_id = ?', [contador.id]);
+  const invalidos = [
+    {},
+    { fecha_vencimiento: '' },
+    { fecha_vencimiento: '31-02-2027' },
+    { fecha_vencimiento: 20270101 },
+    { fecha_inicio: '10-12-2026', fecha_vencimiento: '09-12-2026' },
+  ];
+
+  for (const extra of invalidos) {
+    const respuesta = await peticion(
+      servidor.puerto,
+      'POST',
+      '/casos',
+      { cliente: 'Cliente vence inválido', prioridad: 'Alta', ...extra },
+      tokenContador
+    );
+    assert.strictEqual(respuesta.statusCode, 400, `${JSON.stringify(extra)} debe responder 400`);
+    assert.match(String(respuesta.body.mensaje), /vencimiento/i, 'el aviso va sobre el vencimiento');
+  }
+
+  const despues = await query('SELECT COUNT(*) AS total FROM casos WHERE contador_id = ?', [contador.id]);
+  assert.strictEqual(Number(despues[0].total), Number(antes[0].total), 'ningún intento inválido registra un caso');
+}
+
+async function testVencimientoAnteriorAHoySinFechaInicioResponde400() {
+  // Sin fecha de inicio se usa hoy: un vencimiento de ayer no es válido
+  const respuesta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/casos',
+    { cliente: 'Cliente vence ayer', prioridad: 'Alta', fecha_vencimiento: '2020-01-01' },
+    tokenContador
+  );
+  assert.strictEqual(respuesta.statusCode, 400);
+  assert.match(String(respuesta.body.mensaje), /vencimiento/i);
 }
 
 async function testFechaInicioInvalidaResponde400() {
@@ -375,7 +431,7 @@ async function testFechaInicioInvalidaResponde400() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente con fecha imposible', prioridad: 'Alta', fecha_inicio: '31-02-2026' },
+    { cliente: 'Cliente con fecha imposible', prioridad: 'Alta', fecha_inicio: '31-02-2026', fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -399,7 +455,7 @@ async function testCasoConDescripcionYObservacionesSeGuarda() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente con descripción', prioridad: 'Alta', descripcion, observaciones },
+    { cliente: 'Cliente con descripción', prioridad: 'Alta', descripcion, observaciones, fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -422,7 +478,7 @@ async function testDescripcionDemasiadoLargaResponde400() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente', prioridad: 'Alta', descripcion },
+    { cliente: 'Cliente', prioridad: 'Alta', descripcion, fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -437,7 +493,7 @@ async function testObservacionesDemasiadoLargaResponde400() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente', prioridad: 'Alta', observaciones },
+    { cliente: 'Cliente', prioridad: 'Alta', observaciones, fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -450,7 +506,7 @@ async function testDescripcionYObservacionesNoTextoResponde400() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente', prioridad: 'Alta', descripcion: 42, observaciones: ['no'] },
+    { cliente: 'Cliente', prioridad: 'Alta', descripcion: 42, observaciones: ['no'], fecha_vencimiento: VENCE },
     tokenContador
   );
 
@@ -462,19 +518,19 @@ async function testDescripcionYObservacionesNoTextoResponde400() {
   );
 }
 
-async function testCambiarPrioridadRecalculaVencimiento() {
+async function testCambiarPrioridadNoMueveVencimiento() {
   // Primero creamos un caso vía API con una fecha de inicio conocida
   const crear = await peticion(
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente para recalcular', prioridad: 'Alta', fecha_inicio: '31-12-2026' },
+    { cliente: 'Cliente para recalcular', prioridad: 'Alta', fecha_inicio: '31-12-2026', fecha_vencimiento: VENCE },
     tokenContador
   );
   assert.strictEqual(crear.statusCode, 201, 'caso debe crearse');
   const casoId = crear.body.caso.id;
 
-  // Ahora cambiamos prioridad de Alta a Baja, el vencimiento cambia
+  // Cambiar la prioridad de Alta a Baja ya no mueve el vencimiento capturado
   const respuesta = await peticion(
     servidor.puerto,
     'PATCH',
@@ -484,11 +540,11 @@ async function testCambiarPrioridadRecalculaVencimiento() {
   );
 
   assert.strictEqual(respuesta.statusCode, 200, 'debe actualizarse cambiando prioridad');
-  // El vencimiento se recalcula con la nueva prioridad Baja: 15 días hábiles desde el 31-12-2026
-  assert.match(
-    String(respuesta.body.caso.fecha_vencimiento),
-    /^2027-01-21/,
-    'vencimiento recalculado con prioridad Baja'
+  assert.strictEqual(respuesta.body.caso.prioridad, 'Baja');
+  assert.strictEqual(
+    String(respuesta.body.caso.fecha_vencimiento).slice(0, 10),
+    VENCE,
+    'el vencimiento no depende de la prioridad'
   );
   // La fecha de inicio no cambió, debe mantenerse
   assert.match(
@@ -504,7 +560,7 @@ async function testCambiarSoloEstadoNoRecalculaVencimiento() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente estado solo', prioridad: 'Alta', fecha_inicio: '31-12-2026' },
+    { cliente: 'Cliente estado solo', prioridad: 'Alta', fecha_inicio: '31-12-2026', fecha_vencimiento: VENCE },
     tokenContador
   );
   assert.strictEqual(crear.statusCode, 201, 'caso debe crearse');
@@ -520,11 +576,10 @@ async function testCambiarSoloEstadoNoRecalculaVencimiento() {
   );
 
   assert.strictEqual(respuesta.statusCode, 200, 'debe actualizarse cambiando solo estado');
-  // El vencimiento debe mantenerse igual (5 días hábiles desde Alta)
-  assert.match(
-    String(respuesta.body.caso.fecha_vencimiento),
-    /^2027-01-07/,
-    'el vencimiento no debe recalcularse al cambiar solo el estado'
+  assert.strictEqual(
+    String(respuesta.body.caso.fecha_vencimiento).slice(0, 10),
+    VENCE,
+    'el vencimiento no cambia al cambiar solo el estado'
   );
 }
 
@@ -534,7 +589,7 @@ async function testCambiarPrioridadYEstadoTransaccional() {
     servidor.puerto,
     'POST',
     '/casos',
-    { cliente: 'Cliente transaccional', prioridad: 'Media', fecha_inicio: '31-12-2026' },
+    { cliente: 'Cliente transaccional', prioridad: 'Media', fecha_inicio: '31-12-2026', fecha_vencimiento: VENCE },
     tokenContador
   );
   assert.strictEqual(crear.statusCode, 201, 'debe crearse el caso');
@@ -550,11 +605,7 @@ async function testCambiarPrioridadYEstadoTransaccional() {
   );
 
   assert.strictEqual(respuesta.statusCode, 200, 'debe actualizarse');
-  assert.match(
-    String(respuesta.body.caso.fecha_vencimiento),
-    /^2027-01-07/,
-    'vencimiento recalculado con prioridad Alta son 5 días hábiles'
-  );
+  assert.strictEqual(respuesta.body.caso.prioridad, 'Alta', 'la prioridad también debe actualizarse');
   assert.match(
     String(respuesta.body.caso.estado),
     /En proceso/,
@@ -599,13 +650,16 @@ describe('rutas de casos', () => {
     testFechaInicioInvalidaResponde400
   );
   test('un perfil que no es contador recibe 403 exista o no el caso, y un contador recibe 404', testPerfilSeCompruebaAntesDelCaso);
-  test('cambiar prioridad recalcula el vencimiento (y no asume Media)', testCambiarPrioridadRecalculaVencimiento);
+  test('el vencimiento se acepta en DD-MM-AAAA sin desplazarse', testVencimientoCapturadoEnDDMMAAAA);
+  test('registrar sin vencimiento, con uno inválido o anterior al inicio responde 400', testVencimientoFaltanteOInvalidoResponde400);
+  test('sin fecha de inicio, un vencimiento anterior a hoy responde 400', testVencimientoAnteriorAHoySinFechaInicioResponde400);
+  test('cambiar prioridad no mueve el vencimiento', testCambiarPrioridadNoMueveVencimiento);
   test('cambiar solo estado no recalcula el vencimiento', testCambiarSoloEstadoNoRecalculaVencimiento);
   test('cambiar prioridad y estado actualiza todo en una transacción', testCambiarPrioridadYEstadoTransaccional);
   test('editar cliente, descripción y observaciones los guarda', testEditarClienteDescripcionYObservaciones);
   test('vaciar descripción y observaciones guarda null', testVaciarDescripcionYObservacionesGuardaNull);
-  test('cambiar la fecha de inicio recalcula el vencimiento', testCambiarFechaInicioRecalculaVencimiento);
-  test('cambiar fecha de inicio y prioridad a la vez usa la prioridad nueva', testCambiarFechaYPrioridadALaVez);
+  test('cambiar la fecha de inicio no mueve el vencimiento', testCambiarFechaInicioNoMueveVencimiento);
+  test('el vencimiento se edita y debe quedar en o después del inicio', testEditarVencimiento);
   test('una edición con un dato inválido responde 400 y no guarda nada', testEdicionInvalidaNoGuardaNada);
   test('sin campos editables responde 400', testEdicionSinCamposEditablesResponde400);
   test('un caso nuevo no es importante ni tiene fecha de en proceso', testCasoNuevoNoEsImportanteNiEstaEnProceso);
@@ -627,7 +681,7 @@ function editarCaso(casoId, cuerpo) {
 }
 
 async function testEditarClienteDescripcionYObservaciones() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente original', prioridad: 'Media', descripcion: 'Vieja' });
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente original', prioridad: 'Media', descripcion: 'Vieja', fecha_vencimiento: VENCE });
 
   const respuesta = await editarCaso(casoId, {
     cliente: '  Cliente editado  ',
@@ -648,6 +702,7 @@ async function testVaciarDescripcionYObservacionesGuardaNull() {
     prioridad: 'Baja',
     descripcion: 'Algo',
     observaciones: 'Algo más',
+    fecha_vencimiento: VENCE,
   });
 
   const respuesta = await editarCaso(casoId, { descripcion: '   ', observaciones: null });
@@ -657,27 +712,46 @@ async function testVaciarDescripcionYObservacionesGuardaNull() {
   assert.strictEqual(respuesta.body.caso.observaciones, null, 'observaciones null se borran');
 }
 
-async function testCambiarFechaInicioRecalculaVencimiento() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente fecha', prioridad: 'Media', fecha_inicio: '01-12-2026' });
+async function testCambiarFechaInicioNoMueveVencimiento() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente fecha', prioridad: 'Media', fecha_inicio: '01-12-2026', fecha_vencimiento: VENCE });
 
-  const respuesta = await editarCaso(casoId, { fecha_inicio: '31-12-2026' });
+  const respuesta = await editarCaso(casoId, { fecha_inicio: '31-12-2026', prioridad: 'Alta' });
 
   assert.strictEqual(respuesta.statusCode, 200);
   assert.match(String(respuesta.body.caso.fecha_inicio), /^2026-12-31/, 'la fecha de inicio cambia sin desplazarse');
-  assert.match(String(respuesta.body.caso.fecha_vencimiento), /^2027-01-14/, 'Media: 10 días hábiles desde la fecha nueva');
+  assert.strictEqual(String(respuesta.body.caso.fecha_vencimiento).slice(0, 10), VENCE, 'el vencimiento no se recalcula');
 }
 
-async function testCambiarFechaYPrioridadALaVez() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente fecha y prioridad', prioridad: 'Baja', fecha_inicio: '01-12-2026' });
+async function testEditarVencimiento() {
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente edita vence', prioridad: 'Media', fecha_inicio: '01-12-2026', fecha_vencimiento: VENCE });
 
-  const respuesta = await editarCaso(casoId, { fecha_inicio: '2026-12-31', prioridad: 'Alta' });
+  const cambio = await editarCaso(casoId, { fecha_vencimiento: '15-01-2027' });
+  assert.strictEqual(cambio.statusCode, 200, 'el vencimiento basta para editar');
+  assert.strictEqual(String(cambio.body.caso.fecha_vencimiento).slice(0, 10), '2027-01-15');
 
-  assert.strictEqual(respuesta.statusCode, 200);
-  assert.match(String(respuesta.body.caso.fecha_vencimiento), /^2027-01-07/, 'Alta: 5 días hábiles desde la fecha nueva');
+  const invalidos = [
+    { fecha_vencimiento: '' },
+    { fecha_vencimiento: '30-02-2027' },
+    { fecha_vencimiento: null },
+    { fecha_vencimiento: '30-11-2026' },
+    // La fecha de inicio nueva no puede quedar después del vencimiento guardado
+    { fecha_inicio: '16-01-2027' },
+    { fecha_inicio: '01-03-2027', fecha_vencimiento: '28-02-2027' },
+  ];
+  for (const cuerpo of invalidos) {
+    const respuesta = await editarCaso(casoId, { descripcion: 'No se guarda', ...cuerpo });
+    assert.strictEqual(respuesta.statusCode, 400, `${JSON.stringify(cuerpo)} debe responder 400`);
+    assert.match(String(respuesta.body.mensaje), /vencimiento/i, 'el aviso va sobre el vencimiento');
+  }
+
+  const caso = await CaseModel.findById(casoId);
+  assert.strictEqual(caso.descripcion, null, 'ningún intento inválido guarda nada');
+  assert.strictEqual(formatearFechaISO(caso.fecha_inicio), '2026-12-01');
+  assert.strictEqual(formatearFechaISO(caso.fecha_vencimiento), '2027-01-15');
 }
 
 async function testEdicionInvalidaNoGuardaNada() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente intacto', prioridad: 'Media', descripcion: 'Intacta' });
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente intacto', prioridad: 'Media', descripcion: 'Intacta', fecha_vencimiento: VENCE });
   const invalidos = [
     [{ descripcion: 'Cambio', fecha_inicio: '31-02-2026' }, /fecha_inicio/],
     [{ descripcion: 'Cambio', fecha_inicio: '' }, /fecha_inicio/],
@@ -700,9 +774,9 @@ async function testEdicionInvalidaNoGuardaNada() {
 }
 
 async function testEdicionSinCamposEditablesResponde400() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente sin cambios', prioridad: 'Media' });
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente sin cambios', prioridad: 'Media', fecha_vencimiento: VENCE });
 
-  for (const cuerpo of [{}, { fecha_vencimiento: '2030-01-01', contador_id: 1 }]) {
+  for (const cuerpo of [{}, { contador_id: 1, creado_en: '2030-01-01 00:00:00' }]) {
     const respuesta = await editarCaso(casoId, cuerpo);
     assert.strictEqual(respuesta.statusCode, 400, `${JSON.stringify(cuerpo)} debe responder 400`);
     assert.match(respuesta.body.mensaje, /Nada que actualizar/);
@@ -711,7 +785,7 @@ async function testEdicionSinCamposEditablesResponde400() {
 
 // ---------- Importante / En proceso: fecha en que el caso empezó a atenderse ----------
 async function testCasoNuevoNoEsImportanteNiEstaEnProceso() {
-  const respuesta = await peticion(servidor.puerto, 'POST', '/casos', { cliente: 'Cliente nuevo', prioridad: 'Media' }, tokenContador);
+  const respuesta = await peticion(servidor.puerto, 'POST', '/casos', { cliente: 'Cliente nuevo', prioridad: 'Media', fecha_vencimiento: VENCE }, tokenContador);
 
   assert.strictEqual(respuesta.statusCode, 201);
   assert.strictEqual(respuesta.body.caso.importante, false, 'un caso nuevo no es importante');
@@ -719,7 +793,7 @@ async function testCasoNuevoNoEsImportanteNiEstaEnProceso() {
 }
 
 async function testPasarAEnProcesoGuardaLaFecha() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente en proceso', prioridad: 'Media' });
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente en proceso', prioridad: 'Media', fecha_vencimiento: VENCE });
 
   const respuesta = await editarCaso(casoId, { estado: 'En proceso' });
 
@@ -729,7 +803,7 @@ async function testPasarAEnProcesoGuardaLaFecha() {
 }
 
 async function testVolverAEnProcesoConservaLaPrimeraFecha() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente vuelve a proceso', prioridad: 'Media' });
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente vuelve a proceso', prioridad: 'Media', fecha_vencimiento: VENCE });
   await editarCaso(casoId, { estado: 'En proceso' });
   // Se fija una primera fecha conocida para distinguirla de la del segundo cambio.
   await query('UPDATE casos SET en_proceso_en = ? WHERE id = ?', ['2026-01-05 09:00:00', casoId]);
@@ -744,7 +818,7 @@ async function testVolverAEnProcesoConservaLaPrimeraFecha() {
 }
 
 async function testRegistrarYMarcarImportante() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente importante', prioridad: 'Baja', importante: true });
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente importante', prioridad: 'Baja', importante: true, fecha_vencimiento: VENCE });
   assert.strictEqual((await CaseModel.findById(casoId)).importante, 1, 'se registra como importante');
 
   const desmarcar = await editarCaso(casoId, { importante: false });
@@ -757,14 +831,14 @@ async function testRegistrarYMarcarImportante() {
 }
 
 async function testImportanteNoBooleanoResponde400() {
-  const casoId = await crearCasoParaEditar({ cliente: 'Cliente no booleano', prioridad: 'Media' });
+  const casoId = await crearCasoParaEditar({ cliente: 'Cliente no booleano', prioridad: 'Media', fecha_vencimiento: VENCE });
 
   for (const valor of ['true', 1, 0, null, 'sí']) {
     const registro = await peticion(
       servidor.puerto,
       'POST',
       '/casos',
-      { cliente: 'Cliente no booleano', prioridad: 'Media', importante: valor },
+      { cliente: 'Cliente no booleano', prioridad: 'Media', importante: valor, fecha_vencimiento: VENCE },
       tokenContador
     );
     assert.strictEqual(registro.statusCode, 400, `registrar con ${JSON.stringify(valor)} debe responder 400`);

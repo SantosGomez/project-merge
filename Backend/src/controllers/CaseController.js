@@ -16,7 +16,6 @@ const {
   formatLocalDate,
   formatearFechaISO,
   parseFechaInicio,
-  calcularFechaVencimiento,
   casoConFechasLocales,
 } = require('../utils/dateUtils');
 
@@ -66,6 +65,37 @@ const ERROR_FECHA_INICIO = buildError(
   'fecha_inicio',
   'Use una fecha real con formato DD-MM-AAAA o AAAA-MM-DD'
 );
+
+const ERROR_VENCIMIENTO_FALTANTE = buildError(
+  'Falta la fecha de vencimiento',
+  'fecha de vencimiento',
+  'Indique cuándo vence el caso con formato DD-MM-AAAA'
+);
+
+const ERROR_VENCIMIENTO_INVALIDO = buildError(
+  'Fecha de vencimiento no válida',
+  'fecha de vencimiento',
+  'Use una fecha real con formato DD-MM-AAAA o AAAA-MM-DD'
+);
+
+const ERROR_VENCIMIENTO_ANTES_DEL_INICIO = buildError(
+  'La fecha de vencimiento es anterior a la fecha de inicio',
+  'fecha de vencimiento',
+  'Elija una fecha de vencimiento igual o posterior a la fecha de inicio'
+);
+
+/**
+ * Valida la fecha de vencimiento que captura el contador (ya no depende de la prioridad).
+ * @param {*} valor - Fecha recibida (DD-MM-AAAA o AAAA-MM-DD).
+ * @returns {{ error?: Object, fecha?: string }} El error listo para responder, o la fecha AAAA-MM-DD.
+ */
+function validarVencimiento(valor) {
+  if (valor === undefined || valor === '') {
+    return { error: ERROR_VENCIMIENTO_FALTANTE };
+  }
+  const fecha = formatearFechaISO(parseFechaInicio(valor));
+  return fecha ? { fecha } : { error: ERROR_VENCIMIENTO_INVALIDO };
+}
 
 /**
  * Valida descripción u observaciones.
@@ -127,8 +157,15 @@ async function createCase(req, res) {
   }
 
   const fechaInicio = formatearFechaISO(fechaInicioFecha);
-  // Vencimiento automático según prioridad (días hábiles: Alta=5, Media=10, Baja=15)
-  const fechaVencimiento = calcularFechaVencimiento(fechaInicioFecha, prioridad);
+  // El vencimiento lo decide el contador según cómo avance el caso
+  const vencimiento = validarVencimiento(req.body.fecha_vencimiento);
+  if (vencimiento.error) {
+    return res.status(400).json(vencimiento.error);
+  }
+  if (vencimiento.fecha < fechaInicio) {
+    return res.status(400).json(ERROR_VENCIMIENTO_ANTES_DEL_INICIO);
+  }
+  const fechaVencimiento = vencimiento.fecha;
 
   const casoId = await CaseModel.create({
     contador_id: req.user.id, // Asigna al contador autenticado (RF-17)
@@ -154,24 +191,33 @@ async function createCase(req, res) {
 
 /**
  * Edita un caso propio (solo contador autenticado, checkCaseOwnership ya verificado).
- * Campos editables: cliente, estado, prioridad, fecha de inicio, descripción y observaciones.
+ * Campos editables: cliente, estado, prioridad, fecha de inicio, fecha de vencimiento, descripción y observaciones.
  * Todo se valida antes de guardar: con un solo dato inválido no se guarda nada.
- * El vencimiento no se edita: se recalcula si cambian la prioridad o la fecha de inicio.
+ * El vencimiento solo cambia cuando el contador lo envía; nunca puede quedar antes del inicio.
  * @param {Object} req - Petición Express con req.caso (puesto por checkCaseOwnership) y cuerpo con los campos a cambiar.
  * @param {Object} res - Respuesta Express.
  */
 async function updateCase(req, res) {
-  const { cliente, estado, prioridad, fecha_inicio: fechaRecibida } = req.body;
+  const { cliente, estado, prioridad, fecha_inicio: fechaRecibida, fecha_vencimiento: vencimientoRecibido } = req.body;
   const casoActual = req.caso;
 
   const { importante } = req.body;
-  const editables = [cliente, estado, prioridad, fechaRecibida, req.body.descripcion, req.body.observaciones, importante];
+  const editables = [
+    cliente,
+    estado,
+    prioridad,
+    fechaRecibida,
+    vencimientoRecibido,
+    req.body.descripcion,
+    req.body.observaciones,
+    importante,
+  ];
   if (editables.every((valor) => valor === undefined)) {
     return res.status(400).json(
       buildError(
         'Nada que actualizar',
         'caso',
-        'Envíe al menos uno de: cliente, estado, prioridad, fecha de inicio, descripción, observaciones o importante'
+        'Envíe al menos uno de: cliente, estado, prioridad, fecha de inicio, fecha de vencimiento, descripción, observaciones o importante'
       )
     );
   }
@@ -228,16 +274,25 @@ async function updateCase(req, res) {
     return res.status(400).json(ERROR_FECHA_INICIO);
   }
 
-  const cambiaPrioridad = prioridad !== undefined && prioridad !== casoActual.prioridad;
+  // Al editar, el vencimiento tampoco puede quedar vacío
+  let fechaVencimiento;
+  if (vencimientoRecibido !== undefined) {
+    const vencimiento = validarVencimiento(vencimientoRecibido ?? '');
+    if (vencimiento.error) {
+      return res.status(400).json(vencimiento.error);
+    }
+    fechaVencimiento = vencimiento.fecha;
+  }
+
   const cambiaFecha =
     fechaInicioNueva !== null && formatearFechaISO(fechaInicioNueva) !== formatearFechaISO(casoActual.fecha_inicio);
-  const fechaVencimiento =
-    cambiaPrioridad || cambiaFecha
-      ? calcularFechaVencimiento(
-          fechaInicioNueva ?? casoActual.fecha_inicio ?? nowLocal(),
-          prioridad ?? casoActual.prioridad
-        )
-      : undefined;
+
+  // Inicio y vencimiento como quedarían guardados: el vencimiento nunca antes del inicio
+  const inicioFinal = formatearFechaISO(fechaInicioNueva ?? casoActual.fecha_inicio);
+  const vencimientoFinal = fechaVencimiento ?? formatearFechaISO(casoActual.fecha_vencimiento);
+  if (inicioFinal && vencimientoFinal && vencimientoFinal < inicioFinal) {
+    return res.status(400).json(ERROR_VENCIMIENTO_ANTES_DEL_INICIO);
+  }
 
   // Un solo UPDATE: todos los cambios se guardan juntos o no se guarda nada
   await CaseModel.updatePatch(casoActual.id, {
@@ -259,16 +314,10 @@ async function updateCase(req, res) {
   });
 }
 
-/** AAAA-MM-DD → DD-MM-AAAA, el formato que ven las personas. */
-function fechaParaAviso(fechaISO) {
-  const [anio, mes, dia] = fechaISO.split('-');
-  return `${dia}-${mes}-${anio}`;
-}
-
 /**
- * El administrador cambia la prioridad del caso de cualquier contador.
- * Recalcula el vencimiento desde la fecha de inicio y avisa al dueño del caso;
- * el cambio y el aviso se guardan juntos. Con la misma prioridad no hace nada.
+ * El administrador cambia la prioridad del caso de cualquier contador y avisa al dueño;
+ * el cambio y el aviso se guardan juntos. El vencimiento no se toca (lo decide el contador).
+ * Con la misma prioridad no hace nada.
  * @param {Object} req - Petición Express con params.id y cuerpo { prioridad }.
  * @param {Object} res - Respuesta Express.
  */
@@ -295,14 +344,11 @@ async function cambiarPrioridadComoAdmin(req, res) {
   }
 
   if (prioridad !== casoActual.prioridad) {
-    const fechaVencimiento = calcularFechaVencimiento(casoActual.fecha_inicio ?? nowLocal(), prioridad);
     const administrador = await UserModel.findById(req.user.id);
-    const mensaje =
-      `${administrador.nombre} cambió la prioridad de «${casoActual.cliente}» de ${casoActual.prioridad} a ${prioridad}. ` +
-      `Ahora vence el ${fechaParaAviso(fechaVencimiento)}.`;
+    const mensaje = `${administrador.nombre} cambió la prioridad de «${casoActual.cliente}» de ${casoActual.prioridad} a ${prioridad}.`;
 
     await conTransaccion(async (ejecutar) => {
-      await CaseModel.updatePatch(casoActual.id, { prioridad, fecha_vencimiento: fechaVencimiento }, ejecutar);
+      await CaseModel.updatePatch(casoActual.id, { prioridad }, ejecutar);
       await NotificacionModel.crear({ usuarioId: casoActual.contador_id, casoId: casoActual.id, mensaje }, ejecutar);
     });
   }

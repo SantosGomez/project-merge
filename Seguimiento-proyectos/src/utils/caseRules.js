@@ -101,8 +101,8 @@ const textoLimpio = (valor) => (typeof valor === 'string' ? valor.trim() : '')
  * cuentan como cambio; un texto vaciado se envía como '' para borrarlo.
  * @param {Object} caso - caso interno del store (`cliente`, `estado`, `prioridad`, `fecha_inicio`...).
  * @param {{ cliente: string, estado: string, prioridad: string, fechaInicio: string,
- *   descripcion: string, observaciones: string, importante: boolean }} formulario - valores del formulario (fecha en DD-MM-AAAA).
- * @returns {Object} campos cambiados: cliente, estado, prioridad, fecha_inicio, descripcion, observaciones, importante.
+ *   fechaVencimiento: string, descripcion: string, observaciones: string, importante: boolean }} formulario - valores del formulario (fecha en DD-MM-AAAA).
+ * @returns {Object} campos cambiados: cliente, estado, prioridad, fecha_inicio, fecha_vencimiento, descripcion, observaciones, importante.
  */
 export const cambiosDelCaso = (caso, formulario) => {
   const cambios = {}
@@ -111,6 +111,7 @@ export const cambiosDelCaso = (caso, formulario) => {
     ['estado', caso.estado, formulario.estado],
     ['prioridad', caso.prioridad, formulario.prioridad],
     ['fecha_inicio', fechaParaFormulario(caso.fecha_inicio), textoLimpio(formulario.fechaInicio)],
+    ['fecha_vencimiento', fechaParaFormulario(caso.fecha_vencimiento), textoLimpio(formulario.fechaVencimiento)],
     ['descripcion', textoLimpio(caso.descripcion), textoLimpio(formulario.descripcion)],
     ['observaciones', textoLimpio(caso.observaciones), textoLimpio(formulario.observaciones)],
   ]

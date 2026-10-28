@@ -428,3 +428,20 @@ test('una escritura tard�a tras reiniciar no modifica la lista (guardia de ver
   // After reiniciar, casos is empty; B may have appended if it ran. Check no 'lento'.
   assert.ok(!store.casos.some((c) => c.cliente === 'lento'), 'la escritura tard�a no se aplica')
 })
+
+test('crearCaso pasa la fecha de vencimiento al servicio', async () => {
+  let recibido
+  const store = montarStore({
+    async getMisCasos() {
+      return []
+    },
+    async crearCaso(...argumentos) {
+      recibido = argumentos
+      return { id: 1, cliente: 'C', prioridad: 'alta', estado: 'pendiente', contador_id: 3 }
+    },
+  })
+
+  await store.crearCaso('C', 'alta', '01-12-2026', undefined, undefined, false, '15-01-2027')
+
+  assert.deepEqual(recibido, ['C', 'alta', '01-12-2026', undefined, undefined, false, '15-01-2027'])
+})

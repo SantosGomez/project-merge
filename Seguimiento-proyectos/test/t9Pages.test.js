@@ -437,12 +437,25 @@ describe('Editar caso — CaseFormDialog en modo edición', () => {
     assert.match(caseFormSource, /const modoEdicion = computed\(\(\) => props\.caso !== null\)/)
     assert.match(caseFormSource, /'Editar caso'/)
     assert.match(caseFormSource, /'Guardar cambios'/)
-    assert.match(caseFormSource, /El vencimiento se recalcula al guardar si cambias la prioridad o la fecha de inicio/)
+    assert.doesNotMatch(caseFormSource, /recalcula/, 'el vencimiento ya no depende de la prioridad')
   })
 
-  it('en edición el estado se elige con un selector y se muestra el vencimiento', () => {
+  it('en edición el estado se elige con un selector', () => {
     assert.match(caseFormSource, /<q-select[\s\S]*?for="estado-field"[\s\S]*?:options="statusOptions"/)
-    assert.match(caseFormSource, /<dt>Vence<\/dt>/)
+    assert.doesNotMatch(caseFormSource, /<dt>Vence<\/dt>/, 'el vencimiento ya es un campo, no un dato de solo lectura')
+  })
+
+  it('la fecha de vencimiento la captura el contador: obligatoria, con tooltip y validada', () => {
+    const inicio = caseFormSource.indexOf('for="fecha-vencimiento-field"')
+    assert.ok(inicio > 0, 'existe el campo de vencimiento')
+    const campo = caseFormSource.slice(caseFormSource.lastIndexOf('<div class="form-group', inicio), caseFormSource.indexOf('</div>', inicio))
+    assert.match(campo, /Fecha de vencimiento <span aria-label="obligatorio" class="required-mark">\*<\/span>/)
+    assert.match(campo, /v-model="fechaVencimiento"/)
+    assert.match(campo, /placeholder="DD-MM-AAAA"/)
+    assert.match(campo, /<q-tooltip>/)
+    assert.match(caseFormSource, /validarFechaVencimiento\(fechaVencimiento\.value, fechaLimpia, hoyLocal\(\)\)/)
+    assert.match(caseFormSource, /fechaVencimiento: fechaVencimiento\.value/, 'en edición se compara con el guardado')
+    assert.match(caseFormSource, /fechaVencimiento\.value = fechaParaFormulario\(caso\?\.fecha_vencimiento\)/)
   })
 
   it('la fecha de inicio ya no lleva el asterisco de obligatorio en el registro', () => {
@@ -463,12 +476,14 @@ describe('Formulario de caso más horizontal: filas 2, 2, 1', () => {
   // Orden de los campos en el código: es el orden de lectura de la cuadrícula.
   const posicion = (texto) => caseFormSource.indexOf(texto)
 
-  it('los campos van en orden Cliente, Prioridad, Fecha de inicio, Estado, Descripción y Observaciones', () => {
+  it('los campos van en orden Cliente, Prioridad, Fecha de inicio, Vencimiento, Estado, Importante, Descripción y Observaciones', () => {
     const orden = [
       'for="client-field"',
       'for="priority-field"',
       'for="fecha-inicio-field"',
+      'for="fecha-vencimiento-field"',
       'class="form-group registro-caso__estado"',
+      'v-model="importante"',
       'for="descripcion-field"',
       'for="observaciones-field"',
     ].map(posicion)

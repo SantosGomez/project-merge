@@ -56,7 +56,7 @@ async function testTablaNotificaciones() {
   assert.deepStrictEqual(columnas, ['id', 'usuario_id', 'caso_id', 'mensaje', 'leida', 'creado_en']);
 }
 
-// ---------- El administrador cambia la prioridad: recalcula el vencimiento y avisa al dueño ----------
+// ---------- El administrador cambia la prioridad: el vencimiento no se mueve y se avisa al dueño ----------
 async function testAdminCambiaPrioridadYAvisa() {
   const id = await casoDelContador();
 
@@ -64,8 +64,8 @@ async function testAdminCambiaPrioridadYAvisa() {
 
   assert.strictEqual(respuesta.statusCode, 200);
   assert.strictEqual(respuesta.body.caso.prioridad, 'Alta');
-  assert.match(respuesta.body.caso.fecha_vencimiento, /^2026-11-09/, 'Alta: 5 días hábiles desde el inicio');
-  assert.deepStrictEqual(await filaCaso(id), { prioridad: 'Alta', vence: '2026-11-09' });
+  assert.match(respuesta.body.caso.fecha_vencimiento, /^2026-11-16/, 'el vencimiento lo decide el contador');
+  assert.deepStrictEqual(await filaCaso(id), { prioridad: 'Alta', vence: '2026-11-16' });
 
   const avisos = await avisosDe(contador.id);
   assert.strictEqual(avisos.length, 1, 'un aviso para el dueño del caso');
@@ -73,7 +73,7 @@ async function testAdminCambiaPrioridadYAvisa() {
   assert.strictEqual(avisos[0].leida, 0);
   assert.strictEqual(
     avisos[0].mensaje,
-    `${administrador.nombre} cambió la prioridad de «zz_test Gamesa» de Media a Alta. Ahora vence el 09-11-2026.`
+    `${administrador.nombre} cambió la prioridad de «zz_test Gamesa» de Media a Alta.`
   );
 }
 
@@ -119,7 +119,7 @@ async function testListarAvisosPropios() {
   assert.strictEqual(lista.statusCode, 200);
   assert.ok(lista.body.no_leidas >= 2);
   const [masReciente] = lista.body.notificaciones;
-  assert.match(masReciente.mensaje, /«zz_test Bimbo» de Alta a Baja\. Ahora vence el 23-11-2026\./);
+  assert.match(masReciente.mensaje, /«zz_test Bimbo» de Alta a Baja\.$/);
   assert.strictEqual(masReciente.leida, false);
   assert.match(masReciente.creado_en, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, 'fecha en hora local');
   assert.deepStrictEqual(Object.keys(masReciente).sort(), ['caso_id', 'creado_en', 'id', 'leida', 'mensaje']);
@@ -172,7 +172,7 @@ describe('prioridad cambiada por el administrador y avisos al contador', () => {
   });
 
   test('existe la tabla notificaciones con sus columnas', testTablaNotificaciones);
-  test('el administrador cambia la prioridad, se recalcula el vencimiento y el dueño recibe un aviso', testAdminCambiaPrioridadYAvisa);
+  test('el administrador cambia la prioridad, el vencimiento no se mueve y el dueño recibe un aviso', testAdminCambiaPrioridadYAvisa);
   test('con la misma prioridad no cambia nada ni se avisa', testMismaPrioridadNoAvisa);
   test('solo el administrador; datos inválidos o caso inexistente no cambian nada', testPermisosYValidaciones);
   test('cada quien ve solo sus avisos, del más reciente al más antiguo', testListarAvisosPropios);

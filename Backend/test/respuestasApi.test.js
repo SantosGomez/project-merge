@@ -207,7 +207,7 @@ async function testBarridoDeRespuestasSinDatosDeAcceso() {
   // Alta de caso: éxito, prioridad inválida (400) y administrador (403).
   const altaCaso = guardar(
     'alta de caso',
-    await peticion(servidor.puerto, 'POST', '/casos', { cliente: 'Cliente de barrido', prioridad: 'Alta' }, tokenContador)
+    await peticion(servidor.puerto, 'POST', '/casos', { cliente: 'Cliente de barrido', prioridad: 'Alta', fecha_vencimiento: '2099-12-31' }, tokenContador)
   );
   guardar(
     'alta de caso con prioridad inválida',

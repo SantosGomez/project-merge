@@ -418,3 +418,13 @@ test('cambiosDelCaso incluye importante cuando se marca o se desmarca', () => {
     'sin cambio de importante no se envía',
   )
 })
+
+test('cambiosDelCaso incluye el vencimiento cuando el contador lo cambia', () => {
+  const conVencimiento = { ...casoGuardado, fecha_vencimiento: '2027-01-15 00:00:00' }
+  const formulario = { ...formularioSinCambios, fechaVencimiento: '15-01-2027' }
+
+  assert.deepEqual(cambiosDelCaso(conVencimiento, formulario), {}, 'el mismo día no cuenta como cambio')
+  assert.deepEqual(cambiosDelCaso(conVencimiento, { ...formulario, fechaVencimiento: ' 20-01-2027 ' }), {
+    fecha_vencimiento: '20-01-2027',
+  })
+})

@@ -207,7 +207,7 @@ async function testLeerYGuardarCasosFallan() {
   const cliente = `zz_test_cliente_${contador.id}`;
   const registro = await conFalloDeBd(
     (sql) => sql.startsWith('INSERT INTO casos'),
-    () => peticion(servidor.puerto, 'POST', '/casos', { cliente, prioridad: 'Alta' }, token)
+    () => peticion(servidor.puerto, 'POST', '/casos', { cliente, prioridad: 'Alta', fecha_vencimiento: '2099-12-31' }, token)
   );
   assert.strictEqual(registro.statusCode, 503, 'un fallo al guardar el caso debe responder 503');
   afirmarTresPartes(registro.body.mensaje, 'registro de caso fallido');

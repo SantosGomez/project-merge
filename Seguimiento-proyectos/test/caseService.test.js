@@ -339,7 +339,7 @@ test('actualizarCaso no envía campos que no se editan y, si solo vienen esos, n
   const servicio = crearCaseService({ api })
 
   await assert.rejects(
-    servicio.actualizarCaso(9, { fecha_vencimiento: '2030-01-01', contador_id: 4 }),
+    servicio.actualizarCaso(9, { contador_id: 4, creado_en: '2030-01-01 00:00:00' }),
     esErrorDeTresPartes('datos_invalidos'),
   )
   assert.equal(api.llamadas.length, 0)
@@ -395,4 +395,39 @@ test('cambiarPrioridadComoAdmin rechaza con tres partes y no llama al backend si
 
   await assert.rejects(() => servicio.cambiarPrioridadComoAdmin(9, 'urgente'), esErrorDeTresPartes('datos_invalidos'))
   assert.equal(api.llamadas.length, 0)
+})
+
+// --- fecha de vencimiento capturada por el contador ---------------------------
+
+test('crearCaso envía la fecha de vencimiento en AAAA-MM-DD', async () => {
+  const api = crearApiFalsa({
+    POST: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.crearCaso('Cliente', 'Alta', '01-12-2026', undefined, undefined, false, '15-01-2027')
+
+  assert.equal(api.llamadas[0].cuerpo.fecha_vencimiento, '2027-01-15', 'la API recibe AAAA-MM-DD')
+})
+
+test('crearCaso rechaza un vencimiento imposible sin llamar al backend', async () => {
+  const api = crearApiFalsa({ POST: async () => ({ data: {} }) })
+  const servicio = crearCaseService({ api })
+
+  await assert.rejects(
+    servicio.crearCaso('Cliente', 'Alta', undefined, undefined, undefined, false, '30-02-2027'),
+    esErrorDeTresPartes('datos_invalidos'),
+  )
+  assert.equal(api.llamadas.length, 0)
+})
+
+test('actualizarCaso envía el vencimiento traducido a AAAA-MM-DD', async () => {
+  const api = crearApiFalsa({
+    PATCH: async () => ({ data: { caso: casoDeBackend() } }),
+  })
+  const servicio = crearCaseService({ api })
+
+  await servicio.actualizarCaso(9, { fecha_vencimiento: '15-01-2027' })
+
+  assert.deepEqual(api.llamadas[0].cuerpo, { fecha_vencimiento: '2027-01-15' })
 })

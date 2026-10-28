@@ -120,15 +120,16 @@ export const crearCasesStore = (dependencias = {}) => {
    * @param {string} [descripcion] - descripción del caso (opcional, máx. 1000 chars).
    * @param {string} [observaciones] - observaciones del caso (opcional, máx. 2000 chars).
    * @param {boolean} [importante] - si el caso se marca como importante (opcional).
+   * @param {string} [fechaVencimiento] - vencimiento en DD-MM-AAAA que captura el contador.
    * @returns {Promise<{ ok: boolean, caso?: Object, error?: Object }>}
    */
-      async crearCaso(cliente, prioridad, fechaInicio, descripcion, observaciones, importante) {
+      async crearCaso(cliente, prioridad, fechaInicio, descripcion, observaciones, importante, fechaVencimiento) {
         const versionActual = ++version
 
         this.guardando = true
 
         try {
-          const caso = await servicio.crearCaso(cliente, prioridad, fechaInicio, descripcion, observaciones, importante)
+          const caso = await servicio.crearCaso(cliente, prioridad, fechaInicio, descripcion, observaciones, importante, fechaVencimiento)
 
           if (versionActual !== version) {
             return { ok: false, descartado: true }

@@ -1,8 +1,8 @@
 <template>
   <div class="detalle-contador">
     <p v-if="contador" class="detalle-contador__ayuda">
-      Casos importantes de {{ contador.nombre }}. Puedes cambiar la prioridad de cada caso: se
-      recalcula su vencimiento y se avisa a {{ contador.nombre }}. El estado solo lo cambia el contador.
+      Casos importantes de {{ contador.nombre }}. Puedes cambiar la prioridad de cada caso y se
+      avisa a {{ contador.nombre }}. El estado y la fecha de vencimiento solo los cambia el contador.
     </p>
     <p v-else class="detalle-contador__ayuda">
       Selecciona un contador de la lista para ver el cliente, el estado y la prioridad de cada uno

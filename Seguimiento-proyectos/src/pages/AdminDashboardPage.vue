@@ -187,7 +187,6 @@ import { getResumenEquipo } from '../services/counterService.js'
 import { useSessionStore } from '../stores/session.js'
 import { useCountersStore } from '../stores/counters.js'
 import { PRIORITY_LABELS } from '../utils/constants.js'
-import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { casoAFila, contadorAFila } from '../utils/filasVista.js'
 import { FILTROS_INICIALES, filtrarCasos, filtrarContadores, hoyLocal, paginar } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES } from '../utils/screenState.js'
@@ -196,8 +195,8 @@ import { SCREEN_STATES } from '../utils/screenState.js'
  * P-2 Dashboard del administrador (RF-11 a RF-15, RF-34 a RF-36, RF-38, RF-39, RNF-02,
  * RNF-03, RNF-08, RNF-09). Obtiene la lista de contadores y sus conteos del backend a
  * través del store y muestra el detalle del contador seleccionado. El estado no se cambia
- * aquí (RF-13); la prioridad sí: se confirma, el backend recalcula el vencimiento y avisa
- * al contador.
+ * aquí (RF-13); la prioridad sí: se confirma y el backend avisa al contador (el
+ * vencimiento no cambia).
  *
  * Al abrir la pantalla se repite la carga completa y no se muestran datos anteriores
  * (RF-34). Si la carga falla, el store descarta los conteos parciales y la selección;
@@ -288,8 +287,8 @@ const reintentar = () => contadoresStore.reintentar()
 const guardandoPrioridad = ref(false)
 
 /**
- * Pide confirmación y cambia la prioridad del caso. El backend recalcula el vencimiento
- * y avisa al contador; el detalle se actualiza sin recargarse y el resumen se vuelve a pedir.
+ * Pide confirmación y cambia la prioridad del caso. El backend avisa al contador
+ * (el vencimiento no cambia); el detalle se actualiza sin recargarse y el resumen se vuelve a pedir.
  * @param {Object} caso - fila de CasoItem (`casoAFila`).
  * @param {string} prioridad - 'alta' | 'media' | 'baja'.
  */
@@ -302,7 +301,7 @@ const cambiarPrioridad = (caso, prioridad) => {
       title: 'Cambiar prioridad',
       message:
         `La prioridad de «${caso.client}» pasará de ${PRIORITY_LABELS[caso.priority]} a ` +
-        `${PRIORITY_LABELS[prioridad]}: se recalculará la fecha de vencimiento y se avisará a ${nombreContador}.`,
+        `${PRIORITY_LABELS[prioridad]} y se avisará a ${nombreContador}. La fecha de vencimiento no cambia.`,
       cancel: { label: 'Cancelar', flat: true, noCaps: true },
       ok: { label: 'Cambiar prioridad', color: 'primary', unelevated: true, noCaps: true },
       persistent: true,
@@ -314,7 +313,7 @@ const cambiarPrioridad = (caso, prioridad) => {
         contadoresStore.reemplazarCasoDetalle(actualizado)
         $q.notify({
           type: 'positive',
-          message: `Prioridad actualizada. Ahora vence el ${fechaParaFormulario(actualizado.fecha_vencimiento)}. Se avisó a ${nombreContador}.`,
+          message: `Prioridad actualizada. Se avisó a ${nombreContador}.`,
         })
         cargarResumen()
       } catch (fallo) {

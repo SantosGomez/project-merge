@@ -188,3 +188,26 @@ export const validarFechaInicio = (fecha) => {
   if (fechaObj.getDate() !== d || fechaObj.getMonth() + 1 !== m) return { valido: false, error: 'fecha_invalida' };
   return { valido: true, error: null }
 };
+
+/**
+ * Valida la fecha de vencimiento que captura el contador (DD-MM-AAAA, obligatoria).
+ * No puede ser anterior a la fecha de inicio; si el inicio va vacío, el backend usa hoy.
+ * @param {string} vencimiento - fecha escrita en el formulario.
+ * @param {string} fechaInicio - fecha de inicio del formulario (DD-MM-AAAA o vacía).
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @returns {{ valido: boolean, error: string|null }}
+ */
+export const validarFechaVencimiento = (vencimiento, fechaInicio, hoy) => {
+  const texto = typeof vencimiento === 'string' ? vencimiento.trim() : '';
+  if (!texto) return { valido: false, error: 'vencimiento_requerido' };
+
+  const validacion = validarFechaInicio(texto);
+  if (!validacion.valido) return validacion;
+
+  // DD-MM-AAAA → AAAA-MM-DD para comparar como texto sin usar Date
+  const aISO = (fecha) => fecha.split('-').reverse().join('-');
+  const inicio = fechaInicio ? aISO(fechaInicio.trim()) : hoy;
+  if (aISO(texto) < inicio) return { valido: false, error: 'vencimiento_antes_del_inicio' };
+
+  return { valido: true, error: null }
+};

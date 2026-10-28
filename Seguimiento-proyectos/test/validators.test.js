@@ -12,6 +12,7 @@ import {
   validarCliente,
   validarCredenciales,
   validarFechaInicio,
+  validarFechaVencimiento,
   validarPrioridad,
   validarTextoOpcional,
 } from '../src/utils/validators.js'
@@ -329,4 +330,27 @@ test('validarTextoOpcional rechaza valores que no son texto', () => {
       `${typeof valor} no es texto`
     )
   }
+})
+
+// --- validarFechaVencimiento (la captura el contador) ---------------------------
+
+test('validarFechaVencimiento acepta una fecha real igual o posterior al inicio', () => {
+  assert.deepEqual(validarFechaVencimiento('15-01-2027', '01-12-2026', '2026-10-28'), { valido: true, error: null })
+  assert.deepEqual(validarFechaVencimiento('01-12-2026', '01-12-2026', '2026-10-28'), { valido: true, error: null }, 'el mismo día vale')
+  assert.deepEqual(validarFechaVencimiento(' 15-01-2027 ', '', '2026-10-28'), { valido: true, error: null }, 'sin inicio se compara con hoy')
+})
+
+test('validarFechaVencimiento es obligatoria y distingue formato, fecha imposible y orden', () => {
+  assert.deepEqual(validarFechaVencimiento('', '01-12-2026', '2026-10-28'), { valido: false, error: 'vencimiento_requerido' })
+  assert.deepEqual(validarFechaVencimiento(undefined, '', '2026-10-28'), { valido: false, error: 'vencimiento_requerido' })
+  assert.deepEqual(validarFechaVencimiento('2027-01-15', '', '2026-10-28'), { valido: false, error: 'fecha_formato_invalido' })
+  assert.deepEqual(validarFechaVencimiento('30-02-2027', '', '2026-10-28'), { valido: false, error: 'fecha_invalida' })
+  assert.deepEqual(validarFechaVencimiento('30-11-2026', '01-12-2026', '2026-10-28'), {
+    valido: false,
+    error: 'vencimiento_antes_del_inicio',
+  })
+  assert.deepEqual(validarFechaVencimiento('27-10-2026', '', '2026-10-28'), {
+    valido: false,
+    error: 'vencimiento_antes_del_inicio',
+  })
 })

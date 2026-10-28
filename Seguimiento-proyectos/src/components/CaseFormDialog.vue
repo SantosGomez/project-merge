@@ -101,6 +101,42 @@
             <p id="fecha-inicio-help" class="form-help">{{ textos.ayudaFecha }}</p>
           </div>
 
+          <div class="form-group">
+            <label for="fecha-vencimiento-field" class="form-label"
+              >Fecha de vencimiento <span aria-label="obligatorio" class="required-mark">*</span></label
+            >
+            <q-input
+              for="fecha-vencimiento-field"
+              v-model="fechaVencimiento"
+              type="text"
+              placeholder="DD-MM-AAAA"
+              maxlength="10"
+              outlined
+              dense
+              counter
+              aria-required="true"
+              aria-describedby="fecha-vencimiento-help"
+              :error="!!errorDeCampo('fecha_vencimiento_invalido')"
+              :error-message="errorDeCampo('fecha_vencimiento_invalido')"
+              @update:model-value="clearFormError()"
+            >
+              <template #append>
+                <q-icon
+                  name="info"
+                  class="registro-caso__ayuda-icono"
+                  tabindex="0"
+                  role="img"
+                  aria-label="Ayuda sobre la fecha de vencimiento"
+                >
+                  <q-tooltip>Día límite para terminar el caso. Lo decides tú y puedes cambiarlo después.</q-tooltip>
+                </q-icon>
+              </template>
+            </q-input>
+            <p id="fecha-vencimiento-help" class="form-help">
+              Formato DD-MM-AAAA. Igual o posterior a la fecha de inicio.
+            </p>
+          </div>
+
           <div class="form-group registro-caso__estado">
             <template v-if="modoEdicion">
               <label for="estado-field" class="form-label"
@@ -130,6 +166,23 @@
               </p>
               <p id="estado-help" class="form-help">Todo caso nuevo empieza en Pendiente.</p>
             </template>
+          </div>
+
+          <div class="form-group">
+            <q-toggle
+              v-model="importante"
+              color="amber-9"
+              checked-icon="star"
+              unchecked-icon="star_border"
+              label="Caso importante"
+              class="registro-caso__importante"
+              aria-describedby="importante-help"
+            >
+              <q-tooltip>Marca el caso como importante para darle seguimiento especial.</q-tooltip>
+            </q-toggle>
+            <p id="importante-help" class="form-help">
+              Actívalo si el caso es de un cliente importante o requiere atención especial.
+            </p>
           </div>
 
           <div class="form-group">
@@ -166,28 +219,7 @@
             <p id="observaciones-help" class="form-help">Máximo 2000 caracteres.</p>
           </div>
 
-          <div class="form-group registro-caso__ancho-completo">
-            <q-toggle
-              v-model="importante"
-              color="amber-9"
-              checked-icon="star"
-              unchecked-icon="star_border"
-              label="Caso importante"
-              class="registro-caso__importante"
-              aria-describedby="importante-help"
-            >
-              <q-tooltip>Marca el caso como importante para darle seguimiento especial.</q-tooltip>
-            </q-toggle>
-            <p id="importante-help" class="form-help">
-              Actívalo si el caso es de un cliente importante o requiere atención especial.
-            </p>
-          </div>
-
           <dl class="readonly-info">
-            <div v-if="modoEdicion" class="readonly-row">
-              <dt>Vence</dt>
-              <dd>{{ vencimientoActual }}</dd>
-            </div>
             <div class="readonly-row">
               <dt>Contador asignado</dt>
               <dd>{{ assignedCounterName }}</dd>
@@ -245,7 +277,14 @@ import { CASE_ERROR_CODES, cambiosDelCaso } from '../utils/caseRules.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { PRIORITIES, PRIORITY_LABELS, STATUS_LABELS, STATUSES, MAX_DESCRIPCION_LENGTH, MAX_OBSERVACIONES_LENGTH } from '../utils/constants.js'
 import { prioridadABackend } from '../utils/traduccionBackend.js'
-import { validarCliente, validarFechaInicio, validarPrioridad, validarTextoOpcional } from '../utils/validators.js'
+import { hoyLocal } from '../utils/filtrosCasos.js'
+import {
+  validarCliente,
+  validarFechaInicio,
+  validarFechaVencimiento,
+  validarPrioridad,
+  validarTextoOpcional,
+} from '../utils/validators.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
 
@@ -283,8 +322,7 @@ const TEXTOS_REGISTRO = {
 const TEXTOS_EDICION = {
   titulo: 'Editar caso',
   formulario: 'Formulario de edición de caso',
-  ayuda:
-    'Cambia los datos que necesites. El vencimiento se recalcula al guardar si cambias la prioridad o la fecha de inicio.',
+  ayuda: 'Cambia los datos que necesites, incluida la fecha de vencimiento si el caso lo requiere.',
   ayudaFecha: 'Formato DD-MM-AAAA.',
   boton: 'Guardar cambios',
   tooltipBoton: 'Guarda los cambios del caso.',
@@ -316,11 +354,10 @@ const statusOptions = computed(() => STATUSES.map((s) => ({ label: STATUS_LABELS
 
 const estado = ref('')
 const fechaInicio = ref('')
+const fechaVencimiento = ref('')
 const descripcion = ref('')
 const observaciones = ref('')
 const importante = ref(false)
-
-const vencimientoActual = computed(() => fechaParaFormulario(props.caso?.fecha_vencimiento) || 'Sin fecha')
 
 // Solo lo que cambió respecto al caso guardado (vacío en el registro).
 const cambios = computed(() =>
@@ -330,6 +367,7 @@ const cambios = computed(() =>
         estado: estado.value,
         prioridad: priority.value,
         fechaInicio: fechaInicio.value,
+        fechaVencimiento: fechaVencimiento.value,
         descripcion: descripcion.value,
         observaciones: observaciones.value,
         importante: importante.value,
@@ -362,6 +400,7 @@ const reiniciarFormulario = () => {
   priority.value = caso?.prioridad ?? ''
   estado.value = caso?.estado ?? ''
   fechaInicio.value = fechaParaFormulario(caso?.fecha_inicio)
+  fechaVencimiento.value = fechaParaFormulario(caso?.fecha_vencimiento)
   descripcion.value = caso?.descripcion ?? ''
   observaciones.value = caso?.observaciones ?? ''
   importante.value = Boolean(caso?.importante)
@@ -439,6 +478,23 @@ const submitCase = async () => {
     return
   }
 
+  const validacionVencimiento = validarFechaVencimiento(fechaVencimiento.value, fechaLimpia, hoyLocal())
+  if (!validacionVencimiento.valido) {
+    const mensajes = {
+      vencimiento_requerido: 'La fecha de vencimiento es obligatoria. Use el formato DD-MM-AAAA.',
+      fecha_formato_invalido: 'Formato de fecha inválido. Use DD-MM-AAAA.',
+      fecha_invalida: 'La fecha no existe. Use una fecha real en formato DD-MM-AAAA.',
+      vencimiento_antes_del_inicio: fechaLimpia
+        ? 'El vencimiento no puede ser anterior a la fecha de inicio.'
+        : 'El vencimiento no puede ser anterior a hoy (fecha de inicio vacía).',
+    }
+    formError.value = {
+      code: 'fecha_vencimiento_invalido',
+      message: mensajes[validacionVencimiento.error],
+    }
+    return
+  }
+
   const validacionDescripcion = validarTextoOpcional(descripcion.value, 'descripcion', MAX_DESCRIPCION_LENGTH)
   if (!validacionDescripcion.valido) {
     formError.value = {
@@ -477,7 +533,8 @@ const submitCase = async () => {
     fechaLimpia || undefined,
     descripcion.value || undefined,
     observaciones.value || undefined,
-    importante.value
+    importante.value,
+    fechaVencimiento.value.trim()
   )
 
   if (!resultado.ok) {
@@ -523,7 +580,7 @@ const submitCase = async () => {
   line-height: 1.45;
 }
 
-/* Una columna en móvil; dos desde 700 px: Cliente | Prioridad, Fecha | Estado, Descripción | Observaciones. */
+/* Una columna en móvil; dos desde 700 px: Cliente | Prioridad, Inicio | Vencimiento, Estado | Importante, Descripción | Observaciones. */
 .registro-caso__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -623,6 +680,11 @@ const submitCase = async () => {
   min-height: 44px;
   color: var(--dg-texto);
   font-weight: 600;
+}
+
+.registro-caso__ayuda-icono {
+  cursor: help;
+  color: var(--dg-acento);
 }
 
 .priority-selected {

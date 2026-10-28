@@ -71,6 +71,14 @@ const errorDeFechaInvalida = () =>
     'Use una fecha real con formato DD-MM-AAAA',
   )
 
+const errorDeVencimientoInvalido = () =>
+  crearErrorFrontend(
+    ESTADOS_ERROR.DATOS_INVALIDOS,
+    'La fecha de vencimiento no es válida',
+    'la fecha de vencimiento del caso',
+    'Use una fecha real con formato DD-MM-AAAA',
+  )
+
 /**
  * Crea el servicio de casos con api inyectable.
  * @param {Object} [opciones] - inyección para pruebas.
@@ -104,9 +112,10 @@ export const crearCaseService = (opciones = {}) => {
    * El cliente llega ya recortado desde P-4 (4.5 del plan).
    * @param {string} cliente
    * @param {string} prioridad - código interno (`alta`) o forma del backend (`Alta`).
+   * @param {string} [fechaVencimiento] - vencimiento en DD-MM-AAAA (séptimo argumento, tras importante).
    * @returns {Promise<Object>} caso registrado con estado `pendiente`.
    */
-  const crearCaso = async (cliente, prioridad, fechaInicio, descripcion, observaciones, importante) => {
+  const crearCaso = async (cliente, prioridad, fechaInicio, descripcion, observaciones, importante, fechaVencimiento) => {
     const prioridadBackend = prioridadParaEnviar(prioridad)
     if (prioridadBackend === null) {
       throw errorDePrioridadInvalida()
@@ -124,6 +133,13 @@ export const crearCaseService = (opciones = {}) => {
       }
       cuerpo.fecha_inicio = fechaBackend
     }
+    if (fechaVencimiento !== undefined) {
+      const vencimientoBackend = fechaADominioBackend(fechaVencimiento)
+      if (vencimientoBackend === null) {
+        throw errorDeVencimientoInvalido()
+      }
+      cuerpo.fecha_vencimiento = vencimientoBackend
+    }
     if (descripcion !== undefined) cuerpo.descripcion = descripcion
     if (observaciones !== undefined) cuerpo.observaciones = observaciones
     if (typeof importante === 'boolean') cuerpo.importante = importante
@@ -134,15 +150,24 @@ export const crearCaseService = (opciones = {}) => {
 
   /**
    * PATCH /casos/:id: edita un caso propio. Solo se envían los campos editables que vengan
-   * informados: estado, prioridad, cliente, fecha_inicio (DD-MM-AAAA), descripcion, observaciones e importante.
+   * informados: estado, prioridad, cliente, fecha_inicio y fecha_vencimiento (DD-MM-AAAA), descripcion, observaciones e importante.
    * Cualquier otra clave se ignora; si no queda ningún cambio, no se llama al backend.
    * @param {number|string} id - identificador del caso.
-   * @param {{ estado?: string, prioridad?: string, cliente?: string, fecha_inicio?: string,
+   * @param {{ estado?: string, prioridad?: string, cliente?: string, fecha_inicio?: string, fecha_vencimiento?: string,
    *   descripcion?: string, observaciones?: string }} cambios
    * @returns {Promise<Object>} caso actualizado, ya traducido.
    */
   const actualizarCaso = async (id, cambios = {}) => {
-    const { estado, prioridad, cliente, fecha_inicio: fechaInicio, descripcion, observaciones, importante } = cambios
+    const {
+      estado,
+      prioridad,
+      cliente,
+      fecha_inicio: fechaInicio,
+      fecha_vencimiento: fechaVencimiento,
+      descripcion,
+      observaciones,
+      importante,
+    } = cambios
     const cuerpo = {}
 
     if (estado !== undefined) {
@@ -169,6 +194,14 @@ export const crearCaseService = (opciones = {}) => {
       cuerpo.fecha_inicio = fechaBackend
     }
 
+    if (fechaVencimiento !== undefined) {
+      const vencimientoBackend = fechaADominioBackend(fechaVencimiento)
+      if (vencimientoBackend === null) {
+        throw errorDeVencimientoInvalido()
+      }
+      cuerpo.fecha_vencimiento = vencimientoBackend
+    }
+
     if (cliente !== undefined) cuerpo.cliente = cliente
     if (descripcion !== undefined) cuerpo.descripcion = descripcion
     if (observaciones !== undefined) cuerpo.observaciones = observaciones
@@ -189,7 +222,7 @@ export const crearCaseService = (opciones = {}) => {
 
   /**
    * El administrador cambia la prioridad del caso de un contador (PATCH /casos/:id/prioridad).
-   * El backend recalcula el vencimiento y avisa al dueño del caso.
+   * El backend avisa al dueño del caso; el vencimiento no cambia (lo decide el contador).
    * @param {number} id - caso.
    * @param {string} prioridad - 'alta' | 'media' | 'baja'.
    * @returns {Promise<Object>} caso actualizado, ya traducido.
