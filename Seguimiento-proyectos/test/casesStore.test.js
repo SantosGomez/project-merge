@@ -484,3 +484,42 @@ test('refrescarEnSilencio ignora un fallo y no refresca mientras se guarda un ca
   await store.refrescarEnSilencio()
   assert.equal(pedidos, 0, 'no pisa un cambio que se está guardando')
 })
+
+// --- asignación del administrador -----------------------------------------
+
+test('asignarCaso llama al servicio con el contador y no toca la lista propia', async () => {
+  const llamadas = []
+  const servicio = {
+    async getMisCasos() {
+      return []
+    },
+    async asignarCaso(...argumentos) {
+      llamadas.push(argumentos)
+      return caso({ id: 50, contador_id: 7 })
+    },
+  }
+  const store = montarStore(servicio)
+
+  const resultado = await store.asignarCaso(7, 'Lala', 'alta', undefined, undefined, undefined, false, '20-11-2026')
+
+  assert.equal(resultado.ok, true)
+  assert.equal(resultado.caso.id, 50)
+  assert.deepEqual(llamadas, [[7, 'Lala', 'alta', undefined, undefined, undefined, false, '20-11-2026']])
+  assert.equal(store.casos.length, 0, 'el caso no es del administrador')
+  assert.equal(store.guardando, false)
+})
+
+test('asignarCaso con error lo devuelve normalizado para el diálogo', async () => {
+  const servicio = {
+    async asignarCaso() {
+      throw ERROR_REGISTRO
+    },
+  }
+  const store = montarStore(servicio)
+
+  const resultado = await store.asignarCaso(7, 'Lala', 'alta')
+
+  assert.equal(resultado.ok, false)
+  assert.equal(resultado.error, ERROR_REGISTRO)
+  assert.equal(store.guardando, false)
+})

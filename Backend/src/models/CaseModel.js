@@ -97,13 +97,14 @@ async function resumenPorContador(hoy, { soloImportantes = false } = {}) {
  * Crea un nuevo caso y devuelve el ID insertado.
  * RF-17, RF-18.
  * @param {Object} datos - Datos del caso: contador_id, cliente, estado, prioridad, creado_en, actualizado_en.
+ * @param {Function} [ejecutar] - `query` o la función de una transacción (`conTransaccion`).
  * @returns {Promise<number>} ID del caso insertado.
  */
-async function create({ contador_id, cliente, estado, prioridad, importante = false, creado_en, actualizado_en, fecha_inicio, fecha_vencimiento, descripcion, observaciones }) {
+async function create({ contador_id, cliente, estado, prioridad, importante = false, creado_en, actualizado_en, fecha_inicio, fecha_vencimiento, descripcion, observaciones }, ejecutar = query) {
   const ahora = formatLocalDate(nowLocal());
   // Las columnas son DATE: se envía solo la fecha, nunca una fecha con hora.
   const hoy = formatearFechaISO(nowLocal());
-  const result = await query(
+  const result = await ejecutar(
     `INSERT INTO casos (contador_id, cliente, estado, prioridad, importante, descripcion, observaciones, fecha_inicio, fecha_vencimiento, creado_en, actualizado_en)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [

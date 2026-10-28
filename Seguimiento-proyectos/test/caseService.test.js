@@ -431,3 +431,33 @@ test('actualizarCaso envía el vencimiento traducido a AAAA-MM-DD', async () => 
 
   assert.deepEqual(api.llamadas[0].cuerpo, { fecha_vencimiento: '2027-01-15' })
 })
+
+// --- asignarCaso (el administrador registra un caso a nombre de un contador) ---
+
+test('asignarCaso envía POST /contadores/:id/casos con el mismo cuerpo que el registro', async () => {
+  const api = crearApiFalsa({
+    POST: async () => ({
+      data: { mensaje: 'Caso asignado correctamente', caso: casoDeBackend({ contador_id: 7 }) },
+    }),
+  })
+  const servicio = crearCaseService({ api })
+
+  const caso = await servicio.asignarCaso(7, 'Lala', 'alta', '02-11-2026', 'Anual', undefined, true, '20-11-2026')
+
+  assert.deepEqual(api.llamadas, [
+    {
+      metodo: 'POST',
+      url: '/contadores/7/casos',
+      cuerpo: {
+        cliente: 'Lala',
+        prioridad: 'Alta',
+        fecha_inicio: '2026-11-02',
+        fecha_vencimiento: '2026-11-20',
+        descripcion: 'Anual',
+        importante: true,
+      },
+    },
+  ])
+  assert.equal(caso.contador_id, 7)
+  assert.equal(caso.prioridad, 'alta')
+})

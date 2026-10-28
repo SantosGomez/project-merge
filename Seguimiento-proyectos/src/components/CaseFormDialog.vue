@@ -265,7 +265,33 @@
             <p id="observaciones-help" class="form-help">Máximo 2000 caracteres.</p>
           </div>
 
-          <dl class="readonly-info">
+          <div v-if="modoAsignacion" class="form-group registro-caso__ancho-completo">
+            <label for="contador-field" class="form-label"
+              >Contador asignado <span aria-label="obligatorio" class="required-mark">*</span></label
+            >
+            <q-select
+              for="contador-field"
+              v-model="contadorId"
+              :options="opcionesContador"
+              option-label="label"
+              option-value="value"
+              placeholder="Elige un contador"
+              outlined
+              dense
+              emit-value
+              map-options
+              aria-required="true"
+              aria-describedby="contador-help"
+              :error="!!errorDeCampo('contador_required')"
+              :error-message="errorDeCampo('contador_required')"
+              @update:model-value="clearFormError()"
+            >
+              <q-tooltip>El caso aparecerá en «Mis casos» de esta persona y se le enviará un aviso.</q-tooltip>
+            </q-select>
+            <p id="contador-help" class="form-help">Contador que atenderá el caso.</p>
+          </div>
+
+          <dl v-else class="readonly-info">
             <div class="readonly-row">
               <dt>Contador asignado</dt>
               <dd>{{ assignedCounterName }}</dd>
@@ -347,11 +373,17 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  /** Contadores `{ id, nombre }` para que el administrador elija a quién asignar; null en «Mis casos». */
+  contadores: {
+    type: Array,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['registrado', 'guardado'])
 
 const modoEdicion = computed(() => props.caso !== null)
+const modoAsignacion = computed(() => !modoEdicion.value && props.contadores !== null)
 
 const TEXTOS_REGISTRO = {
   titulo: 'Registrar caso',
@@ -377,7 +409,22 @@ const TEXTOS_EDICION = {
   errorDetalle: 'los cambios del caso.',
 }
 
-const textos = computed(() => (modoEdicion.value ? TEXTOS_EDICION : TEXTOS_REGISTRO))
+const TEXTOS_ASIGNACION = {
+  ...TEXTOS_REGISTRO,
+  titulo: 'Asignar caso',
+  formulario: 'Formulario de asignación de caso',
+  ayuda: 'Completa los campos obligatorios y elige al contador. El estado inicial siempre es Pendiente.',
+  boton: 'Asignar caso',
+  tooltipBoton: 'Guarda el caso a nombre del contador elegido con estado Pendiente y le envía un aviso.',
+  tooltipCancelar: 'Cierra el formulario sin asignar el caso.',
+  errorGuardado: 'No se pudo asignar el caso',
+  errorDetalle: 'la asignación del caso.',
+}
+
+const textos = computed(() => {
+  if (modoEdicion.value) return TEXTOS_EDICION
+  return modoAsignacion.value ? TEXTOS_ASIGNACION : TEXTOS_REGISTRO
+})
 
 const cases = useCasesStore()
 const session = useSessionStore()
@@ -397,6 +444,11 @@ const priorityOptions = computed(() =>
 )
 
 const statusOptions = computed(() => STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s })))
+
+const contadorId = ref(null)
+const opcionesContador = computed(() =>
+  (props.contadores ?? []).map((contador) => ({ label: contador.nombre, value: contador.id })),
+)
 
 const estado = ref('')
 const fechaInicio = ref('')
@@ -459,6 +511,7 @@ const reiniciarFormulario = () => {
   descripcion.value = caso?.descripcion ?? ''
   observaciones.value = caso?.observaciones ?? ''
   importante.value = Boolean(caso?.importante)
+  contadorId.value = null
   formError.value = null
   errorGuardado.value = null
 }
@@ -568,6 +621,14 @@ const submitCase = async () => {
     return
   }
 
+  if (modoAsignacion.value && contadorId.value === null) {
+    formError.value = {
+      code: 'contador_required',
+      message: 'Elige el contador que atenderá el caso.',
+    }
+    return
+  }
+
   if (modoEdicion.value) {
     if (!hayCambios.value) return
 
@@ -582,15 +643,18 @@ const submitCase = async () => {
     return
   }
 
-  const resultado = await cases.crearCaso(
+  const datosDelCaso = [
     clienteLimpio,
     prioridadBackend,
     fechaLimpia || undefined,
     descripcion.value || undefined,
     observaciones.value || undefined,
     importante.value,
-    fechaVencimiento.value.trim()
-  )
+    fechaVencimiento.value.trim(),
+  ]
+  const resultado = modoAsignacion.value
+    ? await cases.asignarCaso(contadorId.value, ...datosDelCaso)
+    : await cases.crearCaso(...datosDelCaso)
 
   if (!resultado.ok) {
     errorGuardado.value = resultado.error ?? null

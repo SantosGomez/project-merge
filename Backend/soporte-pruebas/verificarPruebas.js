@@ -19,6 +19,7 @@ const { run } = require('node:test');
 // Mínimos por archivo acordados en el plan 9.5, punto 3 (20 archivos, total 116).
 const MINIMOS = {
   'appCors.test.js': 4,
+  'asignarCaso.test.js': 2,
   'authMiddleware.test.js': 13,
   'authRoutes.test.js': 9,
   'cambioContrasena.test.js': 8,

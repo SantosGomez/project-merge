@@ -117,70 +117,84 @@ function validarTextoDelCaso(campo, valor) {
 }
 
 /**
+ * Valida el cuerpo de un caso nuevo (registro del contador o asignación del administrador).
+ * RF-19, RF-20, RF-21.
+ * @param {Object} cuerpo - req.body con cliente, prioridad, importante, descripción, observaciones y fechas.
+ * @returns {{ error?: Object, datos?: Object }} El error listo para responder, o los datos para CaseModel.create sin contador_id.
+ */
+function validarNuevoCaso(cuerpo) {
+  const { cliente, prioridad } = cuerpo;
+
+  const validacion = validateNewCaseInput(cliente, prioridad);
+  if (!validacion.valido) {
+    return { error: buildError(...MENSAJES_ENTRADA_CASO[validacion.error]) };
+  }
+
+  if (importanteInvalido(cuerpo.importante)) {
+    return { error: ERROR_IMPORTANTE };
+  }
+
+  // Descripción y observaciones son opcionales: ausente o vacío se guarda como null.
+  const textos = {};
+  for (const campo of Object.keys(TEXTOS_OPCIONALES)) {
+    const resultado = validarTextoDelCaso(campo, cuerpo[campo]);
+    if (resultado.error) {
+      return { error: resultado.error };
+    }
+    textos[campo] = resultado.valor;
+  }
+
+  // Fecha de inicio: si el frontend la envía, se interpreta sin desplazar el día;
+  // si no viene (o viene vacía), hoy. Una fecha inválida se rechaza antes de tocar la BD:
+  // el cálculo de días hábiles no puede recibir un Invalid Date (antes colgaba el servidor).
+  const fechaRecibida = cuerpo.fecha_inicio;
+  const sinFecha = fechaRecibida === undefined || fechaRecibida === null || fechaRecibida === '';
+  const fechaInicioFecha = sinFecha ? nowLocal() : parseFechaInicio(fechaRecibida);
+  if (!fechaInicioFecha) {
+    return { error: ERROR_FECHA_INICIO };
+  }
+
+  const fechaInicio = formatearFechaISO(fechaInicioFecha);
+  // El vencimiento lo decide el contador según cómo avance el caso
+  const vencimiento = validarVencimiento(cuerpo.fecha_vencimiento);
+  if (vencimiento.error) {
+    return { error: vencimiento.error };
+  }
+  if (vencimiento.fecha < fechaInicio) {
+    return { error: ERROR_VENCIMIENTO_ANTES_DEL_INICIO };
+  }
+
+  const ahora = formatLocalDate(nowLocal());
+  return {
+    datos: {
+      cliente: cliente.trim(),
+      estado: 'Pendiente', // Siempre Pendiente, no se elige (RF-18)
+      prioridad,
+      importante: cuerpo.importante === true,
+      descripcion: textos.descripcion,
+      observaciones: textos.observaciones,
+      fecha_inicio: fechaInicio,
+      fecha_vencimiento: vencimiento.fecha,
+      creado_en: ahora,
+      actualizado_en: ahora,
+    },
+  };
+}
+
+/**
  * Registra un nuevo caso (solo contador autenticado).
  * RF-17, RF-18, RF-19, RF-20, RF-21.
  * @param {Object} req - Petición Express con cuerpo { cliente, prioridad } y req.user.id.
  * @param {Object} res - Respuesta Express.
  */
 async function createCase(req, res) {
-  const { cliente, prioridad } = req.body;
-
-  // Validar entrada del caso (RF-19, RF-20, RF-21)
-  const validacion = validateNewCaseInput(cliente, prioridad);
-  if (!validacion.valido) {
-    return res.status(400).json(buildError(...MENSAJES_ENTRADA_CASO[validacion.error]));
+  const { error, datos } = validarNuevoCaso(req.body);
+  if (error) {
+    return res.status(400).json(error);
   }
 
-  if (importanteInvalido(req.body.importante)) {
-    return res.status(400).json(ERROR_IMPORTANTE);
-  }
-
-  // Descripción y observaciones son opcionales: ausente o vacío se guarda como null.
-  const textos = {};
-  for (const campo of Object.keys(TEXTOS_OPCIONALES)) {
-    const resultado = validarTextoDelCaso(campo, req.body[campo]);
-    if (resultado.error) {
-      return res.status(400).json(resultado.error);
-    }
-    textos[campo] = resultado.valor;
-  }
-
-  const ahora = formatLocalDate(nowLocal());
-
-  // Fecha de inicio: si el frontend la envía, se interpreta sin desplazar el día;
-  // si no viene (o viene vacía), hoy. Una fecha inválida se rechaza antes de tocar la BD:
-  // el cálculo de días hábiles no puede recibir un Invalid Date (antes colgaba el servidor).
-  const fechaRecibida = req.body.fecha_inicio;
-  const sinFecha = fechaRecibida === undefined || fechaRecibida === null || fechaRecibida === '';
-  const fechaInicioFecha = sinFecha ? nowLocal() : parseFechaInicio(fechaRecibida);
-  if (!fechaInicioFecha) {
-    return res.status(400).json(ERROR_FECHA_INICIO);
-  }
-
-  const fechaInicio = formatearFechaISO(fechaInicioFecha);
-  // El vencimiento lo decide el contador según cómo avance el caso
-  const vencimiento = validarVencimiento(req.body.fecha_vencimiento);
-  if (vencimiento.error) {
-    return res.status(400).json(vencimiento.error);
-  }
-  if (vencimiento.fecha < fechaInicio) {
-    return res.status(400).json(ERROR_VENCIMIENTO_ANTES_DEL_INICIO);
-  }
-  const fechaVencimiento = vencimiento.fecha;
-
-  const casoId = await CaseModel.create({
-    contador_id: req.user.id, // Asigna al contador autenticado (RF-17)
-    cliente: cliente.trim(),
-    estado: 'Pendiente', // Siempre Pendiente, no se elige (RF-18)
-    prioridad,
-    importante: req.body.importante === true,
-    descripcion: textos.descripcion,
-    observaciones: textos.observaciones,
-    fecha_inicio: fechaInicio,
-    fecha_vencimiento: fechaVencimiento,
-    creado_en: ahora,
-    actualizado_en: ahora,
-  });
+  // Asigna al contador autenticado (RF-17)
+  const casoId = await CaseModel.create({ ...datos, contador_id: req.user.id });
 
   const caso = await CaseModel.findById(casoId);
   // Tiempo real: los administradores ven el caso nuevo sin recargar
@@ -367,4 +381,44 @@ async function cambiarPrioridadComoAdmin(req, res) {
   });
 }
 
-module.exports = { createCase, updateCase, cambiarPrioridadComoAdmin };
+/**
+ * El administrador registra un caso a nombre de un contador y le avisa;
+ * el caso y el aviso se guardan juntos. Mismas reglas que el registro del contador.
+ * @param {Object} req - Petición Express con params.id (contador) y el cuerpo del caso.
+ * @param {Object} res - Respuesta Express.
+ */
+async function asignarCaso(req, res) {
+  // Solo ids de dígitos y solo cuentas con rol contador (RF-16, RF-35)
+  const contadorId = parseCounterId(req.params.id);
+  const contador = contadorId ? await UserModel.findCounterById(contadorId) : null;
+  if (!contador) {
+    return res.status(404).json(
+      buildError('No se encontró el contador', 'contador solicitado', 'Verifique el identificador del contador')
+    );
+  }
+
+  const { error, datos } = validarNuevoCaso(req.body);
+  if (error) {
+    return res.status(400).json(error);
+  }
+
+  const administrador = await UserModel.findById(req.user.id);
+  const mensaje = `${administrador.nombre} te asignó el caso «${datos.cliente}».`;
+
+  const casoId = await conTransaccion(async (ejecutar) => {
+    const id = await CaseModel.create({ ...datos, contador_id: contador.id }, ejecutar);
+    await NotificacionModel.crear({ usuarioId: contador.id, casoId: id, mensaje }, ejecutar);
+    return id;
+  });
+  // Tiempo real: la campanita del contador y los administradores se enteran al instante
+  eventos.enviarAUsuario(contador.id, 'aviso-nuevo', { casoId });
+  eventos.enviarARol('administrador', 'caso-actualizado', { casoId, contadorId: contador.id });
+
+  const caso = await CaseModel.findById(casoId);
+  return res.status(201).json({
+    mensaje: 'Caso asignado correctamente',
+    caso: conFechasLocales(caso),
+  });
+}
+
+module.exports = { createCase, updateCase, cambiarPrioridadComoAdmin, asignarCaso };

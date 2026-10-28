@@ -108,14 +108,10 @@ export const crearCaseService = (opciones = {}) => {
   }
 
   /**
-   * POST /casos: registra un caso con `cliente` y `prioridad` (RF-18 a RF-21).
-   * El cliente llega ya recortado desde P-4 (4.5 del plan).
-   * @param {string} cliente
-   * @param {string} prioridad - código interno (`alta`) o forma del backend (`Alta`).
-   * @param {string} [fechaVencimiento] - vencimiento en DD-MM-AAAA (séptimo argumento, tras importante).
-   * @returns {Promise<Object>} caso registrado con estado `pendiente`.
+   * Cuerpo de un caso nuevo para la API (registro del contador o asignación del administrador).
+   * @returns {Object} cuerpo con la prioridad y las fechas en la forma del backend.
    */
-  const crearCaso = async (cliente, prioridad, fechaInicio, descripcion, observaciones, importante, fechaVencimiento) => {
+  const cuerpoDeCasoNuevo = (cliente, prioridad, fechaInicio, descripcion, observaciones, importante, fechaVencimiento) => {
     const prioridadBackend = prioridadParaEnviar(prioridad)
     if (prioridadBackend === null) {
       throw errorDePrioridadInvalida()
@@ -144,8 +140,31 @@ export const crearCaseService = (opciones = {}) => {
     if (observaciones !== undefined) cuerpo.observaciones = observaciones
     if (typeof importante === 'boolean') cuerpo.importante = importante
 
-    const { data } = await api.post('/casos', cuerpo)
+    return cuerpo
+  }
+
+  /**
+   * POST /casos: registra un caso con `cliente` y `prioridad` (RF-18 a RF-21).
+   * El cliente llega ya recortado desde P-4 (4.5 del plan).
+   * @param {string} cliente
+   * @param {string} prioridad - código interno (`alta`) o forma del backend (`Alta`).
+   * @param {string} [fechaVencimiento] - vencimiento en DD-MM-AAAA (séptimo argumento, tras importante).
+   * @returns {Promise<Object>} caso registrado con estado `pendiente`.
+   */
+  const crearCaso = async (...datosDelCaso) => {
+    const { data } = await api.post('/casos', cuerpoDeCasoNuevo(...datosDelCaso))
     return leerCaso(data, 'el caso registrado')
+  }
+
+  /**
+   * POST /contadores/:id/casos: el administrador registra un caso a nombre de un contador.
+   * El backend avisa al contador. Mismos datos y en el mismo orden que `crearCaso`.
+   * @param {number} contadorId - contador que atenderá el caso.
+   * @returns {Promise<Object>} caso asignado, ya traducido.
+   */
+  const asignarCaso = async (contadorId, ...datosDelCaso) => {
+    const { data } = await api.post(`/contadores/${contadorId}/casos`, cuerpoDeCasoNuevo(...datosDelCaso))
+    return leerCaso(data, 'el caso asignado')
   }
 
   /**
@@ -237,7 +256,7 @@ export const crearCaseService = (opciones = {}) => {
     return leerCaso(data, 'el caso con la prioridad nueva')
   }
 
-  return { getMisCasos, crearCaso, actualizarCaso, cambiarPrioridadComoAdmin }
+  return { getMisCasos, crearCaso, asignarCaso, actualizarCaso, cambiarPrioridadComoAdmin }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -245,5 +264,6 @@ const servicioPorDefecto = crearCaseService()
 
 export const getMisCasos = servicioPorDefecto.getMisCasos
 export const crearCaso = servicioPorDefecto.crearCaso
+export const asignarCaso = servicioPorDefecto.asignarCaso
 export const actualizarCaso = servicioPorDefecto.actualizarCaso
 export const cambiarPrioridadComoAdmin = servicioPorDefecto.cambiarPrioridadComoAdmin

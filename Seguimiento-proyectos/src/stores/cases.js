@@ -13,6 +13,7 @@ import { defineStore } from 'pinia'
 import { ESTADOS_ERROR, crearErrorFrontend } from '../services/api.js'
 import {
   actualizarCaso as actualizarCasoPorDefecto,
+  asignarCaso as asignarCasoPorDefecto,
   crearCaso as crearCasoPorDefecto,
   getMisCasos as getMisCasosPorDefecto,
 } from '../services/caseService.js'
@@ -21,6 +22,7 @@ import { screenState } from '../utils/screenState.js'
 const casosPorDefecto = {
   getMisCasos: getMisCasosPorDefecto,
   crearCaso: crearCasoPorDefecto,
+  asignarCaso: asignarCasoPorDefecto,
   actualizarCaso: actualizarCasoPorDefecto,
 }
 
@@ -163,6 +165,24 @@ export const crearCasesStore = (dependencias = {}) => {
           if (versionActual === version) {
             this.guardando = false
           }
+        }
+      },
+
+      /**
+       * El administrador registra un caso a nombre de un contador. No toca `casos`
+       * (son los propios del contador autenticado); el dashboard refresca sus datos.
+       * @param {number} contadorId - contador que atenderá el caso.
+       * @returns {Promise<{ ok: boolean, caso?: Object, error?: Object }>}
+       */
+      async asignarCaso(contadorId, ...datosDelCaso) {
+        this.guardando = true
+        try {
+          const caso = await servicio.asignarCaso(contadorId, ...datosDelCaso)
+          return { ok: true, caso }
+        } catch (error) {
+          return { ok: false, error: normalizarError(error, 'la asignación del caso') }
+        } finally {
+          this.guardando = false
         }
       },
 

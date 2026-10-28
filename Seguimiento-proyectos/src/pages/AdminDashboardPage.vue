@@ -23,6 +23,19 @@
         >
           <q-tooltip>Abre el directorio de contadores para buscar a una persona por su nombre.</q-tooltip>
         </q-btn>
+        <q-btn
+          class="dashboard-page__asignar-btn control-touch"
+          color="primary"
+          no-caps
+          unelevated
+          icon="add_circle"
+          label="Asignar caso"
+          aria-haspopup="dialog"
+          :disable="contadores.length === 0"
+          @click="dialogoAsignarAbierto = true"
+        >
+          <q-tooltip>Abre el formulario para registrar un caso nuevo y asignárselo a un contador.</q-tooltip>
+        </q-btn>
       </div>
 
       <ResumenEquipo
@@ -168,6 +181,7 @@
           </q-card-section>
         </q-card>
       </q-dialog>
+      <CaseFormDialog v-model="dialogoAsignarAbierto" :contadores="contadores" @registrado="alAsignar" />
     </div>
   </q-page>
 </template>
@@ -176,6 +190,7 @@
 import { useQuasar } from 'quasar'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CounterCountsRow from '../components/CounterCountsRow.vue'
 import DetalleContador from '../components/DetalleContador.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -203,6 +218,7 @@ import { SCREEN_STATES } from '../utils/screenState.js'
  * (RF-34). Si la carga falla, el store descarta los conteos parciales y la selección;
  * el ErrorState ofrece reintentar y P-2 vuelve sin contador seleccionado (RF-36).
  */
+
 const contadoresStore = useCountersStore()
 const session = useSessionStore()
 
@@ -325,6 +341,20 @@ const cambiarPrioridad = (caso, prioridad) => {
     })
 }
 
+/** Diálogo para registrar un caso a nombre de un contador (el backend le avisa). */
+const dialogoAsignarAbierto = ref(false)
+
+/**
+ * Tras asignar: avisa y actualiza el resumen y la fila del contador sin esperar al tiempo real.
+ * @param {Object} caso - caso asignado, ya traducido.
+ */
+const alAsignar = (caso) => {
+  const nombreContador = contadores.value.find((contador) => contador.id === caso.contador_id)?.nombre ?? 'el contador'
+  $q.notify({ type: 'positive', message: `Caso asignado. Se avisó a ${nombreContador}.` })
+  cargarResumen()
+  contadoresStore.refrescarEnSilencio(caso.contador_id)
+}
+
 /*
  * Tarjetas KPI del equipo: se piden aparte de la lista y con su propio estado, así un fallo
  * del resumen no oculta la lista de contadores ni al revés.
@@ -431,7 +461,8 @@ onMounted(async () => {
 }
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-07). */
-.dashboard-page__directory-btn:focus-visible {
+.dashboard-page__directory-btn:focus-visible,
+.dashboard-page__asignar-btn:focus-visible {
   outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
