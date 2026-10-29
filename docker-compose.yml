@@ -59,6 +59,17 @@ services:
       - "${PUERTO_WEB:-8080}:80"
     networks: [interna]
 
+  # Quick Tunnel de Cloudflare: publica el frontend por nombre dentro de la red de Docker,
+  # así no se rompe si cambia la IP de la PC. La URL *.trycloudflare.com cambia en cada
+  # reinicio; se consulta con: docker compose logs tunnel
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.2
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      - frontend
+    networks: [interna]
+
 volumes:
   db_datos:
 

@@ -7,6 +7,7 @@ Es una herramienta que permite gestionar el estado de los contadores, para saber
 - Frontend: Vue 3, HTML5, CSS, Javascrip usando el framework Quasar FrameWork v2
 - backend: se usaran api rest con nodejs con expres y base de datos MySQL con MSSQL (Microsoft SQL Server) o MariaDB, estara por decidir cual usar, por ahora se usara MariaDB en un servidor local.
 - se puede hacer build para web y para escritorio como un .exe usando electron, para el escritorio debe funcionar en windows.
+- poner en contenedores de docker el proyecto para publicar o para usar localmente, estara por decidir cual usar, por ahora se usara docker.
 - estructura de carpetas del proyecto
 
 /status-conta/

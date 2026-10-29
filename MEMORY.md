@@ -5,6 +5,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 ## Estado actual
 
 - Sesión persistente + SSE: **publicado en Docker** (2026-10-28). Login con "Mantener sesión" (7 días), token 30d vs 2h, latido 25s, reconexión 5→60s. Campanita, dashboard y Mis casos en tiempo real.
+- Túnel: servicio `tunnel` (cloudflared 2026.9.2, Quick Tunnel → `http://frontend:80`) en el compose (2026-10-29); ya no depende de la IP de la PC. La URL cambia en cada reinicio (`docker compose logs tunnel`). Para URL fija: túnel con token + dominio en Cloudflare.
 - PWA para contadores: **publicado** (src-pwa, Workbox, standalone, íconos DelGrow).
 - Vencimiento lo captura el contador (obligatorio, ≥ inicio); prioridad ya no lo recalcula.
 - Calendario `q-date` en fechas del caso (máscara DD-MM-YYYY, bloquea días antes del inicio).
