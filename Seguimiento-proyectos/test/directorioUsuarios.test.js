@@ -7,6 +7,13 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 
+import {
+  MAX_NOMBRE_CORREO_LENGTH,
+  MENSAJES_VALIDACION,
+  PROFILES,
+} from '../src/utils/constants.js'
+import { validarAltaUsuario, validarRestablecimiento } from '../src/utils/validators.js'
+
 const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8')
 
 describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', () => {
@@ -202,5 +209,39 @@ describe('Directorio de usuarios: filtros de búsqueda y rol', () => {
 
   it('al cambiar un filtro vuelve a la página 1', () => {
     assert.match(pagina, /watch\(\s*filtros,[\s\S]*?paginacion\.value\.page = 1/)
+  })
+})
+
+describe('Directorio de usuarios: mensajes de validación compartidos', () => {
+  // Códigos que las validaciones pueden devolver, obtenidos llamándolas con datos inválidos.
+  const codigos = new Set()
+  const agregar = (errores) => Object.values(errores).forEach((codigo) => codigo && codigos.add(codigo))
+
+  agregar(validarAltaUsuario('', '', '', null).errores)
+  agregar(
+    validarAltaUsuario(
+      'a'.repeat(MAX_NOMBRE_CORREO_LENGTH + 1),
+      `${'a'.repeat(MAX_NOMBRE_CORREO_LENGTH + 1)}@x.mx`,
+      'x',
+      PROFILES.administrador,
+    ).errores,
+  )
+  agregar(validarAltaUsuario('Ana', 'sin-arroba', 'contrasena1', PROFILES.contador).errores)
+  agregar(validarRestablecimiento('ana@delgrow.mx', '').errores)
+  agregar(validarRestablecimiento('ana@delgrow.mx', 'x').errores)
+
+  it('todo código que devuelven las validaciones tiene texto en MENSAJES_VALIDACION', () => {
+    assert.equal(codigos.size, 8, 'se ejercitaron los 8 códigos posibles')
+    for (const codigo of codigos) {
+      assert.ok(MENSAJES_VALIDACION[codigo], `falta el texto del código ${codigo}`)
+    }
+  })
+
+  it('los diálogos usan el mapa compartido y no guardan su propia copia', () => {
+    for (const archivo of ['NewUserDialog', 'ResetPasswordDialog']) {
+      const fuente = read(`../src/components/${archivo}.vue`)
+      assert.doesNotMatch(fuente, /const MENSAJES\s*=/, `${archivo} no debe repetir el mapa`)
+      assert.match(fuente, /MENSAJES_VALIDACION\[codigo\]/)
+    }
   })
 })

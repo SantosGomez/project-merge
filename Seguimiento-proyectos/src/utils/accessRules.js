@@ -2,7 +2,7 @@
 // resolver el perfil de una cuenta y decidir el acceso del guard de navegación.
 // Sin Vue, sin navegador y sin efectos secundarios.
 
-import { PROFILES } from './constants.js'
+import { PROFILES, RUTA_PRINCIPAL_POR_ROL } from './constants.js'
 
 /** Nombres de los campos de P-1, tal como los devuelve `validateLoginForm` (RF-3). */
 const LOGIN_FIELDS = {
@@ -14,14 +14,21 @@ const LOGIN_FIELDS = {
 const KNOWN_PROFILES = Object.values(PROFILES)
 
 /**
+ * Nombre de ruta que corresponde a una ruta de la aplicación.
+ * Las rutas siguen la convención `/a/b` → `a-b` (ver `router/index.js`).
+ */
+const nombreDeRuta = (ruta) => ruta.split('/').filter(Boolean).join('-')
+
+/**
  * Pantalla principal de cada perfil con pantalla, como nombre de ruta (Definiciones).
+ * Se deriva de `RUTA_PRINCIPAL_POR_ROL` para no repetir la tabla.
  * Un perfil que no está aquí no tiene pantalla asignada.
  */
-export const PANTALLA_PRINCIPAL_POR_ROL = Object.freeze({
-  [PROFILES.administrador]: 'admin-dashboard',
-  [PROFILES.contador]: 'contador-casos',
-  [PROFILES.sistema]: 'admin-directorio',
-})
+export const PANTALLA_PRINCIPAL_POR_ROL = Object.freeze(
+  Object.fromEntries(
+    Object.entries(RUTA_PRINCIPAL_POR_ROL).map(([rol, ruta]) => [rol, nombreDeRuta(ruta)]),
+  ),
+)
 
 /** Quita los espacios al inicio y al final: un valor formado solo por espacios queda vacío (RF-3). */
 export const normalizeCredential = (value) => (typeof value === 'string' ? value.trim() : '')

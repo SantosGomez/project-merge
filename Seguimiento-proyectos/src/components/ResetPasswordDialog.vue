@@ -91,6 +91,7 @@ import { useRouter } from 'vue-router'
 
 import { restablecerContrasena } from '../services/userService.js'
 import { useSessionStore } from '../stores/session.js'
+import { MENSAJES_VALIDACION } from '../utils/constants.js'
 import { validarRestablecimiento } from '../utils/validators.js'
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
@@ -102,12 +103,6 @@ const props = defineProps({
 
 const emit = defineEmits(['restablecida'])
 
-/** Texto de cada código de `validarRestablecimiento`. */
-const MENSAJES = {
-  password_requerida: 'La contraseña nueva es obligatoria.',
-  password_corta: 'La contraseña nueva debe tener al menos 8 caracteres.',
-}
-
 const router = useRouter()
 const session = useSessionStore()
 
@@ -118,10 +113,13 @@ const guardando = ref(false)
 
 // Cada apertura empieza sin contraseña ni errores de la vez anterior.
 watch(dialogoAbierto, (abierto) => {
-  if (!abierto) return
-  password.value = ''
-  errores.password = null
-  errorGeneral.value = ''
+  if (abierto) {
+    password.value = ''
+    errores.password = null
+    errorGeneral.value = ''
+  } else {
+    password.value = ''
+  }
 })
 
 const restablecer = async () => {
@@ -133,7 +131,7 @@ const restablecer = async () => {
   // cuenta con un correo atípico no queda sin poder restablecerse.
   const validacion = validarRestablecimiento(props.cuenta.correo, password.value)
   const codigo = validacion.errores.password
-  errores.password = codigo ? MENSAJES[codigo] : null
+  errores.password = codigo ? MENSAJES_VALIDACION[codigo] : null
   if (validacion.errores.password) return
 
   guardando.value = true
@@ -219,38 +217,7 @@ const restablecer = async () => {
   color: var(--dg-texto-secundario);
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.form-label {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--dg-texto);
-}
-
-.required-mark {
-  color: var(--dg-error);
-  font-weight: 700;
-}
-
-.form-help {
-  margin: 0 0 4px;
-  color: var(--dg-texto-tenue);
-  font-size: 0.85rem;
-}
-
-.error-banner {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--dg-error-aviso-fondo);
-  color: var(--dg-error-aviso-texto);
-  font-size: 0.9rem;
-}
+/* .form-group, .form-label, .required-mark, .form-help y .error-banner viven en app.scss. */
 
 .control-touch {
   min-height: 44px;

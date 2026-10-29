@@ -38,6 +38,7 @@ import { getMisCasos as getMisCasosPorDefecto } from '../services/caseService.js
 import { listCounters as listCountersPorDefecto } from '../services/counterService.js'
 import { estaInactivo } from '../utils/inactividad.js'
 import { construirError } from '../utils/mensajes.js'
+import { RUTA_PRINCIPAL_POR_ROL } from '../utils/constants.js'
 
 /** Minutos sin interacción tras los que la sesión caduca (RF-07). */
 export const LIMITE_INACTIVIDAD_MINUTOS = 30
@@ -49,11 +50,7 @@ export const LIMITE_INACTIVIDAD_PERSISTENTE_MINUTOS = 7 * 24 * 60
 export const INTERVALO_INACTIVIDAD_MS = 60 * 1000
 
 /** Pantalla principal de cada perfil con pantalla asignada (Definiciones). */
-export const PANTALLA_PRINCIPAL = Object.freeze({
-  administrador: '/admin/dashboard',
-  contador: '/contador/casos',
-  usuarios_de_sistema: '/admin/directorio',
-})
+export const PANTALLA_PRINCIPAL = RUTA_PRINCIPAL_POR_ROL
 
 /** Pantalla donde la persona crea su contraseña tras entrar con la asignada. */
 export const RUTA_CAMBIO_CONTRASENA = '/cambiar-contrasena'

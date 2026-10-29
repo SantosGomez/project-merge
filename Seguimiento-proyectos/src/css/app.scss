@@ -96,3 +96,38 @@ body {
     background: var(--dg-#{$nombre}) !important;
   }
 }
+
+// Campos de formulario de los diálogos (alta de usuario, restablecer contraseña y caso).
+// Estaban copiados en cada diálogo; aquí se definen una sola vez.
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.form-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--dg-texto);
+}
+
+.required-mark {
+  color: var(--dg-error);
+  font-weight: 700;
+}
+
+.form-help {
+  margin: 0 0 4px;
+  color: var(--dg-texto-tenue);
+  font-size: 0.85rem;
+}
+
+.error-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--dg-error-aviso-fondo);
+  color: var(--dg-error-aviso-texto);
+  font-size: 0.9rem;
+}

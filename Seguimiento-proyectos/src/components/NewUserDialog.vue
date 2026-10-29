@@ -154,25 +154,13 @@
 import { reactive, ref, watch } from 'vue'
 
 import { crearUsuario } from '../services/userService.js'
-import { PROFILES } from '../utils/constants.js'
+import { MENSAJES_VALIDACION, PROFILES } from '../utils/constants.js'
 import { formatearRol } from '../utils/formateadores.js'
 import { validarAltaUsuario } from '../utils/validators.js'
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
 const emit = defineEmits(['creado'])
-
-/** Texto de cada código de `validarAltaUsuario`. */
-const MENSAJES = {
-  nombre_requerido: 'El nombre es obligatorio.',
-  nombre_demasiado_largo: 'El nombre supera los 150 caracteres permitidos.',
-  correo_requerido: 'El correo es obligatorio.',
-  correo_demasiado_largo: 'El correo supera los 150 caracteres permitidos.',
-  correo_invalido: 'Escribe un correo válido, por ejemplo nombre@delgrow.mx.',
-  password_requerida: 'La contraseña es obligatoria.',
-  password_corta: 'La contraseña debe tener al menos 8 caracteres.',
-  rol_requerido: 'Elige el rol de la cuenta.',
-}
 
 const opcionesRol = Object.values(PROFILES).map((valor) => ({
   label: formatearRol(valor),
@@ -189,13 +177,16 @@ const guardando = ref(false)
 
 // Cada apertura empieza con el formulario vacío y sin errores de la vez anterior.
 watch(dialogoAbierto, (abierto) => {
-  if (!abierto) return
-  nombre.value = ''
-  correo.value = ''
-  password.value = ''
-  rol.value = null
-  for (const campo of Object.keys(errores)) errores[campo] = null
-  errorGeneral.value = ''
+  if (abierto) {
+    nombre.value = ''
+    correo.value = ''
+    password.value = ''
+    rol.value = null
+    for (const campo of Object.keys(errores)) errores[campo] = null
+    errorGeneral.value = ''
+  } else {
+    password.value = ''
+  }
 })
 
 const alEditar = (campo) => {
@@ -210,7 +201,7 @@ const darDeAlta = async () => {
   const validacion = validarAltaUsuario(nombre.value, correo.value, password.value, rol.value)
   for (const campo of Object.keys(errores)) {
     const codigo = validacion.errores[campo]
-    errores[campo] = codigo ? MENSAJES[codigo] : null
+    errores[campo] = codigo ? MENSAJES_VALIDACION[codigo] : null
   }
   if (!validacion.valido) return
 
@@ -266,38 +257,7 @@ const darDeAlta = async () => {
   line-height: 1.45;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.form-label {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--dg-texto);
-}
-
-.required-mark {
-  color: var(--dg-error);
-  font-weight: 700;
-}
-
-.form-help {
-  margin: 0 0 4px;
-  color: var(--dg-texto-tenue);
-  font-size: 0.85rem;
-}
-
-.error-banner {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--dg-error-aviso-fondo);
-  color: var(--dg-error-aviso-texto);
-  font-size: 0.9rem;
-}
+/* .form-group, .form-label, .required-mark, .form-help y .error-banner viven en app.scss. */
 
 .control-touch {
   min-height: 44px;

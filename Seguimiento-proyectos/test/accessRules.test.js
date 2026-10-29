@@ -1,5 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
 
 import { exampleAccounts } from '../src/services/exampleData.js'
 import {
@@ -9,6 +11,9 @@ import {
   resolveProfile,
   validateLoginForm,
 } from '../src/utils/accessRules.js'
+import { PROFILES, RUTA_PRINCIPAL_POR_ROL } from '../src/utils/constants.js'
+
+const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8')
 
 // Cuentas de apoyo para comprobar la regla defensiva de RF-4 sin tocar la semilla.
 const accountsWithUnknownProfile = [
@@ -227,6 +232,28 @@ test('decidirAcceso deniega al administrador las pantallas de contador (RF-06)',
 
 test('la pantalla principal del usuario de sistema es el directorio de usuarios (directorio, rebanada 5)', () => {
   assert.equal(PANTALLA_PRINCIPAL_POR_ROL.usuarios_de_sistema, 'admin-directorio')
+})
+
+test('cada nombre de ruta principal existe en el router', () => {
+  const router = read('../src/router/index.js')
+
+  for (const [rol, nombre] of Object.entries(PANTALLA_PRINCIPAL_POR_ROL)) {
+    assert.match(router, new RegExp(`name: '${nombre}'`), `la ruta ${nombre} de ${rol} no existe`)
+  }
+})
+
+test('la tabla de rutas principales tiene una entrada por perfil con pantalla', () => {
+  assert.deepEqual(Object.keys(PANTALLA_PRINCIPAL_POR_ROL).sort(), Object.values(PROFILES).sort())
+
+  for (const [rol, ruta] of Object.entries(RUTA_PRINCIPAL_POR_ROL)) {
+    const nombre = ruta.split('/').filter(Boolean).join('-')
+    assert.equal(PANTALLA_PRINCIPAL_POR_ROL[rol], nombre, `el nombre de ${rol} no deriva de su ruta`)
+  }
+})
+
+test('el store de sesión usa la misma tabla de rutas principales', () => {
+  const store = read('../src/stores/session.js')
+  assert.match(store, /export const PANTALLA_PRINCIPAL = RUTA_PRINCIPAL_POR_ROL/)
 })
 
 test('decidirAcceso deja entrar al usuario de sistema al directorio de usuarios (directorio, rebanada 2)', () => {

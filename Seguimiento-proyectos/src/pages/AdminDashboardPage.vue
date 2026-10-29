@@ -21,7 +21,7 @@
           label="Ver directorio"
           :to="{ name: 'admin-directorio' }"
         >
-          <q-tooltip>Abre el directorio de contadores para buscar a una persona por su nombre.</q-tooltip>
+          <q-tooltip>Abre el directorio de usuarios para buscar a una persona por su nombre.</q-tooltip>
         </q-btn>
         <q-btn
           class="dashboard-page__asignar-btn control-touch"

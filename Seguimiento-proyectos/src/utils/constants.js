@@ -49,3 +49,30 @@ export const MAX_DESCRIPCION_LENGTH = 1000
 
 /** Máximo de caracteres de las observaciones de un caso (columna TEXT, 2000 se aceptan, 2001 no). */
 export const MAX_OBSERVACIONES_LENGTH = 2000
+
+/**
+ * Texto visible de cada código de error de las validaciones de cuenta (alta y restablecer).
+ * Lo comparten los diálogos del directorio: el campo ya se llama «Contraseña nueva», así que
+ * el aviso no repite «nueva».
+ */
+export const MENSAJES_VALIDACION = Object.freeze({
+  nombre_requerido: 'El nombre es obligatorio.',
+  nombre_demasiado_largo: 'El nombre supera los 150 caracteres permitidos.',
+  correo_requerido: 'El correo es obligatorio.',
+  correo_demasiado_largo: 'El correo supera los 150 caracteres permitidos.',
+  correo_invalido: 'Escribe un correo válido, por ejemplo nombre@delgrow.mx.',
+  password_requerida: 'La contraseña es obligatoria.',
+  password_corta: 'La contraseña debe tener al menos 8 caracteres.',
+  rol_requerido: 'Elige el rol de la cuenta.',
+})
+
+/**
+ * Pantalla principal de cada perfil con pantalla, como ruta de la aplicación (Definiciones).
+ * Única fuente: `session.js` la usa como path y `accessRules.js` deriva el nombre de ruta.
+ * Un perfil que no está aquí no tiene pantalla asignada.
+ */
+export const RUTA_PRINCIPAL_POR_ROL = Object.freeze({
+  [PROFILES.administrador]: '/admin/dashboard',
+  [PROFILES.contador]: '/contador/casos',
+  [PROFILES.sistema]: '/admin/directorio',
+})
