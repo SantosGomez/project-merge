@@ -37,7 +37,56 @@
       />
 
       <template v-else>
+        <section class="auditorias-page__resumen" aria-label="Auditorías por semáforo">
+          <q-card
+            v-for="tarjeta in tarjetasSemaforo"
+            :key="tarjeta.valor"
+            flat
+            bordered
+            tag="button"
+            type="button"
+            class="resumen-semaforo"
+            :class="[
+              `resumen-semaforo--${tarjeta.clase}`,
+              { 'resumen-semaforo--activa': filtroSemaforo === tarjeta.valor },
+            ]"
+            :aria-pressed="filtroSemaforo === tarjeta.valor ? 'true' : 'false'"
+            @click="alternarSemaforo(tarjeta.valor)"
+          >
+            <span class="resumen-semaforo__valor">{{ conteoSemaforo[tarjeta.valor] }}</span>
+            <span class="resumen-semaforo__etiqueta">{{ tarjeta.etiqueta }}</span>
+            <q-tooltip max-width="260px">{{ tarjeta.ayuda }} Haz clic para ver solo estas.</q-tooltip>
+          </q-card>
+        </section>
+
         <section class="auditorias-page__filtros" aria-label="Filtros de auditorías">
+          <div class="auditorias-page__busqueda">
+            <q-input
+              v-model="texto"
+              dense
+              outlined
+              clearable
+              debounce="200"
+              placeholder="Buscar por cliente o expediente"
+              aria-label="Buscar por cliente o expediente"
+              class="auditorias-page__buscar"
+            >
+              <template #prepend><q-icon name="search" aria-hidden="true" /></template>
+            </q-input>
+            <q-select
+              v-model="orden"
+              :options="opcionesOrden"
+              emit-value
+              map-options
+              dense
+              outlined
+              options-dense
+              label="Ordenar por"
+              class="auditorias-page__orden"
+            >
+              <q-tooltip>Por urgencia: primero lo vencido y lo que vence antes.</q-tooltip>
+            </q-select>
+          </div>
           <div class="auditorias-page__filtro-grupo">
             <span class="auditorias-page__filtro-titulo">Estado</span>
             <q-chip
@@ -50,23 +99,6 @@
               :aria-pressed="filtroEstado === opcion.valor ? 'true' : 'false'"
               class="auditorias-page__chip"
               @click="filtroEstado = opcion.valor"
-            >
-              {{ opcion.etiqueta }}
-              <q-tooltip>{{ opcion.ayuda }}</q-tooltip>
-            </q-chip>
-          </div>
-          <div class="auditorias-page__filtro-grupo">
-            <span class="auditorias-page__filtro-titulo">Semáforo</span>
-            <q-chip
-              v-for="opcion in opcionesSemaforo"
-              :key="opcion.valor"
-              clickable
-              :outline="filtroSemaforo !== opcion.valor"
-              :color="filtroSemaforo === opcion.valor ? 'primary' : 'grey-7'"
-              :text-color="filtroSemaforo === opcion.valor ? 'white' : 'grey-9'"
-              :aria-pressed="filtroSemaforo === opcion.valor ? 'true' : 'false'"
-              class="auditorias-page__chip"
-              @click="filtroSemaforo = opcion.valor"
             >
               {{ opcion.etiqueta }}
               <q-tooltip>{{ opcion.ayuda }}</q-tooltip>
@@ -90,7 +122,8 @@
         <div v-if="auditoriasFiltradas.length === 0" class="sin-resultados" role="status">
           <q-icon name="filter_alt" size="28px" color="grey-7" aria-hidden="true" />
           <p class="sin-resultados__texto">
-            Ninguna auditoría cumple estos filtros. Cambia el estado o el semáforo, o usa «Limpiar filtros».
+            Ninguna auditoría cumple la búsqueda o los filtros. Cambia el texto, el estado o el semáforo, o usa
+            «Limpiar filtros».
           </p>
         </div>
 
@@ -137,6 +170,7 @@ import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarAuditorias } from '../services/auditoriaService.js'
 import { listCounters } from '../services/counterService.js'
+import { contarPorSemaforo, filtrarAuditorias, ordenarAuditorias } from '../utils/listaAuditorias.js'
 import { useSessionStore } from '../stores/session.js'
 
 const $q = useQuasar()
@@ -160,34 +194,55 @@ const opcionesEstado = [
 ]
 
 const filtroSemaforo = ref('todos')
+const texto = ref('')
+const orden = ref('urgencia')
 
-// El semáforo lo calcula el backend desde la bitácora (próximo plazo pendiente).
-const opcionesSemaforo = [
-  { valor: 'todos', etiqueta: 'Todos', ayuda: 'Sin filtrar por semáforo.' },
-  { valor: 'Vencido', etiqueta: 'Vencido', ayuda: 'Un plazo pendiente ya pasó.' },
-  { valor: 'Crítico', etiqueta: 'Crítico', ayuda: 'Un plazo pendiente vence en 7 días o menos.' },
+// Tarjetas del resumen: el semáforo lo calcula el backend desde la bitácora (próximo plazo pendiente).
+const tarjetasSemaforo = [
+  { valor: 'Vencido', clase: 'vencido', etiqueta: 'Vencidas', ayuda: 'Un plazo pendiente ya pasó.' },
+  { valor: 'Crítico', clase: 'critico', etiqueta: 'Críticas', ayuda: 'Un plazo pendiente vence en 7 días o menos.' },
   {
     valor: 'Atención',
-    etiqueta: 'Atención',
+    clase: 'atencion',
+    etiqueta: 'En atención',
     ayuda: 'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos.',
   },
-  { valor: 'En tiempo', etiqueta: 'En tiempo', ayuda: 'Sin vencimientos cercanos.' },
-  { valor: 'Concluida', etiqueta: 'Concluida', ayuda: 'Auditorías completadas.' },
+  { valor: 'En tiempo', clase: 'en-tiempo', etiqueta: 'En tiempo', ayuda: 'Sin vencimientos cercanos.' },
+  { valor: 'Concluida', clase: 'concluida', etiqueta: 'Concluidas', ayuda: 'Auditorías completadas.' },
 ]
 
+const opcionesOrden = [
+  { label: 'Urgencia', value: 'urgencia' },
+  { label: 'Más recientes', value: 'recientes' },
+  { label: 'Cliente (A-Z)', value: 'cliente' },
+]
+
+const conteoSemaforo = computed(() => contarPorSemaforo(auditorias.value))
+
 const auditoriasFiltradas = computed(() =>
-  auditorias.value.filter(
-    (a) =>
-      (filtroEstado.value === 'todos' || a.estado === filtroEstado.value) &&
-      (filtroSemaforo.value === 'todos' || a.semaforo === filtroSemaforo.value),
+  ordenarAuditorias(
+    filtrarAuditorias(auditorias.value, {
+      texto: texto.value ?? '',
+      estado: filtroEstado.value,
+      semaforo: filtroSemaforo.value,
+    }),
+    orden.value,
   ),
 )
 
-const hayFiltros = computed(() => filtroEstado.value !== 'todos' || filtroSemaforo.value !== 'todos')
+const hayFiltros = computed(
+  () => filtroEstado.value !== 'todos' || filtroSemaforo.value !== 'todos' || (texto.value ?? '').trim() !== '',
+)
+
+// Un segundo clic en la misma tarjeta quita el filtro.
+const alternarSemaforo = (valor) => {
+  filtroSemaforo.value = filtroSemaforo.value === valor ? 'todos' : valor
+}
 
 const limpiarFiltros = () => {
   filtroEstado.value = 'todos'
   filtroSemaforo.value = 'todos'
+  texto.value = ''
 }
 
 const dialogoRegistroAbierto = ref(false)
@@ -302,6 +357,134 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
   border: 1px solid var(--dg-borde);
   border-radius: 10px;
   background: var(--dg-fondo-suave);
+}
+
+/* Resumen por semáforo: cinco tarjetas que también filtran la lista */
+.auditorias-page__resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.resumen-semaforo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-left-width: 5px;
+  border-radius: 10px;
+  background: var(--dg-superficie);
+  color: var(--dg-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resumen-semaforo:focus-visible {
+  outline: 3px solid var(--dg-foco);
+  outline-offset: 2px;
+}
+
+.resumen-semaforo--activa {
+  background: var(--dg-fondo-seleccion);
+  box-shadow: inset 0 0 0 2px var(--dg-acento);
+}
+
+.resumen-semaforo__valor {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.resumen-semaforo__etiqueta {
+  color: var(--dg-texto-secundario);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.resumen-semaforo--vencido {
+  border-left-color: var(--dg-error);
+}
+
+.resumen-semaforo--critico {
+  border-left-color: var(--dg-prioridad-alta-borde);
+}
+
+.resumen-semaforo--atencion {
+  border-left-color: var(--dg-importante);
+}
+
+.resumen-semaforo--en-tiempo {
+  border-left-color: var(--dg-exito-borde);
+}
+
+.resumen-semaforo--concluida {
+  border-left-color: var(--dg-neutro-borde);
+}
+
+/* En el celular, las cinco en una sola fila para no empujar la lista hacia abajo */
+@media (max-width: 599px) {
+  .auditorias-page__resumen {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .resumen-semaforo {
+    align-items: center;
+    padding: 6px 2px;
+    border-left-width: 1px;
+    border-top-width: 4px;
+    text-align: center;
+  }
+
+  .resumen-semaforo--vencido {
+    border-top-color: var(--dg-error);
+  }
+
+  .resumen-semaforo--critico {
+    border-top-color: var(--dg-prioridad-alta-borde);
+  }
+
+  .resumen-semaforo--atencion {
+    border-top-color: var(--dg-importante);
+  }
+
+  .resumen-semaforo--en-tiempo {
+    border-top-color: var(--dg-exito-borde);
+  }
+
+  .resumen-semaforo--concluida {
+    border-top-color: var(--dg-neutro-borde);
+  }
+
+  .resumen-semaforo__valor {
+    font-size: 1.2rem;
+  }
+
+  .resumen-semaforo__etiqueta {
+    font-size: 0.68rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+}
+
+.auditorias-page__busqueda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.auditorias-page__buscar {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.auditorias-page__orden {
+  flex: 0 1 200px;
+  min-width: 160px;
 }
 
 .auditorias-page__filtro-grupo {
