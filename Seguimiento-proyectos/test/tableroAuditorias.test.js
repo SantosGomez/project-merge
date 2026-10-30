@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 
 import {
   activasPorFase,
+  columnasKanban,
   indicadoresAuditorias,
   marcasDeFases,
   tablaTipoFase,
@@ -210,5 +211,52 @@ describe('Tablero de auditorías: gráficas en Resumen', () => {
     ])
     assert.match(tabla, /v-for="fase in fases"/)
     assert.match(tabla, /tablaTipo\.total/)
+  })
+})
+
+// Rebanada 3: Kanban por fase.
+test('columnasKanban reparte las auditorías en las 6 fases, por urgencia y concluidas al final', () => {
+  const k = (id, fase, semaforo, diasParaVencer = null) => ({
+    id,
+    faseActual: fase ? { id: fase } : null,
+    semaforo,
+    diasParaVencer,
+  })
+  const lista = [
+    k(1, 2, 'En tiempo'),
+    k(2, 2, 'Concluida'),
+    k(3, 2, 'Vencido', -3),
+    k(4, 2, 'Crítico', 5),
+    k(5, null, 'Atención', 12),
+    k(6, 6, 'Concluida'),
+  ]
+
+  const columnas = columnasKanban(lista)
+
+  assert.equal(columnas.length, 6)
+  assert.deepEqual(
+    columnas.map((c) => c.map((a) => a.id)),
+    [[5], [3, 4, 1, 2], [], [], [], [6]],
+  )
+  assert.deepEqual(columnasKanban([]), [[], [], [], [], [], []])
+})
+
+describe('Tablero de auditorías: sub-pestaña Kanban', () => {
+  const tablero = read('../src/components/TableroAuditorias.vue')
+  const kanban = tablero.slice(tablero.indexOf('<q-tab-panel name="kanban"'))
+
+  it('es la tercera sub-pestaña y vive en la URL', () => {
+    assert.match(tablero, /name="avance"[\s\S]*?<q-tab name="kanban"/)
+    assert.match(tablero, /const VISTAS = \['resumen', 'avance', 'kanban'\]/)
+  })
+
+  it('una columna por fase con su conteo y tarjetas que abren la ficha', () => {
+    assert.match(kanban, /v-for="\(columna, i\) in columnas"/)
+    assert.match(kanban, /fases\[i\]/)
+    assert.match(kanban, /columna\.length/)
+    assert.match(kanban, /v-for="auditoria in columna"/)
+    assert.match(kanban, /@click="verFicha\(auditoria\.id\)"/)
+    assert.match(kanban, /@keydown\.enter="verFicha\(auditoria\.id\)"/)
+    assert.match(tablero, /columnasKanban\(auditorias\.value\)/)
   })
 })

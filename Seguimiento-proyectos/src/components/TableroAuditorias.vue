@@ -31,6 +31,9 @@
         <q-tab name="avance" icon="view_timeline" label="Avance">
           <q-tooltip>En qué fase va cada auditoría y qué vence después.</q-tooltip>
         </q-tab>
+        <q-tab name="kanban" icon="view_kanban" label="Kanban">
+          <q-tooltip>Una columna por fase con la tarjeta de cada auditoría.</q-tooltip>
+        </q-tab>
       </q-tabs>
 
       <q-tab-panels v-model="vista" animated class="tablero__paneles">
@@ -212,6 +215,54 @@
             </tbody>
           </q-markup-table>
         </q-tab-panel>
+
+        <q-tab-panel name="kanban" class="tablero__panel">
+          <p class="tablero__ayuda">
+            ¿En qué fase está cada auditoría? El color de la tarjeta indica su semáforo; la fase
+            cambia al registrar eventos en la bitácora. Haz clic en una tarjeta para abrir su ficha.
+          </p>
+          <div class="kanban" role="list" aria-label="Auditorías por fase">
+            <section
+              v-for="(columna, i) in columnas"
+              :key="i"
+              class="kanban__columna"
+              role="listitem"
+              :aria-label="`${fases[i]?.nombre ?? `Fase ${i + 1}`}: ${columna.length}`"
+            >
+              <header class="kanban__cabecera">
+                <span class="kanban__fase">{{ fases[i]?.nombre ?? `Fase ${i + 1}` }}</span>
+                <q-badge rounded color="dg-acento" :label="columna.length" />
+                <q-tooltip max-width="260px">{{ fases[i]?.descripcion }}</q-tooltip>
+              </header>
+              <p v-if="columna.length === 0" class="kanban__vacia">Sin auditorías en esta fase</p>
+              <q-card
+                v-for="auditoria in columna"
+                :key="auditoria.id"
+                flat
+                bordered
+                tabindex="0"
+                class="kanban__tarjeta"
+                :class="`kanban__tarjeta--${claseSemaforo(auditoria.semaforo)}`"
+                @click="verFicha(auditoria.id)"
+                @keydown.enter="verFicha(auditoria.id)"
+              >
+                <span class="kanban__cliente">{{ auditoria.cliente }}</span>
+                <span class="kanban__dato">{{ auditoria.tipoAud }}</span>
+                <span class="kanban__dato">Expediente {{ auditoria.noExpediente }}</span>
+                <span
+                  class="avance__semaforo kanban__semaforo"
+                  :class="`avance__semaforo--${claseSemaforo(auditoria.semaforo)}`"
+                >
+                  {{ auditoria.semaforo }}
+                </span>
+                <span v-if="auditoria.proximoVencimiento" class="kanban__dato">
+                  Vence {{ auditoria.proximoVencimiento }} ·
+                  {{ textoDiasPlazo(auditoria.diasParaVencer) }}
+                </span>
+              </q-card>
+            </section>
+          </div>
+        </q-tab-panel>
       </q-tab-panels>
     </template>
   </section>
@@ -228,6 +279,7 @@ import { listarAuditorias, listarFases } from '../services/auditoriaService.js'
 import { SEMAFOROS, contarPorSemaforo, ordenarAuditorias } from '../utils/listaAuditorias.js'
 import {
   activasPorFase,
+  columnasKanban,
   indicadoresAuditorias,
   marcasDeFases,
   tablaTipoFase,
@@ -238,7 +290,7 @@ const route = useRoute()
 const router = useRouter()
 
 // Sub-pestaña en la URL (?vista=avance): al volver de una ficha se regresa a la misma vista.
-const VISTAS = ['resumen', 'avance']
+const VISTAS = ['resumen', 'avance', 'kanban']
 const vista = computed({
   get: () => (VISTAS.includes(route.query.vista) ? route.query.vista : 'resumen'),
   set: (valor) => router.replace({ query: { ...route.query, vista: valor } }),
@@ -312,6 +364,7 @@ const barrasFase = computed(() => {
 })
 
 const tablaTipo = computed(() => tablaTipoFase(auditorias.value))
+const columnas = computed(() => columnasKanban(auditorias.value))
 const auditoriasOrdenadas = computed(() => ordenarAuditorias(auditorias.value, 'urgencia'))
 
 const cargar = async () => {
@@ -483,6 +536,105 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
 .tipo-fase__total td {
   background: var(--dg-fondo-suave);
   font-weight: 700;
+}
+
+/* Kanban: seis columnas; si no caben, se desplazan de lado dentro de su marco */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(220px, 1fr));
+  gap: 12px;
+  padding-bottom: 8px;
+  overflow-x: auto;
+}
+
+.kanban__columna {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--dg-borde);
+  border-radius: 10px;
+  background: var(--dg-fondo-suave);
+}
+
+.kanban__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--dg-borde-fuerte);
+}
+
+.kanban__fase {
+  color: var(--dg-texto);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.kanban__vacia {
+  margin: 0;
+  color: var(--dg-texto-tenue);
+  font-size: 0.8rem;
+}
+
+.kanban__tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px;
+  border-left-width: 5px;
+  border-radius: 8px;
+  background: var(--dg-superficie);
+  cursor: pointer;
+}
+
+.kanban__tarjeta:hover {
+  background: var(--dg-fondo-hover);
+}
+
+.kanban__tarjeta:focus-visible {
+  outline: 3px solid var(--dg-foco);
+  outline-offset: 2px;
+}
+
+.kanban__tarjeta--vencido {
+  border-left-color: var(--dg-error);
+}
+
+.kanban__tarjeta--critico {
+  border-left-color: var(--dg-prioridad-alta-borde);
+}
+
+.kanban__tarjeta--atencion {
+  border-left-color: var(--dg-importante);
+}
+
+.kanban__tarjeta--en-tiempo {
+  border-left-color: var(--dg-exito-borde);
+}
+
+.kanban__tarjeta--concluida {
+  border-left-color: var(--dg-neutro-borde);
+}
+
+.kanban__cliente {
+  color: var(--dg-texto);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.kanban__dato {
+  color: var(--dg-texto-tenue);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.kanban__semaforo {
+  margin: 4px 0 2px;
 }
 
 .avance {

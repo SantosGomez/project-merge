@@ -1,6 +1,8 @@
 // Lógica del tablero de auditorías del dashboard del administrador (hoja «Dashboard» del boceto).
 // Funciones puras, sin Vue; el semáforo, la fase y los días los calcula el backend desde la bitácora.
 
+import { ordenarAuditorias } from './listaAuditorias.js'
+
 export const TOTAL_FASES = 6
 
 /**
@@ -105,4 +107,18 @@ export const tablaTipoFase = (auditorias) => {
     a.tipo.localeCompare(b.tipo, 'es', { sensitivity: 'base' }),
   )
   return { filas, total }
+}
+
+/**
+ * Columnas del Kanban (hoja «Formato Reporte Kanban» del boceto): una por fase, con sus
+ * auditorías por urgencia; las concluidas quedan al final de su columna. Sin fase, va en la 1.
+ * @param {Array<Object>} auditorias
+ * @returns {Array<Array<Object>>} seis columnas, de la fase 1 a la 6.
+ */
+export const columnasKanban = (auditorias) => {
+  const columnas = Array.from({ length: TOTAL_FASES }, () => [])
+  for (const auditoria of ordenarAuditorias(auditorias, 'urgencia')) {
+    columnas[faseDe(auditoria) - 1].push(auditoria)
+  }
+  return columnas
 }
