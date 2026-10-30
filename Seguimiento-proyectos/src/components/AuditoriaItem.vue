@@ -11,6 +11,16 @@
         >
           {{ auditoria.estado }}
         </q-chip>
+        <q-chip
+          dense
+          square
+          icon="traffic"
+          class="auditoria-item__semaforo"
+          :class="`auditoria-item__semaforo--${semaforoClase}`"
+        >
+          {{ auditoria.semaforo }}
+          <q-tooltip>{{ AYUDA_SEMAFORO[auditoria.semaforo] }}</q-tooltip>
+        </q-chip>
       </div>
       <p class="auditoria-item__expediente">
         <q-icon name="folder_open" size="14px" aria-hidden="true" /> Expediente {{ auditoria.noExpediente }}
@@ -22,6 +32,18 @@
 
     <q-card-section class="auditoria-item__body">
       <dl class="auditoria-item__datos">
+        <div class="auditoria-item__dato">
+          <dt>Fase actual</dt>
+          <dd>{{ auditoria.faseActual?.nombre }}</dd>
+        </div>
+        <div class="auditoria-item__dato">
+          <dt>Próximo vencimiento</dt>
+          <dd v-if="auditoria.proximoVencimiento">
+            {{ auditoria.proximoVencimiento }} · {{ auditoria.queVence }}
+            <span class="auditoria-item__dias">({{ textoDias }})</span>
+          </dd>
+          <dd v-else class="auditoria-item__sin-contador">Sin plazos pendientes</dd>
+        </div>
         <div class="auditoria-item__dato">
           <dt>Dependencia</dt>
           <dd>{{ auditoria.dependencia }}</dd>
@@ -121,6 +143,30 @@ const ESTADO_CLASE = {
 }
 
 const estadoClase = computed(() => ESTADO_CLASE[props.auditoria.estado] ?? 'pendiente')
+
+const SEMAFORO_CLASE = {
+  Vencido: 'vencido',
+  Crítico: 'critico',
+  Atención: 'atencion',
+  'En tiempo': 'en-tiempo',
+  Concluida: 'concluida',
+}
+const AYUDA_SEMAFORO = {
+  Vencido: 'Un plazo pendiente de la bitácora ya pasó.',
+  Crítico: 'Un plazo pendiente vence en 7 días o menos.',
+  Atención: 'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos para concluir.',
+  'En tiempo': 'Sin vencimientos cercanos.',
+  Concluida: 'La auditoría está completada.',
+}
+
+const semaforoClase = computed(() => SEMAFORO_CLASE[props.auditoria.semaforo] ?? 'en-tiempo')
+
+const textoDias = computed(() => {
+  const dias = props.auditoria.diasParaVencer
+  if (dias === 0) return 'vence hoy'
+  if (dias < 0) return `venció hace ${-dias} ${-dias === 1 ? 'día' : 'días'}`
+  return `en ${dias} ${dias === 1 ? 'día' : 'días'}`
+})
 </script>
 
 <style scoped>
@@ -171,6 +217,41 @@ const estadoClase = computed(() => ESTADO_CLASE[props.auditoria.estado] ?? 'pend
 .auditoria-item__estado--aplazado {
   background: var(--dg-error-fondo);
   color: var(--dg-error);
+}
+
+.auditoria-item__semaforo {
+  font-weight: 600;
+}
+
+.auditoria-item__semaforo--vencido {
+  background: var(--dg-error);
+  color: var(--dg-superficie);
+}
+
+.auditoria-item__semaforo--critico {
+  background: var(--dg-prioridad-alta-fondo);
+  color: var(--dg-prioridad-alta);
+  border: 1px solid var(--dg-prioridad-alta-borde);
+}
+
+.auditoria-item__semaforo--atencion {
+  background: var(--dg-importante-fondo);
+  color: var(--dg-importante-texto);
+}
+
+.auditoria-item__semaforo--en-tiempo {
+  background: var(--dg-exito-fondo);
+  color: var(--dg-exito);
+}
+
+.auditoria-item__semaforo--concluida {
+  background: var(--dg-neutro-fondo);
+  color: var(--dg-texto-secundario);
+}
+
+.auditoria-item__dias {
+  color: var(--dg-texto-tenue);
+  font-size: 0.85rem;
 }
 
 .auditoria-item__expediente {

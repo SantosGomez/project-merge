@@ -55,8 +55,25 @@
               <q-tooltip>{{ opcion.ayuda }}</q-tooltip>
             </q-chip>
           </div>
+          <div class="auditorias-page__filtro-grupo">
+            <span class="auditorias-page__filtro-titulo">Semáforo</span>
+            <q-chip
+              v-for="opcion in opcionesSemaforo"
+              :key="opcion.valor"
+              clickable
+              :outline="filtroSemaforo !== opcion.valor"
+              :color="filtroSemaforo === opcion.valor ? 'primary' : 'grey-7'"
+              :text-color="filtroSemaforo === opcion.valor ? 'white' : 'grey-9'"
+              :aria-pressed="filtroSemaforo === opcion.valor ? 'true' : 'false'"
+              class="auditorias-page__chip"
+              @click="filtroSemaforo = opcion.valor"
+            >
+              {{ opcion.etiqueta }}
+              <q-tooltip>{{ opcion.ayuda }}</q-tooltip>
+            </q-chip>
+          </div>
           <q-btn
-            v-if="filtroEstado !== 'todos'"
+            v-if="hayFiltros"
             flat
             no-caps
             dense
@@ -64,7 +81,7 @@
             icon="filter_alt_off"
             label="Limpiar filtros"
             class="auditorias-page__limpiar control-touch"
-            @click="filtroEstado = 'todos'"
+            @click="limpiarFiltros"
           >
             <q-tooltip>Vuelve a mostrar todas las auditorías.</q-tooltip>
           </q-btn>
@@ -73,7 +90,7 @@
         <div v-if="auditoriasFiltradas.length === 0" class="sin-resultados" role="status">
           <q-icon name="filter_alt" size="28px" color="grey-7" aria-hidden="true" />
           <p class="sin-resultados__texto">
-            Ninguna auditoría cumple este filtro. Cambia el estado o usa «Limpiar filtros».
+            Ninguna auditoría cumple estos filtros. Cambia el estado o el semáforo, o usa «Limpiar filtros».
           </p>
         </div>
 
@@ -103,6 +120,7 @@
       v-if="auditoriaEnDetalle"
       v-model="dialogoDetalleAbierto"
       :auditoria="auditoriaEnDetalle"
+      @cambio="refrescar"
     />
   </q-page>
 </template>
@@ -141,12 +159,36 @@ const opcionesEstado = [
   { valor: 'Aplazado por acta', etiqueta: 'Aplazado', ayuda: 'Auditorías aplazadas por acta.' },
 ]
 
-const auditoriasFiltradas = computed(() => {
-  if (filtroEstado.value === 'todos') return auditorias.value
-  return auditorias.value.filter((a) => a.estado === filtroEstado.value)
-})
+const filtroSemaforo = ref('todos')
 
-const hayFiltros = computed(() => filtroEstado.value !== 'todos')
+// El semáforo lo calcula el backend desde la bitácora (próximo plazo pendiente).
+const opcionesSemaforo = [
+  { valor: 'todos', etiqueta: 'Todos', ayuda: 'Sin filtrar por semáforo.' },
+  { valor: 'Vencido', etiqueta: 'Vencido', ayuda: 'Un plazo pendiente ya pasó.' },
+  { valor: 'Crítico', etiqueta: 'Crítico', ayuda: 'Un plazo pendiente vence en 7 días o menos.' },
+  {
+    valor: 'Atención',
+    etiqueta: 'Atención',
+    ayuda: 'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos.',
+  },
+  { valor: 'En tiempo', etiqueta: 'En tiempo', ayuda: 'Sin vencimientos cercanos.' },
+  { valor: 'Concluida', etiqueta: 'Concluida', ayuda: 'Auditorías completadas.' },
+]
+
+const auditoriasFiltradas = computed(() =>
+  auditorias.value.filter(
+    (a) =>
+      (filtroEstado.value === 'todos' || a.estado === filtroEstado.value) &&
+      (filtroSemaforo.value === 'todos' || a.semaforo === filtroSemaforo.value),
+  ),
+)
+
+const hayFiltros = computed(() => filtroEstado.value !== 'todos' || filtroSemaforo.value !== 'todos')
+
+const limpiarFiltros = () => {
+  filtroEstado.value = 'todos'
+  filtroSemaforo.value = 'todos'
+}
 
 const dialogoRegistroAbierto = ref(false)
 const auditoriaEnEdicion = ref(null)
@@ -171,6 +213,20 @@ const cargar = async () => {
 }
 
 onMounted(cargar)
+
+// Tras cambiar la bitácora se vuelve a leer la lista sin pantalla de carga, para que la
+// fase actual, el próximo vencimiento y el semáforo de la tarjeta queden al día.
+const refrescar = async () => {
+  try {
+    auditorias.value = await listarAuditorias()
+    if (auditoriaEnDetalle.value) {
+      auditoriaEnDetalle.value =
+        auditorias.value.find((a) => a.id === auditoriaEnDetalle.value.id) ?? auditoriaEnDetalle.value
+    }
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error.mensaje ?? 'No se pudo actualizar la lista de auditorías.' })
+  }
+}
 
 const abrirRegistro = () => {
   auditoriaEnEdicion.value = null

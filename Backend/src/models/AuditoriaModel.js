@@ -134,9 +134,10 @@ async function findAll({ contadorId } = {}) {
 }
 
 /**
- * Agrega a cada fila la lista `contadores` ({ id, nombre }) ordenada por nombre.
+ * Agrega a cada fila la lista `contadores` ({ id, nombre }) ordenada por nombre, sus `eventos`
+ * de la bitácora y la `faseInicial` del catálogo (para el seguimiento calculado).
  * @param {Array<Object>} filas - Filas de la tabla auditorias.
- * @returns {Promise<Array<Object>>} Las mismas filas con sus contadores.
+ * @returns {Promise<Array<Object>>} Las mismas filas con sus contadores y eventos.
  */
 async function agregarContadores(filas) {
   if (filas.length === 0) return [];
@@ -148,11 +149,23 @@ async function agregarContadores(filas) {
      ORDER BY u.nombre`,
     ids
   );
+  // Bitácora resumida para calcular fase actual, próximo vencimiento y semáforo.
+  const eventos = await query(
+    `SELECT d.AudHdr_Id, d.Evento, d.Fase_Id, f.Fase AS FaseNombre, d.FechaLimite, d.FechaEntrega, d.Estado
+     FROM auditoria_dtl d JOIN fases_aud f ON f.IdFase = d.Fase_Id
+     WHERE d.AudHdr_Id IN (${ids.map(() => '?').join(', ')})`,
+    ids
+  );
+  const [inicial] = await query('SELECT IdFase, Fase FROM fases_aud ORDER BY IdFase LIMIT 1');
+  const faseInicial = inicial ? { id: inicial.IdFase, nombre: inicial.Fase } : null;
+
   return filas.map((fila) => ({
     ...fila,
     contadores: asignaciones
       .filter((asignacion) => asignacion.IdAuditoria === fila.IdAuditoria)
       .map(({ id, nombre }) => ({ id, nombre })),
+    eventos: eventos.filter((evento) => evento.AudHdr_Id === fila.IdAuditoria),
+    faseInicial,
   }));
 }
 

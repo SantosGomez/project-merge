@@ -32,6 +32,12 @@ const auditoriaDeBackend = (auditoria) => ({
   descripcion: auditoria.descripcion ?? '',
   observacion: auditoria.observacion ?? '',
   contadores: Array.isArray(auditoria.contadores) ? auditoria.contadores : [],
+  // Seguimiento calculado por el backend desde la bitácora.
+  faseActual: auditoria.fase_actual,
+  proximoVencimiento: fechaParaFormulario(auditoria.proximo_vencimiento),
+  queVence: auditoria.que_vence ?? '',
+  diasParaVencer: auditoria.dias_para_vencer ?? null,
+  semaforo: auditoria.semaforo,
   actualizadoEn: auditoria.actualizado_en,
 })
 

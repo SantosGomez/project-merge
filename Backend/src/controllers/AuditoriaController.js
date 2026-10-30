@@ -1,5 +1,6 @@
 const AuditoriaModel = require('../models/AuditoriaModel');
-const { formatLocalDate, formatearFechaISO, parseFechaInicio } = require('../utils/dateUtils');
+const { formatLocalDate, formatearFechaISO, nowLocal, parseFechaInicio } = require('../utils/dateUtils');
+const { calcularSeguimiento } = require('../utils/seguimientoAuditoria');
 const { buildError } = require('../utils/errorUtils');
 
 const ERROR_CONTADORES_FALTANTES = buildError(
@@ -151,6 +152,7 @@ function auditoriaParaApi(fila) {
     descripcion: fila.Descripcion,
     observacion: fila.Observacion,
     contadores: fila.contadores,
+    ...calcularSeguimiento(fila, fila.eventos, fila.faseInicial, nowLocal()),
     creado_por: fila.CreadoPor,
     creado_en: formatLocalDate(fila.CreadoEn),
     actualizado_en: formatLocalDate(fila.ActualizadoEn),

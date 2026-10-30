@@ -251,6 +251,9 @@ const props = defineProps({
   },
 })
 
+// Avisa a la página que la bitácora cambió (fase actual, vencimiento y semáforo se recalculan).
+const emit = defineEmits(['cambio'])
+
 const $q = useQuasar()
 
 const ESTADO_AUDITORIA_CLASE = {
@@ -358,6 +361,7 @@ const guardar = async () => {
     }
     // Se vuelve a leer para respetar el orden cronológico del backend.
     eventos.value = await listarEventos(props.auditoria.id)
+    emit('cambio')
     limpiarFormulario()
     formularioAbierto.value = false
   } catch (error) {
@@ -379,6 +383,7 @@ const confirmarBorrado = (ev) => {
     try {
       await borrarEvento(props.auditoria.id, ev.id)
       eventos.value = eventos.value.filter((e) => e.id !== ev.id)
+      emit('cambio')
       if (eventoEnEdicion.value?.id === ev.id) limpiarFormulario()
       $q.notify({ type: 'positive', message: 'Evento borrado.' })
     } catch (error) {

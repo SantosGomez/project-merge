@@ -42,6 +42,11 @@ const auditoriaDeBackend = (extra = {}) => ({
   descripcion: null,
   observacion: 'Preparar contabilidad',
   contadores: [{ id: 3, nombre: 'Brenda Chávez' }],
+  fase_actual: { id: 2, nombre: 'Fase 2 · Requerimientos y desarrollo' },
+  proximo_vencimiento: '2026-11-05',
+  que_vence: 'Requerimiento adicional de información',
+  dias_para_vencer: 6,
+  semaforo: 'Crítico',
   creado_por: 3,
   creado_en: '2026-10-29 10:00:00',
   actualizado_en: '2026-10-29 11:30:00',
@@ -85,8 +90,32 @@ test('listarAuditorias hace GET /auditorias y entrega las fechas como DD-MM-AAAA
     descripcion: '',
     observacion: 'Preparar contabilidad',
     contadores: [{ id: 3, nombre: 'Brenda Chávez' }],
+    faseActual: { id: 2, nombre: 'Fase 2 · Requerimientos y desarrollo' },
+    proximoVencimiento: '05-11-2026',
+    queVence: 'Requerimiento adicional de información',
+    diasParaVencer: 6,
+    semaforo: 'Crítico',
     actualizadoEn: '2026-10-29 11:30:00',
   })
+})
+
+test('listarAuditorias deja sin próximo vencimiento a la auditoría sin plazos pendientes', async () => {
+  const api = crearApiFalsa({
+    GET: async () => ({
+      data: {
+        auditorias: [
+          auditoriaDeBackend({ proximo_vencimiento: null, que_vence: null, dias_para_vencer: null, semaforo: 'En tiempo' }),
+        ],
+      },
+    }),
+  })
+
+  const [auditoria] = await crearAuditoriaService({ api }).listarAuditorias()
+
+  assert.equal(auditoria.proximoVencimiento, '')
+  assert.equal(auditoria.queVence, '')
+  assert.equal(auditoria.diasParaVencer, null)
+  assert.equal(auditoria.semaforo, 'En tiempo')
 })
 
 test('registrarAuditoria envía las fechas como AAAA-MM-DD y devuelve la auditoría traducida', async () => {
