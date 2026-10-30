@@ -4,12 +4,14 @@
       <div class="dashboard-page__head">
         <div class="dashboard-page__title-area">
           <h1 class="dashboard-page__title">
-            Buen día, bienvenido<template v-if="session.nombreVisible"> Contador {{ session.nombreVisible }}</template>
+            Buen día, bienvenido<template v-if="session.nombreVisible">
+              Contador {{ session.nombreVisible }}</template
+            >
           </h1>
           <p class="dashboard-page__lead">
-            Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el detalle
-            de sus casos. Esta pantalla es de solo consulta: aquí no se cambia el estado ni la
-            prioridad de ningún caso.
+            Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el
+            detalle de sus casos. Esta pantalla es de solo consulta: aquí no se cambia el estado ni
+            la prioridad de ningún caso.
           </p>
         </div>
         <q-btn
@@ -21,7 +23,9 @@
           label="Ver directorio"
           :to="{ name: 'admin-directorio' }"
         >
-          <q-tooltip>Abre el directorio de usuarios para buscar a una persona por su nombre.</q-tooltip>
+          <q-tooltip
+            >Abre el directorio de usuarios para buscar a una persona por su nombre.</q-tooltip
+          >
         </q-btn>
         <q-btn
           class="dashboard-page__asignar-btn control-touch"
@@ -34,109 +38,150 @@
           :disable="contadores.length === 0"
           @click="dialogoAsignarAbierto = true"
         >
-          <q-tooltip>Abre el formulario para registrar un caso nuevo y asignárselo a un contador.</q-tooltip>
+          <q-tooltip
+            >Abre el formulario para registrar un caso nuevo y asignárselo a un contador.</q-tooltip
+          >
         </q-btn>
       </div>
 
-      <ResumenEquipo
-        :resumen="resumen"
-        :cargando="cargandoResumen"
-        :error="errorResumen"
-        @reintentar="cargarResumen"
-      />
+      <q-tabs
+        v-model="pestana"
+        no-caps
+        inline-label
+        align="left"
+        active-color="primary"
+        indicator-color="primary"
+        class="dashboard-page__tabs"
+      >
+        <q-tab name="casos" icon="assignment" label="Casos">
+          <q-tooltip>Casos de cada contador por estado.</q-tooltip>
+        </q-tab>
+        <q-tab name="auditorias" icon="fact_check" label="Auditorías">
+          <q-tooltip>Indicadores y avance por fase de todas las auditorías.</q-tooltip>
+        </q-tab>
+      </q-tabs>
 
-      <ScreenLoader
-        v-if="estadoPantalla === SCREEN_STATES.loading"
-        text="Cargando los contadores del equipo y los conteos de sus casos…"
-      />
+      <!-- keep-alive: al cambiar de pestaña no se pierde el contador elegido en «Casos» -->
+      <q-tab-panels v-model="pestana" keep-alive animated class="dashboard-page__paneles">
+        <q-tab-panel name="casos" class="dashboard-page__panel">
+          <ResumenEquipo
+            :resumen="resumen"
+            :cargando="cargandoResumen"
+            :error="errorResumen"
+            @reintentar="cargarResumen"
+          />
 
-      <ErrorState
-        v-else-if="estadoPantalla === SCREEN_STATES.error"
-        :detail="mensajeError"
-        @retry="reintentar"
-      />
+          <ScreenLoader
+            v-if="estadoPantalla === SCREEN_STATES.loading"
+            text="Cargando los contadores del equipo y los conteos de sus casos…"
+          />
 
-      <EmptyState
-        v-else-if="estadoPantalla === SCREEN_STATES.empty"
-        title="No hay contadores registrados"
-        message="El equipo todavía no tiene contadores registrados, por eso no hay conteos ni casos que mostrar."
-      />
+          <ErrorState
+            v-else-if="estadoPantalla === SCREEN_STATES.error"
+            :detail="mensajeError"
+            @retry="reintentar"
+          />
 
-      <div v-else class="dashboard-page__grid">
-        <section class="dashboard-panel" aria-labelledby="counter-list-title">
-          <div class="dashboard-panel__head">
-            <h2 id="counter-list-title" class="dashboard-panel__title">Contadores del equipo</h2>
-            <p class="dashboard-panel__help">
-              Cada conteo indica cuántos casos importantes tiene el contador en estado Pendiente, En
-              proceso o Finalizado (0 si no tiene). Toca el nombre para ver todos sus casos importantes
-              o un conteo para ver solo los de ese estado.
-            </p>
-          </div>
+          <EmptyState
+            v-else-if="estadoPantalla === SCREEN_STATES.empty"
+            title="No hay contadores registrados"
+            message="El equipo todavía no tiene contadores registrados, por eso no hay conteos ni casos que mostrar."
+          />
 
-          <div class="dashboard-panel__body">
-            <q-input
-              v-model="busqueda"
-              dense
-              outlined
-              clearable
-              debounce="150"
-              type="search"
-              label="Buscar contador por nombre"
-              aria-label="Buscar contador por nombre"
-              class="counter-search"
+          <div v-else class="dashboard-page__grid">
+            <section class="dashboard-panel" aria-labelledby="counter-list-title">
+              <div class="dashboard-panel__head">
+                <h2 id="counter-list-title" class="dashboard-panel__title">
+                  Contadores del equipo
+                </h2>
+                <p class="dashboard-panel__help">
+                  Cada conteo indica cuántos casos importantes tiene el contador en estado
+                  Pendiente, En proceso o Finalizado (0 si no tiene). Toca el nombre para ver todos
+                  sus casos importantes o un conteo para ver solo los de ese estado.
+                </p>
+              </div>
+
+              <div class="dashboard-panel__body">
+                <q-input
+                  v-model="busqueda"
+                  dense
+                  outlined
+                  clearable
+                  debounce="150"
+                  type="search"
+                  label="Buscar contador por nombre"
+                  aria-label="Buscar contador por nombre"
+                  class="counter-search"
+                >
+                  <template #prepend>
+                    <q-icon name="search" aria-hidden="true" />
+                  </template>
+                  <q-tooltip
+                    >Escribe parte del nombre; no importan mayúsculas ni acentos.</q-tooltip
+                  >
+                </q-input>
+                <p class="counter-search__resultado" aria-live="polite">
+                  {{ contadoresVisibles.length }} de {{ contadores.length }} contadores
+                </p>
+
+                <p
+                  v-if="contadoresVisibles.length === 0"
+                  class="dashboard-panel__prompt"
+                  role="status"
+                >
+                  Ningún contador coincide con «{{ busqueda }}». Revisa el nombre o borra la
+                  búsqueda.
+                </p>
+
+                <q-list v-else tag="ul" class="counter-list">
+                  <CounterCountsRow
+                    v-for="contador in contadoresVisibles"
+                    :key="contador.id"
+                    :counter="contadorAFila(contador)"
+                    :counts="contadoresStore.conteosDe(contador.id)"
+                    :selected="contador.id === contadoresStore.contadorSeleccionadoId"
+                    :estado-activo="
+                      contador.id === contadoresStore.contadorSeleccionadoId
+                        ? estadoConteoActivo
+                        : null
+                    "
+                    @select="seleccionar(contador.id)"
+                    @filtrar="(estado) => filtrarPorConteo(contador.id, estado)"
+                  />
+                </q-list>
+              </div>
+            </section>
+
+            <!-- Escritorio: el detalle queda al lado de la lista. -->
+            <section
+              v-if="!pantallaChica"
+              class="dashboard-panel"
+              aria-labelledby="counter-detail-title"
             >
-              <template #prepend>
-                <q-icon name="search" aria-hidden="true" />
-              </template>
-              <q-tooltip>Escribe parte del nombre; no importan mayúsculas ni acentos.</q-tooltip>
-            </q-input>
-            <p class="counter-search__resultado" aria-live="polite">
-              {{ contadoresVisibles.length }} de {{ contadores.length }} contadores
-            </p>
+              <div class="dashboard-panel__head">
+                <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
+              </div>
 
-            <p v-if="contadoresVisibles.length === 0" class="dashboard-panel__prompt" role="status">
-              Ningún contador coincide con «{{ busqueda }}». Revisa el nombre o borra la búsqueda.
-            </p>
-
-            <q-list v-else tag="ul" class="counter-list">
-              <CounterCountsRow
-                v-for="contador in contadoresVisibles"
-                :key="contador.id"
-                :counter="contadorAFila(contador)"
-                :counts="contadoresStore.conteosDe(contador.id)"
-                :selected="contador.id === contadoresStore.contadorSeleccionadoId"
-                :estado-activo="contador.id === contadoresStore.contadorSeleccionadoId ? estadoConteoActivo : null"
-                @select="seleccionar(contador.id)"
-                @filtrar="(estado) => filtrarPorConteo(contador.id, estado)"
-              />
-            </q-list>
+              <div class="dashboard-panel__body">
+                <DetalleContador
+                  v-model:filtros="filtrosDetalle"
+                  :contador="contadorSeleccionado"
+                  :estado="estadoDetalle"
+                  :filas="filasDetalle"
+                  :paginacion="paginacionDetalle"
+                  :guardando="guardandoPrioridad"
+                  @cambiar-pagina="(p) => (paginaDetalle = p)"
+                  @cambiar-prioridad="cambiarPrioridad"
+                />
+              </div>
+            </section>
           </div>
-        </section>
+        </q-tab-panel>
 
-        <!-- Escritorio: el detalle queda al lado de la lista. -->
-        <section
-          v-if="!pantallaChica"
-          class="dashboard-panel"
-          aria-labelledby="counter-detail-title"
-        >
-          <div class="dashboard-panel__head">
-            <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
-          </div>
-
-          <div class="dashboard-panel__body">
-            <DetalleContador
-              v-model:filtros="filtrosDetalle"
-              :contador="contadorSeleccionado"
-              :estado="estadoDetalle"
-              :filas="filasDetalle"
-              :paginacion="paginacionDetalle"
-              :guardando="guardandoPrioridad"
-              @cambiar-pagina="(p) => (paginaDetalle = p)"
-              @cambiar-prioridad="cambiarPrioridad"
-            />
-          </div>
-        </section>
-      </div>
+        <q-tab-panel name="auditorias" class="dashboard-page__panel">
+          <TableroAuditorias />
+        </q-tab-panel>
+      </q-tab-panels>
 
       <!--
         Celular y tableta: el detalle sube desde abajo en un diálogo, así no hay que bajar
@@ -181,7 +226,11 @@
           </q-card-section>
         </q-card>
       </q-dialog>
-      <CaseFormDialog v-model="dialogoAsignarAbierto" :contadores="contadores" @registrado="alAsignar" />
+      <CaseFormDialog
+        v-model="dialogoAsignarAbierto"
+        :contadores="contadores"
+        @registrado="alAsignar"
+      />
     </div>
   </q-page>
 </template>
@@ -189,6 +238,7 @@
 <script setup>
 import { useQuasar } from 'quasar'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CounterCountsRow from '../components/CounterCountsRow.vue'
@@ -197,6 +247,7 @@ import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
+import TableroAuditorias from '../components/TableroAuditorias.vue'
 import { cambiarPrioridadComoAdmin } from '../services/caseService.js'
 import { getResumenEquipo } from '../services/counterService.js'
 import { eventos } from '../services/eventosService.js'
@@ -204,7 +255,13 @@ import { useSessionStore } from '../stores/session.js'
 import { useCountersStore } from '../stores/counters.js'
 import { PRIORITY_LABELS } from '../utils/constants.js'
 import { casoAFila, contadorAFila } from '../utils/filasVista.js'
-import { FILTROS_INICIALES, filtrarCasos, filtrarContadores, hoyLocal, paginar } from '../utils/filtrosCasos.js'
+import {
+  FILTROS_INICIALES,
+  filtrarCasos,
+  filtrarContadores,
+  hoyLocal,
+  paginar,
+} from '../utils/filtrosCasos.js'
 import { SCREEN_STATES } from '../utils/screenState.js'
 
 /*
@@ -221,6 +278,15 @@ import { SCREEN_STATES } from '../utils/screenState.js'
 
 const contadoresStore = useCountersStore()
 const session = useSessionStore()
+const route = useRoute()
+const router = useRouter()
+
+// Pestaña en la URL (?tab=auditorias): al volver de una ficha se regresa a la misma pestaña.
+const PESTANAS = ['casos', 'auditorias']
+const pestana = computed({
+  get: () => (PESTANAS.includes(route.query.tab) ? route.query.tab : 'casos'),
+  set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
+})
 
 /** Contadores registrados, tal como los entrega el servicio (`{ id, nombre }`). */
 const contadores = computed(() => contadoresStore.contadores)
@@ -293,7 +359,8 @@ const seleccionar = async (contadorId, estado = 'todos') => {
 
 /** Tocar un conteo filtra por ese estado; tocar otra vez el conteo activo quita el filtro. */
 const filtrarPorConteo = (contadorId, estado) => {
-  const yaActivo = contadorId === contadoresStore.contadorSeleccionadoId && estadoConteoActivo.value === estado
+  const yaActivo =
+    contadorId === contadoresStore.contadorSeleccionadoId && estadoConteoActivo.value === estado
   return seleccionar(contadorId, yaActivo ? 'todos' : estado)
 }
 
@@ -313,32 +380,33 @@ const cambiarPrioridad = (caso, prioridad) => {
   if (prioridad === caso.priority || guardandoPrioridad.value) return
 
   const nombreContador = contadorSeleccionado.value?.nombre ?? 'el contador'
-  $q
-    .dialog({
-      title: 'Cambiar prioridad',
-      message:
-        `La prioridad de «${caso.client}» pasará de ${PRIORITY_LABELS[caso.priority]} a ` +
-        `${PRIORITY_LABELS[prioridad]} y se avisará a ${nombreContador}. La fecha de vencimiento no cambia.`,
-      cancel: { label: 'Cancelar', flat: true, noCaps: true },
-      ok: { label: 'Cambiar prioridad', color: 'primary', unelevated: true, noCaps: true },
-      persistent: true,
-    })
-    .onOk(async () => {
-      guardandoPrioridad.value = true
-      try {
-        const actualizado = await cambiarPrioridadComoAdmin(caso.id, prioridad)
-        contadoresStore.reemplazarCasoDetalle(actualizado)
-        $q.notify({
-          type: 'positive',
-          message: `Prioridad actualizada. Se avisó a ${nombreContador}.`,
-        })
-        cargarResumen()
-      } catch (fallo) {
-        $q.notify({ type: 'negative', message: fallo?.mensaje ?? 'No se pudo cambiar la prioridad. Inténtalo de nuevo.' })
-      } finally {
-        guardandoPrioridad.value = false
-      }
-    })
+  $q.dialog({
+    title: 'Cambiar prioridad',
+    message:
+      `La prioridad de «${caso.client}» pasará de ${PRIORITY_LABELS[caso.priority]} a ` +
+      `${PRIORITY_LABELS[prioridad]} y se avisará a ${nombreContador}. La fecha de vencimiento no cambia.`,
+    cancel: { label: 'Cancelar', flat: true, noCaps: true },
+    ok: { label: 'Cambiar prioridad', color: 'primary', unelevated: true, noCaps: true },
+    persistent: true,
+  }).onOk(async () => {
+    guardandoPrioridad.value = true
+    try {
+      const actualizado = await cambiarPrioridadComoAdmin(caso.id, prioridad)
+      contadoresStore.reemplazarCasoDetalle(actualizado)
+      $q.notify({
+        type: 'positive',
+        message: `Prioridad actualizada. Se avisó a ${nombreContador}.`,
+      })
+      cargarResumen()
+    } catch (fallo) {
+      $q.notify({
+        type: 'negative',
+        message: fallo?.mensaje ?? 'No se pudo cambiar la prioridad. Inténtalo de nuevo.',
+      })
+    } finally {
+      guardandoPrioridad.value = false
+    }
+  })
 }
 
 /** Diálogo para registrar un caso a nombre de un contador (el backend le avisa). */
@@ -349,7 +417,8 @@ const dialogoAsignarAbierto = ref(false)
  * @param {Object} caso - caso asignado, ya traducido.
  */
 const alAsignar = (caso) => {
-  const nombreContador = contadores.value.find((contador) => contador.id === caso.contador_id)?.nombre ?? 'el contador'
+  const nombreContador =
+    contadores.value.find((contador) => contador.id === caso.contador_id)?.nombre ?? 'el contador'
   $q.notify({ type: 'positive', message: `Caso asignado. Se avisó a ${nombreContador}.` })
   cargarResumen()
   contadoresStore.refrescarEnSilencio(caso.contador_id)
@@ -424,6 +493,21 @@ onMounted(async () => {
 .dashboard-page__inner {
   width: 100%;
   min-width: 0;
+}
+
+.dashboard-page__tabs {
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--dg-borde);
+  color: var(--dg-texto-secundario);
+}
+
+.dashboard-page__paneles {
+  background: transparent;
+}
+
+/* Sin el relleno propio del panel: el contenido conserva su acomodo de antes */
+.dashboard-page__panel {
+  padding: 12px 0 0;
 }
 
 .dashboard-page__head {
