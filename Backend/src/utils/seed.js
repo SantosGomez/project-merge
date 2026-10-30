@@ -160,6 +160,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarUsuarios();
   await migrarCasos();
   await migrarSesiones();
+  await migrarAuditorias();
 
   if (!cuentasDemo) return;
 
@@ -245,6 +246,130 @@ async function migrarSesiones() {
   await query(
     'ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS persistente TINYINT(1) NOT NULL DEFAULT 0 AFTER revocado'
   );
+}
+
+// Las 6 fases del boceto de auditorías (iguales para todos los tipos de auditoría).
+const FASES_AUDITORIA = [
+  [1, 'Fase 1 · Notificación / inicio', 'La autoridad notifica la orden, el oficio de requerimiento o la resolución provisional.'],
+  [2, 'Fase 2 · Requerimientos y desarrollo', 'Se piden y entregan información y documentos; actas parciales y requerimientos adicionales.'],
+  [3, 'Fase 3 · Observaciones', 'Última acta parcial u oficio de observaciones con los hechos u omisiones detectados.'],
+  [4, 'Fase 4 · Aclaración / desvirtuar', 'Escritos y pruebas, autocorrección o acuerdo conclusivo.'],
+  [5, 'Fase 5 · Conclusión / resolución', 'Acta final, oficio de conclusión o resolución determinante.'],
+  [6, 'Fase 6 · Post-resolución (pago o defensa)', 'Pago o garantía del crédito, recurso de revocación o juicio de nulidad.'],
+];
+
+async function tablaExiste(nombre) {
+  const [{ total }] = await query(
+    'SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+    [nombre]
+  );
+  return Number(total) > 0;
+}
+
+async function columnaExiste(tabla, columna) {
+  const [{ total }] = await query(
+    'SELECT COUNT(*) AS total FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+    [tabla, columna]
+  );
+  return Number(total) > 0;
+}
+
+/**
+ * Retira una tabla de la beta de auditorías con el esquema anterior: si está vacía se borra;
+ * si tiene datos se renombra a `<tabla>_respaldo_beta` para no perderlos.
+ */
+async function retirarTablaBeta(nombre) {
+  const [{ total }] = await query(`SELECT COUNT(*) AS total FROM \`${nombre}\``);
+  if (Number(total) === 0) {
+    await query(`DROP TABLE \`${nombre}\``);
+  } else {
+    await query(`RENAME TABLE \`${nombre}\` TO \`${nombre}_respaldo_beta\``);
+  }
+}
+
+/**
+ * Tablas del módulo de auditorías (rebanada 1). Idempotente:
+ * - una base con el esquema de la beta (sin CreadoPor / CreadoEn, o con `aud-conta`) lo retira primero;
+ * - crea `fases_aud`, `auditorias`, `auditoria_dtl` (bitácora) y `aud_conta` (contadores asignados);
+ * - siembra las 6 fases sin tocar las que ya existan.
+ */
+async function migrarAuditorias() {
+  if (await tablaExiste('aud-conta')) await retirarTablaBeta('aud-conta');
+  if ((await tablaExiste('auditoria_dtl')) && !(await columnaExiste('auditoria_dtl', 'CreadoEn'))) {
+    await retirarTablaBeta('auditoria_dtl');
+  }
+  if ((await tablaExiste('auditorias')) && !(await columnaExiste('auditorias', 'CreadoPor'))) {
+    await retirarTablaBeta('auditorias');
+  }
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS fases_aud (
+      IdFase INT AUTO_INCREMENT PRIMARY KEY,
+      Fase VARCHAR(50) NOT NULL,
+      Descripcion VARCHAR(200) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS auditorias (
+      IdAuditoria INT AUTO_INCREMENT PRIMARY KEY,
+      Cliente VARCHAR(100) NOT NULL,
+      No_Expediente VARCHAR(100) NOT NULL,
+      Dependencia VARCHAR(200) NOT NULL,
+      TipoAud VARCHAR(200) NOT NULL,
+      Estatal TINYINT(1) NOT NULL DEFAULT 0,
+      FechaPeriodo_inicio DATE NOT NULL,
+      FechaPeriodo_final DATE NOT NULL,
+      Estado ENUM('Pendiente', 'En Proceso', 'Completado', 'Aplazado por acta') NOT NULL DEFAULT 'Pendiente',
+      FechaInicio DATE NOT NULL,
+      FechaVencimiento DATE NOT NULL,
+      Descripcion TEXT NULL,
+      Observacion TEXT NULL,
+      CreadoPor INT NOT NULL,
+      CreadoEn DATETIME NOT NULL,
+      ActualizadoEn DATETIME NOT NULL,
+      CONSTRAINT fk_auditorias_creado_por FOREIGN KEY (CreadoPor) REFERENCES usuarios(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  // Bitácora de la auditoría: cada oficio, requerimiento o acta es un renglón.
+  await query(`
+    CREATE TABLE IF NOT EXISTS auditoria_dtl (
+      Id_AudDtl INT AUTO_INCREMENT PRIMARY KEY,
+      AudHdr_Id INT NOT NULL,
+      Contador_id INT NOT NULL,
+      Folio_Actas VARCHAR(200) NULL,
+      Evento VARCHAR(200) NOT NULL,
+      Fecha DATE NOT NULL,
+      FechaLimite DATE NULL,
+      FechaEntrega DATE NULL,
+      Descripcion TEXT NULL,
+      Fase_Id INT NOT NULL,
+      Estado ENUM('Pendiente', 'Revision', 'En Proceso', 'Rechazado', 'Completado') NOT NULL DEFAULT 'Pendiente',
+      Observaciones TEXT NULL,
+      CreadoEn DATETIME NOT NULL,
+      INDEX idx_auditoria_dtl_auditoria (AudHdr_Id, Fecha),
+      CONSTRAINT fk_auditoria_dtl_auditoria FOREIGN KEY (AudHdr_Id) REFERENCES auditorias(IdAuditoria) ON DELETE CASCADE,
+      CONSTRAINT fk_auditoria_dtl_contador FOREIGN KEY (Contador_id) REFERENCES usuarios(id),
+      CONSTRAINT fk_auditoria_dtl_fase FOREIGN KEY (Fase_Id) REFERENCES fases_aud(IdFase)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS aud_conta (
+      Id INT AUTO_INCREMENT PRIMARY KEY,
+      IdAuditoria INT NOT NULL,
+      IdContador INT NOT NULL,
+      AsignadoEn DATETIME NOT NULL,
+      UNIQUE KEY uq_aud_conta (IdAuditoria, IdContador),
+      CONSTRAINT fk_aud_conta_auditoria FOREIGN KEY (IdAuditoria) REFERENCES auditorias(IdAuditoria) ON DELETE CASCADE,
+      CONSTRAINT fk_aud_conta_contador FOREIGN KEY (IdContador) REFERENCES usuarios(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  for (const [id, fase, descripcion] of FASES_AUDITORIA) {
+    await query('INSERT IGNORE INTO fases_aud (IdFase, Fase, Descripcion) VALUES (?, ?, ?)', [id, fase, descripcion]);
+  }
 }
 
 module.exports = { seedDatabase, debeSembrarCuentasDemo };

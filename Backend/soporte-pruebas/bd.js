@@ -133,6 +133,11 @@ async function limpiarDatosDePrueba() {
     const marcas = idsUsuarios.map(() => '?').join(', ');
     // Casos creados por la API en nombre de los usuarios registrados.
     await query(`DELETE FROM casos WHERE contador_id IN (${marcas})`, idsUsuarios);
+    // Auditorías registradas por ellos (sus asignaciones y bitácora se borran en cascada)
+    // y asignaciones suyas en auditorías de otros.
+    await query(`DELETE FROM auditorias WHERE CreadoPor IN (${marcas})`, idsUsuarios);
+    await query(`DELETE FROM auditoria_dtl WHERE Contador_id IN (${marcas})`, idsUsuarios);
+    await query(`DELETE FROM aud_conta WHERE IdContador IN (${marcas})`, idsUsuarios);
     await query(`DELETE FROM sesiones WHERE usuario_id IN (${marcas})`, idsUsuarios);
     await query(`DELETE FROM usuarios WHERE id IN (${marcas})`, idsUsuarios);
   }

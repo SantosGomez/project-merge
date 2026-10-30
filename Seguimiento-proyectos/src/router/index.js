@@ -7,6 +7,7 @@ import {
 } from 'vue-router'
 
 import AdminDashboardPage from '../pages/AdminDashboardPage.vue'
+import AuditoriasPage from '../pages/AuditoriasPage.vue'
 import CambiarContrasenaPage from '../pages/CambiarContrasenaPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
@@ -79,6 +80,16 @@ const routes = [
           screenId: SCREEN_IDS.directory,
           titulo: 'Directorio de usuarios',
           volverA: 'admin-dashboard',
+        },
+      },
+      {
+        path: 'auditorias',
+        name: 'auditorias',
+        component: AuditoriasPage,
+        meta: {
+          requiereSesion: true,
+          perfil: [PROFILES.administrador, PROFILES.contador],
+          titulo: 'Auditorías',
         },
       },
       {

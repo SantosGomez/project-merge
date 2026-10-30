@@ -107,6 +107,24 @@
               </q-item-section>
               <q-tooltip>Ir al directorio de usuarios</q-tooltip>
             </q-item>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'auditorias' }"
+              aria-label="Ir a auditorías"
+            >
+              <q-item-section avatar>
+                <q-icon name="fact_check" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Auditorías</q-item-label>
+                <q-item-label caption>Registrar y dar seguimiento</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir a auditorías</q-tooltip>
+            </q-item>
           </template>
 
           <template v-if="session.esContador">
@@ -128,6 +146,24 @@
                 <q-item-label caption>Registrar, revisar y editar</q-item-label>
               </q-item-section>
               <q-tooltip>Ir a mis casos</q-tooltip>
+            </q-item>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'auditorias' }"
+              aria-label="Ir a auditorías"
+            >
+              <q-item-section avatar>
+                <q-icon name="fact_check" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Auditorías</q-item-label>
+                <q-item-label caption>Registrar y dar seguimiento</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir a auditorías</q-tooltip>
             </q-item>
           </template>
 
