@@ -49,6 +49,105 @@
               <q-tooltip max-width="260px">{{ indicador.ayuda }}</q-tooltip>
             </q-card>
           </div>
+
+          <div class="tablero__graficas">
+            <q-card flat bordered class="grafica">
+              <q-card-section>
+                <h3 class="grafica__titulo">Auditorías por semáforo</h3>
+                <p class="grafica__ayuda">Todas las auditorías, incluidas las concluidas.</p>
+                <ul class="grafica__barras">
+                  <li v-for="barra in barrasSemaforo" :key="barra.semaforo" class="grafica__fila">
+                    <span class="grafica__etiqueta">{{ barra.semaforo }}</span>
+                    <q-linear-progress
+                      :value="barra.proporcion"
+                      :color="barra.color"
+                      track-color="dg-fondo-suave"
+                      size="14px"
+                      rounded
+                      class="grafica__barra"
+                      :aria-label="`${barra.semaforo}: ${barra.valor} de ${auditorias.length}`"
+                    />
+                    <span class="grafica__valor">{{ barra.valor }}</span>
+                  </li>
+                </ul>
+              </q-card-section>
+            </q-card>
+
+            <q-card flat bordered class="grafica">
+              <q-card-section>
+                <h3 class="grafica__titulo">Activas por fase</h3>
+                <p class="grafica__ayuda">
+                  Solo auditorías no concluidas, según la fase más avanzada de su bitácora.
+                </p>
+                <ul class="grafica__barras">
+                  <li v-for="barra in barrasFase" :key="barra.id" class="grafica__fila">
+                    <span class="grafica__etiqueta">
+                      {{ barra.nombre }}
+                      <q-tooltip max-width="260px">{{ barra.descripcion }}</q-tooltip>
+                    </span>
+                    <q-linear-progress
+                      :value="barra.proporcion"
+                      color="dg-acento"
+                      track-color="dg-fondo-suave"
+                      size="14px"
+                      rounded
+                      class="grafica__barra"
+                      :aria-label="`${barra.nombre}: ${barra.valor} de ${indicadores.activas} activas`"
+                    />
+                    <span class="grafica__valor">{{ barra.valor }}</span>
+                  </li>
+                </ul>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <q-card flat bordered class="grafica">
+            <q-card-section>
+              <h3 class="grafica__titulo">Activas por tipo y fase</h3>
+              <p class="grafica__ayuda">
+                Las columnas de fase cuentan solo las auditorías activas de cada tipo.
+              </p>
+              <q-markup-table flat dense wrap-cells separator="cell" class="tipo-fase">
+                <thead>
+                  <tr>
+                    <th class="text-left">Tipo de auditoría</th>
+                    <th class="text-right">Activas</th>
+                    <th class="text-right">Concluidas</th>
+                    <th class="text-right">Total</th>
+                    <th v-for="fase in fases" :key="fase.id" class="text-right">
+                      {{ fase.id }}
+                      <q-tooltip>{{ fase.nombre }}</q-tooltip>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="fila in tablaTipo.filas" :key="fila.tipo">
+                    <td>{{ fila.tipo }}</td>
+                    <td class="text-right">{{ fila.activas }}</td>
+                    <td class="text-right">{{ fila.concluidas }}</td>
+                    <td class="text-right">{{ fila.total }}</td>
+                    <td
+                      v-for="(cuantas, i) in fila.fases"
+                      :key="i"
+                      class="text-right"
+                      :class="{ 'tipo-fase__cero': !cuantas }"
+                    >
+                      {{ cuantas }}
+                    </td>
+                  </tr>
+                  <tr class="tipo-fase__total">
+                    <td>Total</td>
+                    <td class="text-right">{{ tablaTipo.total.activas }}</td>
+                    <td class="text-right">{{ tablaTipo.total.concluidas }}</td>
+                    <td class="text-right">{{ tablaTipo.total.total }}</td>
+                    <td v-for="(cuantas, i) in tablaTipo.total.fases" :key="i" class="text-right">
+                      {{ cuantas }}
+                    </td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+            </q-card-section>
+          </q-card>
         </q-tab-panel>
 
         <q-tab-panel name="avance" class="tablero__panel">
@@ -126,8 +225,14 @@ import EmptyState from './EmptyState.vue'
 import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import { listarAuditorias, listarFases } from '../services/auditoriaService.js'
-import { ordenarAuditorias } from '../utils/listaAuditorias.js'
-import { indicadoresAuditorias, marcasDeFases, textoDiasPlazo } from '../utils/tableroAuditorias.js'
+import { SEMAFOROS, contarPorSemaforo, ordenarAuditorias } from '../utils/listaAuditorias.js'
+import {
+  activasPorFase,
+  indicadoresAuditorias,
+  marcasDeFases,
+  tablaTipoFase,
+  textoDiasPlazo,
+} from '../utils/tableroAuditorias.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -174,6 +279,39 @@ const cargando = ref(true)
 const errorCarga = ref(null)
 
 const indicadores = computed(() => indicadoresAuditorias(auditorias.value))
+
+// Color de la barra de cada semáforo (paleta $dg-colores), igual que su franja en la lista.
+const COLOR_SEMAFORO = {
+  Vencido: 'dg-error',
+  Crítico: 'dg-prioridad-alta-borde',
+  Atención: 'dg-importante',
+  'En tiempo': 'dg-exito-borde',
+  Concluida: 'dg-neutro-borde',
+}
+
+// Proporción 0-1 para la barra; sin datos, barra vacía.
+const proporcion = (valor, total) => (total > 0 ? valor / total : 0)
+
+const barrasSemaforo = computed(() => {
+  const conteo = contarPorSemaforo(auditorias.value)
+  return SEMAFOROS.map((semaforo) => ({
+    semaforo,
+    valor: conteo[semaforo],
+    proporcion: proporcion(conteo[semaforo], auditorias.value.length),
+    color: COLOR_SEMAFORO[semaforo],
+  }))
+})
+
+const barrasFase = computed(() => {
+  const conteo = activasPorFase(auditorias.value)
+  return fases.value.map((fase) => ({
+    ...fase,
+    valor: conteo[fase.id - 1] ?? 0,
+    proporcion: proporcion(conteo[fase.id - 1] ?? 0, indicadores.value.activas),
+  }))
+})
+
+const tablaTipo = computed(() => tablaTipoFase(auditorias.value))
 const auditoriasOrdenadas = computed(() => ordenarAuditorias(auditorias.value, 'urgencia'))
 
 const cargar = async () => {
@@ -265,6 +403,86 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
 
 .indicador--atencion {
   border-left-color: var(--dg-importante);
+}
+
+/* Gráficas del resumen: dos tarjetas lado a lado en pantallas anchas */
+.tablero__graficas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 12px 0;
+}
+
+@media (min-width: 1024px) {
+  .tablero__graficas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.grafica {
+  border-color: var(--dg-borde);
+  border-radius: 10px;
+  background: var(--dg-superficie);
+}
+
+.grafica__titulo {
+  margin: 0;
+  color: var(--dg-texto);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.grafica__ayuda {
+  margin: 2px 0 12px;
+  color: var(--dg-texto-tenue);
+  font-size: 0.8rem;
+}
+
+.grafica__barras {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grafica__fila {
+  display: grid;
+  grid-template-columns: minmax(90px, 40%) minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 10px;
+}
+
+.grafica__etiqueta {
+  color: var(--dg-texto-secundario);
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.grafica__valor {
+  color: var(--dg-texto);
+  font-weight: 700;
+  text-align: right;
+}
+
+.tipo-fase th {
+  color: var(--dg-texto-secundario);
+  font-weight: 700;
+}
+
+.tipo-fase td {
+  color: var(--dg-texto);
+}
+
+.tipo-fase__cero {
+  color: var(--dg-texto-tenue) !important;
+}
+
+.tipo-fase__total td {
+  background: var(--dg-fondo-suave);
+  font-weight: 700;
 }
 
 .avance {

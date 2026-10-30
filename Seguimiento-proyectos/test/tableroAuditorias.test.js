@@ -7,8 +7,10 @@ import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 
 import {
+  activasPorFase,
   indicadoresAuditorias,
   marcasDeFases,
+  tablaTipoFase,
   textoDiasPlazo,
 } from '../src/utils/tableroAuditorias.js'
 
@@ -112,7 +114,8 @@ describe('Tablero de auditorías: sub-pestañas Resumen y Avance', () => {
   })
 
   it('el avance lleva las columnas del boceto y abre la ficha al hacer clic', () => {
-    const tabla = tablero.slice(tablero.indexOf('<thead>'), tablero.indexOf('</thead>'))
+    const avance = tablero.slice(tablero.indexOf('<q-tab-panel name="avance"'))
+    const tabla = avance.slice(avance.indexOf('<thead>'), avance.indexOf('</thead>'))
     const encabezados = [...tabla.matchAll(/<th\b[^>]*>([^<]+)</g)].map((m) => m[1].trim())
     assert.deepEqual(encabezados.slice(0, 3), ['Cliente', 'Tipo', 'Dependencia'])
     assert.deepEqual(encabezados.slice(-4), [
@@ -124,5 +127,88 @@ describe('Tablero de auditorías: sub-pestañas Resumen y Avance', () => {
     assert.match(tablero, /v-for="fase in fases"/)
     assert.match(tablero, /@click="verFicha\(auditoria\.id\)"/)
     assert.match(tablero, /name: 'auditoria-ficha'/)
+  })
+})
+
+// Rebanada 2: gráficas del Resumen.
+const aud = (id, tipoAud, fase, semaforo = 'En tiempo') => ({
+  id,
+  tipoAud,
+  faseActual: { id: fase },
+  semaforo,
+})
+
+test('activasPorFase cuenta solo las no concluidas en cada una de las 6 fases', () => {
+  const lista = [
+    aud(1, 'Visita', 1),
+    aud(2, 'Visita', 3),
+    aud(3, 'Gabinete', 3, 'Vencido'),
+    aud(4, 'Gabinete', 6),
+    aud(5, 'Gabinete', 5, 'Concluida'),
+    { id: 6, tipoAud: 'Visita', faseActual: null, semaforo: 'En tiempo' },
+  ]
+
+  assert.deepEqual(activasPorFase(lista), [2, 0, 2, 0, 0, 1])
+  assert.deepEqual(activasPorFase([]), [0, 0, 0, 0, 0, 0])
+})
+
+test('tablaTipoFase agrupa por tipo sin importar mayúsculas ni acentos y suma el total', () => {
+  const lista = [
+    aud(1, 'Visita Domiciliaria', 1),
+    aud(2, 'visita domiciliaria ', 3, 'Crítico'),
+    aud(3, 'Revisión de Gabinete', 2),
+    aud(4, 'Revision de gabinete', 2, 'Concluida'),
+  ]
+
+  const { filas, total } = tablaTipoFase(lista)
+
+  assert.deepEqual(
+    filas.map((f) => [f.tipo, f.activas, f.concluidas, f.total, f.fases.join('')]),
+    [
+      ['Revisión de Gabinete', 1, 1, 2, '010000'],
+      ['Visita Domiciliaria', 2, 0, 2, '101000'],
+    ],
+    'ordenadas por tipo; se muestra la primera forma escrita',
+  )
+  assert.deepEqual(total, { activas: 3, concluidas: 1, total: 4, fases: [1, 1, 1, 0, 0, 0] })
+  assert.deepEqual(tablaTipoFase([]), {
+    filas: [],
+    total: { activas: 0, concluidas: 0, total: 0, fases: [0, 0, 0, 0, 0, 0] },
+  })
+})
+
+describe('Tablero de auditorías: gráficas en Resumen', () => {
+  const tablero = read('../src/components/TableroAuditorias.vue')
+  const resumen = tablero.slice(
+    tablero.indexOf('<q-tab-panel name="resumen"'),
+    tablero.indexOf('<q-tab-panel name="avance"'),
+  )
+
+  it('barras con q-linear-progress por semáforo y por fase', () => {
+    assert.match(resumen, /Auditorías por semáforo/)
+    assert.match(resumen, /Activas por fase/)
+    assert.equal(
+      (resumen.match(/<q-linear-progress/g) ?? []).length,
+      2,
+      'una barra por renglón de cada gráfica',
+    )
+    assert.match(tablero, /contarPorSemaforo\(auditorias\.value\)/)
+    assert.match(tablero, /activasPorFase\(auditorias\.value\)/)
+  })
+
+  it('la tabla «Activas por tipo y fase» lleva las columnas del boceto y su total', () => {
+    const tabla = resumen.slice(
+      resumen.indexOf('<q-markup-table'),
+      resumen.indexOf('</q-markup-table>'),
+    )
+    const encabezados = [...tabla.matchAll(/<th\b[^>]*>([^<]+)</g)].map((m) => m[1].trim())
+    assert.deepEqual(encabezados.slice(0, 4), [
+      'Tipo de auditoría',
+      'Activas',
+      'Concluidas',
+      'Total',
+    ])
+    assert.match(tabla, /v-for="fase in fases"/)
+    assert.match(tabla, /tablaTipo\.total/)
   })
 })

@@ -49,3 +49,60 @@ export const textoDiasPlazo = (dias) => {
   const unidad = cuantos === 1 ? 'día' : 'días'
   return dias < 0 ? `venció hace ${cuantos} ${unidad}` : `en ${cuantos} ${unidad}`
 }
+
+const faseDe = (auditoria) => auditoria.faseActual?.id ?? 1
+const cerosPorFase = () => Array(TOTAL_FASES).fill(0)
+
+/**
+ * Auditorías activas (no concluidas) en cada una de las 6 fases. Sin fase cuenta en la 1.
+ * @param {Array<{ faseActual: { id: number }|null, semaforo: string }>} auditorias
+ * @returns {number[]} seis conteos, de la fase 1 a la 6.
+ */
+export const activasPorFase = (auditorias) => {
+  const conteo = cerosPorFase()
+  for (const auditoria of auditorias) {
+    if (auditoria.semaforo !== 'Concluida') conteo[faseDe(auditoria) - 1] += 1
+  }
+  return conteo
+}
+
+// El tipo es texto libre: «Visita domiciliaria» y «visita Domiciliaria » son el mismo.
+const claveTipo = (tipo) =>
+  String(tipo ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+
+/**
+ * Tabla «Activas por tipo y fase» del boceto: por tipo, activas, concluidas, total y
+ * activas en cada fase; más el renglón de total. Los tipos se agrupan sin importar
+ * mayúsculas, acentos ni espacios y se muestran con la primera forma escrita.
+ * @param {Array<{ tipoAud: string, faseActual: { id: number }|null, semaforo: string }>} auditorias
+ * @returns {{ filas: Array<Object>, total: Object }}
+ */
+export const tablaTipoFase = (auditorias) => {
+  const conteosVacios = () => ({ activas: 0, concluidas: 0, total: 0, fases: cerosPorFase() })
+  const nuevaFila = (tipo) => ({ tipo, ...conteosVacios() })
+  const porTipo = new Map()
+  const total = conteosVacios()
+
+  for (const auditoria of auditorias) {
+    const clave = claveTipo(auditoria.tipoAud)
+    if (!porTipo.has(clave)) porTipo.set(clave, nuevaFila(String(auditoria.tipoAud ?? '').trim()))
+    for (const fila of [porTipo.get(clave), total]) {
+      fila.total += 1
+      if (auditoria.semaforo === 'Concluida') {
+        fila.concluidas += 1
+      } else {
+        fila.activas += 1
+        fila.fases[faseDe(auditoria) - 1] += 1
+      }
+    }
+  }
+
+  const filas = [...porTipo.values()].sort((a, b) =>
+    a.tipo.localeCompare(b.tipo, 'es', { sensitivity: 'base' }),
+  )
+  return { filas, total }
+}
