@@ -208,7 +208,14 @@
         Aún no hay eventos en la bitácora. Usa «Agregar evento» para registrar el primero.
       </div>
 
-      <template v-else>
+      <!-- En escritorio los eventos se desplazan dentro de un área de 600 px; en celular y
+           tablet crecen con la página para no tener un scroll dentro de otro -->
+      <component
+        :is="conScroll ? QScrollArea : 'div'"
+        v-else
+        class="bitacora__scroll"
+        :class="{ 'bitacora__scroll--fija': conScroll }"
+      >
         <q-timeline v-show="vista === 'linea'" color="dg-acento" class="bitacora__timeline">
           <q-timeline-entry
             v-for="ev in eventos"
@@ -356,14 +363,14 @@
             </tr>
           </tbody>
         </q-markup-table>
-      </template>
+      </component>
     </template>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useQuasar } from 'quasar'
+import { QScrollArea, useQuasar } from 'quasar'
 
 import ErrorState from './ErrorState.vue'
 import {
@@ -459,6 +466,9 @@ const opcionesVista = [
   { label: 'Tabla', value: 'tabla', icon: 'table_rows' },
 ]
 const CLASE_EN_TIEMPO = { Sí: 'si', No: 'no', '—': 'sin-dato' }
+
+// Desde 1024 px los eventos van en un QScrollArea de alto fijo.
+const conScroll = computed(() => $q.screen.width >= 1024)
 
 const textoDias = (dias) => {
   if (dias === 0) return 'vence hoy'
@@ -660,6 +670,17 @@ const confirmarBorrado = (ev) => {
   min-height: 40px;
 }
 
+.bitacora__scroll--fija {
+  height: 600px;
+  border: 1px solid var(--dg-borde);
+  border-radius: 8px;
+}
+
+/* Margen para que la barra de desplazamiento no tape el contenido */
+.bitacora__scroll--fija :deep(.q-scrollarea__content) {
+  padding: 8px 14px 8px 8px;
+}
+
 .bitacora__tabla {
   border-color: var(--dg-borde);
   background: var(--dg-superficie);
@@ -711,6 +732,29 @@ const confirmarBorrado = (ev) => {
   .bitacora__form-card,
   .bitacora__controles {
     display: none !important;
+  }
+
+  /* El área con scroll se suelta para que salgan todos los eventos */
+  .bitacora__scroll {
+    height: auto !important;
+    border: 0;
+    contain: none;
+    overflow: visible;
+  }
+
+  .bitacora__scroll :deep(.q-scrollarea__container) {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .bitacora__scroll :deep(.q-scrollarea__content) {
+    position: static !important;
+    padding: 0;
+  }
+
+  .bitacora__scroll :deep(.q-scrollarea__bar),
+  .bitacora__scroll :deep(.q-scrollarea__thumb) {
+    display: none;
   }
 }
 

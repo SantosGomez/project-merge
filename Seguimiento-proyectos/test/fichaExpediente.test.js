@@ -89,3 +89,32 @@ describe('Ficha: dos columnas en pantallas anchas', () => {
     assert.match(ancho, /\.ficha__datos-generales \{[\s\S]*?position: sticky/)
   })
 })
+
+describe('Bitácora: eventos en un scroll area desde 1024 px', () => {
+  const bitacora = read('../src/components/BitacoraAuditoria.vue')
+
+  it('los eventos van en QScrollArea de 600 px solo en escritorio', () => {
+    assert.match(bitacora, /import \{ QScrollArea, useQuasar \} from 'quasar'/)
+    assert.match(bitacora, /const conScroll = computed\(\(\) => \$q\.screen\.width >= 1024\)/)
+    assert.match(
+      bitacora,
+      /<component\s+:is="conScroll \? QScrollArea : 'div'"[\s\S]*?class="bitacora__scroll"[\s\S]*?<q-timeline/,
+    )
+    assert.match(bitacora, /\.bitacora__scroll--fija \{\s*height: 600px;/)
+  })
+
+  it('el encabezado y el formulario quedan fuera del scroll', () => {
+    const scroll = bitacora.indexOf('class="bitacora__scroll"')
+    assert.ok(bitacora.indexOf('<q-btn-toggle') < scroll, 'el selector de vista queda arriba')
+    assert.ok(bitacora.indexOf('bitacora__form-card') < scroll, 'el formulario queda arriba')
+  })
+
+  it('al imprimir el scroll area se suelta y sale la bitácora completa', () => {
+    const impresion = bitacora.slice(bitacora.indexOf('@media print'))
+    assert.match(
+      impresion,
+      /\.bitacora__scroll \{[\s\S]*?height: auto !important;[\s\S]*?contain: none/,
+    )
+    assert.match(impresion, /:deep\(\.q-scrollarea__content\)[\s\S]*?position: static !important/)
+  })
+})
