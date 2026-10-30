@@ -31,11 +31,16 @@ export const contarPorSemaforo = (auditorias) => {
  * @param {{ texto?: string, estado?: string, semaforo?: string }} filtros
  * @returns {Array<Object>}
  */
-export const filtrarAuditorias = (auditorias, { texto = '', estado = 'todos', semaforo = 'todos' } = {}) => {
+export const filtrarAuditorias = (
+  auditorias,
+  { texto = '', estado = 'todos', semaforo = 'todos' } = {},
+) => {
   const buscado = normalizar(texto)
   return auditorias.filter(
     (a) =>
-      (buscado === '' || normalizar(a.cliente).includes(buscado) || normalizar(a.noExpediente).includes(buscado)) &&
+      (buscado === '' ||
+        normalizar(a.cliente).includes(buscado) ||
+        normalizar(a.noExpediente).includes(buscado)) &&
       (!estado || estado === 'todos' || a.estado === estado) &&
       (!semaforo || semaforo === 'todos' || a.semaforo === semaforo),
   )
@@ -53,7 +58,8 @@ const CRITERIOS = {
     (a.diasParaVencer ?? Infinity) - (b.diasParaVencer ?? Infinity) ||
     b.id - a.id,
   recientes: (a, b) => b.id - a.id,
-  cliente: (a, b) => a.cliente.localeCompare(b.cliente, 'es', { sensitivity: 'base' }) || b.id - a.id,
+  cliente: (a, b) =>
+    a.cliente.localeCompare(b.cliente, 'es', { sensitivity: 'base' }) || b.id - a.id,
 }
 
 // Mismos umbrales que el backend (utils/seguimientoAuditoria.js), en días naturales.
@@ -93,3 +99,25 @@ export const plazoDeEvento = (evento, hoy = new Date()) => {
  */
 export const ordenarAuditorias = (auditorias, criterio = 'urgencia') =>
   [...auditorias].sort(CRITERIOS[criterio] ?? CRITERIOS.urgencia)
+
+// «DD-MM-AAAA» → «AAAAMMDD», para comparar fechas como texto sin desplazar el día.
+const claveFecha = (fecha) => {
+  const partes = /^(\d{2})-(\d{2})-(\d{4})$/.exec(fecha ?? '')
+  return partes ? `${partes[3]}${partes[2]}${partes[1]}` : null
+}
+
+/**
+ * ¿Se atendió el evento en tiempo? Columna «¿En tiempo?» de la historia del boceto.
+ * 'Sí' si se entregó a más tardar en la fecha límite; 'No' si se entregó después o si
+ * venció sin entrega; '—' si aún está en plazo, no tiene fecha límite o se cerró sin fecha de entrega.
+ * @param {{ fechaLimite: string, fechaEntrega: string, estado: string }} evento
+ * @param {Date} hoy
+ * @returns {'Sí'|'No'|'—'}
+ */
+export const entregaEnTiempo = (evento, hoy = new Date()) => {
+  const limite = claveFecha(evento.fechaLimite)
+  if (!limite) return '—'
+  const entrega = claveFecha(evento.fechaEntrega)
+  if (entrega) return entrega <= limite ? 'Sí' : 'No'
+  return plazoDeEvento(evento, hoy).semaforo === 'Vencido' ? 'No' : '—'
+}

@@ -14,7 +14,11 @@
 
     <ScreenLoader v-if="cargando" text="Cargando la ficha de la auditoría…" />
 
-    <ErrorState v-else-if="errorCarga" :detail="errorCarga.mensaje ?? 'la ficha de la auditoría.'" @retry="cargar" />
+    <ErrorState
+      v-else-if="errorCarga"
+      :detail="errorCarga.mensaje ?? 'la ficha de la auditoría.'"
+      @retry="cargar"
+    />
 
     <template v-else-if="auditoria">
       <q-card flat bordered class="ficha__cabecera" :class="`ficha__cabecera--${semaforoClase}`">
@@ -25,7 +29,13 @@
               {{ auditoria.estado }}
               <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>
             </q-chip>
-            <q-chip dense square icon="traffic" class="ficha__chip" :class="`ficha__semaforo--${semaforoClase}`">
+            <q-chip
+              dense
+              square
+              icon="traffic"
+              class="ficha__chip"
+              :class="`ficha__semaforo--${semaforoClase}`"
+            >
               {{ auditoria.semaforo }}
               <q-tooltip>{{ AYUDA_SEMAFORO[auditoria.semaforo] }}</q-tooltip>
             </q-chip>
@@ -40,18 +50,35 @@
             >
               <q-tooltip>Cambia los datos generales o el estatus de la auditoría.</q-tooltip>
             </q-btn>
+            <q-btn
+              flat
+              no-caps
+              color="dg-acento"
+              icon="print"
+              label="Imprimir ficha"
+              class="control-touch"
+              @click="imprimir"
+            >
+              <q-tooltip
+                >Imprime la ficha o guárdala como PDF, con la historia completa en tabla.</q-tooltip
+              >
+            </q-btn>
           </div>
           <p class="ficha__expediente">
-            <q-icon name="folder_open" size="16px" aria-hidden="true" /> Expediente {{ auditoria.noExpediente }} ·
+            <q-icon name="folder_open" size="16px" aria-hidden="true" /> Expediente
+            {{ auditoria.noExpediente }} ·
             {{ auditoria.tipoAud }}
             <span v-if="auditoria.estatal" class="ficha__estatal">Estatal</span>
           </p>
 
-          <p class="ficha__proximo" :class="{ 'ficha__proximo--vacio': !auditoria.proximoVencimiento }">
+          <p
+            class="ficha__proximo"
+            :class="{ 'ficha__proximo--vacio': !auditoria.proximoVencimiento }"
+          >
             <q-icon name="event" size="20px" aria-hidden="true" />
             <span v-if="auditoria.proximoVencimiento">
-              <strong>Próximo:</strong> {{ auditoria.queVence }} · vence {{ auditoria.proximoVencimiento }}
-              ({{ textoDias(auditoria.diasParaVencer) }})
+              <strong>Próximo:</strong> {{ auditoria.queVence }} · vence
+              {{ auditoria.proximoVencimiento }} ({{ textoDias(auditoria.diasParaVencer) }})
             </span>
             <span v-else>Sin plazos pendientes en la bitácora</span>
           </p>
@@ -101,7 +128,12 @@
               <dd>
                 {{ auditoria.fechaVencimiento }}
                 <span v-if="diasAutoridad !== null" class="ficha__tenue">
-                  · {{ diasAutoridad >= 0 ? `le quedan ${diasAutoridad} días` : `venció hace ${-diasAutoridad} días` }}
+                  ·
+                  {{
+                    diasAutoridad >= 0
+                      ? `le quedan ${diasAutoridad} días`
+                      : `venció hace ${-diasAutoridad} días`
+                  }}
                 </span>
               </dd>
             </div>
@@ -183,7 +215,8 @@ const SEMAFORO_CLASE = {
 const AYUDA_SEMAFORO = {
   Vencido: 'Un plazo pendiente de la bitácora ya pasó.',
   Crítico: 'Un plazo pendiente vence en 7 días o menos.',
-  Atención: 'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos para concluir.',
+  Atención:
+    'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos para concluir.',
   'En tiempo': 'Sin vencimientos cercanos.',
   Concluida: 'La auditoría está completada.',
 }
@@ -207,11 +240,14 @@ const estadoDeFase = (id) => {
 }
 
 // «Fase 3 · Observaciones» → «Observaciones».
-const nombreCorto = (nombre) => (nombre.includes('·') ? nombre.slice(nombre.indexOf('·') + 1).trim() : nombre)
+const nombreCorto = (nombre) =>
+  nombre.includes('·') ? nombre.slice(nombre.indexOf('·') + 1).trim() : nombre
 
 // Días que le quedan a la autoridad para su fecha de vencimiento (mismo cálculo que los plazos).
 const diasAutoridad = computed(() =>
-  auditoria.value ? plazoDeEvento({ fechaLimite: auditoria.value.fechaVencimiento, estado: '' }).dias : null,
+  auditoria.value
+    ? plazoDeEvento({ fechaLimite: auditoria.value.fechaVencimiento, estado: '' }).dias
+    : null,
 )
 
 const textoDias = (dias) => {
@@ -240,7 +276,10 @@ const cargar = async () => {
 }
 
 onMounted(cargar)
-watch(() => route.params.id, (id) => id && cargar())
+watch(
+  () => route.params.id,
+  (id) => id && cargar(),
+)
 
 // Tras cambiar la bitácora, se recalculan fase actual, próximo vencimiento y semáforo sin recargar la página.
 const refrescar = async () => {
@@ -255,6 +294,9 @@ const alGuardar = (guardada) => {
   auditoria.value = guardada
   $q.notify({ type: 'positive', message: 'Cambios guardados.' })
 }
+
+// El diálogo del navegador permite imprimir o guardar como PDF.
+const imprimir = () => window.print()
 </script>
 
 <style scoped>
@@ -530,6 +572,29 @@ const alGuardar = (guardada) => {
 @media (min-width: 1024px) {
   .ficha {
     padding: 20px 24px;
+  }
+}
+
+/* Impresión: solo la ficha, sin menú, barra ni botones. `body:has(.ficha)` limita
+   estas reglas a esta pantalla aunque la hoja de estilos siga cargada en otras. */
+@media print {
+  :global(body:has(.ficha) .q-drawer),
+  :global(body:has(.ficha) .q-header),
+  :global(body:has(.ficha) .q-btn),
+  :global(body:has(.ficha) .q-page-sticky) {
+    display: none !important;
+  }
+
+  :global(body:has(.ficha) .q-page-container) {
+    padding: 0 !important;
+  }
+
+  .ficha {
+    padding: 0;
+  }
+
+  .ficha__cabecera {
+    break-inside: avoid-page;
   }
 }
 </style>

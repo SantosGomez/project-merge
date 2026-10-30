@@ -2,22 +2,37 @@
   <section class="bitacora" aria-labelledby="bitacora-titulo">
     <div class="bitacora__encabezado">
       <h2 id="bitacora-titulo" class="bitacora__titulo">Bitácora</h2>
-      <q-btn
-        v-if="!formularioAbierto"
-        color="primary"
-        no-caps
-        unelevated
-        icon="add_circle"
-        label="Agregar evento"
-        class="control-touch"
-        @click="abrirNuevo"
-      >
-        <q-tooltip>Registra un oficio, requerimiento, acta, multa o entrega.</q-tooltip>
-      </q-btn>
+      <div class="bitacora__controles">
+        <q-btn-toggle
+          v-model="vista"
+          :options="opcionesVista"
+          no-caps
+          unelevated
+          toggle-color="primary"
+          color="grey-3"
+          text-color="grey-9"
+          class="bitacora__vista"
+          aria-label="Cómo ver la bitácora"
+        />
+        <q-btn
+          v-if="!formularioAbierto"
+          color="primary"
+          no-caps
+          unelevated
+          icon="add_circle"
+          label="Agregar evento"
+          class="control-touch"
+          @click="abrirNuevo"
+        >
+          <q-tooltip>Registra un oficio, requerimiento, acta, multa o entrega.</q-tooltip>
+        </q-btn>
+      </div>
     </div>
     <p class="bitacora__ayuda">
-      Cada oficio, requerimiento, acta o entrega es un evento. Se muestran del más antiguo al más reciente; los que
-      tienen un plazo pendiente se resaltan con su cuenta regresiva.
+      Cada oficio, requerimiento, acta o entrega es un evento. Se muestran del más antiguo al más
+      reciente; los que tienen un plazo pendiente se resaltan con su cuenta regresiva. «Tabla»
+      muestra la historia completa en renglones; para editar o registrar una entrega usa «Línea de
+      tiempo».
     </p>
 
     <q-card v-if="formularioAbierto" flat bordered class="bitacora__form-card">
@@ -43,18 +58,34 @@
               @input-value="(texto) => (form.evento = texto)"
               @update:model-value="elegirEvento"
             >
-              <q-tooltip>Al elegir un evento de la lista se propone su fase; puedes cambiarla.</q-tooltip>
+              <q-tooltip
+                >Al elegir un evento de la lista se propone su fase; puedes cambiarla.</q-tooltip
+              >
             </q-select>
           </div>
           <div class="form-group">
             <label class="form-label">Fase <span class="required-mark">*</span></label>
-            <q-select v-model="form.faseId" :options="opcionesFase" emit-value map-options outlined dense aria-required="true">
+            <q-select
+              v-model="form.faseId"
+              :options="opcionesFase"
+              emit-value
+              map-options
+              outlined
+              dense
+              aria-required="true"
+            >
               <q-tooltip>Etapa del procedimiento a la que pertenece el evento.</q-tooltip>
             </q-select>
           </div>
           <div class="form-group">
             <label class="form-label">Estado <span class="required-mark">*</span></label>
-            <q-select v-model="form.estado" :options="ESTADOS_EVENTO" outlined dense aria-required="true" />
+            <q-select
+              v-model="form.estado"
+              :options="ESTADOS_EVENTO"
+              outlined
+              dense
+              aria-required="true"
+            />
           </div>
           <div v-for="campo in CAMPOS_FECHA" :key="campo.clave" class="form-group">
             <label class="form-label">
@@ -70,13 +101,21 @@
               :aria-required="campo.requerido ? 'true' : 'false'"
             >
               <template #append>
-                <q-icon name="event" class="bitacora__cal" tabindex="0" role="button" aria-label="Abrir calendario">
+                <q-icon
+                  name="event"
+                  class="bitacora__cal"
+                  tabindex="0"
+                  role="button"
+                  aria-label="Abrir calendario"
+                >
                   <q-popup-proxy cover :breakpoint="700">
                     <q-date
                       v-model="form[campo.clave]"
                       mask="DD-MM-YYYY"
                       today-btn
-                      :options="campo.desde ? (dia) => diaNoAnterior(dia, form[campo.desde]) : undefined"
+                      :options="
+                        campo.desde ? (dia) => diaNoAnterior(dia, form[campo.desde]) : undefined
+                      "
                     >
                       <div class="row justify-end">
                         <q-btn v-close-popup label="Listo" color="primary" flat no-caps />
@@ -90,21 +129,48 @@
           </div>
           <div class="form-group">
             <label class="form-label">Folio</label>
-            <q-input v-model="form.folio" placeholder="Folio del oficio o acta" maxlength="200" outlined dense />
+            <q-input
+              v-model="form.folio"
+              placeholder="Folio del oficio o acta"
+              maxlength="200"
+              outlined
+              dense
+            />
           </div>
           <div class="form-group bitacora__ancho">
             <label class="form-label">Descripción</label>
-            <q-input v-model="form.descripcion" type="textarea" rows="2" maxlength="2000" outlined dense />
+            <q-input
+              v-model="form.descripcion"
+              type="textarea"
+              rows="2"
+              maxlength="2000"
+              outlined
+              dense
+            />
           </div>
           <div class="form-group bitacora__ancho">
             <label class="form-label">Observaciones</label>
-            <q-input v-model="form.observaciones" type="textarea" rows="2" maxlength="2000" outlined dense />
+            <q-input
+              v-model="form.observaciones"
+              type="textarea"
+              rows="2"
+              maxlength="2000"
+              outlined
+              dense
+            />
           </div>
           <p v-if="errorGuardado" class="bitacora__error bitacora__ancho" role="alert">
             {{ errorGuardado.mensaje ?? 'No se pudo guardar el evento. Intenta de nuevo.' }}
           </p>
           <div class="bitacora__form-acciones">
-            <q-btn flat no-caps label="Cancelar" class="control-touch" :disable="guardando" @click="cerrarFormulario" />
+            <q-btn
+              flat
+              no-caps
+              label="Cancelar"
+              class="control-touch"
+              :disable="guardando"
+              @click="cerrarFormulario"
+            />
             <q-btn
               type="submit"
               color="primary"
@@ -116,7 +182,11 @@
               :loading="guardando"
             >
               <q-tooltip>
-                {{ eventoEnEdicion ? 'Guarda los cambios del evento.' : 'Agrega el evento a la bitácora.' }}
+                {{
+                  eventoEnEdicion
+                    ? 'Guarda los cambios del evento.'
+                    : 'Agrega el evento a la bitácora.'
+                }}
               </q-tooltip>
             </q-btn>
           </div>
@@ -138,92 +208,155 @@
         Aún no hay eventos en la bitácora. Usa «Agregar evento» para registrar el primero.
       </div>
 
-      <q-timeline v-else color="dg-acento" class="bitacora__timeline">
-        <q-timeline-entry
-          v-for="ev in eventos"
-          :key="ev.id"
-          :color="ev.plazo.pendiente ? 'dg-error' : 'dg-acento'"
-          :icon="ev.plazo.pendiente ? 'schedule' : undefined"
-        >
-          <template #title>
-            <span class="bitacora__evento">{{ ev.evento }}</span>
-            <q-chip
-              dense
-              class="bitacora__estado"
-              :class="`bitacora__estado--${estadoEventoClase(ev.estado)}`"
+      <template v-else>
+        <q-timeline v-show="vista === 'linea'" color="dg-acento" class="bitacora__timeline">
+          <q-timeline-entry
+            v-for="ev in eventos"
+            :key="ev.id"
+            :color="ev.plazo.pendiente ? 'dg-error' : 'dg-acento'"
+            :icon="ev.plazo.pendiente ? 'schedule' : undefined"
+          >
+            <template #title>
+              <span class="bitacora__evento">{{ ev.evento }}</span>
+              <q-chip
+                dense
+                class="bitacora__estado"
+                :class="`bitacora__estado--${estadoEventoClase(ev.estado)}`"
+              >
+                {{ ev.estado }}
+              </q-chip>
+            </template>
+            <template #subtitle>
+              <span class="bitacora__fecha">{{ ev.fecha }} · {{ ev.fase.nombre }}</span>
+            </template>
+            <div
+              class="bitacora__contenido"
+              :class="{ 'bitacora__contenido--pendiente': ev.plazo.pendiente }"
             >
-              {{ ev.estado }}
-            </q-chip>
-          </template>
-          <template #subtitle>
-            <span class="bitacora__fecha">{{ ev.fecha }} · {{ ev.fase.nombre }}</span>
-          </template>
-          <div class="bitacora__contenido" :class="{ 'bitacora__contenido--pendiente': ev.plazo.pendiente }">
-            <p
-              v-if="ev.plazo.pendiente"
-              class="bitacora__plazo"
-              :class="`bitacora__plazo--${SEMAFORO_CLASE[ev.plazo.semaforo]}`"
-            >
-              <q-icon name="timer" size="16px" aria-hidden="true" />
-              Vence {{ ev.fechaLimite }} · {{ textoDias(ev.plazo.dias) }}
-            </p>
-            <p v-if="ev.folio" class="bitacora__linea"><strong>Folio:</strong> {{ ev.folio }}</p>
-            <p v-if="ev.fechaLimite && !ev.plazo.pendiente" class="bitacora__linea">
-              <strong>Fecha límite:</strong> {{ ev.fechaLimite }}
-            </p>
-            <p v-if="ev.fechaEntrega" class="bitacora__linea">
-              <strong>Fecha de entrega:</strong> {{ ev.fechaEntrega }}
-            </p>
-            <p v-if="ev.descripcion" class="bitacora__linea"><strong>Descripción:</strong> {{ ev.descripcion }}</p>
-            <p v-if="ev.observaciones" class="bitacora__linea">
-              <strong>Observaciones:</strong> {{ ev.observaciones }}
-            </p>
-            <p class="bitacora__linea bitacora__registro">Registró: {{ ev.registradoPor.nombre }}</p>
-            <div class="bitacora__acciones">
-              <q-btn
+              <p
                 v-if="ev.plazo.pendiente"
-                unelevated
-                dense
-                no-caps
-                color="dg-exito"
-                icon="task_alt"
-                label="Registrar entrega"
-                class="control-touch"
-                :disable="guardando"
-                @click="registrarEntrega(ev)"
+                class="bitacora__plazo"
+                :class="`bitacora__plazo--${SEMAFORO_CLASE[ev.plazo.semaforo]}`"
               >
-                <q-tooltip>Marca el evento como Completado y entregado hoy.</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                dense
-                no-caps
-                color="primary"
-                icon="edit"
-                label="Editar"
-                class="control-touch"
-                :disable="guardando"
-                @click="editar(ev)"
-              >
-                <q-tooltip>Cambia los datos del evento, por ejemplo otra fecha de entrega.</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                dense
-                no-caps
-                color="dg-error"
-                icon="delete"
-                label="Borrar"
-                class="control-touch"
-                :disable="guardando"
-                @click="confirmarBorrado(ev)"
-              >
-                <q-tooltip>Borra el evento si se capturó por error. No se puede deshacer.</q-tooltip>
-              </q-btn>
+                <q-icon name="timer" size="16px" aria-hidden="true" />
+                Vence {{ ev.fechaLimite }} · {{ textoDias(ev.plazo.dias) }}
+              </p>
+              <p v-if="ev.folio" class="bitacora__linea"><strong>Folio:</strong> {{ ev.folio }}</p>
+              <p v-if="ev.fechaLimite && !ev.plazo.pendiente" class="bitacora__linea">
+                <strong>Fecha límite:</strong> {{ ev.fechaLimite }}
+              </p>
+              <p v-if="ev.fechaEntrega" class="bitacora__linea">
+                <strong>Fecha de entrega:</strong> {{ ev.fechaEntrega }}
+              </p>
+              <p v-if="ev.descripcion" class="bitacora__linea">
+                <strong>Descripción:</strong> {{ ev.descripcion }}
+              </p>
+              <p v-if="ev.observaciones" class="bitacora__linea">
+                <strong>Observaciones:</strong> {{ ev.observaciones }}
+              </p>
+              <p class="bitacora__linea bitacora__registro">
+                Registró: {{ ev.registradoPor.nombre }}
+              </p>
+              <div class="bitacora__acciones">
+                <q-btn
+                  v-if="ev.plazo.pendiente"
+                  unelevated
+                  dense
+                  no-caps
+                  color="dg-exito"
+                  icon="task_alt"
+                  label="Registrar entrega"
+                  class="control-touch"
+                  :disable="guardando"
+                  @click="registrarEntrega(ev)"
+                >
+                  <q-tooltip>Marca el evento como Completado y entregado hoy.</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="edit"
+                  label="Editar"
+                  class="control-touch"
+                  :disable="guardando"
+                  @click="editar(ev)"
+                >
+                  <q-tooltip
+                    >Cambia los datos del evento, por ejemplo otra fecha de entrega.</q-tooltip
+                  >
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="dg-error"
+                  icon="delete"
+                  label="Borrar"
+                  class="control-touch"
+                  :disable="guardando"
+                  @click="confirmarBorrado(ev)"
+                >
+                  <q-tooltip
+                    >Borra el evento si se capturó por error. No se puede deshacer.</q-tooltip
+                  >
+                </q-btn>
+              </div>
             </div>
-          </div>
-        </q-timeline-entry>
-      </q-timeline>
+          </q-timeline-entry>
+        </q-timeline>
+
+        <!-- Historia en renglones, como la ficha del boceto; al imprimir siempre sale esta tabla -->
+        <q-markup-table
+          v-show="vista === 'tabla'"
+          flat
+          bordered
+          dense
+          separator="cell"
+          wrap-cells
+          class="bitacora__tabla"
+          :class="{ 'bitacora__solo-impresion': vista !== 'tabla' }"
+        >
+          <thead>
+            <tr>
+              <th class="text-left">Fecha</th>
+              <th class="text-left">Evento</th>
+              <th class="text-left">Fase</th>
+              <th class="text-left">Folio</th>
+              <th class="text-left">Descripción</th>
+              <th class="text-left">Fecha límite</th>
+              <th class="text-left">Entrega</th>
+              <th class="text-left">Estado</th>
+              <th class="text-left">¿En tiempo?</th>
+              <th class="text-left">Comentarios</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="ev in eventos"
+              :key="ev.id"
+              :class="{ 'bitacora__fila--pendiente': ev.plazo.pendiente }"
+            >
+              <td class="bitacora__celda-fecha">{{ ev.fecha }}</td>
+              <td class="bitacora__celda-evento">{{ ev.evento }}</td>
+              <td>
+                {{ ev.fase.id }}
+                <q-tooltip>{{ ev.fase.nombre }}</q-tooltip>
+              </td>
+              <td>{{ ev.folio }}</td>
+              <td>{{ ev.descripcion }}</td>
+              <td class="bitacora__celda-fecha">{{ ev.fechaLimite }}</td>
+              <td class="bitacora__celda-fecha">{{ ev.fechaEntrega }}</td>
+              <td>{{ ev.estado }}</td>
+              <td :class="`bitacora__en-tiempo--${CLASE_EN_TIEMPO[entregaEnTiempo(ev)]}`">
+                {{ entregaEnTiempo(ev) }}
+              </td>
+              <td>{{ ev.observaciones }}</td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </template>
     </template>
   </section>
 </template>
@@ -233,9 +366,19 @@ import { computed, onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
 
 import ErrorState from './ErrorState.vue'
-import { actualizarEvento, borrarEvento, listarEventos, registrarEvento } from '../services/auditoriaService.js'
-import { plazoDeEvento } from '../utils/listaAuditorias.js'
-import { EVENTOS_SUGERIDOS, diaNoAnterior, faseSugerida, filtrarSugerencias } from '../utils/formularioAuditoria.js'
+import {
+  actualizarEvento,
+  borrarEvento,
+  listarEventos,
+  registrarEvento,
+} from '../services/auditoriaService.js'
+import { entregaEnTiempo, plazoDeEvento } from '../utils/listaAuditorias.js'
+import {
+  EVENTOS_SUGERIDOS,
+  diaNoAnterior,
+  faseSugerida,
+  filtrarSugerencias,
+} from '../utils/formularioAuditoria.js'
 
 const props = defineProps({
   auditoriaId: {
@@ -269,7 +412,12 @@ const SEMAFORO_CLASE = {
   'En tiempo': 'en-tiempo',
 }
 const CAMPOS_FECHA = [
-  { clave: 'fecha', etiqueta: 'Fecha del evento', requerido: true, ayuda: 'Día en que se notificó o sucedió el evento.' },
+  {
+    clave: 'fecha',
+    etiqueta: 'Fecha del evento',
+    requerido: true,
+    ayuda: 'Día en que se notificó o sucedió el evento.',
+  },
   {
     clave: 'fechaLimite',
     etiqueta: 'Fecha límite',
@@ -304,6 +452,14 @@ const elegirEvento = (valor) => {
 
 const estadoEventoClase = (estado) => ESTADO_EVENTO_CLASE[estado] ?? 'pendiente'
 
+// Línea de tiempo (con acciones) o tabla (historia completa, como la ficha del boceto).
+const vista = ref('linea')
+const opcionesVista = [
+  { label: 'Línea de tiempo', value: 'linea', icon: 'timeline' },
+  { label: 'Tabla', value: 'tabla', icon: 'table_rows' },
+]
+const CLASE_EN_TIEMPO = { Sí: 'si', No: 'no', '—': 'sin-dato' }
+
 const textoDias = (dias) => {
   if (dias === 0) return 'vence hoy'
   if (dias < 0) return `venció hace ${-dias} ${-dias === 1 ? 'día' : 'días'}`
@@ -313,11 +469,16 @@ const textoDias = (dias) => {
 // Fecha local de hoy en DD-MM-AAAA (sin pasar por UTC).
 const hoyDDMM = () => {
   const hoy = new Date()
-  return [hoy.getDate(), hoy.getMonth() + 1].map((n) => String(n).padStart(2, '0')).join('-') + `-${hoy.getFullYear()}`
+  return (
+    [hoy.getDate(), hoy.getMonth() + 1].map((n) => String(n).padStart(2, '0')).join('-') +
+    `-${hoy.getFullYear()}`
+  )
 }
 
 const eventosCrudos = ref([])
-const eventos = computed(() => eventosCrudos.value.map((ev) => ({ ...ev, plazo: plazoDeEvento(ev) })))
+const eventos = computed(() =>
+  eventosCrudos.value.map((ev) => ({ ...ev, plazo: plazoDeEvento(ev) })),
+)
 const cargando = ref(false)
 const errorCarga = ref(null)
 
@@ -420,7 +581,10 @@ const guardar = async () => {
 const registrarEntrega = async (ev) => {
   guardando.value = true
   try {
-    await actualizarEvento(props.auditoriaId, ev.id, { fechaEntrega: hoyDDMM(), estado: 'Completado' })
+    await actualizarEvento(props.auditoriaId, ev.id, {
+      fechaEntrega: hoyDDMM(),
+      estado: 'Completado',
+    })
     $q.notify({ type: 'positive', message: `Entrega registrada: «${ev.evento}».` })
     await releer()
   } catch (error) {
@@ -483,6 +647,71 @@ const confirmarBorrado = (ev) => {
 
 .bitacora__timeline {
   padding-left: 4px;
+}
+
+.bitacora__controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bitacora__vista :deep(.q-btn) {
+  min-height: 40px;
+}
+
+.bitacora__tabla {
+  border-color: var(--dg-borde);
+  background: var(--dg-superficie);
+}
+
+.bitacora__tabla th {
+  color: var(--dg-texto-secundario);
+  font-weight: 700;
+}
+
+.bitacora__tabla td {
+  vertical-align: top;
+  color: var(--dg-texto);
+}
+
+.bitacora__celda-fecha {
+  white-space: nowrap;
+}
+
+.bitacora__celda-evento {
+  font-weight: 600;
+}
+
+.bitacora__fila--pendiente {
+  background: var(--dg-error-fondo);
+}
+
+.bitacora__en-tiempo--si {
+  color: var(--dg-exito);
+  font-weight: 700;
+}
+
+.bitacora__en-tiempo--no {
+  color: var(--dg-error);
+  font-weight: 700;
+}
+
+.bitacora__en-tiempo--sin-dato {
+  color: var(--dg-texto-tenue);
+}
+
+/* Impresión: la historia sale como tabla, sin línea de tiempo ni formulario */
+@media print {
+  .bitacora__tabla.bitacora__solo-impresion {
+    display: block !important;
+  }
+
+  .bitacora__timeline,
+  .bitacora__form-card,
+  .bitacora__controles {
+    display: none !important;
+  }
 }
 
 .bitacora__evento {
