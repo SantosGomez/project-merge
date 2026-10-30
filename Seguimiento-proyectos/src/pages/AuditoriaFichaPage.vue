@@ -107,68 +107,71 @@
         </q-card-section>
       </q-card>
 
-      <q-card flat bordered class="ficha__seccion">
-        <q-card-section>
-          <h2 class="ficha__subtitulo">Datos generales</h2>
-          <dl class="ficha__datos">
-            <div class="ficha__dato">
-              <dt>Dependencia</dt>
-              <dd>{{ auditoria.dependencia }}</dd>
-            </div>
-            <div class="ficha__dato">
-              <dt>Periodo revisado</dt>
-              <dd>{{ auditoria.periodoInicio }} al {{ auditoria.periodoFinal }}</dd>
-            </div>
-            <div class="ficha__dato">
-              <dt>Inicio</dt>
-              <dd>{{ auditoria.fechaInicio }}</dd>
-            </div>
-            <div class="ficha__dato">
-              <dt>Vencimiento (plazo de la autoridad)</dt>
-              <dd>
-                {{ auditoria.fechaVencimiento }}
-                <span v-if="diasAutoridad !== null" class="ficha__tenue">
-                  ·
-                  {{
-                    diasAutoridad >= 0
-                      ? `le quedan ${diasAutoridad} días`
-                      : `venció hace ${-diasAutoridad} días`
-                  }}
-                </span>
-              </dd>
-            </div>
-            <div class="ficha__dato ficha__dato--ancho">
-              <dt>Contadores asignados</dt>
-              <dd>
-                <q-chip
-                  v-for="contador in auditoria.contadores"
-                  :key="contador.id"
-                  dense
-                  outline
-                  color="dg-acento"
-                  class="ficha__contador"
-                >
-                  {{ contador.nombre }}
-                </q-chip>
-              </dd>
-            </div>
-            <div v-if="auditoria.descripcion" class="ficha__dato ficha__dato--ancho">
-              <dt>Descripción</dt>
-              <dd class="ficha__texto">{{ auditoria.descripcion }}</dd>
-            </div>
-            <div v-if="auditoria.observacion" class="ficha__dato ficha__dato--ancho">
-              <dt>Observación</dt>
-              <dd class="ficha__texto">{{ auditoria.observacion }}</dd>
-            </div>
-          </dl>
-        </q-card-section>
-      </q-card>
+      <!-- En pantallas anchas, datos generales a la derecha y bitácora a la izquierda -->
+      <div class="ficha__cuerpo">
+        <q-card flat bordered class="ficha__seccion ficha__datos-generales">
+          <q-card-section>
+            <h2 class="ficha__subtitulo">Datos generales</h2>
+            <dl class="ficha__datos">
+              <div class="ficha__dato">
+                <dt>Dependencia</dt>
+                <dd>{{ auditoria.dependencia }}</dd>
+              </div>
+              <div class="ficha__dato">
+                <dt>Periodo revisado</dt>
+                <dd>{{ auditoria.periodoInicio }} al {{ auditoria.periodoFinal }}</dd>
+              </div>
+              <div class="ficha__dato">
+                <dt>Inicio</dt>
+                <dd>{{ auditoria.fechaInicio }}</dd>
+              </div>
+              <div class="ficha__dato">
+                <dt>Vencimiento (plazo de la autoridad)</dt>
+                <dd>
+                  {{ auditoria.fechaVencimiento }}
+                  <span v-if="diasAutoridad !== null" class="ficha__tenue">
+                    ·
+                    {{
+                      diasAutoridad >= 0
+                        ? `le quedan ${diasAutoridad} días`
+                        : `venció hace ${-diasAutoridad} días`
+                    }}
+                  </span>
+                </dd>
+              </div>
+              <div class="ficha__dato ficha__dato--ancho">
+                <dt>Contadores asignados</dt>
+                <dd>
+                  <q-chip
+                    v-for="contador in auditoria.contadores"
+                    :key="contador.id"
+                    dense
+                    outline
+                    color="dg-acento"
+                    class="ficha__contador"
+                  >
+                    {{ contador.nombre }}
+                  </q-chip>
+                </dd>
+              </div>
+              <div v-if="auditoria.descripcion" class="ficha__dato ficha__dato--ancho">
+                <dt>Descripción</dt>
+                <dd class="ficha__texto">{{ auditoria.descripcion }}</dd>
+              </div>
+              <div v-if="auditoria.observacion" class="ficha__dato ficha__dato--ancho">
+                <dt>Observación</dt>
+                <dd class="ficha__texto">{{ auditoria.observacion }}</dd>
+              </div>
+            </dl>
+          </q-card-section>
+        </q-card>
 
-      <q-card flat bordered class="ficha__seccion">
-        <q-card-section>
-          <BitacoraAuditoria :auditoria-id="auditoria.id" :fases="fases" @cambio="refrescar" />
-        </q-card-section>
-      </q-card>
+        <q-card flat bordered class="ficha__seccion ficha__bitacora">
+          <q-card-section>
+            <BitacoraAuditoria :auditoria-id="auditoria.id" :fases="fases" @cambio="refrescar" />
+          </q-card-section>
+        </q-card>
+      </div>
 
       <AuditoriaFormDialog
         v-model="dialogoEdicionAbierto"
@@ -304,8 +307,13 @@ const imprimir = () => window.print()
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 1100px;
   padding: 16px;
+}
+
+.ficha__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .ficha__volver {
@@ -575,6 +583,35 @@ const imprimir = () => window.print()
   }
 }
 
+/* Pantallas anchas: la bitácora ocupa el espacio libre y los datos generales quedan a la
+   derecha, a la vista mientras se recorre la bitácora */
+@media (min-width: 1280px) {
+  .ficha__cuerpo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    grid-template-areas: 'bitacora datos';
+    align-items: start;
+  }
+
+  .ficha__bitacora {
+    grid-area: bitacora;
+  }
+
+  .ficha__datos-generales {
+    grid-area: datos;
+    position: sticky;
+    top: 16px;
+    /* Con una descripción larga, se desplaza por dentro en vez de quedar cortada */
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  /* En la columna angosta, un dato por renglón */
+  .ficha__datos-generales .ficha__datos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Impresión: solo la ficha, sin menú, barra ni botones. `body:has(.ficha)` limita
    estas reglas a esta pantalla aunque la hoja de estilos siga cargada en otras. */
 @media print {
@@ -595,6 +632,15 @@ const imprimir = () => window.print()
 
   .ficha__cabecera {
     break-inside: avoid-page;
+  }
+
+  .ficha__cuerpo {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .ficha__datos-generales {
+    position: static !important;
   }
 }
 </style>

@@ -64,3 +64,28 @@ describe('Ficha: «Imprimir ficha»', () => {
     }
   })
 })
+
+describe('Ficha: dos columnas en pantallas anchas', () => {
+  const ficha = read('../src/pages/AuditoriaFichaPage.vue')
+
+  it('la ficha usa todo el ancho y agrupa datos generales y bitácora', () => {
+    assert.doesNotMatch(
+      ficha.slice(ficha.indexOf('.ficha {'), ficha.indexOf('}', ficha.indexOf('.ficha {'))),
+      /max-width/,
+    )
+    assert.match(
+      ficha,
+      /<div class="ficha__cuerpo">\s*<q-card flat bordered class="ficha__seccion ficha__datos-generales">/,
+    )
+    assert.match(ficha, /class="ficha__seccion ficha__bitacora"[\s\S]*?<BitacoraAuditoria/)
+  })
+
+  it('desde 1280 px los datos generales van a la derecha, fijos al bajar', () => {
+    const ancho = ficha.slice(ficha.indexOf('@media (min-width: 1280px)'))
+    assert.match(
+      ancho,
+      /\.ficha__cuerpo \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) minmax\(300px, 380px\)/,
+    )
+    assert.match(ancho, /\.ficha__datos-generales \{[\s\S]*?position: sticky/)
+  })
+})
