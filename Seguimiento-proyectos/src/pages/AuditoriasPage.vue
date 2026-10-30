@@ -6,7 +6,7 @@
         con «Editar».
       </p>
       <q-btn
-        class="auditorias-page__register-btn control-touch"
+        class="auditorias-page__register-btn control-touch gt-xs"
         color="primary"
         no-caps
         unelevated
@@ -127,18 +127,39 @@
           </p>
         </div>
 
+        <AuditoriasTabla
+          v-else-if="vistaTabla"
+          :auditorias="auditoriasFiltradas"
+          @ver-detalle="verFicha"
+          @editar="abrirEdicion"
+        />
+
         <div v-else class="auditorias-page__lista">
           <AuditoriaItem
             v-for="item in auditoriasFiltradas"
             :key="item.id"
             :auditoria="item"
             :nombres-contadores="item.contadores.map((c) => c.nombre)"
-            @ver-detalle="router.push({ name: 'auditoria-ficha', params: { id: item.id } })"
+            @ver-detalle="verFicha(item.id)"
             @editar="abrirEdicion(item.id)"
           />
         </div>
       </template>
     </div>
+
+    <!-- En el celular, el registro va en un botón flotante para tenerlo siempre a la mano -->
+    <q-page-sticky class="lt-sm" position="bottom-right" :offset="[16, 16]">
+      <q-btn
+        fab
+        color="primary"
+        icon="add"
+        aria-label="Registrar auditoría"
+        aria-haspopup="dialog"
+        @click="abrirRegistro"
+      >
+        <q-tooltip anchor="center left" self="center right">Registrar una auditoría nueva.</q-tooltip>
+      </q-btn>
+    </q-page-sticky>
 
     <AuditoriaFormDialog
       v-model="dialogoRegistroAbierto"
@@ -158,6 +179,7 @@ import { useQuasar } from 'quasar'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import AuditoriaItem from '../components/AuditoriaItem.vue'
+import AuditoriasTabla from '../components/AuditoriasTabla.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
@@ -210,6 +232,9 @@ const opcionesOrden = [
   { label: 'Más recientes', value: 'recientes' },
   { label: 'Cliente (A-Z)', value: 'cliente' },
 ]
+
+// En escritorio la lista se ve como tabla; en tablet y celular, como tarjetas.
+const vistaTabla = computed(() => $q.screen.width >= 1024)
 
 const conteoSemaforo = computed(() => contarPorSemaforo(auditorias.value))
 
@@ -265,6 +290,8 @@ const abrirRegistro = () => {
   auditoriaEnEdicion.value = null
   dialogoRegistroAbierto.value = true
 }
+
+const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } })
 
 const abrirEdicion = (id) => {
   const found = auditorias.value.find((a) => a.id === id)
@@ -511,6 +538,13 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
 .control-touch {
   min-width: 44px;
   min-height: 44px;
+}
+
+/* Espacio al pie para que el botón flotante no tape la última tarjeta */
+@media (max-width: 599px) {
+  .auditorias-page {
+    padding-bottom: 88px;
+  }
 }
 
 @media (min-width: 1024px) {
