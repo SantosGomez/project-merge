@@ -384,6 +384,9 @@ const cargar = async () => {
 // La pestaña vive dentro de un keep-alive: se recarga cada vez que se vuelve a mostrar.
 onActivated(cargar)
 
+// El dashboard la llama al registrar una auditoría desde «Asignar auditoría».
+defineExpose({ cargar })
+
 const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } })
 </script>
 

@@ -260,3 +260,29 @@ describe('Tablero de auditorías: sub-pestaña Kanban', () => {
     assert.match(tablero, /columnasKanban\(auditorias\.value\)/)
   })
 })
+
+describe('Dashboard: el botón de asignar cambia según la pestaña', () => {
+  const pagina = read('../src/pages/AdminDashboardPage.vue')
+
+  it('en «Casos» asigna caso y en «Auditorías» abre el formulario de auditoría', () => {
+    assert.match(pagina, /v-if="pestana === 'casos'"[\s\S]*?label="Asignar caso"/)
+    assert.match(
+      pagina,
+      /v-else[\s\S]*?label="Asignar auditoría"[\s\S]*?@click="dialogoAuditoriaAbierto = true"/,
+    )
+    assert.match(
+      pagina,
+      /<AuditoriaFormDialog[\s\S]*?v-model="dialogoAuditoriaAbierto"[\s\S]*?:contadores="contadores"[\s\S]*?es-admin[\s\S]*?@registrada="alAsignarAuditoria"/,
+    )
+  })
+
+  it('al registrar avisa y vuelve a cargar el tablero', () => {
+    assert.match(pagina, /<TableroAuditorias ref="tablero"/)
+    assert.match(
+      pagina,
+      /const alAsignarAuditoria = [\s\S]*?Auditoría asignada[\s\S]*?tablero\.value\?\.cargar\(\)/,
+    )
+    const tablero = read('../src/components/TableroAuditorias.vue')
+    assert.match(tablero, /defineExpose\(\{ cargar \}\)/)
+  })
+})

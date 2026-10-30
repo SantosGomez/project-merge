@@ -27,7 +27,9 @@
             >Abre el directorio de usuarios para buscar a una persona por su nombre.</q-tooltip
           >
         </q-btn>
+        <!-- El botón de asignar cambia con la pestaña: caso en «Casos», auditoría en «Auditorías» -->
         <q-btn
+          v-if="pestana === 'casos'"
           class="dashboard-page__asignar-btn control-touch"
           color="primary"
           no-caps
@@ -40,6 +42,23 @@
         >
           <q-tooltip
             >Abre el formulario para registrar un caso nuevo y asignárselo a un contador.</q-tooltip
+          >
+        </q-btn>
+        <q-btn
+          v-else
+          class="dashboard-page__asignar-btn control-touch"
+          color="primary"
+          no-caps
+          unelevated
+          icon="add_circle"
+          label="Asignar auditoría"
+          aria-haspopup="dialog"
+          :disable="contadores.length === 0"
+          @click="dialogoAuditoriaAbierto = true"
+        >
+          <q-tooltip
+            >Abre el formulario para registrar una auditoría y asignarla a uno o más
+            contadores.</q-tooltip
           >
         </q-btn>
       </div>
@@ -179,7 +198,7 @@
         </q-tab-panel>
 
         <q-tab-panel name="auditorias" class="dashboard-page__panel">
-          <TableroAuditorias />
+          <TableroAuditorias ref="tablero" />
         </q-tab-panel>
       </q-tab-panels>
 
@@ -231,6 +250,12 @@
         :contadores="contadores"
         @registrado="alAsignar"
       />
+      <AuditoriaFormDialog
+        v-model="dialogoAuditoriaAbierto"
+        :contadores="contadores"
+        es-admin
+        @registrada="alAsignarAuditoria"
+      />
     </div>
   </q-page>
 </template>
@@ -240,6 +265,7 @@ import { useQuasar } from 'quasar'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CounterCountsRow from '../components/CounterCountsRow.vue'
 import DetalleContador from '../components/DetalleContador.vue'
@@ -422,6 +448,17 @@ const alAsignar = (caso) => {
   $q.notify({ type: 'positive', message: `Caso asignado. Se avisó a ${nombreContador}.` })
   cargarResumen()
   contadoresStore.refrescarEnSilencio(caso.contador_id)
+}
+
+/** Diálogo para registrar una auditoría y elegir a sus contadores (pestaña «Auditorías»). */
+const dialogoAuditoriaAbierto = ref(false)
+const tablero = ref(null)
+
+/** Tras registrar la auditoría: avisa y vuelve a cargar el tablero con sus indicadores. */
+const alAsignarAuditoria = (auditoria) => {
+  const nombres = auditoria.contadores.map((c) => c.nombre).join(', ') || 'los contadores'
+  $q.notify({ type: 'positive', message: `Auditoría asignada a ${nombres}.` })
+  tablero.value?.cargar()
 }
 
 /*
