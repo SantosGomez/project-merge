@@ -28,15 +28,23 @@
           </h3>
           <div class="form-group bitacora__ancho">
             <label class="form-label">Evento <span class="required-mark">*</span></label>
-            <q-input
-              v-model="form.evento"
-              placeholder="Orden de visita, requerimiento, acta parcial, multa…"
-              maxlength="200"
-              counter
+            <q-select
+              :model-value="form.evento"
+              :options="opcionesEvento"
+              use-input
+              hide-selected
+              fill-input
+              input-debounce="0"
+              placeholder="Elige o escribe: orden de visita, requerimiento, acta parcial, multa…"
               outlined
               dense
               aria-required="true"
-            />
+              @filter="filtrarEventos"
+              @input-value="(texto) => (form.evento = texto)"
+              @update:model-value="elegirEvento"
+            >
+              <q-tooltip>Al elegir un evento de la lista se propone su fase; puedes cambiarla.</q-tooltip>
+            </q-select>
           </div>
           <div class="form-group">
             <label class="form-label">Fase <span class="required-mark">*</span></label>
@@ -64,7 +72,12 @@
               <template #append>
                 <q-icon name="event" class="bitacora__cal" tabindex="0" role="button" aria-label="Abrir calendario">
                   <q-popup-proxy cover :breakpoint="700">
-                    <q-date v-model="form[campo.clave]" mask="DD-MM-YYYY" today-btn>
+                    <q-date
+                      v-model="form[campo.clave]"
+                      mask="DD-MM-YYYY"
+                      today-btn
+                      :options="campo.desde ? (dia) => diaNoAnterior(dia, form[campo.desde]) : undefined"
+                    >
                       <div class="row justify-end">
                         <q-btn v-close-popup label="Listo" color="primary" flat no-caps />
                       </div>
@@ -222,6 +235,7 @@ import { useQuasar } from 'quasar'
 import ErrorState from './ErrorState.vue'
 import { actualizarEvento, borrarEvento, listarEventos, registrarEvento } from '../services/auditoriaService.js'
 import { plazoDeEvento } from '../utils/listaAuditorias.js'
+import { EVENTOS_SUGERIDOS, diaNoAnterior, faseSugerida, filtrarSugerencias } from '../utils/formularioAuditoria.js'
 
 const props = defineProps({
   auditoriaId: {
@@ -256,9 +270,37 @@ const SEMAFORO_CLASE = {
 }
 const CAMPOS_FECHA = [
   { clave: 'fecha', etiqueta: 'Fecha del evento', requerido: true, ayuda: 'Día en que se notificó o sucedió el evento.' },
-  { clave: 'fechaLimite', etiqueta: 'Fecha límite', requerido: false, ayuda: 'Hasta cuándo hay para atenderlo (opcional).' },
-  { clave: 'fechaEntrega', etiqueta: 'Fecha de entrega', requerido: false, ayuda: 'Cuándo se entregó o atendió (opcional).' },
+  {
+    clave: 'fechaLimite',
+    etiqueta: 'Fecha límite',
+    requerido: false,
+    desde: 'fecha',
+    ayuda: 'Hasta cuándo hay para atenderlo (opcional); no antes de la fecha del evento.',
+  },
+  {
+    clave: 'fechaEntrega',
+    etiqueta: 'Fecha de entrega',
+    requerido: false,
+    desde: 'fecha',
+    ayuda: 'Cuándo se entregó o atendió (opcional); no antes de la fecha del evento.',
+  },
 ]
+
+// Evento: sugerencias del boceto con su fase; se acepta cualquier texto escrito.
+const NOMBRES_EVENTO = EVENTOS_SUGERIDOS.map((s) => s.evento)
+const opcionesEvento = ref([...NOMBRES_EVENTO])
+
+const filtrarEventos = (texto, actualizar) => {
+  actualizar(() => {
+    opcionesEvento.value = filtrarSugerencias(NOMBRES_EVENTO, texto)
+  })
+}
+
+const elegirEvento = (valor) => {
+  form.value.evento = valor ?? ''
+  const fase = faseSugerida(form.value.evento)
+  if (fase) form.value.faseId = fase
+}
 
 const estadoEventoClase = (estado) => ESTADO_EVENTO_CLASE[estado] ?? 'pendiente'
 
