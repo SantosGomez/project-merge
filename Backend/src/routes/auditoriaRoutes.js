@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
 const { requireAdminOrContador } = require('../middlewares/roleMiddleware');
-const { createAuditoria, listAuditorias, updateAuditoria } = require('../controllers/AuditoriaController');
+const { createAuditoria, listAuditorias, getAuditoria, updateAuditoria } = require('../controllers/AuditoriaController');
 const {
   createEvento,
   listEventos,
@@ -23,6 +23,9 @@ router.patch('/:id', authenticateToken, requireAdminOrContador, asyncHandler(upd
 
 // GET /auditorias/fases — Catálogo de fases (para el formulario de la bitácora)
 router.get('/fases', authenticateToken, requireAdminOrContador, asyncHandler(listFases));
+
+// GET /auditorias/:id — Una auditoría con su seguimiento (ficha); va después de /fases
+router.get('/:id', authenticateToken, requireAdminOrContador, asyncHandler(getAuditoria));
 
 // GET /auditorias/:id/eventos — Bitácora en orden cronológico (administrador o contador asignado)
 router.get('/:id/eventos', authenticateToken, requireAdminOrContador, asyncHandler(listEventos));

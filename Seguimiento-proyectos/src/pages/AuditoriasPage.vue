@@ -133,7 +133,7 @@
             :key="item.id"
             :auditoria="item"
             :nombres-contadores="item.contadores.map((c) => c.nombre)"
-            @ver-detalle="abrirDetalle(item)"
+            @ver-detalle="router.push({ name: 'auditoria-ficha', params: { id: item.id } })"
             @editar="abrirEdicion(item.id)"
           />
         </div>
@@ -148,21 +148,14 @@
       @registrada="alRegistrar"
       @guardada="alGuardar"
     />
-
-    <AuditoriaDetalleDialog
-      v-if="auditoriaEnDetalle"
-      v-model="dialogoDetalleAbierto"
-      :auditoria="auditoriaEnDetalle"
-      @cambio="refrescar"
-    />
   </q-page>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
-import AuditoriaDetalleDialog from '../components/AuditoriaDetalleDialog.vue'
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import AuditoriaItem from '../components/AuditoriaItem.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -174,6 +167,7 @@ import { contarPorSemaforo, filtrarAuditorias, ordenarAuditorias } from '../util
 import { useSessionStore } from '../stores/session.js'
 
 const $q = useQuasar()
+const router = useRouter()
 const session = useSessionStore()
 
 const auditorias = ref([])
@@ -247,8 +241,6 @@ const limpiarFiltros = () => {
 
 const dialogoRegistroAbierto = ref(false)
 const auditoriaEnEdicion = ref(null)
-const dialogoDetalleAbierto = ref(false)
-const auditoriaEnDetalle = ref(null)
 
 const cargar = async () => {
   cargando.value = true
@@ -269,20 +261,6 @@ const cargar = async () => {
 
 onMounted(cargar)
 
-// Tras cambiar la bitácora se vuelve a leer la lista sin pantalla de carga, para que la
-// fase actual, el próximo vencimiento y el semáforo de la tarjeta queden al día.
-const refrescar = async () => {
-  try {
-    auditorias.value = await listarAuditorias()
-    if (auditoriaEnDetalle.value) {
-      auditoriaEnDetalle.value =
-        auditorias.value.find((a) => a.id === auditoriaEnDetalle.value.id) ?? auditoriaEnDetalle.value
-    }
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error.mensaje ?? 'No se pudo actualizar la lista de auditorías.' })
-  }
-}
-
 const abrirRegistro = () => {
   auditoriaEnEdicion.value = null
   dialogoRegistroAbierto.value = true
@@ -293,11 +271,6 @@ const abrirEdicion = (id) => {
   if (!found) return
   auditoriaEnEdicion.value = found
   dialogoRegistroAbierto.value = true
-}
-
-const abrirDetalle = (auditoria) => {
-  auditoriaEnDetalle.value = auditoria
-  dialogoDetalleAbierto.value = true
 }
 
 const alRegistrar = (auditoria) => {

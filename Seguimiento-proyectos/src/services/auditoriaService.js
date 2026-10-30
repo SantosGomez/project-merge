@@ -191,6 +191,16 @@ export const crearAuditoriaService = (opciones = {}) => {
   }
 
   /**
+   * GET /auditorias/:id: una auditoría con su seguimiento calculado (ficha).
+   * @param {number|string} id
+   * @returns {Promise<Object>}
+   */
+  const obtenerAuditoria = async (id) => {
+    const { data } = await api.get(`/auditorias/${id}`)
+    return leerAuditoria(data, 'la auditoría')
+  }
+
+  /**
    * POST /auditorias: registra una auditoría. El administrador manda `contadores` (IDs);
    * al contador que registra el backend lo asigna solo.
    * @param {Object} datos - campos del formulario (fechas DD-MM-AAAA).
@@ -267,6 +277,7 @@ export const crearAuditoriaService = (opciones = {}) => {
 
   return {
     listarAuditorias,
+    obtenerAuditoria,
     registrarAuditoria,
     actualizarAuditoria,
     listarFases,
@@ -281,6 +292,7 @@ export const crearAuditoriaService = (opciones = {}) => {
 const servicioPorDefecto = crearAuditoriaService()
 
 export const listarAuditorias = servicioPorDefecto.listarAuditorias
+export const obtenerAuditoria = servicioPorDefecto.obtenerAuditoria
 export const registrarAuditoria = servicioPorDefecto.registrarAuditoria
 export const actualizarAuditoria = servicioPorDefecto.actualizarAuditoria
 export const listarFases = servicioPorDefecto.listarFases

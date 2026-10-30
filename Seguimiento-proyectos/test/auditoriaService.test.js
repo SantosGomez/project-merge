@@ -175,3 +175,13 @@ test('actualizarAuditoria hace PATCH /auditorias/:id solo con los campos que cam
   assert.equal(auditoria.estado, 'En Proceso')
   assert.equal(auditoria.fechaVencimiento, '01-03-2027')
 })
+
+test('obtenerAuditoria hace GET /auditorias/:id y la traduce', async () => {
+  const api = crearApiFalsa({ GET: async () => ({ data: { auditoria: auditoriaDeBackend() } }) })
+
+  const auditoria = await crearAuditoriaService({ api }).obtenerAuditoria(7)
+
+  assert.deepEqual(api.llamadas, [{ metodo: 'GET', url: '/auditorias/7', cuerpo: undefined }])
+  assert.equal(auditoria.fechaInicio, '15-02-2026')
+  assert.equal(auditoria.semaforo, 'Crítico')
+})

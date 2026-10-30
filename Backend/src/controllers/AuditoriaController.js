@@ -25,6 +25,11 @@ const ERROR_NO_ASIGNADO = buildError(
   'auditoría',
   'Solo los contadores asignados pueden editarla'
 );
+const ERROR_NO_ASIGNADO_VER = buildError(
+  'Acceso denegado',
+  'auditoría',
+  'Solo los contadores asignados pueden consultarla'
+);
 const ERROR_SOLO_ADMIN_ASIGNA = buildError(
   'Acceso denegado',
   'contadores',
@@ -235,4 +240,20 @@ async function updateAuditoria(req, res) {
   return res.status(200).json({ mensaje: 'Auditoría actualizada correctamente', auditoria: auditoriaParaApi(guardada) });
 }
 
-module.exports = { createAuditoria, listAuditorias, updateAuditoria };
+/**
+ * GET /auditorias/:id — Una auditoría con su seguimiento (para la ficha).
+ * El contador solo ve aquellas donde está asignado.
+ */
+async function getAuditoria(req, res) {
+  const id = Number(req.params.id);
+  const fila = Number.isInteger(id) && id > 0 ? await AuditoriaModel.findById(id) : null;
+  if (!fila) {
+    return res.status(404).json(buildError('Auditoría no encontrada', 'auditoría', 'Actualice la lista e intente de nuevo'));
+  }
+  if (req.user.rol !== 'administrador' && !(await AuditoriaModel.estaAsignado(id, req.user.id))) {
+    return res.status(403).json(ERROR_NO_ASIGNADO_VER);
+  }
+  return res.status(200).json({ auditoria: auditoriaParaApi(fila) });
+}
+
+module.exports = { createAuditoria, listAuditorias, getAuditoria, updateAuditoria };

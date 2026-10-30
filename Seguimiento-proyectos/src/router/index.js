@@ -7,6 +7,7 @@ import {
 } from 'vue-router'
 
 import AdminDashboardPage from '../pages/AdminDashboardPage.vue'
+import AuditoriaFichaPage from '../pages/AuditoriaFichaPage.vue'
 import AuditoriasPage from '../pages/AuditoriasPage.vue'
 import CambiarContrasenaPage from '../pages/CambiarContrasenaPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
@@ -90,6 +91,16 @@ const routes = [
           requiereSesion: true,
           perfil: [PROFILES.administrador, PROFILES.contador],
           titulo: 'Auditorías',
+        },
+      },
+      {
+        path: 'auditorias/:id(\\d+)',
+        name: 'auditoria-ficha',
+        component: AuditoriaFichaPage,
+        meta: {
+          requiereSesion: true,
+          perfil: [PROFILES.administrador, PROFILES.contador],
+          titulo: 'Ficha de auditoría',
         },
       },
       {

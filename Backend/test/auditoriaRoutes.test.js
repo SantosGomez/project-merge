@@ -244,6 +244,21 @@ async function testContadorNoReasigna() {
   assert.match(respuesta.body.mensaje, /contadores/);
 }
 
+async function testObtenerUnaAuditoria() {
+  const original = await registrarDelContador({ cliente: 'Ficha' });
+  const obtener = (id, token) => peticion(servidor.puerto, 'GET', `/auditorias/${id}`, null, token);
+
+  const propia = await obtener(original.id, tokenContador);
+  assert.strictEqual(propia.statusCode, 200);
+  assert.strictEqual(propia.body.auditoria.cliente, 'Ficha');
+  assert.ok(propia.body.auditoria.fase_actual, 'trae el seguimiento calculado');
+  assert.strictEqual(propia.body.auditoria.semaforo, 'En tiempo');
+
+  assert.strictEqual((await obtener(original.id, tokenAdmin)).statusCode, 200, 'el administrador ve cualquiera');
+  assert.strictEqual((await obtener(original.id, tokenOtroContador)).statusCode, 403);
+  assert.strictEqual((await obtener(999999999, tokenAdmin)).statusCode, 404);
+}
+
 describe('Rutas de auditorías', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -280,4 +295,5 @@ describe('Rutas de auditorías', () => {
   test('al editar se respeta el orden de las fechas guardadas', testEdicionRespetaElOrdenDeFechas);
   test('el administrador reasigna los contadores', testAdminReasignaContadores);
   test('un contador no puede cambiar los contadores asignados', testContadorNoReasigna);
+  test('una auditoría se consulta sola, solo por quien puede verla', testObtenerUnaAuditoria);
 });

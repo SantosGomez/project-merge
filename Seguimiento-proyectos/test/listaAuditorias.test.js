@@ -4,7 +4,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { contarPorSemaforo, filtrarAuditorias, ordenarAuditorias } from '../src/utils/listaAuditorias.js'
+import {
+  contarPorSemaforo,
+  filtrarAuditorias,
+  ordenarAuditorias,
+  plazoDeEvento,
+} from '../src/utils/listaAuditorias.js'
 
 const auditoria = (id, extra = {}) => ({
   id,
@@ -87,4 +92,26 @@ test('ordenarAuditorias por recientes y por cliente, sin modificar la lista orig
   assert.deepEqual(ordenarAuditorias(lista, 'recientes').map((a) => a.id), [9, 5, 2])
   assert.deepEqual(ordenarAuditorias(lista, 'cliente').map((a) => a.id), [9, 2, 5])
   assert.deepEqual(lista.map((a) => a.id), [2, 9, 5], 'la lista recibida no cambia')
+})
+
+test('plazoDeEvento: pendiente con fecha límite, sin entrega y sin cerrar', () => {
+  const hoy = new Date(2026, 9, 30)
+  const evento = (extra) => ({ fechaLimite: '', fechaEntrega: '', estado: 'Pendiente', ...extra })
+
+  assert.deepEqual(plazoDeEvento(evento({ fechaLimite: '02-11-2026' }), hoy), {
+    pendiente: true,
+    dias: 3,
+    semaforo: 'Crítico',
+  })
+  assert.deepEqual(plazoDeEvento(evento({ fechaLimite: '28-10-2026' }), hoy), {
+    pendiente: true,
+    dias: -2,
+    semaforo: 'Vencido',
+  })
+  assert.equal(plazoDeEvento(evento({ fechaLimite: '15-11-2026' }), hoy).semaforo, 'Atención')
+  assert.equal(plazoDeEvento(evento({ fechaLimite: '30-12-2026' }), hoy).semaforo, 'En tiempo')
+  assert.equal(plazoDeEvento(evento({}), hoy).pendiente, false, 'sin fecha límite no hay plazo')
+  assert.equal(plazoDeEvento(evento({ fechaLimite: '02-11-2026', fechaEntrega: '01-11-2026' }), hoy).pendiente, false)
+  assert.equal(plazoDeEvento(evento({ fechaLimite: '02-11-2026', estado: 'Completado' }), hoy).pendiente, false)
+  assert.equal(plazoDeEvento(evento({ fechaLimite: '02-11-2026', estado: 'Rechazado' }), hoy).pendiente, false)
 })

@@ -87,12 +87,12 @@
         dense
         color="dg-acento"
         icon="visibility"
-        label="Ver seguimiento"
+        label="Ver ficha"
         class="control-touch"
         :disable="deshabilitado"
         @click="emit('ver-detalle')"
       >
-        <q-tooltip>Abre la bitácora de la auditoría.</q-tooltip>
+        <q-tooltip>Abre la ficha con el avance por fase y la bitácora.</q-tooltip>
       </q-btn>
       <q-btn
         outline
