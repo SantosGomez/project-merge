@@ -314,3 +314,57 @@ describe('Dashboard: tiempo real y encabezado por pestaña', () => {
     )
   })
 })
+
+describe('Kanban: reporte para imprimir o guardar en PDF', () => {
+  const tablero = read('../src/components/TableroAuditorias.vue')
+  const kanban = tablero.slice(
+    tablero.indexOf('<q-tab-panel name="kanban"'),
+    tablero.indexOf('</q-tab-panels>'),
+  )
+  const impresion = tablero.slice(tablero.indexOf('@media print'))
+
+  it('el botón «Imprimir reporte» abre el diálogo de impresión del navegador', () => {
+    assert.match(kanban, /label="Imprimir reporte"[\s\S]*?@click="imprimirReporte"/)
+    assert.match(tablero, /const imprimirReporte = \(\) => window\.print\(\)/)
+  })
+
+  it('el reporte lleva título, fecha de corte y totales, solo en la hoja impresa', () => {
+    assert.match(
+      kanban,
+      /class="reporte-kanban"[\s\S]*?Reporte Kanban de auditorías[\s\S]*?Corte al \{\{ fechaCorte \}\}/,
+    )
+    assert.match(
+      tablero,
+      /const fechaCorte = computed\(\(\) => fechaParaFormulario\(hoyLocal\(\)\)\)/,
+    )
+    assert.match(tablero, /\.reporte-kanban \{\s*display: none;/)
+    assert.match(impresion, /\.reporte-kanban \{\s*display: block;/)
+  })
+
+  it('al imprimir solo sale el Kanban, en hoja horizontal y con las 6 columnas', () => {
+    for (const selector of [
+      '.q-drawer',
+      '.q-header',
+      '.page-header',
+      '.q-btn',
+      '.q-tabs',
+      '.dashboard-page__head',
+    ]) {
+      assert.ok(impresion.includes(`body:has(.kanban) ${selector}`), `oculta ${selector}`)
+    }
+    assert.match(tablero, /@page kanban \{\s*size: landscape;/)
+    // La página horizontal es de todo el documento: así no hay hojas en blanco antes ni después
+    assert.match(impresion, /:global\(body:has\(\.kanban\)\) \{\s*page: kanban;/)
+    assert.match(
+      impresion,
+      /\.kanban \{[\s\S]*?grid-template-columns: repeat\(6, minmax\(0, 1fr\)\);[\s\S]*?overflow: visible;/,
+    )
+    assert.match(impresion, /\.kanban__tarjeta \{[\s\S]*?break-inside: avoid;/)
+    // Sin altura mínima de pantalla (hoja en blanco al final) ni el ancho de tableta (720 px)
+    assert.match(impresion, /body:has\(\.kanban\) \.q-layout\)[\s\S]*?min-height: 0 !important;/)
+    assert.match(
+      impresion,
+      /body:has\(\.kanban\) \.dashboard-page__inner\) \{\s*max-width: none !important;/,
+    )
+  })
+})

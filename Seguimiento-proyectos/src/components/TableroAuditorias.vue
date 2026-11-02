@@ -217,10 +217,36 @@
         </q-tab-panel>
 
         <q-tab-panel name="kanban" class="tablero__panel">
-          <p class="tablero__ayuda">
-            ¿En qué fase está cada auditoría? El color de la tarjeta indica su semáforo; la fase
-            cambia al registrar eventos en la bitácora. Haz clic en una tarjeta para abrir su ficha.
-          </p>
+          <div class="kanban__barra">
+            <p class="tablero__ayuda kanban__ayuda">
+              ¿En qué fase está cada auditoría? El color de la tarjeta indica su semáforo; la fase
+              cambia al registrar eventos en la bitácora. Haz clic en una tarjeta para abrir su
+              ficha.
+            </p>
+            <q-btn
+              flat
+              no-caps
+              color="dg-acento"
+              icon="print"
+              label="Imprimir reporte"
+              class="control-touch"
+              @click="imprimirReporte"
+            >
+              <q-tooltip>Imprime el Kanban o guárdalo como PDF, en hoja horizontal.</q-tooltip>
+            </q-btn>
+          </div>
+
+          <!-- Encabezado del reporte: solo aparece en la hoja impresa o en el PDF -->
+          <div class="reporte-kanban">
+            <h2 class="reporte-kanban__titulo">Reporte Kanban de auditorías</h2>
+            <p class="reporte-kanban__datos">
+              Corte al {{ fechaCorte }} · {{ auditorias.length }} auditorías:
+              {{ indicadores.activas }} activas y
+              {{ auditorias.length - indicadores.activas }} concluidas. El color de cada tarjeta
+              indica su semáforo.
+            </p>
+          </div>
+
           <div class="kanban" role="list" aria-label="Auditorías por fase">
             <section
               v-for="(columna, i) in columnas"
@@ -286,6 +312,8 @@ import {
   tablaTipoFase,
 } from '../utils/tableroAuditorias.js'
 import { claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
+import { fechaParaFormulario } from '../utils/fechasCaso.js'
+import { hoyLocal } from '../utils/filtrosCasos.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -395,6 +423,10 @@ onActivated(cargar)
 defineExpose({ cargar })
 
 const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } })
+
+// Reporte del Kanban: el diálogo del navegador permite imprimir o guardar como PDF.
+const fechaCorte = computed(() => fechaParaFormulario(hoyLocal()))
+const imprimirReporte = () => window.print()
 </script>
 
 <style scoped>
@@ -537,6 +569,38 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
 .tipo-fase__total td {
   background: var(--dg-fondo-suave);
   font-weight: 700;
+}
+
+.kanban__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+
+.kanban__ayuda {
+  flex: 1 1 280px;
+  margin: 0;
+}
+
+/* El encabezado del reporte solo sale al imprimir */
+.reporte-kanban {
+  display: none;
+}
+
+.reporte-kanban__titulo {
+  margin: 0;
+  color: var(--dg-texto);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.reporte-kanban__datos {
+  margin: 2px 0 10px;
+  color: var(--dg-texto-secundario);
+  font-size: 0.85rem;
 }
 
 /* Kanban: seis columnas; si no caben, se desplazan de lado dentro de su marco */
@@ -685,5 +749,92 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
   font-size: 0.8rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* El reporte del Kanban se imprime en hoja horizontal (página con nombre, solo para el Kanban) */
+@page kanban {
+  size: landscape;
+  margin: 10mm;
+}
+
+/*
+ * Impresión del Kanban: solo el encabezado del reporte y las seis columnas, sin menú, barras,
+ * pestañas ni botones. `body:has(.kanban)` limita estas reglas a cuando el Kanban está a la vista.
+ */
+@media print {
+  :global(body:has(.kanban) .q-drawer),
+  :global(body:has(.kanban) .q-header),
+  :global(body:has(.kanban) .page-header),
+  :global(body:has(.kanban) .q-btn),
+  :global(body:has(.kanban) .q-tabs),
+  :global(body:has(.kanban) .dashboard-page__head),
+  :global(body:has(.kanban) .kanban__ayuda) {
+    display: none !important;
+  }
+
+  /* Todo el documento en la página horizontal: si solo el Kanban la usara, el navegador
+     cortaría la hoja antes y después de él y lo acomodaría con el ancho vertical */
+  :global(body:has(.kanban)) {
+    page: kanban;
+  }
+
+  :global(body:has(.kanban) .q-page-container) {
+    padding: 0 !important;
+  }
+
+  /* Sin la altura mínima de pantalla completa: con ella sobraba una hoja en blanco al final */
+  :global(body:has(.kanban) .q-layout),
+  :global(body:has(.kanban) .q-page-container),
+  :global(body:has(.kanban) .q-page) {
+    min-height: 0 !important;
+  }
+
+  :global(body:has(.kanban) .dashboard-page) {
+    padding: 0;
+  }
+
+  /* La hoja horizontal cae en el rango de tableta del dashboard (720 px centrados): todo el ancho */
+  :global(body:has(.kanban) .dashboard-page__inner) {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .reporte-kanban {
+    display: block;
+  }
+
+  .kanban {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .kanban__columna {
+    padding: 6px;
+  }
+
+  .kanban__fase {
+    font-size: 0.75rem;
+  }
+
+  .kanban__tarjeta {
+    padding: 6px;
+    break-inside: avoid;
+  }
+
+  .kanban__cliente {
+    font-size: 0.8rem;
+  }
+
+  .kanban__dato {
+    font-size: 0.7rem;
+  }
+
+  /* Que el navegador imprima los colores de las franjas y etiquetas del semáforo */
+  .kanban__columna,
+  .kanban__tarjeta {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }
 </style>
