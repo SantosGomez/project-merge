@@ -1,47 +1,69 @@
-// Pruebas del componente AlertasAuditoria.vue (R3).
-// Verifica estáticamente que el componente existe, usa props correctos y emite irFicha.
+// Alertas de auditorías de «Mi resumen»: las vencidas y críticas del contador, las más urgentes primero.
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import { readFileSync } from 'node:fs'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+import { alertasAuditoria } from '../src/utils/listaAuditorias.js'
 
-const archivo = path.resolve(__dirname, '../src/components/AlertasAuditoria.vue')
-const contenido = fs.readFileSync(archivo, 'utf8')
+const leer = (ruta) => readFileSync(new URL(ruta, import.meta.url), 'utf8')
 
-test('AlertasAuditoria.vue existe y tiene estructura básica', () => {
-  assert.ok(fs.existsSync(archivo), 'El archivo AlertasAuditoria.vue debe existir')
-  assert.ok(contenido.includes('<template>'), 'Debe tener template')
-  assert.ok(contenido.includes('<script'), 'Debe tener script')
+const auditoria = (id, semaforo, diasParaVencer) => ({
+  id,
+  cliente: `Cliente ${id}`,
+  semaforo,
+  diasParaVencer,
 })
 
-test('AlertasAuditoria: define prop "auditorias" (Array) y emite "irFicha"', () => {
-  // Busca defineProps con auditorias
-  assert.ok(/defineProps\s*\(\s*\{[^}]*auditorias/.test(contenido), 'Debe definir prop "auditorias"')
-  // Busca defineEmits con irFicha
-  assert.ok(/defineEmits\s*\(\s*\[[^\]]*irFicha[^\]]*\]/.test(contenido), 'Debe emitir "irFicha"')
+test('alertasAuditoria deja solo las vencidas y críticas, las más urgentes primero', () => {
+  const lista = [
+    auditoria(1, 'Crítico', 6),
+    auditoria(2, 'En tiempo', 90),
+    auditoria(3, 'Vencido', -1),
+    auditoria(4, 'Atención', 15),
+    auditoria(5, 'Crítico', 2),
+    auditoria(6, 'Concluida', null),
+    auditoria(7, 'Vencido', -10),
+  ]
+
+  assert.deepEqual(
+    alertasAuditoria(lista).map((a) => a.id),
+    [7, 3, 5, 1],
+  )
 })
 
-test('AlertasAuditoria: solo muestra auditorías con semáforo Vencido o Crítico', () => {
-  // Debe filtrar por semáforo === 'vencido' || semaforo === 'critico'
-  assert.ok(/semaforo\s*===?\s*['"]vencido['"]/.test(contenido) || /semáforo\s*===?\s*['"]vencido['"]/.test(contenido), 'Debe filtrar semáforo "vencido"')
-  assert.ok(/semaforo\s*===?\s*['"]critico['"]/.test(contenido) || /semáforo\s*===?\s*['"]crítico['"]/.test(contenido), 'Debe filtrar semáforo "crítico" o "critico"')
+test('alertasAuditoria sin auditorías urgentes (o sin lista) entrega una lista vacía', () => {
+  assert.deepEqual(alertasAuditoria([auditoria(1, 'En tiempo', 30)]), [])
+  assert.deepEqual(alertasAuditoria(undefined), [])
 })
 
-test('AlertasAuditoria: cada alerta es clicable y llama a emit("irFicha", id)', () => {
-  // @click="() => emit('irFicha', auditoria.id)" - el archivo está en una línea
-  assert.ok(/@click\s*=\s*["']\(\)\s*=>\s*emit\(['"]irFicha['"]\s*,\s*auditoria\.id\)["']/.test(contenido), 'Debe tener @click que emite irFicha con el id')
-})
+test('AlertasAuditoria.vue usa la lista calculada, los campos reales y los colores del semáforo', () => {
+  const componente = leer('../src/components/AlertasAuditoria.vue')
+  const tablero = leer('../src/components/TableroAuditorias.vue')
 
-test('AlertasAuditoria: usa clases de la paleta (dg-error, dg-aviso) y q-card/q-item', () => {
-  assert.ok(/dg-error|dg-aviso|dg-alerta/.test(contenido), 'Debe usar colores de la paleta para alertas')
-  assert.ok(/q-card|q-item|q-banner/.test(contenido), 'Debe usar componentes Quasar')
-})
+  assert.ok(
+    componente.split('\n').length > 20,
+    'el componente tiene formato normal, no una sola línea',
+  )
+  assert.match(componente, /alertasAuditoria\(props\.auditorias\)/)
+  assert.match(
+    componente,
+    /from '\.\.\/utils\/semaforoAuditoria\.js'/,
+    'usa las utilidades reales del semáforo',
+  )
+  assert.match(componente, /alerta\.noExpediente/)
+  assert.match(componente, /textoDiasPlazo\(alerta\.diasParaVencer\)/)
+  assert.match(
+    componente,
+    /semaforo-etiqueta/,
+    'la etiqueta usa los colores del semáforo de app.scss',
+  )
+  assert.match(componente, /emit\('irFicha', alerta\.id\)/)
+  assert.match(componente, /v-if="alertas\.length > 0"/, 'sin alertas no se muestra nada')
+  assert.doesNotMatch(componente, /#[0-9a-f]{3,6}\b/i, 'sin colores sueltos')
 
-test('AlertasAuditoria: si no hay alertas, no renderiza nada (v-if)', () => {
-  assert.ok(/v-if\s*=\s*["'][^"']*alertasFiltradas/.test(contenido) || /v-if\s*=\s*["'][^"']*tieneAlertas/.test(contenido), 'Debe ocultarse cuando no hay alertas')
+  assert.match(
+    tablero,
+    /<AlertasAuditoria\s+v-if="propias"[\s\S]*?:auditorias="auditorias"[\s\S]*?@ir-ficha="verFicha"/,
+  )
 })

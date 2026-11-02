@@ -20,7 +20,11 @@
     />
 
     <div v-else-if="resumen" class="resumen-equipo__contenido">
-      <q-list tag="ul" class="resumen-equipo__tarjetas">
+      <q-list
+        tag="ul"
+        class="resumen-equipo__tarjetas"
+        :style="{ '--columnas-tarjetas': tarjetas.length }"
+      >
         <q-card
           flat
           tag="li"
@@ -124,7 +128,7 @@ const tarjetas = computed(() =>
 .resumen-equipo__tarjetas {
   flex: 3 1 auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--columnas-tarjetas, 3), minmax(0, 1fr));
   gap: 12px;
   margin: 0;
   padding: 0;

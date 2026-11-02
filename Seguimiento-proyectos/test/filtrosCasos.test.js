@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import {
   FILTROS_INICIALES,
   esCasoVencido,
+  esCasoProximoAVencer,
   hoyLocal,
   filtrarCasos,
   filtrosDesdeConsulta,
@@ -45,6 +46,7 @@ test('al entrar se ven los abiertos, el vencimiento más cercano primero', () =>
     soloImportantes: false,
     soloVencidos: false,
     soloAlta: false,
+    soloProximos: false,
   })
   assert.deepEqual(ids(filtrarCasos(CASOS, FILTROS_INICIALES, HOY)), [2, 4, 5, 1])
 })
@@ -79,12 +81,40 @@ test('solo prioridad Alta se combina con el estado y con vencidos', () => {
   assert.deepEqual(con({ soloAlta: false }), [2, 4, 1])
 })
 
+test('próximo a vencer: sin finalizar, sin vencer y vence de hoy a 3 días', () => {
+  const proximo = (estado, vence, hoy = HOY) => esCasoProximoAVencer(caso(1, estado, vence), hoy)
+
+  assert.equal(proximo('pendiente', '2026-10-26'), true, 'vence hoy')
+  assert.equal(proximo('en_proceso', '2026-10-29'), true, 'vence en 3 días')
+  assert.equal(proximo('pendiente', '2026-10-30'), false, 'vence en 4 días')
+  assert.equal(proximo('pendiente', '2026-10-25'), false, 'ya venció: cuenta como vencido')
+  assert.equal(proximo('finalizado', '2026-10-27'), false, 'finalizado')
+  assert.equal(esCasoProximoAVencer({ estado: 'pendiente', fecha_vencimiento: null }, HOY), false)
+  assert.equal(proximo('pendiente', '2027-01-02', '2026-12-30'), true, 'cruza de año')
+  assert.equal(proximo('pendiente', '2026-03-02', '2026-02-27'), true, 'cruza de febrero')
+})
+
+test('solo próximos a vencer se combina con el estado', () => {
+  const casos = [
+    caso(1, 'pendiente', '2026-10-28'),
+    caso(2, 'en_proceso', '2026-10-26'),
+    caso(3, 'finalizado', '2026-10-27'),
+    caso(4, 'pendiente', '2026-11-30'),
+    caso(5, 'pendiente', '2026-10-20'),
+  ]
+  const con = (cambio) => ids(filtrarCasos(casos, { ...FILTROS_INICIALES, ...cambio }, HOY))
+
+  assert.deepEqual(con({ soloProximos: true }), [2, 1])
+  assert.deepEqual(con({ soloProximos: true, estado: 'pendiente' }), [1])
+})
+
 test('filtrosDesdeConsulta abre «Mis casos» con el filtro de cada tarjeta o estado de «Mi resumen»', () => {
   const con = (cambio) => ({ ...FILTROS_INICIALES, ...cambio })
 
   assert.deepEqual(filtrosDesdeConsulta('vencidos'), con({ soloVencidos: true }))
   assert.deepEqual(filtrosDesdeConsulta('abiertos'), con({}))
   assert.deepEqual(filtrosDesdeConsulta('alta_abiertos'), con({ soloAlta: true }))
+  assert.deepEqual(filtrosDesdeConsulta('proximosAVencer'), con({ soloProximos: true }))
   assert.deepEqual(filtrosDesdeConsulta('pendiente'), con({ estado: 'pendiente' }))
   assert.deepEqual(filtrosDesdeConsulta('en_proceso'), con({ estado: 'en_proceso' }))
   assert.deepEqual(filtrosDesdeConsulta('finalizado'), con({ estado: 'finalizado' }))

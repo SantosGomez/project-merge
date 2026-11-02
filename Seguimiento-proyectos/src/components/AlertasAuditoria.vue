@@ -1,1 +1,120 @@
-<template> <q-banner v-if="alertasFiltradas.length > 0" class="alertas-auditoria" dense align="start" avatar> <template #avatar> <q-icon name="warning_amber" color="dg-aviso" size="lg" /> </template> <div class="q-gutter-sm"> <div class="alertas-auditoria__titulo">Tienes auditorías que requieren atención</div> <q-list dense bordered separator class="alertas-auditoria__lista"> <q-item v-for="auditoria in alertasFiltradas" :key="auditoria.id" clickable @click="() => emit('irFicha', auditoria.id)" class="alertas-auditoria__item" :class="claseSemaforo(auditoria.semaforo)" tabindex="0" @keydown.enter.prevent="emit('irFicha', auditoria.id)" @keydown.space="($event.preventDefault(), emit('irFicha', auditoria.id))" > <q-item-section avatar> <q-chip :label="textoSemaforo(auditoria.semaforo)" :color="colorSemaforo(auditoria.semaforo)" text-color="white" size="sm" /> </q-item-section> <q-item-section> <q-item-label>{{ auditoria.cliente }} <span class="alertas-auditoria__expediente">({{ auditoria.expediente }})</span> </q-item-label> <q-item-label caption>{{ descripcionSemaforo(auditoria.semaforo, auditoria.dias_para_vencer) }}</q-item-label> </q-item-section> <q-item-section side> <q-icon name="chevron_right" color="dg-texto-tenue" /> </q-item-section> </q-item> </q-list> </div> </q-banner> </template> <script setup> import { computed } from 'vue' import { claseSemaforo, colorSemaforo, textoSemaforo } from '../utils/listaAuditorias.js' const props = defineProps({ /** Auditorías propias (ya vienen con semáforo, dias_para_vencer, etc. de GET /auditorias). */ auditorias: { type: Array, default: () => [] }, }) const emit = defineEmits(['irFicha']) const alertasFiltradas = computed(() => props.auditorias.filter((a) => a.semaforo === 'vencido' || a.semaforo === 'critico')) /** Texto descriptivo según semáforo y días para vencer. */ const descripcionSemaforo = (semaforo, dias) => { if (semaforo === 'vencido') return `Vencida hace ${Math.abs(dias ?? 0)} día${Math.abs(dias ?? 0) !== 1 ? 's' : ''}` if (semaforo === 'critico') return `Vence en ${dias ?? 0} día${(dias ?? 0) !== 1 ? 's' : ''} (crítica)` return '' } </script> <style scoped> .alertas-auditoria { border-radius: 10px; border-left: 4px solid var(--dg-aviso); background: var(--dg-aviso-fondo); } .alertas-auditoria__titulo { font-weight: 600; color: var(--dg-texto); margin-bottom: 4px; } .alertas-auditoria__lista { margin: 0; padding: 0; max-height: 220px; overflow-y: auto; } .alertas-auditoria__item { cursor: pointer; transition: background 0.15s; } .alertas-auditoria__item:hover { background: var(--dg-fondo-seleccion); } .alertas-auditoria__item:focus-visible { outline: 2px solid var(--dg-foco); outline-offset: -2px; } .alertas-auditoria__expediente { color: var(--dg-texto-tenue); font-weight: 400; } </style>
+<template>
+  <q-card
+    v-if="alertas.length > 0"
+    flat
+    bordered
+    class="alertas-auditoria"
+    role="region"
+    aria-labelledby="alertas-auditoria-titulo"
+  >
+    <q-card-section class="alertas-auditoria__cabecera">
+      <q-icon name="warning_amber" size="sm" class="alertas-auditoria__icono" aria-hidden="true" />
+      <h3 id="alertas-auditoria-titulo" class="alertas-auditoria__titulo">
+        {{ alertas.length === 1 ? 'Tienes 1 auditoría' : `Tienes ${alertas.length} auditorías` }}
+        que requieren atención
+      </h3>
+    </q-card-section>
+
+    <q-list separator class="alertas-auditoria__lista">
+      <q-item
+        v-for="alerta in alertas"
+        :key="alerta.id"
+        clickable
+        class="alertas-auditoria__item"
+        :aria-label="`${alerta.cliente}, ${alerta.semaforo}: ${textoDiasPlazo(alerta.diasParaVencer)}. Abrir su ficha.`"
+        @click="emit('irFicha', alerta.id)"
+      >
+        <q-item-section side>
+          <q-badge
+            rounded
+            class="semaforo-etiqueta"
+            :class="`semaforo--${claseSemaforo(alerta.semaforo)}`"
+            :label="alerta.semaforo"
+          />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label class="alertas-auditoria__cliente">
+            {{ alerta.cliente }}
+            <span class="alertas-auditoria__expediente">· Exp. {{ alerta.noExpediente }}</span>
+          </q-item-label>
+          <q-item-label caption>
+            <template v-if="alerta.queVence">{{ alerta.queVence }}: </template>
+            {{ textoDiasPlazo(alerta.diasParaVencer) }}
+          </q-item-label>
+        </q-item-section>
+        <q-item-section side>
+          <q-icon name="chevron_right" aria-hidden="true" />
+        </q-item-section>
+        <q-tooltip>{{ AYUDA_SEMAFORO[alerta.semaforo] }} Toca para abrir su ficha.</q-tooltip>
+      </q-item>
+    </q-list>
+  </q-card>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+import { alertasAuditoria } from '../utils/listaAuditorias.js'
+import { AYUDA_SEMAFORO, claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
+
+/*
+ * Alertas de «Mi resumen»: las auditorías del contador con semáforo Vencido o Crítico, las más
+ * urgentes primero. Recibe la lista que ya cargó el tablero; cada fila emite `irFicha` con su id.
+ * Sin alertas no se muestra nada.
+ */
+const props = defineProps({
+  /** Auditorías ya traducidas por auditoriaService (con `semaforo` y `diasParaVencer`). */
+  auditorias: { type: Array, default: () => [] },
+})
+
+const emit = defineEmits(['irFicha'])
+
+const alertas = computed(() => alertasAuditoria(props.auditorias))
+</script>
+
+<style scoped>
+.alertas-auditoria {
+  border-left: 4px solid var(--dg-error);
+  border-radius: 12px;
+  background: var(--dg-error-fondo-suave);
+}
+
+.alertas-auditoria__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 4px;
+}
+
+.alertas-auditoria__icono {
+  color: var(--dg-error);
+}
+
+.alertas-auditoria__titulo {
+  margin: 0;
+  color: var(--dg-texto);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.alertas-auditoria__lista {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.alertas-auditoria__item {
+  min-height: 52px;
+}
+
+.alertas-auditoria__cliente {
+  color: var(--dg-texto);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.alertas-auditoria__expediente {
+  color: var(--dg-texto-tenue);
+  font-weight: 400;
+}
+</style>

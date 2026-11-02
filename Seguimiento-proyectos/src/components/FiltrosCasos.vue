@@ -48,6 +48,15 @@
       >
         <q-tooltip>Muestra solo los casos con prioridad Alta.</q-tooltip>
       </q-toggle>
+      <q-toggle
+        :model-value="filtros.soloProximos"
+        color="dg-aviso-borde"
+        label="Próximos a vencer"
+        class="filtros-casos__toggle"
+        @update:model-value="(valor) => cambiar({ soloProximos: valor })"
+      >
+        <q-tooltip>Muestra solo los casos sin finalizar que vencen hoy o en los próximos 3 días.</q-tooltip>
+      </q-toggle>
 
       <q-btn
         v-if="hayFiltrosExtra"

@@ -7,6 +7,7 @@ export const FILTROS_INICIALES = Object.freeze({
   soloImportantes: false,
   soloVencidos: false,
   soloAlta: false,
+  soloProximos: false,
 })
 
 /*
@@ -17,6 +18,7 @@ const FILTROS_POR_CONSULTA = Object.freeze({
   vencidos: { soloVencidos: true },
   abiertos: {},
   alta_abiertos: { soloAlta: true },
+  proximosAVencer: { soloProximos: true },
   pendiente: { estado: 'pendiente' },
   en_proceso: { estado: 'en_proceso' },
   finalizado: { estado: 'finalizado' },
@@ -63,6 +65,23 @@ export const esCasoVencido = (caso, hoy) => {
   return vence !== '' && vence < hoy && caso.estado !== 'finalizado'
 }
 
+/** Días después de hoy que todavía cuentan como «próximo a vencer» (hoy incluido). */
+const DIAS_PROXIMO_A_VENCER = 3
+
+/**
+ * Un caso está próximo a vencer si no está finalizado ni vencido y vence de hoy a 3 días.
+ * La fecha límite se arma con `new Date(año, mes, día)`, que es hora local (no UTC).
+ * @param {Object} caso - caso interno (`estado`, `fecha_vencimiento`).
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @returns {boolean}
+ */
+export const esCasoProximoAVencer = (caso, hoy) => {
+  const vence = diaDe(caso.fecha_vencimiento)
+  if (vence === '' || caso.estado === 'finalizado' || vence < hoy) return false
+  const [anio, mes, dia] = hoy.split('-').map(Number)
+  return vence <= hoyLocal(new Date(anio, mes - 1, dia + DIAS_PROXIMO_A_VENCER))
+}
+
 const cumpleEstado = (caso, estado) => {
   if (estado === 'todos') return true
   if (estado === 'abiertos') return ESTADOS_ABIERTOS.includes(caso.estado)
@@ -70,9 +89,10 @@ const cumpleEstado = (caso, estado) => {
 }
 
 /**
- * Filtra por estado, importantes, vencidos y prioridad Alta, y ordena por el vencimiento más cercano.
+ * Filtra por estado, importantes, vencidos, prioridad Alta y próximos a vencer, y ordena por el
+ * vencimiento más cercano.
  * @param {Array<Object>} casos - casos internos del store.
- * @param {{ estado: string, soloImportantes: boolean, soloVencidos: boolean, soloAlta?: boolean }} filtros
+ * @param {{ estado: string, soloImportantes: boolean, soloVencidos: boolean, soloAlta?: boolean, soloProximos?: boolean }} filtros
  *   estado: 'abiertos', 'pendiente', 'en_proceso', 'finalizado' o 'todos'.
  * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
  * @returns {Array<Object>} arreglo nuevo.
@@ -84,7 +104,8 @@ export const filtrarCasos = (casos, filtros, hoy) =>
         cumpleEstado(caso, filtros.estado) &&
         (!filtros.soloImportantes || Boolean(caso.importante)) &&
         (!filtros.soloVencidos || esCasoVencido(caso, hoy)) &&
-        (!filtros.soloAlta || caso.prioridad === 'alta'),
+        (!filtros.soloAlta || caso.prioridad === 'alta') &&
+        (!filtros.soloProximos || esCasoProximoAVencer(caso, hoy)),
     )
     .sort(
       (a, b) =>

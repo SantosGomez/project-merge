@@ -100,6 +100,17 @@ export const plazoDeEvento = (evento, hoy = new Date()) => {
 export const ordenarAuditorias = (auditorias, criterio = 'urgencia') =>
   [...auditorias].sort(CRITERIOS[criterio] ?? CRITERIOS.urgencia)
 
+/** Semáforos que piden atención inmediata en las alertas de «Mi resumen». */
+const SEMAFOROS_ALERTA = ['Vencido', 'Crítico']
+
+/**
+ * Auditorías vencidas o críticas, las más urgentes primero, para las alertas de «Mi resumen».
+ * @param {Array<Object>} [auditorias] - auditorías ya traducidas por auditoriaService.
+ * @returns {Array<Object>} arreglo nuevo.
+ */
+export const alertasAuditoria = (auditorias) =>
+  ordenarAuditorias((auditorias ?? []).filter((a) => SEMAFOROS_ALERTA.includes(a.semaforo)))
+
 // «DD-MM-AAAA» → «AAAAMMDD», para comparar fechas como texto sin desplazar el día.
 const claveFecha = (fecha) => {
   const partes = /^(\d{2})-(\d{2})-(\d{4})$/.exec(fecha ?? '')

@@ -123,7 +123,8 @@ export const casosAFilas = (casos = []) => {
  * Tarjetas KPI del dashboard a partir del resumen del equipo (`GET /contadores/resumen`).
  * Cada tarjeta trae su número, una línea de desglose y la ayuda del tooltip que explica cómo se cuenta.
  * Un dato que falte cuenta como 0.
- * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos, proximosAVencer, sinVencimiento }`.
+ * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos, proximosAVencer? }`
+ *   (`proximosAVencer` solo en «Mi resumen»).
  * @param {{ propios?: boolean, seleccionable?: boolean }} [opciones] - `propios`: la ayuda habla de
  *   los casos del contador («Mi resumen»); `seleccionable`: dice qué pasa al tocar la tarjeta
  *   (abrir «Mis casos» filtrado o filtrar la lista de contadores del admin).
@@ -134,7 +135,6 @@ export const tarjetasResumen = (resumen, { propios = false, seleccionable = fals
   const sujeto = propios ? 'Tus casos' : 'Casos de todo el equipo'
   const vencidos = dato('vencidos')
   const proximos = dato('proximosAVencer')
-  const sinVenc = dato('sinVencimiento')
 
   const tarjetas = [
     {
@@ -163,26 +163,16 @@ export const tarjetasResumen = (resumen, { propios = false, seleccionable = fals
     },
   ]
 
-  // Tarjetas solo para «Mi resumen» (propios)
+  // Solo en «Mi resumen»: el resumen del equipo del admin no trae esta cifra
   if (propios) {
-    tarjetas.push(
-      {
-        clave: 'proximosAVencer',
-        titulo: 'Próximos a vencer',
-        valor: proximos,
-        detalle: 'Vencen en los próximos 3 días (incluye hoy)',
-        ayuda: `${sujeto} cuya fecha de vencimiento es hoy o en los próximos 3 días y que no están finalizados.`,
-        alerta: proximos > 0,
-      },
-      {
-        clave: 'sinVencimiento',
-        titulo: 'Sin vencimiento',
-        valor: sinVenc,
-        detalle: 'No tienen fecha de vencimiento asignada',
-        ayuda: `${sujeto} a los que no se les ha puesto fecha de vencimiento.`,
-        alerta: sinVenc > 0,
-      }
-    )
+    tarjetas.push({
+      clave: 'proximosAVencer',
+      titulo: 'Próximos a vencer',
+      valor: proximos,
+      detalle: 'Vencen hoy o en los próximos 3 días',
+      ayuda: `${sujeto} sin finalizar cuya fecha de vencimiento es hoy o en los próximos 3 días.`,
+      alerta: proximos > 0,
+    })
   }
 
   if (!seleccionable) return tarjetas

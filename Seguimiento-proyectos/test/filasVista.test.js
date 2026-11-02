@@ -227,6 +227,18 @@ test('tarjetasResumen habla del equipo por defecto y de «tus casos» con propio
   }
 })
 
+test('tarjetasResumen agrega «Próximos a vencer» solo en «Mi resumen» y no tiene «Sin vencimiento»', () => {
+  const claves = (opciones) => tarjetasResumen({ proximosAVencer: 2 }, opciones).map((t) => t.clave)
+
+  assert.deepEqual(claves(), ['vencidos', 'abiertos', 'alta_abiertos'])
+  assert.deepEqual(claves({ propios: true }), ['vencidos', 'abiertos', 'alta_abiertos', 'proximosAVencer'])
+
+  const proximos = tarjetasResumen({ proximosAVencer: 2 }, { propios: true }).at(-1)
+  assert.equal(proximos.valor, 2)
+  assert.equal(proximos.alerta, true)
+  assert.equal(tarjetasResumen({}, { propios: true }).at(-1).alerta, false)
+})
+
 test('tarjetasResumen marca «Vencidos» como alerta solo cuando hay alguno', () => {
   const alerta = (resumen) => tarjetasResumen(resumen).find((t) => t.clave === 'vencidos').alerta
   assert.equal(alerta({ vencidos: 2 }), true)

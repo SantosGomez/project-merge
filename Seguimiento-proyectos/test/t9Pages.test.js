@@ -569,6 +569,11 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
     assert.match(componente, /aria-labelledby="resumen-equipo-titulo"/)
   })
 
+  it('la cuadrícula tiene una columna por tarjeta (3 en el admin, 4 en «Mi resumen»)', () => {
+    assert.match(componente, /'--columnas-tarjetas': tarjetas\.length/)
+    assert.match(componente, /grid-template-columns: repeat\(var\(--columnas-tarjetas, 3\), minmax\(0, 1fr\)\)/)
+  })
+
   it('con seleccionable las tarjetas y la dona avisan qué se eligió y marcan la activa', () => {
     const dona = read('../src/components/DonaEstados.vue')
     const miResumen = read('../src/pages/ContadorDashboardPage.vue')

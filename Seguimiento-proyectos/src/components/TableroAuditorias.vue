@@ -21,6 +21,9 @@
     />
 
     <template v-else>
+      <!-- «Mi resumen»: las vencidas y críticas del contador, a la vista antes de los indicadores -->
+      <AlertasAuditoria v-if="propias" :auditorias="auditorias" @ir-ficha="verFicha" />
+
       <q-tabs
         v-model="vista"
         dense
@@ -309,6 +312,7 @@
 import { computed, onActivated, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AlertasAuditoria from './AlertasAuditoria.vue'
 import EmptyState from './EmptyState.vue'
 import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'
