@@ -8,8 +8,10 @@ import {
   FILTROS_INICIALES,
   esCasoVencido,
   esCasoProximoAVencer,
+  esCasoSinMovimiento,
   diasParaVencerCaso,
   agendaCasos,
+  accionRapidaEstado,
   hoyLocal,
   filtrarCasos,
   filtrosDesdeConsulta,
@@ -49,6 +51,7 @@ test('al entrar se ven los abiertos, el vencimiento más cercano primero', () =>
     soloVencidos: false,
     soloAlta: false,
     soloProximos: false,
+    soloSinMovimiento: false,
   })
   assert.deepEqual(ids(filtrarCasos(CASOS, FILTROS_INICIALES, HOY)), [2, 4, 5, 1])
 })
@@ -110,6 +113,33 @@ test('solo próximos a vencer se combina con el estado', () => {
   assert.deepEqual(con({ soloProximos: true, estado: 'pendiente' }), [1])
 })
 
+test('un caso abierto está sin movimiento si su último cambio fue hace 7 días o más', () => {
+  const sinMovimiento = (estado, actualizado, hoy = HOY) =>
+    esCasoSinMovimiento(caso(1, estado, '2026-12-01', { actualizado_en: actualizado }), hoy)
+
+  assert.equal(sinMovimiento('pendiente', '2026-10-19 10:00:00'), true, 'hace 7 días')
+  assert.equal(sinMovimiento('en_proceso', '2026-09-30 08:00:00'), true, 'hace casi un mes')
+  assert.equal(sinMovimiento('pendiente', '2026-10-20 23:59:59'), false, 'hace 6 días')
+  assert.equal(sinMovimiento('pendiente', '2026-10-26 09:00:00'), false, 'hoy')
+  assert.equal(sinMovimiento('finalizado', '2026-09-01 08:00:00'), false, 'los finalizados no cuentan')
+  assert.equal(sinMovimiento('pendiente', null), false, 'sin fecha de cambio')
+  assert.equal(sinMovimiento('pendiente', '2026-10-25 12:00:00', '2026-11-01'), true, 'cruza de mes')
+  assert.equal(sinMovimiento('pendiente', '2026-10-26 12:00:00', '2026-11-01'), false, 'cruza de mes, 6 días')
+})
+
+test('solo sin movimiento se combina con el estado', () => {
+  const casos = [
+    caso(1, 'pendiente', '2026-11-10', { actualizado_en: '2026-10-01 09:00:00' }),
+    caso(2, 'en_proceso', '2026-11-05', { actualizado_en: '2026-10-10 09:00:00' }),
+    caso(3, 'finalizado', '2026-11-01', { actualizado_en: '2026-10-01 09:00:00' }),
+    caso(4, 'pendiente', '2026-11-02', { actualizado_en: '2026-10-25 09:00:00' }),
+  ]
+  const con = (cambio) => ids(filtrarCasos(casos, { ...FILTROS_INICIALES, ...cambio }, HOY))
+
+  assert.deepEqual(con({ soloSinMovimiento: true }), [2, 1])
+  assert.deepEqual(con({ soloSinMovimiento: true, estado: 'pendiente' }), [1])
+})
+
 test('diasParaVencerCaso cuenta los días de hoy al vencimiento, en hora local', () => {
   assert.equal(diasParaVencerCaso(caso(1, 'pendiente', '2026-10-26'), HOY), 0)
   assert.equal(diasParaVencerCaso(caso(1, 'pendiente', '2026-10-29'), HOY), 3)
@@ -135,6 +165,21 @@ test('agendaCasos: los abiertos que vencen antes, vencidos primero, hasta el lí
   assert.deepEqual(agendaCasos([], HOY), [])
 })
 
+test('accionRapidaEstado: Pendiente pasa a En proceso, En proceso a Finalizado y Finalizado no tiene acción', () => {
+  assert.deepEqual(
+    [accionRapidaEstado('pendiente').estado, accionRapidaEstado('pendiente').etiqueta],
+    ['en_proceso', 'Empezar'],
+  )
+  assert.deepEqual(
+    [accionRapidaEstado('en_proceso').estado, accionRapidaEstado('en_proceso').etiqueta],
+    ['finalizado', 'Finalizar'],
+  )
+  assert.match(accionRapidaEstado('pendiente').ayuda, /En proceso/)
+  assert.match(accionRapidaEstado('en_proceso').ayuda, /Finalizado/)
+  assert.equal(accionRapidaEstado('finalizado'), null)
+  assert.equal(accionRapidaEstado('otro'), null)
+})
+
 test('filtrosDesdeConsulta abre «Mis casos» con el filtro de cada tarjeta o estado de «Mi resumen»', () => {
   const con = (cambio) => ({ ...FILTROS_INICIALES, ...cambio })
 
@@ -142,6 +187,7 @@ test('filtrosDesdeConsulta abre «Mis casos» con el filtro de cada tarjeta o es
   assert.deepEqual(filtrosDesdeConsulta('abiertos'), con({}))
   assert.deepEqual(filtrosDesdeConsulta('alta_abiertos'), con({ soloAlta: true }))
   assert.deepEqual(filtrosDesdeConsulta('proximosAVencer'), con({ soloProximos: true }))
+  assert.deepEqual(filtrosDesdeConsulta('sinMovimiento'), con({ soloSinMovimiento: true }))
   assert.deepEqual(filtrosDesdeConsulta('pendiente'), con({ estado: 'pendiente' }))
   assert.deepEqual(filtrosDesdeConsulta('en_proceso'), con({ estado: 'en_proceso' }))
   assert.deepEqual(filtrosDesdeConsulta('finalizado'), con({ estado: 'finalizado' }))

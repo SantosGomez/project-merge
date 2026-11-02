@@ -19,7 +19,11 @@
       @retry="emit('reintentar')"
     />
 
-    <div v-else-if="resumen" class="resumen-equipo__contenido">
+    <div
+      v-else-if="resumen"
+      class="resumen-equipo__contenido"
+      :class="{ 'resumen-equipo__contenido--muchas': tarjetas.length > 4 }"
+    >
       <q-list
         tag="ul"
         class="resumen-equipo__tarjetas"
@@ -222,6 +226,26 @@ const tarjetas = computed(() =>
   .resumen-equipo__contenido :deep(.dona-estados),
   .resumen-equipo__contenido > .dona-estados {
     flex: 1 1 100%;
+  }
+}
+
+/* Con 5 tarjetas («Mi resumen») la dona baja antes, para que las tarjetas no queden angostas */
+@media (max-width: 1279px) {
+  .resumen-equipo__contenido--muchas {
+    flex-wrap: wrap;
+  }
+
+  .resumen-equipo__contenido--muchas .resumen-equipo__tarjetas,
+  .resumen-equipo__contenido--muchas :deep(.dona-estados),
+  .resumen-equipo__contenido--muchas > .dona-estados {
+    flex: 1 1 100%;
+  }
+}
+
+/* Tableta: 5 tarjetas en una fila no caben, van de 3 en 3 */
+@media (min-width: 601px) and (max-width: 840px) {
+  .resumen-equipo__contenido--muchas .resumen-equipo__tarjetas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

@@ -231,12 +231,30 @@ test('tarjetasResumen agrega «Próximos a vencer» solo en «Mi resumen» y no 
   const claves = (opciones) => tarjetasResumen({ proximosAVencer: 2 }, opciones).map((t) => t.clave)
 
   assert.deepEqual(claves(), ['vencidos', 'abiertos', 'alta_abiertos'])
-  assert.deepEqual(claves({ propios: true }), ['vencidos', 'abiertos', 'alta_abiertos', 'proximosAVencer'])
+  assert.deepEqual(claves({ propios: true }), [
+    'vencidos',
+    'abiertos',
+    'alta_abiertos',
+    'proximosAVencer',
+    'sinMovimiento',
+  ])
 
-  const proximos = tarjetasResumen({ proximosAVencer: 2 }, { propios: true }).at(-1)
+  const tarjeta = (resumen, clave) =>
+    tarjetasResumen(resumen, { propios: true }).find((t) => t.clave === clave)
+  const proximos = tarjeta({ proximosAVencer: 2 }, 'proximosAVencer')
   assert.equal(proximos.valor, 2)
   assert.equal(proximos.alerta, true)
-  assert.equal(tarjetasResumen({}, { propios: true }).at(-1).alerta, false)
+  assert.equal(tarjeta({}, 'proximosAVencer').alerta, false)
+})
+
+test('tarjetasResumen: «Sin movimiento» en «Mi resumen» cuenta los abiertos sin cambios en 7 días', () => {
+  const sinMovimiento = (resumen) =>
+    tarjetasResumen(resumen, { propios: true }).find((t) => t.clave === 'sinMovimiento')
+
+  assert.equal(sinMovimiento({ sinMovimiento: 3 }).valor, 3)
+  assert.equal(sinMovimiento({ sinMovimiento: 3 }).alerta, true)
+  assert.equal(sinMovimiento({}).alerta, false)
+  assert.match(sinMovimiento({}).ayuda, /7 días/)
 })
 
 test('tarjetasResumen marca «Vencidos» como alerta solo cuando hay alguno', () => {

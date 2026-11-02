@@ -8,6 +8,7 @@
 
 import { PROFILES, STATUSES, STATUS_LABELS } from './constants.js'
 import { fechaParaFormulario } from './fechasCaso.js'
+import { DIAS_SIN_MOVIMIENTO } from './filtrosCasos.js'
 import { formatearRol } from './formateadores.js'
 
 /** Texto de ayuda de cada conteo: qué está contando (RNF-03). */
@@ -123,8 +124,8 @@ export const casosAFilas = (casos = []) => {
  * Tarjetas KPI del dashboard a partir del resumen del equipo (`GET /contadores/resumen`).
  * Cada tarjeta trae su número, una línea de desglose y la ayuda del tooltip que explica cómo se cuenta.
  * Un dato que falte cuenta como 0.
- * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos, proximosAVencer? }`
- *   (`proximosAVencer` solo en «Mi resumen»).
+ * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos, proximosAVencer?, sinMovimiento? }`
+ *   (`proximosAVencer` y `sinMovimiento` solo en «Mi resumen»).
  * @param {{ propios?: boolean, seleccionable?: boolean }} [opciones] - `propios`: la ayuda habla de
  *   los casos del contador («Mi resumen»); `seleccionable`: dice qué pasa al tocar la tarjeta
  *   (abrir «Mis casos» filtrado o filtrar la lista de contadores del admin).
@@ -163,16 +164,27 @@ export const tarjetasResumen = (resumen, { propios = false, seleccionable = fals
     },
   ]
 
-  // Solo en «Mi resumen»: el resumen del equipo del admin no trae esta cifra
+  // Solo en «Mi resumen»: el resumen del equipo del admin no trae estas cifras
   if (propios) {
-    tarjetas.push({
-      clave: 'proximosAVencer',
-      titulo: 'Próximos a vencer',
-      valor: proximos,
-      detalle: 'Vencen hoy o en los próximos 3 días',
-      ayuda: `${sujeto} sin finalizar cuya fecha de vencimiento es hoy o en los próximos 3 días.`,
-      alerta: proximos > 0,
-    })
+    const sinMovimiento = dato('sinMovimiento')
+    tarjetas.push(
+      {
+        clave: 'proximosAVencer',
+        titulo: 'Próximos a vencer',
+        valor: proximos,
+        detalle: 'Vencen hoy o en los próximos 3 días',
+        ayuda: `${sujeto} sin finalizar cuya fecha de vencimiento es hoy o en los próximos 3 días.`,
+        alerta: proximos > 0,
+      },
+      {
+        clave: 'sinMovimiento',
+        titulo: 'Sin movimiento',
+        valor: sinMovimiento,
+        detalle: `Sin ningún cambio en ${DIAS_SIN_MOVIMIENTO} días o más`,
+        ayuda: `${sujeto} sin finalizar que nadie ha editado en los últimos ${DIAS_SIN_MOVIMIENTO} días: ni estado, ni fechas, ni observaciones.`,
+        alerta: sinMovimiento > 0,
+      },
+    )
   }
 
   if (!seleccionable) return tarjetas

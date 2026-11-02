@@ -57,6 +57,18 @@
       >
         <q-tooltip>Muestra solo los casos sin finalizar que vencen hoy o en los próximos 3 días.</q-tooltip>
       </q-toggle>
+      <q-toggle
+        :model-value="filtros.soloSinMovimiento"
+        color="primary"
+        label="Sin movimiento"
+        class="filtros-casos__toggle"
+        @update:model-value="(valor) => cambiar({ soloSinMovimiento: valor })"
+      >
+        <q-tooltip
+          >Muestra solo los casos sin finalizar que nadie ha editado en los últimos
+          {{ DIAS_SIN_MOVIMIENTO }} días.</q-tooltip
+        >
+      </q-toggle>
 
       <q-btn
         v-if="hayFiltrosExtra"
@@ -78,7 +90,7 @@
 <script setup>
 import { computed } from 'vue'
 
-import { FILTROS_INICIALES } from '../utils/filtrosCasos.js'
+import { DIAS_SIN_MOVIMIENTO, FILTROS_INICIALES } from '../utils/filtrosCasos.js'
 
 /*
  * Barra de filtros de casos: estado (chips) y, en «Mis casos», solo importantes, solo vencidos

@@ -27,7 +27,20 @@ test('resumenMisCasos cuenta por estado, abiertos, vencidos, Alta abiertos y pr�
     vencidos: 2,
     alta_abiertos: 2,
     proximosAVencer: 1,
+    sinMovimiento: 0,
   })
+})
+
+test('resumenMisCasos cuenta los abiertos sin cambios desde hace 7 días o más', () => {
+  const conCambio = (estado, actualizado_en) => ({ ...caso(estado, 'media', '2026-12-01 00:00:00'), actualizado_en })
+  const casos = [
+    conCambio('pendiente', '2026-10-26 09:00:00'), // hace 7 días
+    conCambio('en_proceso', '2026-10-01 09:00:00'),
+    conCambio('pendiente', '2026-10-27 09:00:00'), // hace 6 días: no
+    conCambio('finalizado', '2026-10-01 09:00:00'), // finalizado: no
+  ]
+
+  assert.equal(resumenMisCasos(casos, HOY).sinMovimiento, 2)
 })
 
 test('resumenMisCasos sin casos entrega todo en cero', () => {
@@ -39,6 +52,7 @@ test('resumenMisCasos sin casos entrega todo en cero', () => {
     vencidos: 0,
     alta_abiertos: 0,
     proximosAVencer: 0,
+    sinMovimiento: 0,
   }
   assert.deepEqual(resumenMisCasos([], HOY), ceros)
   assert.deepEqual(resumenMisCasos(undefined, HOY), ceros)

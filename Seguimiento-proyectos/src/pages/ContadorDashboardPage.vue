@@ -81,7 +81,9 @@
             v-if="!cases.cargando && !cases.error"
             :casos="agenda"
             :hoy="hoyLocal()"
+            :cambiando="casoCambiando"
             @editar="abrirEdicion"
+            @cambiar-estado="cambiarEstado"
           />
         </q-tab-panel>
 
@@ -112,13 +114,14 @@ import TableroAuditorias from '../components/TableroAuditorias.vue'
 import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
+import { STATUS_LABELS } from '../utils/constants.js'
 import { agendaCasos, hoyLocal } from '../utils/filtrosCasos.js'
 import { resumenMisCasos } from '../utils/resumenMisCasos.js'
 
 /*
  * «Mi resumen» del contador: las mismas gráficas del dashboard del administrador, pero solo
  * con sus casos y sus auditorías, más la agenda de lo que vence pronto (que se edita aquí
- * mismo). Las cifras de casos salen de la misma lista de «Mis casos».
+ * mismo o se le cambia el estado con un botón). Las cifras de casos salen de la misma lista de «Mis casos».
  */
 
 const $q = useQuasar()
@@ -144,6 +147,25 @@ const casoEnEdicion = ref(null)
 const abrirEdicion = (casoId) => {
   casoEnEdicion.value = cases.casos.find((caso) => String(caso.id) === String(casoId)) ?? null
   dialogoEdicionAbierto.value = casoEnEdicion.value !== null
+}
+
+const casoCambiando = ref(null)
+
+/**
+ * Botón de la agenda: guarda el estado siguiente y avisa; si falla, muestra el motivo del servidor.
+ * @param {number|string} casoId
+ * @param {string} estado - código interno del estado nuevo.
+ */
+const cambiarEstado = async (casoId, estado) => {
+  casoCambiando.value = casoId
+  const resultado = await cases.actualizarCaso(casoId, { estado })
+  casoCambiando.value = null
+
+  if (resultado.ok) {
+    $q.notify({ type: 'positive', message: `Caso cambiado a ${STATUS_LABELS[estado]}.` })
+  } else if (!resultado.descartado) {
+    $q.notify({ type: 'negative', message: resultado.error?.mensaje ?? 'Error al guardar el cambio.' })
+  }
 }
 
 /**

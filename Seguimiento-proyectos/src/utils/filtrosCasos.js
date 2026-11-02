@@ -8,6 +8,7 @@ export const FILTROS_INICIALES = Object.freeze({
   soloVencidos: false,
   soloAlta: false,
   soloProximos: false,
+  soloSinMovimiento: false,
 })
 
 /*
@@ -19,6 +20,7 @@ const FILTROS_POR_CONSULTA = Object.freeze({
   abiertos: {},
   alta_abiertos: { soloAlta: true },
   proximosAVencer: { soloProximos: true },
+  sinMovimiento: { soloSinMovimiento: true },
   pendiente: { estado: 'pendiente' },
   en_proceso: { estado: 'en_proceso' },
   finalizado: { estado: 'finalizado' },
@@ -82,6 +84,23 @@ export const esCasoProximoAVencer = (caso, hoy) => {
   return vence <= hoyLocal(new Date(anio, mes - 1, dia + DIAS_PROXIMO_A_VENCER))
 }
 
+/** Días sin ningún cambio a partir de los cuales un caso abierto cuenta como «sin movimiento». */
+export const DIAS_SIN_MOVIMIENTO = 7
+
+/**
+ * Un caso está sin movimiento si no está finalizado y su último cambio (`actualizado_en`) fue
+ * hace 7 días o más. Solo cuenta el día: la hora del cambio no importa.
+ * @param {Object} caso - caso interno (`estado`, `actualizado_en`).
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @returns {boolean}
+ */
+export const esCasoSinMovimiento = (caso, hoy) => {
+  const cambio = diaDe(caso.actualizado_en)
+  if (cambio === '' || caso.estado === 'finalizado') return false
+  const [anio, mes, dia] = hoy.split('-').map(Number)
+  return cambio <= hoyLocal(new Date(anio, mes - 1, dia - DIAS_SIN_MOVIMIENTO))
+}
+
 const cumpleEstado = (caso, estado) => {
   if (estado === 'todos') return true
   if (estado === 'abiertos') return ESTADOS_ABIERTOS.includes(caso.estado)
@@ -89,10 +108,10 @@ const cumpleEstado = (caso, estado) => {
 }
 
 /**
- * Filtra por estado, importantes, vencidos, prioridad Alta y próximos a vencer, y ordena por el
- * vencimiento más cercano.
+ * Filtra por estado, importantes, vencidos, prioridad Alta, próximos a vencer y sin movimiento, y
+ * ordena por el vencimiento más cercano.
  * @param {Array<Object>} casos - casos internos del store.
- * @param {{ estado: string, soloImportantes: boolean, soloVencidos: boolean, soloAlta?: boolean, soloProximos?: boolean }} filtros
+ * @param {{ estado: string, soloImportantes: boolean, soloVencidos: boolean, soloAlta?: boolean, soloProximos?: boolean, soloSinMovimiento?: boolean }} filtros
  *   estado: 'abiertos', 'pendiente', 'en_proceso', 'finalizado' o 'todos'.
  * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
  * @returns {Array<Object>} arreglo nuevo.
@@ -105,7 +124,8 @@ export const filtrarCasos = (casos, filtros, hoy) =>
         (!filtros.soloImportantes || Boolean(caso.importante)) &&
         (!filtros.soloVencidos || esCasoVencido(caso, hoy)) &&
         (!filtros.soloAlta || caso.prioridad === 'alta') &&
-        (!filtros.soloProximos || esCasoProximoAVencer(caso, hoy)),
+        (!filtros.soloProximos || esCasoProximoAVencer(caso, hoy)) &&
+        (!filtros.soloSinMovimiento || esCasoSinMovimiento(caso, hoy)),
     )
     .sort(
       (a, b) =>
@@ -140,6 +160,29 @@ export const diasParaVencerCaso = (caso, hoy) => {
  */
 export const agendaCasos = (casos, hoy, limite = 5) =>
   filtrarCasos(casos, FILTROS_INICIALES, hoy).slice(0, limite)
+
+// Siguiente paso de cada estado abierto en la agenda: botón, ícono y lo que explica su tooltip.
+const ACCIONES_RAPIDAS = Object.freeze({
+  pendiente: Object.freeze({
+    estado: 'en_proceso',
+    etiqueta: 'Empezar',
+    icono: 'play_arrow',
+    ayuda: 'Cambia el caso a En proceso: ya empezaste a trabajarlo.',
+  }),
+  en_proceso: Object.freeze({
+    estado: 'finalizado',
+    etiqueta: 'Finalizar',
+    icono: 'check',
+    ayuda: 'Cambia el caso a Finalizado: ya está terminado y sale de la agenda.',
+  }),
+})
+
+/**
+ * Acción rápida de la agenda de «Mi resumen» según el estado del caso.
+ * @param {string} estado - código interno del estado.
+ * @returns {{ estado: string, etiqueta: string, icono: string, ayuda: string }|null} null si no hay siguiente paso.
+ */
+export const accionRapidaEstado = (estado) => ACCIONES_RAPIDAS[estado] ?? null
 
 /**
  * Corta la lista en páginas. Si la página pedida ya no existe (p. ej. tras filtrar), se usa la última.

@@ -3,7 +3,8 @@
     <q-card-section class="agenda-casos__cabecera">
       <h3 id="agenda-casos-titulo" class="agenda-casos__titulo">Lo que vence pronto</h3>
       <p class="agenda-casos__ayuda">
-        Tus casos abiertos que vencen antes, los vencidos primero. Toca uno para editarlo.
+        Tus casos abiertos que vencen antes, los vencidos primero. Toca uno para editarlo o usa
+        su botón para cambiarle el estado.
       </p>
     </q-card-section>
 
@@ -33,6 +34,27 @@
           </span>
         </q-item-section>
 
+        <!-- Cambio de estado sin abrir el formulario; .stop para no abrir también «Editar» -->
+        <q-item-section v-if="accionRapidaEstado(caso.estado)" side>
+          <q-btn
+            outline
+            no-caps
+            dense
+            color="primary"
+            class="agenda-casos__accion control-touch"
+            :icon="accionRapidaEstado(caso.estado).icono"
+            :label="accionRapidaEstado(caso.estado).etiqueta"
+            :loading="cambiando === caso.id"
+            :disable="cambiando !== null"
+            :aria-label="`${accionRapidaEstado(caso.estado).etiqueta}: ${caso.cliente}`"
+            @click.stop="emit('cambiarEstado', caso.id, accionRapidaEstado(caso.estado).estado)"
+            @keydown.enter.stop
+            @keydown.space.stop
+          >
+            <q-tooltip>{{ accionRapidaEstado(caso.estado).ayuda }}</q-tooltip>
+          </q-btn>
+        </q-item-section>
+
         <q-tooltip>Abre el formulario para editar este caso.</q-tooltip>
       </q-item>
     </q-list>
@@ -43,21 +65,29 @@
 import PriorityTag from './PriorityTag.vue'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
-import { diasParaVencerCaso, esCasoProximoAVencer, esCasoVencido } from '../utils/filtrosCasos.js'
+import {
+  accionRapidaEstado,
+  diasParaVencerCaso,
+  esCasoProximoAVencer,
+  esCasoVencido,
+} from '../utils/filtrosCasos.js'
 import { textoDiasPlazo } from '../utils/semaforoAuditoria.js'
 
 /*
  * Agenda de «Mi resumen»: los casos abiertos que vencen antes, ya elegidos y ordenados por la
- * página (`agendaCasos`). Solo pinta; cada fila emite `editar` con el id del caso.
+ * página (`agendaCasos`). Solo pinta; cada fila emite `editar` con el id del caso y su botón
+ * `cambiarEstado` con el id y el estado siguiente.
  */
 const props = defineProps({
   /** Casos internos del store, ya ordenados por vencimiento. */
   casos: { type: Array, default: () => [] },
   /** Fecha local de hoy en AAAA-MM-DD. */
   hoy: { type: String, required: true },
+  /** Id del caso cuyo estado se está guardando; mientras tanto los botones se bloquean. */
+  cambiando: { type: [Number, String], default: null },
 })
 
-const emit = defineEmits(['editar'])
+const emit = defineEmits(['editar', 'cambiarEstado'])
 
 /** Color del plazo: rojo si ya venció, ámbar si vence en 3 días o menos. */
 const urgencia = (caso) => {
