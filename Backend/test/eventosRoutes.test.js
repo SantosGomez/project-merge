@@ -333,6 +333,88 @@ async function testAdministradorSeEnteraDeCambiosEnAuditorias() {
   otro.cerrar();
 }
 
+async function testContadoresAsignadosSeEnteranDeCambiosEnAuditorias() {
+  const tercero = await crearUsuarioDePrueba('contador');
+  const tokenTercero = await iniciarSesion(servidor.puerto, tercero.correo, tercero.password);
+  const admin = await abrirEventos(await pedirPase(tokenAdmin));
+  const asignado = await abrirEventos(await pedirPase(tokenContador));
+  const otro = await abrirEventos(await pedirPase(tokenOtro));
+  const ajeno = await abrirEventos(await pedirPase(tokenTercero));
+  const conexiones = [admin, asignado, otro, ajeno];
+  for (const conexion of conexiones) await conexion.esperar('conectado');
+
+  /** Comprueba quién recibió el aviso de la auditoría y vacía lo recibido para el siguiente paso. */
+  const revisarAvisos = async (auditoriaId, reciben, noReciben, que) => {
+    for (const conexion of reciben) {
+      const aviso = await conexion.esperar('auditoria-actualizada');
+      assert.ok(aviso, `recibe el aviso: ${que}`);
+      assert.deepStrictEqual(aviso.datos, { auditoriaId });
+    }
+    for (const conexion of noReciben) {
+      assert.strictEqual(await conexion.esperar('auditoria-actualizada', 200), null, `no recibe el aviso: ${que}`);
+    }
+    for (const conexion of conexiones) conexion.eventos.length = 0;
+  };
+
+  // El administrador registra una auditoría asignada al contador
+  const alta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/auditorias',
+    {
+      cliente: 'zz_test Auditoría asignada en vivo',
+      no_expediente: 'ZZ-VIVO-2',
+      dependencia: 'SAT – ADAF',
+      tipo_auditoria: 'Revisión de gabinete',
+      estatal: false,
+      periodo_inicio: '01-01-2023',
+      periodo_final: '31-12-2023',
+      fecha_inicio: '15-02-2026',
+      fecha_vencimiento: '15-02-2027',
+      contadores: [contador.id],
+    },
+    tokenAdmin
+  );
+  assert.strictEqual(alta.statusCode, 201);
+  const auditoriaId = alta.body.auditoria.id;
+  await revisarAvisos(auditoriaId, [admin, asignado], [otro, ajeno], 'auditoría asignada');
+
+  // El contador registra un evento en la bitácora
+  const evento = await peticion(
+    servidor.puerto,
+    'POST',
+    `/auditorias/${auditoriaId}/eventos`,
+    { evento: 'Acta parcial', fase_id: 2, fecha: '20-02-2026', fecha_limite: '02-03-2026' },
+    tokenContador
+  );
+  assert.strictEqual(evento.statusCode, 201);
+  await revisarAvisos(auditoriaId, [admin, asignado], [otro, ajeno], 'evento registrado');
+
+  // El administrador la reasigna: se entera quien la deja y quien la recibe
+  const reasignada = await peticion(
+    servidor.puerto,
+    'PATCH',
+    `/auditorias/${auditoriaId}`,
+    { contadores: [otroContador.id] },
+    tokenAdmin
+  );
+  assert.strictEqual(reasignada.statusCode, 200);
+  await revisarAvisos(auditoriaId, [admin, asignado, otro], [ajeno], 'auditoría reasignada');
+
+  // El nuevo asignado borra el evento: el anterior ya no se entera
+  const borrado = await peticion(
+    servidor.puerto,
+    'DELETE',
+    `/auditorias/${auditoriaId}/eventos/${evento.body.evento.id}`,
+    null,
+    tokenOtro
+  );
+  assert.strictEqual(borrado.statusCode, 200);
+  await revisarAvisos(auditoriaId, [admin, otro], [asignado, ajeno], 'evento borrado');
+
+  for (const conexion of conexiones) conexion.cerrar();
+}
+
 describe('tiempo real con Server-Sent Events', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -360,6 +442,7 @@ describe('tiempo real con Server-Sent Events', () => {
   test('el administrador se entera al instante de casos nuevos y editados', testAdministradorSeEnteraDeCasosNuevosYEditados);
   test('el contador recibe el aviso cuando el administrador cambia la prioridad', testContadorRecibeAvisoCuandoElAdministradorCambiaLaPrioridad);
   test('el administrador se entera al instante de cambios en auditorías y su bitácora', testAdministradorSeEnteraDeCambiosEnAuditorias);
+  test('los contadores asignados se enteran al instante de cambios en sus auditorías', testContadoresAsignadosSeEnteranDeCambiosEnAuditorias);
   test('cerrar sesión cierra la conexión de esa sesión', testCerrarSesionCierraLaConexion);
   test('hay latidos y una sesión revocada cierra la conexión', testLatidoYSesionRevocadaPorOtroLado);
 });

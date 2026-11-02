@@ -2,7 +2,7 @@ const AuditoriaModel = require('../models/AuditoriaModel');
 const { formatLocalDate, formatearFechaISO, nowLocal, parseFechaInicio } = require('../utils/dateUtils');
 const { calcularSeguimiento } = require('../utils/seguimientoAuditoria');
 const { buildError } = require('../utils/errorUtils');
-const { eventos } = require('../utils/eventos');
+const { avisarCambioAuditoria } = require('../utils/avisosAuditoria');
 
 const ERROR_CONTADORES_FALTANTES = buildError(
   'Faltan los contadores asignados',
@@ -188,8 +188,8 @@ async function createAuditoria(req, res) {
 
   const id = await AuditoriaModel.create(datos, contadores, req.user.id);
   const auditoria = await AuditoriaModel.findById(id);
-  // El tablero de auditorías del administrador se actualiza solo
-  eventos.enviarARol('administrador', 'auditoria-actualizada', { auditoriaId: id });
+  // El tablero de auditorías del administrador y el de sus contadores se actualizan solos
+  avisarCambioAuditoria(id, auditoria.contadores);
   return res.status(201).json({ mensaje: 'Auditoría registrada correctamente', auditoria: auditoriaParaApi(auditoria) });
 }
 
@@ -240,7 +240,8 @@ async function updateAuditoria(req, res) {
 
   await AuditoriaModel.update(id, datos, contadores);
   const guardada = await AuditoriaModel.findById(id);
-  eventos.enviarARol('administrador', 'auditoria-actualizada', { auditoriaId: id });
+  // Al reasignar se avisa también a quien la deja, para que desaparezca de su tablero
+  avisarCambioAuditoria(id, [...fila.contadores, ...guardada.contadores]);
   return res.status(200).json({ mensaje: 'Auditoría actualizada correctamente', auditoria: auditoriaParaApi(guardada) });
 }
 
