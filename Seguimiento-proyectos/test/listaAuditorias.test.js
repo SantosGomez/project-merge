@@ -8,6 +8,7 @@ import {
   contarPorSemaforo,
   filtrarAuditorias,
   ordenarAuditorias,
+  destinoVolverFicha,
   entregaEnTiempo,
   plazoDeEvento,
 } from '../src/utils/listaAuditorias.js'
@@ -186,5 +187,29 @@ test('entregaEnTiempo: Sí, No o — según la fecha límite y la entrega', () =
     entregaEnTiempo(evento({ fechaLimite: '28-10-2026', estado: 'Completado' }), hoy),
     '—',
     'cerrado sin fecha de entrega',
+  )
+})
+
+test('destinoVolverFicha: vuelve al tablero si se llegó desde el dashboard; si no, a la lista', () => {
+  const desdeTablero = destinoVolverFicha({
+    name: 'admin-dashboard',
+    fullPath: '/admin/dashboard?tab=auditorias&vista=kanban',
+  })
+  assert.deepEqual(desdeTablero, {
+    etiqueta: 'Volver al tablero',
+    ayuda: 'Regresa al tablero de auditorías del dashboard, en la misma vista.',
+    destino: '/admin/dashboard?tab=auditorias&vista=kanban',
+  })
+
+  const aLaLista = {
+    etiqueta: 'Volver a auditorías',
+    ayuda: 'Regresa a la lista de auditorías.',
+    destino: { name: 'auditorias' },
+  }
+  assert.deepEqual(destinoVolverFicha({ name: 'auditorias', fullPath: '/auditorias' }), aLaLista)
+  assert.deepEqual(
+    destinoVolverFicha(null),
+    aLaLista,
+    'sin página anterior (enlace directo o recarga)',
   )
 })

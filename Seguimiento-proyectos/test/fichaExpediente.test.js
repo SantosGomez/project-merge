@@ -118,3 +118,14 @@ describe('Bitácora: eventos en un scroll area desde 1024 px', () => {
     assert.match(impresion, /:deep\(\.q-scrollarea__content\)[\s\S]*?position: static !important/)
   })
 })
+
+describe('Ficha: «Volver» recuerda de dónde se llegó', () => {
+  const ficha = read('../src/pages/AuditoriaFichaPage.vue')
+
+  it('el botón usa destinoVolverFicha con la página anterior del historial', () => {
+    assert.match(ficha, /:label="volver\.etiqueta"[\s\S]*?:to="volver\.destino"/)
+    assert.match(ficha, /<q-tooltip>\{\{ volver\.ayuda \}\}<\/q-tooltip>/)
+    assert.match(ficha, /window\.history\.state\?\.back/)
+    assert.match(ficha, /destinoVolverFicha\(/)
+  })
+})

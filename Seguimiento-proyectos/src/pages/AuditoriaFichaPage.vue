@@ -5,11 +5,11 @@
       no-caps
       color="dg-acento"
       icon="arrow_back"
-      label="Volver a auditorías"
+      :label="volver.etiqueta"
       class="ficha__volver control-touch"
-      :to="{ name: 'auditorias' }"
+      :to="volver.destino"
     >
-      <q-tooltip>Regresa a la lista de auditorías.</q-tooltip>
+      <q-tooltip>{{ volver.ayuda }}</q-tooltip>
     </q-btn>
 
     <ScreenLoader v-if="cargando" text="Cargando la ficha de la auditoría…" />
@@ -186,7 +186,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
@@ -196,9 +196,15 @@ import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarFases, obtenerAuditoria } from '../services/auditoriaService.js'
 import { listCounters } from '../services/counterService.js'
 import { useSessionStore } from '../stores/session.js'
-import { plazoDeEvento } from '../utils/listaAuditorias.js'
+import { destinoVolverFicha, plazoDeEvento } from '../utils/listaAuditorias.js'
 
 const route = useRoute()
+const router = useRouter()
+
+// «Volver» regresa a donde se estaba: el router guarda la página anterior en history.state.back
+// (no existe al abrir la ficha con un enlace directo o al recargar).
+const paginaAnterior = window.history.state?.back
+const volver = destinoVolverFicha(paginaAnterior ? router.resolve(paginaAnterior) : null)
 const $q = useQuasar()
 const session = useSessionStore()
 
