@@ -255,6 +255,84 @@ async function testLatidoYSesionRevocadaPorOtroLado() {
   }
 }
 
+async function testAdministradorSeEnteraDeCambiosEnAuditorias() {
+  const admin = await abrirEventos(await pedirPase(tokenAdmin));
+  const otro = await abrirEventos(await pedirPase(tokenOtro));
+  await admin.esperar('conectado');
+  await otro.esperar('conectado');
+
+  // Cada escritura en una auditoría o en su bitácora avisa a los administradores
+  const esperarAviso = async (respuesta, estado, que) => {
+    assert.strictEqual(respuesta.statusCode, estado, que);
+    const aviso = await admin.esperar('auditoria-actualizada');
+    assert.ok(aviso, `el administrador recibe el aviso: ${que}`);
+    admin.eventos.length = 0;
+    return aviso;
+  };
+
+  const alta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/auditorias',
+    {
+      cliente: 'zz_test Auditoría en vivo',
+      no_expediente: 'ZZ-VIVO-1',
+      dependencia: 'SAT – ADAF',
+      tipo_auditoria: 'Visita Domiciliaria',
+      estatal: false,
+      periodo_inicio: '01-01-2023',
+      periodo_final: '31-12-2023',
+      fecha_inicio: '15-02-2026',
+      fecha_vencimiento: '15-02-2027',
+    },
+    tokenContador
+  );
+  const avisoAlta = await esperarAviso(alta, 201, 'auditoría registrada');
+  const auditoriaId = alta.body.auditoria.id;
+  assert.deepStrictEqual(avisoAlta.datos, { auditoriaId });
+
+  await esperarAviso(
+    await peticion(servidor.puerto, 'PATCH', `/auditorias/${auditoriaId}`, { estado: 'En Proceso' }, tokenContador),
+    200,
+    'auditoría editada'
+  );
+
+  const evento = await peticion(
+    servidor.puerto,
+    'POST',
+    `/auditorias/${auditoriaId}/eventos`,
+    { evento: 'Acta parcial', fase_id: 2, fecha: '20-02-2026', fecha_limite: '02-03-2026' },
+    tokenContador
+  );
+  await esperarAviso(evento, 201, 'evento registrado');
+  const eventoId = evento.body.evento.id;
+
+  await esperarAviso(
+    await peticion(
+      servidor.puerto,
+      'PATCH',
+      `/auditorias/${auditoriaId}/eventos/${eventoId}`,
+      { fecha_entrega: '01-03-2026', estado: 'Completado' },
+      tokenContador
+    ),
+    200,
+    'evento editado'
+  );
+  await esperarAviso(
+    await peticion(servidor.puerto, 'DELETE', `/auditorias/${auditoriaId}/eventos/${eventoId}`, null, tokenContador),
+    200,
+    'evento borrado'
+  );
+
+  assert.strictEqual(
+    otro.eventos.filter((e) => e.nombre === 'auditoria-actualizada').length,
+    0,
+    'un contador no recibe avisos de auditorías'
+  );
+  admin.cerrar();
+  otro.cerrar();
+}
+
 describe('tiempo real con Server-Sent Events', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -281,6 +359,7 @@ describe('tiempo real con Server-Sent Events', () => {
   test('tener la conexión abierta no cuenta como actividad de la sesión', testConexionNoCuentaComoActividad);
   test('el administrador se entera al instante de casos nuevos y editados', testAdministradorSeEnteraDeCasosNuevosYEditados);
   test('el contador recibe el aviso cuando el administrador cambia la prioridad', testContadorRecibeAvisoCuandoElAdministradorCambiaLaPrioridad);
+  test('el administrador se entera al instante de cambios en auditorías y su bitácora', testAdministradorSeEnteraDeCambiosEnAuditorias);
   test('cerrar sesión cierra la conexión de esa sesión', testCerrarSesionCierraLaConexion);
   test('hay latidos y una sesión revocada cierra la conexión', testLatidoYSesionRevocadaPorOtroLado);
 });

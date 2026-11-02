@@ -286,3 +286,31 @@ describe('Dashboard: el botón de asignar cambia según la pestaña', () => {
     assert.match(tablero, /defineExpose\(\{ cargar \}\)/)
   })
 })
+
+describe('Dashboard: tiempo real y encabezado por pestaña', () => {
+  const pagina = read('../src/pages/AdminDashboardPage.vue')
+  const tablero = read('../src/components/TableroAuditorias.vue')
+
+  it('el tablero se recarga en silencio al llegar «auditoria-actualizada» o al reconectar', () => {
+    assert.match(tablero, /eventos\.escuchar\('auditoria-actualizada', refrescarEnSilencio\)/)
+    assert.match(tablero, /eventos\.escuchar\('reconectado', refrescarEnSilencio\)/)
+    assert.match(tablero, /onBeforeUnmount\(/)
+    const silencioso = tablero.slice(
+      tablero.indexOf('const refrescarEnSilencio'),
+      tablero.indexOf('onActivated(cargar)'),
+    )
+    assert.match(silencioso, /listarAuditorias\(\)/)
+    assert.doesNotMatch(silencioso, /cargando\.value = true/, 'sin loader: la vista no parpadea')
+  })
+
+  it('el texto del encabezado cambia con la pestaña', () => {
+    assert.match(
+      pagina,
+      /<p v-if="pestana === 'casos'" class="dashboard-page__lead">\s*Revisa cuántos casos tiene/,
+    )
+    assert.match(
+      pagina,
+      /<p v-else class="dashboard-page__lead">\s*Revisa el avance de todas las auditorías/,
+    )
+  })
+})

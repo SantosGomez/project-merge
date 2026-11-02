@@ -2,6 +2,7 @@ const AuditoriaModel = require('../models/AuditoriaModel');
 const AuditoriaEventoModel = require('../models/AuditoriaEventoModel');
 const { formatLocalDate, formatearFechaISO, parseFechaInicio } = require('../utils/dateUtils');
 const { buildError } = require('../utils/errorUtils');
+const { eventos } = require('../utils/eventos');
 
 const ESTADOS_EVENTO = ['Pendiente', 'Revision', 'En Proceso', 'Rechazado', 'Completado'];
 
@@ -163,6 +164,8 @@ async function createEvento(req, res) {
 
   const eventoId = await AuditoriaEventoModel.create(auditoria.IdAuditoria, datos, req.user.id);
   const evento = await AuditoriaEventoModel.findById(auditoria.IdAuditoria, eventoId);
+  // La bitácora cambia la fase, el vencimiento y el semáforo: el tablero del administrador se actualiza solo
+  eventos.enviarARol('administrador', 'auditoria-actualizada', { auditoriaId: auditoria.IdAuditoria });
   return res.status(201).json({ mensaje: 'Evento registrado correctamente', evento: eventoParaApi(evento) });
 }
 
@@ -218,6 +221,7 @@ async function updateEvento(req, res) {
 
   await AuditoriaEventoModel.update(evento.Id_AudDtl, datos);
   const guardado = await AuditoriaEventoModel.findById(auditoria.IdAuditoria, evento.Id_AudDtl);
+  eventos.enviarARol('administrador', 'auditoria-actualizada', { auditoriaId: auditoria.IdAuditoria });
   return res.status(200).json({ mensaje: 'Evento actualizado correctamente', evento: eventoParaApi(guardado) });
 }
 
@@ -231,6 +235,7 @@ async function deleteEvento(req, res) {
   if (!evento) return;
 
   await AuditoriaEventoModel.remove(evento.Id_AudDtl);
+  eventos.enviarARol('administrador', 'auditoria-actualizada', { auditoriaId: auditoria.IdAuditoria });
   return res.status(200).json({ mensaje: 'Evento borrado correctamente' });
 }
 

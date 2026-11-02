@@ -269,13 +269,14 @@
 </template>
 
 <script setup>
-import { computed, onActivated, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import EmptyState from './EmptyState.vue'
 import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import { listarAuditorias, listarFases } from '../services/auditoriaService.js'
+import { eventos } from '../services/eventosService.js'
 import { SEMAFOROS, contarPorSemaforo, ordenarAuditorias } from '../utils/listaAuditorias.js'
 import {
   activasPorFase,
@@ -380,6 +381,26 @@ const cargar = async () => {
     cargando.value = false
   }
 }
+
+/*
+ * Tiempo real: cuando alguien registra o edita una auditoría o su bitácora, el servidor avisa
+ * y la lista se vuelve a pedir sin loader, para que la vista no parpadee. Si falla, se
+ * conservan los datos que ya se ven. Al reconectarse se refresca por si se perdió algún aviso.
+ */
+const refrescarEnSilencio = async () => {
+  if (cargando.value || errorCarga.value) return
+  try {
+    auditorias.value = await listarAuditorias()
+  } catch {
+    // Se conserva la lista anterior; el siguiente aviso o la siguiente visita la actualizan.
+  }
+}
+
+const dejarDeEscuchar = [
+  eventos.escuchar('auditoria-actualizada', refrescarEnSilencio),
+  eventos.escuchar('reconectado', refrescarEnSilencio),
+]
+onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
 // La pestaña vive dentro de un keep-alive: se recarga cada vez que se vuelve a mostrar.
 onActivated(cargar)
