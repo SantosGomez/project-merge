@@ -124,11 +124,12 @@ export const casosAFilas = (casos = []) => {
  * Cada tarjeta trae su número, una línea de desglose y la ayuda del tooltip que explica cómo se cuenta.
  * Un dato que falte cuenta como 0.
  * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos }`.
- * @param {{ propios?: boolean }} [opciones] - `propios`: la ayuda habla de los casos del contador
- *   («Mi resumen») y dice que la tarjeta abre «Mis casos» filtrado.
+ * @param {{ propios?: boolean, seleccionable?: boolean }} [opciones] - `propios`: la ayuda habla de
+ *   los casos del contador («Mi resumen»); `seleccionable`: dice qué pasa al tocar la tarjeta
+ *   (abrir «Mis casos» filtrado o filtrar la lista de contadores del admin).
  * @returns {Array<{ clave: string, titulo: string, valor: number, detalle: string, ayuda: string, alerta: boolean }>}
  */
-export const tarjetasResumen = (resumen, { propios = false } = {}) => {
+export const tarjetasResumen = (resumen, { propios = false, seleccionable = false } = {}) => {
   const dato = (campo) => Number(resumen?.[campo]) || 0
   const sujeto = propios ? 'Tus casos' : 'Casos de todo el equipo'
   const vencidos = dato('vencidos')
@@ -160,11 +161,11 @@ export const tarjetasResumen = (resumen, { propios = false } = {}) => {
     },
   ]
 
-  if (!propios) return tarjetas
-  return tarjetas.map((tarjeta) => ({
-    ...tarjeta,
-    ayuda: `${tarjeta.ayuda} Toca la tarjeta para verlos en «Mis casos».`,
-  }))
+  if (!seleccionable) return tarjetas
+  const alTocar = propios
+    ? 'Toca la tarjeta para verlos en «Mis casos».'
+    : 'Toca la tarjeta para ver solo a los contadores que tienen estos casos.'
+  return tarjetas.map((tarjeta) => ({ ...tarjeta, ayuda: `${tarjeta.ayuda} ${alTocar}` }))
 }
 
 /** Color de cada estado en la dona del dashboard: ámbar (en espera), azul (en curso) y verde (listo). */

@@ -11,6 +11,8 @@ import {
   filtrarCasos,
   filtrosDesdeConsulta,
   filtrarContadores,
+  contadoresPorKpi,
+  textoCifraKpi,
   filtrarUsuarios,
   paginar,
 } from '../src/utils/filtrosCasos.js'
@@ -147,6 +149,43 @@ const CONTADORES = [
   { id: 2, nombre: 'Luis Méndez' },
   { id: 3, nombre: 'Sofía Ruiz' },
 ]
+
+test('contadoresPorKpi deja solo a quien tiene casos de esa tarjeta, de más a menos y luego por nombre', () => {
+  const contadores = [
+    { id: 1, nombre: 'Zoe' },
+    { id: 2, nombre: 'Ana' },
+    { id: 3, nombre: 'Beto' },
+    { id: 4, nombre: 'Carla' },
+  ]
+  const porContador = {
+    1: { vencidos: 2, pendiente: 0 },
+    2: { vencidos: 2, pendiente: 1 },
+    3: { vencidos: 5, pendiente: 0 },
+  }
+
+  assert.deepEqual(
+    contadoresPorKpi(contadores, porContador, 'vencidos').map((c) => c.nombre),
+    ['Beto', 'Ana', 'Zoe'],
+    'Carla no está en el resumen y cuenta como 0',
+  )
+  assert.deepEqual(contadoresPorKpi(contadores, porContador, 'pendiente').map((c) => c.nombre), ['Ana'])
+})
+
+test('contadoresPorKpi sin filtro devuelve la misma lista sin tocarla', () => {
+  const contadores = [{ id: 2, nombre: 'Beto' }, { id: 1, nombre: 'Ana' }]
+  assert.equal(contadoresPorKpi(contadores, {}, null), contadores)
+  assert.deepEqual(contadoresPorKpi(contadores, undefined, 'vencidos'), [])
+})
+
+test('textoCifraKpi dice la cifra de cada tarjeta en singular o plural', () => {
+  assert.equal(textoCifraKpi('vencidos', 1), '1 vencido')
+  assert.equal(textoCifraKpi('vencidos', 3), '3 vencidos')
+  assert.equal(textoCifraKpi('abiertos', 2), '2 abiertos')
+  assert.equal(textoCifraKpi('alta_abiertos', 1), '1 de prioridad Alta')
+  assert.equal(textoCifraKpi('pendiente', 4), '4 pendientes')
+  assert.equal(textoCifraKpi('en_proceso', 1), '1 en proceso')
+  assert.equal(textoCifraKpi('finalizado', 1), '1 finalizado')
+})
 
 test('filtrarContadores busca por nombre sin importar mayúsculas ni acentos', () => {
   assert.deepEqual(ids(filtrarContadores(CONTADORES, 'lopez')), [1])

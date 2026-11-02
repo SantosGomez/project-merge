@@ -79,9 +79,10 @@ export const crearCounterService = (opciones = {}) => {
   }
 
   /**
-   * GET /contadores/resumen: total de casos del equipo para los KPIs del dashboard.
+   * GET /contadores/resumen: total de casos del equipo para los KPIs del dashboard y las
+   * mismas cifras de cada contador (`porContador`, por su id), para filtrar la lista.
    * @param {{ soloImportantes?: boolean }} [opciones] - devolver solo los casos importantes.
-   * @returns {Promise<{ pendiente: number, en_proceso: number, finalizado: number, abiertos: number, vencidos: number, alta_abiertos: number }>}
+   * @returns {Promise<{ pendiente: number, en_proceso: number, finalizado: number, abiertos: number, vencidos: number, alta_abiertos: number, porContador: Object<number, Object> }>}
    */
   const getResumenEquipo = async (opciones) => {
     const { data } = await api.get(`/contadores/resumen${filtroImportantes(opciones)}`)
@@ -89,13 +90,18 @@ export const crearCounterService = (opciones = {}) => {
     if (equipo === null || typeof equipo !== 'object') {
       throw crearErrorInesperado('el resumen de casos del equipo')
     }
+    const cifras = (fila) => ({
+      pendiente: Number(fila.pendiente) || 0,
+      en_proceso: Number(fila.en_proceso) || 0,
+      finalizado: Number(fila.finalizado) || 0,
+      abiertos: Number(fila.abiertos) || 0,
+      vencidos: Number(fila.vencidos) || 0,
+      alta_abiertos: Number(fila.alta_abiertos) || 0,
+    })
+    const filas = Array.isArray(data.por_contador) ? data.por_contador : []
     return {
-      pendiente: Number(equipo.pendiente) || 0,
-      en_proceso: Number(equipo.en_proceso) || 0,
-      finalizado: Number(equipo.finalizado) || 0,
-      abiertos: Number(equipo.abiertos) || 0,
-      vencidos: Number(equipo.vencidos) || 0,
-      alta_abiertos: Number(equipo.alta_abiertos) || 0,
+      ...cifras(equipo),
+      porContador: Object.fromEntries(filas.map((fila) => [fila.contador_id, cifras(fila)])),
     }
   }
 

@@ -139,6 +139,42 @@ export const filtrarContadores = (contadores, texto) => {
 }
 
 /**
+ * Lista de contadores del dashboard filtrada por una tarjeta KPI o un estado de la dona:
+ * solo quien tiene al menos un caso de ese tipo, de más a menos y luego por nombre.
+ * @param {Array<{ id: number, nombre: string }>} contadores
+ * @param {Object<number, Object>} [porContador] - cifras de cada contador (`getResumenEquipo`).
+ * @param {string|null} clave - `vencidos`, `abiertos`, `alta_abiertos`, `pendiente`,
+ *   `en_proceso` o `finalizado`; sin clave devuelve la misma lista.
+ * @returns {Array<Object>}
+ */
+export const contadoresPorKpi = (contadores, porContador, clave) => {
+  if (!clave) return contadores
+  const cifra = (contador) => Number(porContador?.[contador.id]?.[clave]) || 0
+  return contadores
+    .filter((contador) => cifra(contador) > 0)
+    .sort((a, b) => cifra(b) - cifra(a) || a.nombre.localeCompare(b.nombre, 'es'))
+}
+
+// Texto de la cifra en singular y plural, por tarjeta KPI o estado.
+const TEXTOS_CIFRA_KPI = Object.freeze({
+  vencidos: ['vencido', 'vencidos'],
+  abiertos: ['abierto', 'abiertos'],
+  alta_abiertos: ['de prioridad Alta', 'de prioridad Alta'],
+  pendiente: ['pendiente', 'pendientes'],
+  en_proceso: ['en proceso', 'en proceso'],
+  finalizado: ['finalizado', 'finalizados'],
+})
+
+/**
+ * Cifra que se muestra junto al nombre del contador al filtrar por una tarjeta («3 vencidos»).
+ * @param {string} clave - clave de la tarjeta o del estado.
+ * @param {number} cantidad
+ * @returns {string}
+ */
+export const textoCifraKpi = (clave, cantidad) =>
+  `${cantidad} ${TEXTOS_CIFRA_KPI[clave]?.[cantidad === 1 ? 0 : 1] ?? 'casos'}`
+
+/**
  * Filas del directorio cuyo nombre o correo contiene el texto buscado (sin importar
  * mayúsculas ni acentos) y que tienen el rol elegido. Sin texto ni rol devuelve todas.
  * @param {Array<{ nombre: string, correo: string, rolClave: string }>} filas

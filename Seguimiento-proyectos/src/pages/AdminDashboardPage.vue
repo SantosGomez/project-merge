@@ -90,10 +90,13 @@
       <q-tab-panels v-model="pestana" keep-alive animated class="dashboard-page__paneles">
         <q-tab-panel name="casos" class="dashboard-page__panel">
           <ResumenEquipo
+            seleccionable
             :resumen="resumen"
             :cargando="cargandoResumen"
             :error="errorResumen"
+            :activa="filtroKpi"
             @reintentar="cargarResumen"
+            @seleccionar="alternarFiltroKpi"
           />
 
           <ScreenLoader
@@ -122,7 +125,9 @@
                 <p class="dashboard-panel__help">
                   Cada conteo indica cuántos casos importantes tiene el contador en estado
                   Pendiente, En proceso o Finalizado (0 si no tiene). Toca el nombre para ver todos
-                  sus casos importantes o un conteo para ver solo los de ese estado.
+                  sus casos importantes o un conteo para ver solo los de ese estado. Toca una
+                  tarjeta del resumen o un estado de la gráfica para ver solo a los contadores que
+                  tienen esos casos.
                 </p>
               </div>
 
@@ -145,17 +150,40 @@
                     >Escribe parte del nombre; no importan mayúsculas ni acentos.</q-tooltip
                   >
                 </q-input>
-                <p class="counter-search__resultado" aria-live="polite">
-                  {{ contadoresVisibles.length }} de {{ contadores.length }} contadores
-                </p>
+                <div class="counter-search__resultado" aria-live="polite">
+                  <span>{{ contadoresVisibles.length }} de {{ contadores.length }} contadores</span>
+                  <q-chip
+                    v-if="filtroKpi"
+                    removable
+                    dense
+                    color="primary"
+                    text-color="white"
+                    class="counter-search__filtro"
+                    :label="`Filtrando: ${ETIQUETAS_KPI[filtroKpi]}`"
+                    remove-aria-label="Quitar el filtro de la lista"
+                    @remove="filtroKpi = null"
+                  >
+                    <q-tooltip
+                      >Solo se ven los contadores con casos importantes de este tipo, de más a
+                      menos. Toca la ✕ para ver a todos.</q-tooltip
+                    >
+                  </q-chip>
+                </div>
 
                 <p
                   v-if="contadoresVisibles.length === 0"
                   class="dashboard-panel__prompt"
                   role="status"
                 >
-                  Ningún contador coincide con «{{ busqueda }}». Revisa el nombre o borra la
-                  búsqueda.
+                  <template v-if="busqueda"
+                    >Ningún contador coincide con «{{ busqueda }}»<template v-if="filtroKpi">
+                      y tiene casos «{{ ETIQUETAS_KPI[filtroKpi] }}»</template
+                    >. Revisa el nombre o borra la búsqueda.</template
+                  >
+                  <template v-else
+                    >Ningún contador tiene casos importantes «{{ ETIQUETAS_KPI[filtroKpi] }}». Quita
+                    el filtro para ver a todos.</template
+                  >
                 </p>
 
                 <q-list v-else tag="ul" class="counter-list">
@@ -165,6 +193,7 @@
                     :counter="contadorAFila(contador)"
                     :counts="contadoresStore.conteosDe(contador.id)"
                     :selected="contador.id === contadoresStore.contadorSeleccionadoId"
+                    :cifra="filtroKpi ? textoCifraKpi(filtroKpi, cifraKpi(contador.id)) : null"
                     :estado-activo="
                       contador.id === contadoresStore.contadorSeleccionadoId
                         ? estadoConteoActivo
@@ -289,10 +318,12 @@ import { PRIORITY_LABELS } from '../utils/constants.js'
 import { casoAFila, contadorAFila } from '../utils/filasVista.js'
 import {
   FILTROS_INICIALES,
+  contadoresPorKpi,
   filtrarCasos,
   filtrarContadores,
   hoyLocal,
   paginar,
+  textoCifraKpi,
 } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES } from '../utils/screenState.js'
 
@@ -334,7 +365,33 @@ const contadorSeleccionado = computed(() => contadoresStore.contadorSeleccionado
 
 /** Búsqueda por nombre: solo oculta filas de la lista; el detalle abierto se conserva. */
 const busqueda = ref('')
-const contadoresVisibles = computed(() => filtrarContadores(contadores.value, busqueda.value))
+
+/*
+ * Filtro de las tarjetas y de la dona del resumen: deja solo a los contadores con casos de ese
+ * tipo, de más a menos, con su cifra en la fila. Se combina con la búsqueda; el detalle no cambia.
+ */
+const filtroKpi = ref(null)
+const ETIQUETAS_KPI = Object.freeze({
+  vencidos: 'Vencidos',
+  abiertos: 'Abiertos',
+  alta_abiertos: 'Prioridad Alta abierta',
+  pendiente: 'Pendiente',
+  en_proceso: 'En proceso',
+  finalizado: 'Finalizado',
+})
+/** Tocar otra vez la tarjeta o el estado activo quita el filtro. */
+const alternarFiltroKpi = (clave) => {
+  filtroKpi.value = filtroKpi.value === clave ? null : clave
+}
+const cifraKpi = (contadorId) => resumen.value?.porContador?.[contadorId]?.[filtroKpi.value] ?? 0
+
+const contadoresVisibles = computed(() =>
+  contadoresPorKpi(
+    filtrarContadores(contadores.value, busqueda.value),
+    resumen.value?.porContador,
+    filtroKpi.value,
+  ),
+)
 
 /*
  * Filtro de estado del detalle. Los chips y los conteos del contador seleccionado comparten
@@ -645,9 +702,17 @@ onMounted(async () => {
 }
 
 .counter-search__resultado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
   margin: -4px 0 0;
   color: #334e68;
   font-size: 0.85rem;
+}
+
+.counter-search__filtro {
+  margin: 0;
 }
 
 .dashboard-panel__prompt {

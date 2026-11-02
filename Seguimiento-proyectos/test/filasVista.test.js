@@ -214,9 +214,13 @@ test('tarjetasResumen habla del equipo por defecto y de «tus casos» con propio
 
   for (const ayuda of ayudas()) {
     assert.match(ayuda, /todo el equipo/)
-    assert.doesNotMatch(ayuda, /Mis casos/, 'en el admin la tarjeta no lleva a ningún lado')
+    assert.doesNotMatch(ayuda, /Toca/, 'sin seleccionable la tarjeta no hace nada al tocarla')
   }
-  for (const ayuda of ayudas({ propios: true })) {
+  for (const ayuda of ayudas({ seleccionable: true })) {
+    assert.match(ayuda, /todo el equipo/)
+    assert.match(ayuda, /Toca la tarjeta para ver solo a los contadores que tienen estos casos\.$/)
+  }
+  for (const ayuda of ayudas({ propios: true, seleccionable: true })) {
     assert.match(ayuda, /^Tus casos/)
     assert.doesNotMatch(ayuda, /equipo/)
     assert.match(ayuda, /Toca la tarjeta para verlos en «Mis casos»\.$/)

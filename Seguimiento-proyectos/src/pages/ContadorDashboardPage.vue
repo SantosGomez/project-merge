@@ -69,6 +69,7 @@
         <q-tab-panel name="casos" class="dashboard-page__panel">
           <ResumenEquipo
             propios
+            seleccionable
             :resumen="resumen"
             :cargando="cases.cargando"
             :error="cases.error"

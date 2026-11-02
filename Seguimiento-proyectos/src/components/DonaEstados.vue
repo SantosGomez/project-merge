@@ -34,10 +34,18 @@
           tag="li"
           class="dona-estados__item"
           :clickable="seleccionable"
+          :active="activa === segmento.clave"
+          active-class="dona-estados__item--activo"
+          :aria-pressed="seleccionable ? String(activa === segmento.clave) : undefined"
           @click="seleccionable && emit('seleccionar', segmento.clave)"
         >
           <q-tooltip v-if="seleccionable">
-            Toca para ver tus casos en estado {{ segmento.etiqueta }} en «Mis casos».
+            <template v-if="propios">
+              Toca para ver tus casos en estado {{ segmento.etiqueta }} en «Mis casos».
+            </template>
+            <template v-else>
+              Toca para ver solo a los contadores con casos en estado {{ segmento.etiqueta }}.
+            </template>
           </q-tooltip>
           <span
             class="dona-estados__muestra"
@@ -59,14 +67,18 @@ import { segmentosDona } from '../utils/filasVista.js'
 
 /*
  * Dona «Casos por estado» del dashboard, dibujada en SVG sin librerías. La leyenda repite
- * cada número y porcentaje en texto: el color nunca es la única pista. Con `seleccionable`
- * («Mi resumen»), cada estado de la leyenda emite `seleccionar` con su clave.
+ * cada número y porcentaje en texto: el color nunca es la única pista. Con `seleccionable`,
+ * cada estado de la leyenda emite `seleccionar` con su clave y `activa` marca el elegido.
  */
 const props = defineProps({
   /** Total del equipo: `{ pendiente, en_proceso, finalizado }`. */
   resumen: { type: Object, default: null },
-  /** Los estados de la leyenda se pueden tocar para abrir «Mis casos» filtrado. */
+  /** Los estados de la leyenda se pueden tocar y emiten `seleccionar`. */
   seleccionable: { type: Boolean, default: false },
+  /** Estado elegido, para marcarlo; null sin elección. */
+  activa: { type: String, default: null },
+  /** Casos del propio contador: el tooltip habla de «Mis casos» en vez de la lista de contadores. */
+  propios: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['seleccionar'])
@@ -152,6 +164,11 @@ const descripcion = computed(
   padding: 0;
   color: var(--dg-texto);
   font-size: 0.9rem;
+}
+
+.dona-estados__item--activo {
+  color: var(--q-primary);
+  font-weight: 600;
 }
 
 .dona-estados__muestra {

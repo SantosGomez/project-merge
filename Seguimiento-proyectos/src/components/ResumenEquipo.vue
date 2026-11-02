@@ -29,13 +29,17 @@
           class="resumen-tarjeta"
           :class="{
             'resumen-tarjeta--alerta': tarjeta.alerta,
-            'resumen-tarjeta--clicable': propios,
+            'resumen-tarjeta--clicable': seleccionable,
+            'resumen-tarjeta--activa': seleccionable && activa === tarjeta.clave,
           }"
           tabindex="0"
-          :role="propios ? 'button' : undefined"
-          @click="propios && emit('seleccionar', tarjeta.clave)"
-          @keydown.enter.prevent="propios && emit('seleccionar', tarjeta.clave)"
-          @keydown.space="propios && ($event.preventDefault(), emit('seleccionar', tarjeta.clave))"
+          :role="seleccionable ? 'button' : undefined"
+          :aria-pressed="seleccionable ? String(activa === tarjeta.clave) : undefined"
+          @click="seleccionable && emit('seleccionar', tarjeta.clave)"
+          @keydown.enter.prevent="seleccionable && emit('seleccionar', tarjeta.clave)"
+          @keydown.space="
+            seleccionable && ($event.preventDefault(), emit('seleccionar', tarjeta.clave))
+          "
         >
           <q-card-section class="resumen-tarjeta__cuerpo">
             <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
@@ -48,7 +52,9 @@
 
       <DonaEstados
         :resumen="resumen"
-        :seleccionable="propios"
+        :seleccionable="seleccionable"
+        :activa="activa"
+        :propios="propios"
         @seleccionar="(estado) => emit('seleccionar', estado)"
       />
     </div>
@@ -64,10 +70,10 @@ import ScreenLoader from './ScreenLoader.vue'
 import { tarjetasResumen } from '../utils/filasVista.js'
 
 /*
- * Tarjetas KPI del dashboard: en el del administrador, cifras de todo el equipo, solo informativas;
- * en «Mi resumen» (`propios`), cada tarjeta y cada estado de la dona emiten `seleccionar` con su
- * clave para abrir «Mis casos» filtrado. La página pide el resumen y le pasa los datos, la carga
- * y el error; aquí solo se pintan.
+ * Tarjetas KPI del dashboard: cifras de todo el equipo (admin) o del propio contador (`propios`).
+ * Con `seleccionable`, cada tarjeta y cada estado de la dona emiten `seleccionar` con su clave:
+ * el admin filtra su lista de contadores y «Mi resumen» abre «Mis casos» filtrado; `activa`
+ * marca la elegida. La página pide el resumen y le pasa los datos, la carga y el error.
  */
 const props = defineProps({
   /** Total del equipo de `getResumenEquipo`, o null mientras no hay datos. */
@@ -77,11 +83,17 @@ const props = defineProps({
   error: { type: Object, default: null },
   /** Cifras de los casos del propio contador («Mi resumen») en vez de todo el equipo. */
   propios: { type: Boolean, default: false },
+  /** Las tarjetas y la dona se pueden tocar y emiten `seleccionar`. */
+  seleccionable: { type: Boolean, default: false },
+  /** Clave de la tarjeta o del estado elegido, para marcarlo; null sin elección. */
+  activa: { type: String, default: null },
 })
 
 const emit = defineEmits(['reintentar', 'seleccionar'])
 
-const tarjetas = computed(() => tarjetasResumen(props.resumen, { propios: props.propios }))
+const tarjetas = computed(() =>
+  tarjetasResumen(props.resumen, { propios: props.propios, seleccionable: props.seleccionable }),
+)
 </script>
 
 <style scoped>
@@ -156,6 +168,10 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen, { propios: props.
 
 .resumen-tarjeta--clicable:hover {
   box-shadow: 0 0 0 2px var(--dg-fondo-seleccion);
+}
+
+.resumen-tarjeta--activa {
+  box-shadow: 0 0 0 2px var(--q-primary);
 }
 
 .resumen-tarjeta--alerta {

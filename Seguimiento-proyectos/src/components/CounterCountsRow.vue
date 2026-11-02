@@ -14,6 +14,13 @@
         <span class="counter-row__identity">
           <span class="counter-row__name">{{ counter.name }}</span>
           <span v-if="selected" class="counter-row__selected-mark">Seleccionado</span>
+          <q-badge
+            v-if="cifra"
+            rounded
+            color="dg-acento"
+            class="counter-row__cifra"
+            :label="cifra"
+          />
         </span>
       </q-btn>
 
@@ -75,6 +82,11 @@ defineProps({
   },
   /** Estado por el que se está filtrando el detalle de este contador, o null. */
   estadoActivo: {
+    type: String,
+    default: null,
+  },
+  /** Cifra del filtro de las tarjetas del dashboard («3 vencidos»), o null sin filtro. */
+  cifra: {
     type: String,
     default: null,
   },

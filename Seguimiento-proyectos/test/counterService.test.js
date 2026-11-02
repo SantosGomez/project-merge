@@ -158,7 +158,33 @@ test('getResumenEquipo hace GET /contadores/resumen y devuelve el total del equi
   const resumen = await servicio.getResumenEquipo()
 
   assert.deepEqual(api.llamadas, [{ metodo: 'GET', url: '/contadores/resumen' }])
-  assert.deepEqual(resumen, { pendiente: 3, en_proceso: 2, finalizado: 7, abiertos: 5, vencidos: 1, alta_abiertos: 2 })
+  assert.deepEqual(resumen, {
+    pendiente: 3,
+    en_proceso: 2,
+    finalizado: 7,
+    abiertos: 5,
+    vencidos: 1,
+    alta_abiertos: 2,
+    porContador: {},
+  })
+})
+
+test('getResumenEquipo conserva las cifras de cada contador por su id, como números', async () => {
+  const api = crearApiFalsa({
+    datos: {
+      equipo: { pendiente: 1, en_proceso: 0, finalizado: 0, abiertos: 1, vencidos: 1, alta_abiertos: 0 },
+      por_contador: [
+        { contador_id: 7, pendiente: '1', en_proceso: 0, finalizado: 0, abiertos: 1, vencidos: 1, alta_abiertos: 0 },
+        { contador_id: 9 },
+      ],
+    },
+  })
+  const { porContador } = await crearCounterService({ api }).getResumenEquipo()
+
+  assert.deepEqual(porContador, {
+    7: { pendiente: 1, en_proceso: 0, finalizado: 0, abiertos: 1, vencidos: 1, alta_abiertos: 0 },
+    9: { pendiente: 0, en_proceso: 0, finalizado: 0, abiertos: 0, vencidos: 0, alta_abiertos: 0 },
+  })
 })
 
 test('getResumenEquipo rechaza con tres partes si la respuesta no trae el total del equipo', async () => {

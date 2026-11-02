@@ -558,7 +558,10 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
 
   it('ResumenEquipo pinta una tarjeta por cada elemento de tarjetasResumen, con tooltip y estados de carga y error', () => {
     assert.ok(existeComponente, 'existe components/ResumenEquipo.vue')
-    assert.match(componente, /tarjetasResumen\(props\.resumen, \{ propios: props\.propios \}\)/)
+    assert.match(
+      componente,
+      /tarjetasResumen\(props\.resumen, \{\s*propios: props\.propios,\s*seleccionable: props\.seleccionable,?\s*\}\)/,
+    )
     assert.match(componente, /v-for="tarjeta in tarjetas"/)
     assert.match(componente, /<q-tooltip[^>]*>\{\{ tarjeta\.ayuda \}\}<\/q-tooltip>/)
     assert.match(componente, /<ScreenLoader/)
@@ -566,22 +569,38 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
     assert.match(componente, /aria-labelledby="resumen-equipo-titulo"/)
   })
 
-  it('en «Mi resumen» las tarjetas y la dona avisan qué se eligió; en el admin no son clicables', () => {
+  it('con seleccionable las tarjetas y la dona avisan qué se eligió y marcan la activa', () => {
     const dona = read('../src/components/DonaEstados.vue')
     const miResumen = read('../src/pages/ContadorDashboardPage.vue')
 
     assert.match(componente, /emit\('seleccionar', tarjeta\.clave\)/, 'la tarjeta avisa su clave')
-    assert.match(componente, /<DonaEstados[\s\S]*?:seleccionable="propios"[\s\S]*?@seleccionar="\(estado\) => emit\('seleccionar', estado\)"/)
-    assert.match(componente, /role="propios \? 'button' : undefined"/, 'solo es botón con propios')
+    assert.match(
+      componente,
+      /<DonaEstados[\s\S]*?:seleccionable="seleccionable"[\s\S]*?:activa="activa"[\s\S]*?@seleccionar="\(estado\) => emit\('seleccionar', estado\)"/,
+    )
+    assert.match(componente, /role="seleccionable \? 'button' : undefined"/, 'solo es botón con seleccionable')
+    assert.match(componente, /aria-pressed="seleccionable \? String\(activa === tarjeta\.clave\) : undefined"/)
+    assert.match(componente, /seleccionable: \{ type: Boolean, default: false \}/, 'no es clicable por defecto')
     assert.match(dona, /seleccionable: \{ type: Boolean, default: false \}/, 'la dona no es clicable por defecto')
     assert.match(dona, /emit\('seleccionar', segmento\.clave\)/)
+    assert.match(dona, /:active="activa === segmento\.clave"/)
+
     assert.match(
       miResumen,
       /router\.push\(\{ name: 'contador-casos', query: \{ filtro \} \}\)/,
       '«Mi resumen» abre «Mis casos» con el filtro',
     )
-    assert.match(miResumen, /<ResumenEquipo[\s\S]*?@seleccionar="abrirMisCasos"/)
-    assert.doesNotMatch(pagina, /@seleccionar/, 'el dashboard del admin no escucha la selección')
+    assert.match(miResumen, /<ResumenEquipo[\s\S]*?seleccionable[\s\S]*?@seleccionar="abrirMisCasos"/)
+  })
+
+  it('en el dashboard del admin las tarjetas y la dona filtran la lista de contadores', () => {
+    assert.match(
+      pagina,
+      /<ResumenEquipo[\s\S]*?seleccionable[\s\S]*?:activa="filtroKpi"[\s\S]*?@seleccionar="alternarFiltroKpi"/,
+    )
+    assert.match(pagina, /contadoresPorKpi\(/, 'la lista usa contadoresPorKpi')
+    assert.match(pagina, /:cifra="filtroKpi \?/, 'cada fila muestra la cifra del filtro')
+    assert.match(pagina, /Filtrando:/, 'se ve qué filtro está activo')
   })
 })
 
