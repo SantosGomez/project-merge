@@ -76,34 +76,52 @@
             @reintentar="cases.cargarCasos()"
             @seleccionar="abrirMisCasos"
           />
+
+          <AgendaCasos
+            v-if="!cases.cargando && !cases.error"
+            :casos="agenda"
+            :hoy="hoyLocal()"
+            @editar="abrirEdicion"
+          />
         </q-tab-panel>
 
         <q-tab-panel name="auditorias" class="dashboard-page__panel">
           <TableroAuditorias propias />
         </q-tab-panel>
       </q-tab-panels>
+
+      <!-- El mismo formulario «Editar» de «Mis casos»: guarda en el store y todo se actualiza solo -->
+      <CaseFormDialog
+        v-model="dialogoEdicionAbierto"
+        :caso="casoEnEdicion"
+        @guardado="$q.notify({ type: 'positive', message: 'Cambio guardado.' })"
+      />
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AgendaCasos from '../components/AgendaCasos.vue'
+import CaseFormDialog from '../components/CaseFormDialog.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
 import TableroAuditorias from '../components/TableroAuditorias.vue'
 import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
-import { hoyLocal } from '../utils/filtrosCasos.js'
+import { agendaCasos, hoyLocal } from '../utils/filtrosCasos.js'
 import { resumenMisCasos } from '../utils/resumenMisCasos.js'
 
 /*
  * «Mi resumen» del contador: las mismas gráficas del dashboard del administrador, pero solo
- * con sus casos y sus auditorías. Es de solo consulta; el trabajo se hace en «Mis casos» y
- * en «Auditorías». Las cifras de casos salen de la misma lista de «Mis casos».
+ * con sus casos y sus auditorías, más la agenda de lo que vence pronto (que se edita aquí
+ * mismo). Las cifras de casos salen de la misma lista de «Mis casos».
  */
 
+const $q = useQuasar()
 const cases = useCasesStore()
 const session = useSessionStore()
 const route = useRoute()
@@ -117,6 +135,16 @@ const pestana = computed({
 })
 
 const resumen = computed(() => resumenMisCasos(cases.casos, hoyLocal()))
+const agenda = computed(() => agendaCasos(cases.casos, hoyLocal()))
+
+const dialogoEdicionAbierto = ref(false)
+const casoEnEdicion = ref(null)
+
+/** Abre el formulario «Editar» con el caso tal como lo guarda el store. */
+const abrirEdicion = (casoId) => {
+  casoEnEdicion.value = cases.casos.find((caso) => String(caso.id) === String(casoId)) ?? null
+  dialogoEdicionAbierto.value = casoEnEdicion.value !== null
+}
 
 /**
  * Abre «Mis casos» con el filtro de la tarjeta o del estado de la dona que se tocó.

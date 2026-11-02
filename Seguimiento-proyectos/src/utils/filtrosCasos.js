@@ -112,6 +112,35 @@ export const filtrarCasos = (casos, filtros, hoy) =>
         diaDe(a.fecha_vencimiento).localeCompare(diaDe(b.fecha_vencimiento)) || Number(a.id) - Number(b.id),
     )
 
+// «AAAA-MM-DD» → Date local a medianoche (new Date('AAAA-MM-DD') se leería como UTC).
+const fechaLocal = (dia) => {
+  const [anio, mes, d] = dia.split('-').map(Number)
+  return new Date(anio, mes - 1, d)
+}
+
+/**
+ * Días de hoy al vencimiento del caso: 0 vence hoy, negativo ya venció; null sin fecha.
+ * Se redondea para que un cambio de horario no desfase el conteo.
+ * @param {Object} caso - caso interno (`fecha_vencimiento`).
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @returns {number|null}
+ */
+export const diasParaVencerCaso = (caso, hoy) => {
+  const vence = diaDe(caso.fecha_vencimiento)
+  if (vence === '') return null
+  return Math.round((fechaLocal(vence) - fechaLocal(hoy)) / 86400000)
+}
+
+/**
+ * Agenda de «Mi resumen»: los casos abiertos que vencen antes (los vencidos primero).
+ * @param {Array<Object>} casos - casos internos del store.
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @param {number} [limite] - cuántos casos mostrar.
+ * @returns {Array<Object>} arreglo nuevo.
+ */
+export const agendaCasos = (casos, hoy, limite = 5) =>
+  filtrarCasos(casos, FILTROS_INICIALES, hoy).slice(0, limite)
+
 /**
  * Corta la lista en páginas. Si la página pedida ya no existe (p. ej. tras filtrar), se usa la última.
  * @param {Array} lista - elementos ya filtrados y ordenados.

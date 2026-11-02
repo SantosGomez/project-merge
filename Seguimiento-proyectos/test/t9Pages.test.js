@@ -598,6 +598,22 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
     assert.match(miResumen, /<ResumenEquipo[\s\S]*?seleccionable[\s\S]*?@seleccionar="abrirMisCasos"/)
   })
 
+  it('«Mi resumen» muestra la agenda de casos y la edita con el mismo formulario de «Mis casos»', () => {
+    const rutaAgenda = '../src/components/AgendaCasos.vue'
+    assert.ok(existsSync(fileURLToPath(new URL(rutaAgenda, import.meta.url))), 'existe AgendaCasos.vue')
+    const agenda = read(rutaAgenda)
+    const miResumen = read('../src/pages/ContadorDashboardPage.vue')
+
+    assert.match(agenda, /<PriorityTag/, 'usa la etiqueta de prioridad de «Mis casos»')
+    assert.match(agenda, /textoDiasPlazo\(diasParaVencerCaso\(caso, hoy\)\)/)
+    assert.match(agenda, /emit\('editar', caso\.id\)/)
+    assert.doesNotMatch(agenda, /#[0-9a-f]{3,6}\b/i, 'sin colores sueltos')
+
+    assert.match(miResumen, /agendaCasos\(cases\.casos, hoyLocal\(\)\)/)
+    assert.match(miResumen, /<AgendaCasos[\s\S]*?:casos="agenda"[\s\S]*?@editar="abrirEdicion"/)
+    assert.match(miResumen, /<CaseFormDialog[\s\S]*?v-model="dialogoEdicionAbierto"[\s\S]*?:caso="casoEnEdicion"[\s\S]*?@guardado=/)
+  })
+
   it('en el dashboard del admin las tarjetas y la dona filtran la lista de contadores', () => {
     assert.match(
       pagina,

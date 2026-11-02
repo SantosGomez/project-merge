@@ -8,6 +8,8 @@ import {
   FILTROS_INICIALES,
   esCasoVencido,
   esCasoProximoAVencer,
+  diasParaVencerCaso,
+  agendaCasos,
   hoyLocal,
   filtrarCasos,
   filtrosDesdeConsulta,
@@ -106,6 +108,31 @@ test('solo próximos a vencer se combina con el estado', () => {
 
   assert.deepEqual(con({ soloProximos: true }), [2, 1])
   assert.deepEqual(con({ soloProximos: true, estado: 'pendiente' }), [1])
+})
+
+test('diasParaVencerCaso cuenta los días de hoy al vencimiento, en hora local', () => {
+  assert.equal(diasParaVencerCaso(caso(1, 'pendiente', '2026-10-26'), HOY), 0)
+  assert.equal(diasParaVencerCaso(caso(1, 'pendiente', '2026-10-29'), HOY), 3)
+  assert.equal(diasParaVencerCaso(caso(1, 'pendiente', '2026-10-20'), HOY), -6)
+  assert.equal(diasParaVencerCaso(caso(1, 'pendiente', '2026-11-02'), HOY), 7, 'cruza de mes')
+  assert.equal(diasParaVencerCaso(caso(1, 'pendiente', '2026-11-02'), '2026-10-31'), 2, 'sin desfase por horario de verano')
+  assert.equal(diasParaVencerCaso({ estado: 'pendiente', fecha_vencimiento: null }, HOY), null)
+})
+
+test('agendaCasos: los abiertos que vencen antes, vencidos primero, hasta el límite', () => {
+  const casos = [
+    caso(1, 'pendiente', '2026-11-20'),
+    caso(2, 'finalizado', '2026-10-01'),
+    caso(3, 'en_proceso', '2026-10-27'),
+    caso(4, 'pendiente', '2026-10-10'),
+    caso(5, 'pendiente', '2026-12-01'),
+    caso(6, 'en_proceso', '2026-10-26'),
+    caso(7, 'pendiente', '2026-11-01'),
+  ]
+
+  assert.deepEqual(ids(agendaCasos(casos, HOY)), [4, 6, 3, 7, 1], 'cinco por defecto, sin finalizados')
+  assert.deepEqual(ids(agendaCasos(casos, HOY, 2)), [4, 6])
+  assert.deepEqual(agendaCasos([], HOY), [])
 })
 
 test('filtrosDesdeConsulta abre «Mis casos» con el filtro de cada tarjeta o estado de «Mi resumen»', () => {
