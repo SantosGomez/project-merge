@@ -1,5 +1,11 @@
 <template>
-  <q-item class="caso-item" :class="{ 'caso-item--importante': caso.important && !soloLectura }">
+  <q-item
+    class="caso-item"
+    :class="{
+      'caso-item--importante': caso.important && !soloLectura,
+      'caso-item--finalizado': esFinalizado,
+    }"
+  >
     <q-item-section v-if="!soloLectura" avatar class="caso-item__estrella">
       <q-btn
         flat
@@ -96,6 +102,7 @@
         map-options
         label="Estado"
         :aria-label="`Cambiar estado del caso de ${caso.client}`"
+        :color="esFinalizado ? 'dg-exito' : 'primary'"
         :disable="deshabilitado"
         class="caso-item__estado"
         @update:model-value="(estado) => emit('cambiar-estado', estado)"
@@ -158,6 +165,12 @@ const props = defineProps({
 
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
 
+/*
+ * El verde de Finalizado es solo del contador: en la vista de consulta del administrador
+ * la fila se queda con sus colores neutros.
+ */
+const esFinalizado = computed(() => !props.soloLectura && props.caso.status === 'finalizado')
+
 const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar', 'cambiar-prioridad'])
 
 const opcionesEstado = STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s }))
@@ -176,6 +189,20 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 .caso-item--importante {
   border-left-color: #b45309;
   background: #fffaf0;
+}
+
+/*
+ * Un caso Finalizado se pinta en verde. Va después del ámbar para que el verde gane
+ * cuando el caso sea además «Importante»; el texto «Finalizado» sigue visible, así que
+ * el color nunca es el único indicador.
+ */
+.caso-item--finalizado {
+  border-left-color: var(--dg-estado-finalizado);
+  background: var(--dg-exito-fondo);
+}
+
+.caso-item--finalizado .caso-item__estado {
+  color: var(--dg-exito);
 }
 
 .caso-item__estrella {
