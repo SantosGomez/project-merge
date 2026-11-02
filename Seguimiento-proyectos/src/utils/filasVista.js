@@ -124,7 +124,8 @@ export const casosAFilas = (casos = []) => {
  * Cada tarjeta trae su número, una línea de desglose y la ayuda del tooltip que explica cómo se cuenta.
  * Un dato que falte cuenta como 0.
  * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos }`.
- * @param {{ propios?: boolean }} [opciones] - `propios`: la ayuda habla de los casos del contador («Mi resumen»).
+ * @param {{ propios?: boolean }} [opciones] - `propios`: la ayuda habla de los casos del contador
+ *   («Mi resumen») y dice que la tarjeta abre «Mis casos» filtrado.
  * @returns {Array<{ clave: string, titulo: string, valor: number, detalle: string, ayuda: string, alerta: boolean }>}
  */
 export const tarjetasResumen = (resumen, { propios = false } = {}) => {
@@ -132,7 +133,7 @@ export const tarjetasResumen = (resumen, { propios = false } = {}) => {
   const sujeto = propios ? 'Tus casos' : 'Casos de todo el equipo'
   const vencidos = dato('vencidos')
 
-  return [
+  const tarjetas = [
     {
       clave: 'vencidos',
       titulo: 'Vencidos',
@@ -158,6 +159,12 @@ export const tarjetasResumen = (resumen, { propios = false } = {}) => {
       alerta: false,
     },
   ]
+
+  if (!propios) return tarjetas
+  return tarjetas.map((tarjeta) => ({
+    ...tarjeta,
+    ayuda: `${tarjeta.ayuda} Toca la tarjeta para verlos en «Mis casos».`,
+  }))
 }
 
 /** Color de cada estado en la dona del dashboard: ámbar (en espera), azul (en curso) y verde (listo). */

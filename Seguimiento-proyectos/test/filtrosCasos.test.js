@@ -9,6 +9,7 @@ import {
   esCasoVencido,
   hoyLocal,
   filtrarCasos,
+  filtrosDesdeConsulta,
   filtrarContadores,
   filtrarUsuarios,
   paginar,
@@ -37,7 +38,12 @@ const CASOS = [
 const ids = (casos) => casos.map((c) => c.id)
 
 test('al entrar se ven los abiertos, el vencimiento más cercano primero', () => {
-  assert.deepEqual(FILTROS_INICIALES, { estado: 'abiertos', soloImportantes: false, soloVencidos: false })
+  assert.deepEqual(FILTROS_INICIALES, {
+    estado: 'abiertos',
+    soloImportantes: false,
+    soloVencidos: false,
+    soloAlta: false,
+  })
   assert.deepEqual(ids(filtrarCasos(CASOS, FILTROS_INICIALES, HOY)), [2, 4, 5, 1])
 })
 
@@ -54,6 +60,39 @@ test('solo importantes y solo vencidos se combinan con el estado', () => {
   assert.deepEqual(ids(filtrarCasos(CASOS, { estado: 'todos', soloImportantes: false, soloVencidos: true }, HOY)), [2, 4])
   assert.deepEqual(ids(filtrarCasos(CASOS, { estado: 'pendiente', soloImportantes: false, soloVencidos: true }, HOY)), [4])
   assert.deepEqual(ids(filtrarCasos(CASOS, { estado: 'abiertos', soloImportantes: true, soloVencidos: true }, HOY)), [2])
+})
+
+test('solo prioridad Alta se combina con el estado y con vencidos', () => {
+  const casos = [
+    caso(1, 'pendiente', '2026-11-09', { prioridad: 'alta' }),
+    caso(2, 'en_proceso', '2026-10-20', { prioridad: 'alta' }),
+    caso(3, 'finalizado', '2026-10-01', { prioridad: 'alta' }),
+    caso(4, 'pendiente', '2026-10-25'),
+  ]
+  const con = (cambio) => ids(filtrarCasos(casos, { ...FILTROS_INICIALES, ...cambio }, HOY))
+
+  assert.deepEqual(con({ soloAlta: true }), [2, 1])
+  assert.deepEqual(con({ soloAlta: true, estado: 'todos' }), [3, 2, 1])
+  assert.deepEqual(con({ soloAlta: true, soloVencidos: true }), [2])
+  assert.deepEqual(con({ soloAlta: false }), [2, 4, 1])
+})
+
+test('filtrosDesdeConsulta abre «Mis casos» con el filtro de cada tarjeta o estado de «Mi resumen»', () => {
+  const con = (cambio) => ({ ...FILTROS_INICIALES, ...cambio })
+
+  assert.deepEqual(filtrosDesdeConsulta('vencidos'), con({ soloVencidos: true }))
+  assert.deepEqual(filtrosDesdeConsulta('abiertos'), con({}))
+  assert.deepEqual(filtrosDesdeConsulta('alta_abiertos'), con({ soloAlta: true }))
+  assert.deepEqual(filtrosDesdeConsulta('pendiente'), con({ estado: 'pendiente' }))
+  assert.deepEqual(filtrosDesdeConsulta('en_proceso'), con({ estado: 'en_proceso' }))
+  assert.deepEqual(filtrosDesdeConsulta('finalizado'), con({ estado: 'finalizado' }))
+})
+
+test('filtrosDesdeConsulta sin filtro o con uno desconocido usa los filtros de siempre', () => {
+  for (const filtro of [undefined, null, '', 'todos', 'otro', ['vencidos']]) {
+    assert.deepEqual(filtrosDesdeConsulta(filtro), FILTROS_INICIALES)
+  }
+  assert.notEqual(filtrosDesdeConsulta('x'), FILTROS_INICIALES, 'entrega una copia que la página puede cambiar')
 })
 
 test('filtrarCasos no muta el arreglo que recibe', () => {

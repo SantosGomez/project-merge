@@ -27,8 +27,15 @@
           v-for="tarjeta in tarjetas"
           :key="tarjeta.clave"
           class="resumen-tarjeta"
-          :class="{ 'resumen-tarjeta--alerta': tarjeta.alerta }"
+          :class="{
+            'resumen-tarjeta--alerta': tarjeta.alerta,
+            'resumen-tarjeta--clicable': propios,
+          }"
           tabindex="0"
+          :role="propios ? 'button' : undefined"
+          @click="propios && emit('seleccionar', tarjeta.clave)"
+          @keydown.enter.prevent="propios && emit('seleccionar', tarjeta.clave)"
+          @keydown.space="propios && ($event.preventDefault(), emit('seleccionar', tarjeta.clave))"
         >
           <q-card-section class="resumen-tarjeta__cuerpo">
             <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
@@ -39,7 +46,11 @@
         </q-card>
       </q-list>
 
-      <DonaEstados :resumen="resumen" />
+      <DonaEstados
+        :resumen="resumen"
+        :seleccionable="propios"
+        @seleccionar="(estado) => emit('seleccionar', estado)"
+      />
     </div>
   </section>
 </template>
@@ -53,8 +64,10 @@ import ScreenLoader from './ScreenLoader.vue'
 import { tarjetasResumen } from '../utils/filasVista.js'
 
 /*
- * Tarjetas KPI del dashboard del administrador: cifras de todo el equipo, solo informativas.
- * La página pide el resumen y le pasa los datos, la carga y el error; aquí solo se pintan.
+ * Tarjetas KPI del dashboard: en el del administrador, cifras de todo el equipo, solo informativas;
+ * en «Mi resumen» (`propios`), cada tarjeta y cada estado de la dona emiten `seleccionar` con su
+ * clave para abrir «Mis casos» filtrado. La página pide el resumen y le pasa los datos, la carga
+ * y el error; aquí solo se pintan.
  */
 const props = defineProps({
   /** Total del equipo de `getResumenEquipo`, o null mientras no hay datos. */
@@ -66,7 +79,7 @@ const props = defineProps({
   propios: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['reintentar'])
+const emit = defineEmits(['reintentar', 'seleccionar'])
 
 const tarjetas = computed(() => tarjetasResumen(props.resumen, { propios: props.propios }))
 </script>
@@ -134,6 +147,15 @@ const tarjetas = computed(() => tarjetasResumen(props.resumen, { propios: props.
 .resumen-tarjeta:focus-visible {
   outline: 2px solid var(--q-primary);
   outline-offset: 2px;
+}
+
+.resumen-tarjeta--clicable {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.resumen-tarjeta--clicable:hover {
+  box-shadow: 0 0 0 2px var(--dg-fondo-seleccion);
 }
 
 .resumen-tarjeta--alerta {

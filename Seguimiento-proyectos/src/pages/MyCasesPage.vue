@@ -107,6 +107,7 @@
 <script setup>
 import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { useRoute } from 'vue-router'
 
 import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CasoItem from '../components/CasoItem.vue'
@@ -118,10 +119,10 @@ import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
 import { casoAFila } from '../utils/filasVista.js'
 import {
-  FILTROS_INICIALES,
   OPCIONES_POR_PAGINA,
   esCasoVencido,
   filtrarCasos,
+  filtrosDesdeConsulta,
   hoyLocal,
   paginar,
 } from '../utils/filtrosCasos.js'
@@ -129,8 +130,10 @@ import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const cases = useCasesStore()
 const $q = useQuasar()
+const route = useRoute()
 
-const filtros = ref({ ...FILTROS_INICIALES })
+// «Mi resumen» abre esta pantalla ya filtrada (?filtro=vencidos, ?filtro=pendiente…).
+const filtros = ref(filtrosDesdeConsulta(route.query.filtro))
 const pagina = ref(1)
 const porPagina = ref(OPCIONES_POR_PAGINA[0])
 

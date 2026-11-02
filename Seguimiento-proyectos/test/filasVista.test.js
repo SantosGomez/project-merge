@@ -212,10 +212,14 @@ test('tarjetasResumen arma las 3 tarjetas KPI del dashboard con su número, desg
 test('tarjetasResumen habla del equipo por defecto y de «tus casos» con propios', () => {
   const ayudas = (opciones) => tarjetasResumen({}, opciones).map((t) => t.ayuda)
 
-  for (const ayuda of ayudas()) assert.match(ayuda, /todo el equipo/)
+  for (const ayuda of ayudas()) {
+    assert.match(ayuda, /todo el equipo/)
+    assert.doesNotMatch(ayuda, /Mis casos/, 'en el admin la tarjeta no lleva a ningún lado')
+  }
   for (const ayuda of ayudas({ propios: true })) {
     assert.match(ayuda, /^Tus casos/)
     assert.doesNotMatch(ayuda, /equipo/)
+    assert.match(ayuda, /Toca la tarjeta para verlos en «Mis casos»\.$/)
   }
 })
 

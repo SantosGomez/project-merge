@@ -9,8 +9,8 @@
           <!-- El texto de ayuda describe la pestaña abierta -->
           <p v-if="pestana === 'casos'" class="dashboard-page__lead">
             Revisa de un vistazo cuántos casos tienes en cada estado, cuántos ya vencieron y cuántos
-            son de prioridad Alta. Para registrar, editar o cambiar el estado de un caso usa «Ver
-            mis casos».
+            son de prioridad Alta. Toca una tarjeta o un estado de la gráfica para ver esos casos en
+            «Mis casos».
           </p>
           <p v-else class="dashboard-page__lead">
             Revisa el avance de tus auditorías: sus indicadores, en qué fase va cada una y qué vence
@@ -73,6 +73,7 @@
             :cargando="cases.cargando"
             :error="cases.error"
             @reintentar="cases.cargarCasos()"
+            @seleccionar="abrirMisCasos"
           />
         </q-tab-panel>
 
@@ -115,6 +116,12 @@ const pestana = computed({
 })
 
 const resumen = computed(() => resumenMisCasos(cases.casos, hoyLocal()))
+
+/**
+ * Abre «Mis casos» con el filtro de la tarjeta o del estado de la dona que se tocó.
+ * @param {string} filtro - clave de la tarjeta (`vencidos`, `abiertos`, `alta_abiertos`) o del estado.
+ */
+const abrirMisCasos = (filtro) => router.push({ name: 'contador-casos', query: { filtro } })
 
 // Tiempo real: si el administrador asigna un caso o cambia una prioridad, las cifras se actualizan solas.
 const dejarDeEscuchar = [

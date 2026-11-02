@@ -28,7 +28,17 @@
       </svg>
 
       <q-list tag="ul" class="dona-estados__leyenda">
-        <q-item v-for="segmento in dona.segmentos" :key="segmento.clave" tag="li" class="dona-estados__item">
+        <q-item
+          v-for="segmento in dona.segmentos"
+          :key="segmento.clave"
+          tag="li"
+          class="dona-estados__item"
+          :clickable="seleccionable"
+          @click="seleccionable && emit('seleccionar', segmento.clave)"
+        >
+          <q-tooltip v-if="seleccionable">
+            Toca para ver tus casos en estado {{ segmento.etiqueta }} en «Mis casos».
+          </q-tooltip>
           <span
             class="dona-estados__muestra"
             :style="{ background: segmento.color }"
@@ -49,12 +59,17 @@ import { segmentosDona } from '../utils/filasVista.js'
 
 /*
  * Dona «Casos por estado» del dashboard, dibujada en SVG sin librerías. La leyenda repite
- * cada número y porcentaje en texto: el color nunca es la única pista.
+ * cada número y porcentaje en texto: el color nunca es la única pista. Con `seleccionable`
+ * («Mi resumen»), cada estado de la leyenda emite `seleccionar` con su clave.
  */
 const props = defineProps({
   /** Total del equipo: `{ pendiente, en_proceso, finalizado }`. */
   resumen: { type: Object, default: null },
+  /** Los estados de la leyenda se pueden tocar para abrir «Mis casos» filtrado. */
+  seleccionable: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['seleccionar'])
 
 const dona = computed(() => segmentosDona(props.resumen))
 

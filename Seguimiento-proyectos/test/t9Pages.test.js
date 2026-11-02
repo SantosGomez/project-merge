@@ -565,6 +565,24 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
     assert.match(componente, /<ErrorState[\s\S]*?@retry="emit\('reintentar'\)"/)
     assert.match(componente, /aria-labelledby="resumen-equipo-titulo"/)
   })
+
+  it('en «Mi resumen» las tarjetas y la dona avisan qué se eligió; en el admin no son clicables', () => {
+    const dona = read('../src/components/DonaEstados.vue')
+    const miResumen = read('../src/pages/ContadorDashboardPage.vue')
+
+    assert.match(componente, /emit\('seleccionar', tarjeta\.clave\)/, 'la tarjeta avisa su clave')
+    assert.match(componente, /<DonaEstados[\s\S]*?:seleccionable="propios"[\s\S]*?@seleccionar="\(estado\) => emit\('seleccionar', estado\)"/)
+    assert.match(componente, /role="propios \? 'button' : undefined"/, 'solo es botón con propios')
+    assert.match(dona, /seleccionable: \{ type: Boolean, default: false \}/, 'la dona no es clicable por defecto')
+    assert.match(dona, /emit\('seleccionar', segmento\.clave\)/)
+    assert.match(
+      miResumen,
+      /router\.push\(\{ name: 'contador-casos', query: \{ filtro \} \}\)/,
+      '«Mi resumen» abre «Mis casos» con el filtro',
+    )
+    assert.match(miResumen, /<ResumenEquipo[\s\S]*?@seleccionar="abrirMisCasos"/)
+    assert.doesNotMatch(pagina, /@seleccionar/, 'el dashboard del admin no escucha la selección')
+  })
 })
 
 describe('Dashboard: dona «Casos por estado» (rediseño, rebanada 2)', () => {
@@ -595,7 +613,7 @@ describe('Dashboard: dona «Casos por estado» (rediseño, rebanada 2)', () => {
   })
 
   it('ResumenEquipo la muestra con los mismos datos, junto a las tarjetas', () => {
-    assert.match(resumen, /<DonaEstados :resumen="resumen" \/>/)
+    assert.match(resumen, /<DonaEstados\s+:resumen="resumen"[\s\S]*?\/>/)
     assert.match(resumen, /import DonaEstados from '\.\/DonaEstados\.vue'/)
   })
 })

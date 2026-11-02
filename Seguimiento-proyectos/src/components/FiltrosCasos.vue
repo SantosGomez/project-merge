@@ -39,6 +39,15 @@
       >
         <q-tooltip>Muestra solo los casos cuya fecha de vencimiento ya pasó y que no están finalizados.</q-tooltip>
       </q-toggle>
+      <q-toggle
+        :model-value="filtros.soloAlta"
+        color="primary"
+        label="Solo prioridad Alta"
+        class="filtros-casos__toggle"
+        @update:model-value="(valor) => cambiar({ soloAlta: valor })"
+      >
+        <q-tooltip>Muestra solo los casos con prioridad Alta.</q-tooltip>
+      </q-toggle>
 
       <q-btn
         v-if="hayFiltrosExtra"
@@ -63,7 +72,8 @@ import { computed } from 'vue'
 import { FILTROS_INICIALES } from '../utils/filtrosCasos.js'
 
 /*
- * Barra de filtros de casos: estado (chips) y, en «Mis casos», solo importantes y solo vencidos.
+ * Barra de filtros de casos: estado (chips) y, en «Mis casos», solo importantes, solo vencidos
+ * y solo prioridad Alta.
  * Solo edita el objeto de filtros; la lista se filtra en la página con `filtrarCasos`.
  */
 const filtros = defineModel({ type: Object, required: true })
@@ -74,7 +84,7 @@ const props = defineProps({
     type: Array,
     default: () => ['abiertos', 'pendiente', 'en_proceso', 'finalizado', 'todos'],
   },
-  /** Muestra «Solo importantes», «Solo vencidos» y «Limpiar filtros». */
+  /** Muestra «Solo importantes», «Solo vencidos», «Solo prioridad Alta» y «Limpiar filtros». */
   conInterruptores: {
     type: Boolean,
     default: true,

@@ -6,6 +6,32 @@ export const FILTROS_INICIALES = Object.freeze({
   estado: 'abiertos',
   soloImportantes: false,
   soloVencidos: false,
+  soloAlta: false,
+})
+
+/*
+ * Filtro con el que «Mi resumen» abre «Mis casos» (`?filtro=`): una clave por tarjeta KPI
+ * y por estado de la dona. Lo que no está aquí deja los filtros de siempre.
+ */
+const FILTROS_POR_CONSULTA = Object.freeze({
+  vencidos: { soloVencidos: true },
+  abiertos: {},
+  alta_abiertos: { soloAlta: true },
+  pendiente: { estado: 'pendiente' },
+  en_proceso: { estado: 'en_proceso' },
+  finalizado: { estado: 'finalizado' },
+})
+
+/**
+ * Filtros iniciales de «Mis casos» según el `?filtro=` de la URL.
+ * @param {unknown} filtro - valor de `route.query.filtro`.
+ * @returns {Object} copia nueva de los filtros.
+ */
+export const filtrosDesdeConsulta = (filtro) => ({
+  ...FILTROS_INICIALES,
+  ...(typeof filtro === 'string' && Object.hasOwn(FILTROS_POR_CONSULTA, filtro)
+    ? FILTROS_POR_CONSULTA[filtro]
+    : {}),
 })
 
 /** Casos por página que el contador puede elegir. */
@@ -44,9 +70,9 @@ const cumpleEstado = (caso, estado) => {
 }
 
 /**
- * Filtra por estado, importantes y vencidos, y ordena por el vencimiento más cercano.
+ * Filtra por estado, importantes, vencidos y prioridad Alta, y ordena por el vencimiento más cercano.
  * @param {Array<Object>} casos - casos internos del store.
- * @param {{ estado: string, soloImportantes: boolean, soloVencidos: boolean }} filtros
+ * @param {{ estado: string, soloImportantes: boolean, soloVencidos: boolean, soloAlta?: boolean }} filtros
  *   estado: 'abiertos', 'pendiente', 'en_proceso', 'finalizado' o 'todos'.
  * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
  * @returns {Array<Object>} arreglo nuevo.
@@ -57,7 +83,8 @@ export const filtrarCasos = (casos, filtros, hoy) =>
       (caso) =>
         cumpleEstado(caso, filtros.estado) &&
         (!filtros.soloImportantes || Boolean(caso.importante)) &&
-        (!filtros.soloVencidos || esCasoVencido(caso, hoy)),
+        (!filtros.soloVencidos || esCasoVencido(caso, hoy)) &&
+        (!filtros.soloAlta || caso.prioridad === 'alta'),
     )
     .sort(
       (a, b) =>
