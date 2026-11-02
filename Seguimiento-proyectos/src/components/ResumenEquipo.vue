@@ -1,12 +1,21 @@
 <template>
   <section class="resumen-equipo" aria-labelledby="resumen-equipo-titulo">
-    <h2 id="resumen-equipo-titulo" class="resumen-equipo__titulo">Resumen del equipo</h2>
+    <h2 id="resumen-equipo-titulo" class="resumen-equipo__titulo">
+      {{ propios ? 'Resumen de mis casos' : 'Resumen del equipo' }}
+    </h2>
 
-    <ScreenLoader v-if="cargando" text="Cargando el resumen de casos del equipo…" />
+    <ScreenLoader
+      v-if="cargando"
+      :text="
+        propios ? 'Cargando el resumen de tus casos…' : 'Cargando el resumen de casos del equipo…'
+      "
+    />
 
     <ErrorState
       v-else-if="error"
-      :detail="error?.mensaje ?? 'el resumen de casos del equipo.'"
+      :detail="
+        error?.mensaje ?? (propios ? 'el resumen de tus casos.' : 'el resumen de casos del equipo.')
+      "
       @retry="emit('reintentar')"
     />
 
@@ -53,11 +62,13 @@ const props = defineProps({
   cargando: { type: Boolean, default: false },
   /** Error de tres partes de la carga, o null. */
   error: { type: Object, default: null },
+  /** Cifras de los casos del propio contador («Mi resumen») en vez de todo el equipo. */
+  propios: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['reintentar'])
 
-const tarjetas = computed(() => tarjetasResumen(props.resumen))
+const tarjetas = computed(() => tarjetasResumen(props.resumen, { propios: props.propios }))
 </script>
 
 <style scoped>

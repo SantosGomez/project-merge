@@ -364,6 +364,24 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.match(etiqueta, /:disable="cerrandoSesion"/, 'la opción del pie se desactiva al cerrar')
   })
 
+  it('el contador ve «Mi resumen» en su sección y el administrador no', () => {
+    const bloqueDe = (condicion) => {
+      const inicio = src.indexOf(`<template v-if="${condicion}">`)
+      return src.slice(inicio, src.indexOf('</template>', inicio))
+    }
+    assert.ok(bloqueDe('session.esContador').includes("name: 'contador-dashboard'"), 'falta Mi resumen')
+    assert.ok(
+      !bloqueDe('session.esAdministrador').includes("name: 'contador-dashboard'"),
+      'el administrador no ve Mi resumen',
+    )
+    const router = read('../src/router/index.js')
+    assert.match(
+      router,
+      /path: 'contador\/dashboard',\s*name: 'contador-dashboard',\s*component: ContadorDashboardPage,\s*meta: \{\s*requiereSesion: true,\s*perfil: PROFILES\.contador,/,
+      'la ruta de Mi resumen es solo del contador',
+    )
+  })
+
   it('tiene los links internos con rutas aprobadas', () => {
     const routes = [
       'admin-dashboard',

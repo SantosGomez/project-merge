@@ -201,6 +201,16 @@ test('destinoVolverFicha: vuelve al tablero si se llegó desde el dashboard; si 
     destino: '/admin/dashboard?tab=auditorias&vista=kanban',
   })
 
+  const desdeMiResumen = destinoVolverFicha({
+    name: 'contador-dashboard',
+    fullPath: '/contador/dashboard?tab=auditorias&vista=avance',
+  })
+  assert.deepEqual(desdeMiResumen, {
+    etiqueta: 'Volver a mi resumen',
+    ayuda: 'Regresa al tablero de auditorías de «Mi resumen», en la misma vista.',
+    destino: '/contador/dashboard?tab=auditorias&vista=avance',
+  })
+
   const aLaLista = {
     etiqueta: 'Volver a auditorías',
     ayuda: 'Regresa a la lista de auditorías.',

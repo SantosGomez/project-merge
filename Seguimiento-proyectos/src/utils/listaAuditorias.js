@@ -123,9 +123,9 @@ export const entregaEnTiempo = (evento, hoy = new Date()) => {
 }
 
 /**
- * A dónde lleva el botón «Volver» de la ficha. Si se llegó desde el tablero del dashboard,
- * regresa a él con la misma pestaña y vista; en cualquier otro caso (lista, enlace directo o
- * recarga de la página), a la lista de auditorías.
+ * A dónde lleva el botón «Volver» de la ficha. Si se llegó desde el tablero del dashboard
+ * del administrador o de «Mi resumen» del contador, regresa a él con la misma pestaña y vista;
+ * en cualquier otro caso (lista, enlace directo o recarga de la página), a la lista de auditorías.
  * @param {{ name: string, fullPath: string }|null} rutaAnterior - página anterior ya resuelta por el router.
  * @returns {{ etiqueta: string, ayuda: string, destino: string|Object }}
  */
@@ -134,6 +134,13 @@ export const destinoVolverFicha = (rutaAnterior) => {
     return {
       etiqueta: 'Volver al tablero',
       ayuda: 'Regresa al tablero de auditorías del dashboard, en la misma vista.',
+      destino: rutaAnterior.fullPath,
+    }
+  }
+  if (rutaAnterior?.name === 'contador-dashboard') {
+    return {
+      etiqueta: 'Volver a mi resumen',
+      ayuda: 'Regresa al tablero de auditorías de «Mi resumen», en la misma vista.',
       destino: rutaAnterior.fullPath,
     }
   }

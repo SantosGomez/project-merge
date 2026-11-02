@@ -9,6 +9,12 @@
     />
 
     <EmptyState
+      v-else-if="auditorias.length === 0 && propias"
+      title="No tienes auditorías asignadas"
+      message="Cuando registres una auditoría o te asignen una, aquí verás sus indicadores y su avance por fase."
+    />
+
+    <EmptyState
       v-else-if="auditorias.length === 0"
       title="No hay auditorías registradas"
       message="Cuando los contadores registren auditorías, aquí verás sus indicadores y su avance por fase."
@@ -26,7 +32,9 @@
         class="tablero__tabs"
       >
         <q-tab name="resumen" icon="insights" label="Resumen">
-          <q-tooltip>Indicadores de todas las auditorías.</q-tooltip>
+          <q-tooltip>{{
+            propias ? 'Indicadores de tus auditorías.' : 'Indicadores de todas las auditorías.'
+          }}</q-tooltip>
         </q-tab>
         <q-tab name="avance" icon="view_timeline" label="Avance">
           <q-tooltip>En qué fase va cada auditoría y qué vence después.</q-tooltip>
@@ -57,7 +65,10 @@
             <q-card flat bordered class="grafica">
               <q-card-section>
                 <h3 class="grafica__titulo">Auditorías por semáforo</h3>
-                <p class="grafica__ayuda">Todas las auditorías, incluidas las concluidas.</p>
+                <p class="grafica__ayuda">
+                  {{ propias ? 'Todas tus auditorías' : 'Todas las auditorías' }}, incluidas las
+                  concluidas.
+                </p>
                 <ul class="grafica__barras">
                   <li v-for="barra in barrasSemaforo" :key="barra.semaforo" class="grafica__fila">
                     <span class="grafica__etiqueta">{{ barra.semaforo }}</span>
@@ -314,6 +325,11 @@ import {
 import { claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { hoyLocal } from '../utils/filtrosCasos.js'
+
+defineProps({
+  /** Textos para el contador («Mi resumen»): la API ya le entrega solo sus auditorías. */
+  propias: { type: Boolean, default: false },
+})
 
 const route = useRoute()
 const router = useRouter()

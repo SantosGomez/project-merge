@@ -124,10 +124,12 @@ export const casosAFilas = (casos = []) => {
  * Cada tarjeta trae su número, una línea de desglose y la ayuda del tooltip que explica cómo se cuenta.
  * Un dato que falte cuenta como 0.
  * @param {Object} resumen - `{ pendiente, en_proceso, finalizado, abiertos, vencidos, alta_abiertos }`.
+ * @param {{ propios?: boolean }} [opciones] - `propios`: la ayuda habla de los casos del contador («Mi resumen»).
  * @returns {Array<{ clave: string, titulo: string, valor: number, detalle: string, ayuda: string, alerta: boolean }>}
  */
-export const tarjetasResumen = (resumen) => {
+export const tarjetasResumen = (resumen, { propios = false } = {}) => {
   const dato = (campo) => Number(resumen?.[campo]) || 0
+  const sujeto = propios ? 'Tus casos' : 'Casos de todo el equipo'
   const vencidos = dato('vencidos')
 
   return [
@@ -136,8 +138,7 @@ export const tarjetasResumen = (resumen) => {
       titulo: 'Vencidos',
       valor: vencidos,
       detalle: 'Sin finalizar y con la fecha de vencimiento ya pasada',
-      ayuda:
-        'Casos de todo el equipo cuya fecha de vencimiento es anterior a hoy y que todavía no están en estado Finalizado.',
+      ayuda: `${sujeto} cuya fecha de vencimiento es anterior a hoy y que todavía no están en estado Finalizado.`,
       alerta: vencidos > 0,
     },
     {
@@ -145,7 +146,7 @@ export const tarjetasResumen = (resumen) => {
       titulo: 'Abiertos',
       valor: dato('abiertos'),
       detalle: `Pendientes: ${dato('pendiente')} · En proceso: ${dato('en_proceso')}`,
-      ayuda: 'Casos de todo el equipo que no están finalizados: la suma de los Pendientes y los En proceso.',
+      ayuda: `${sujeto} que no están finalizados: la suma de los Pendientes y los En proceso.`,
       alerta: false,
     },
     {
@@ -153,7 +154,7 @@ export const tarjetasResumen = (resumen) => {
       titulo: 'Prioridad Alta abierta',
       valor: dato('alta_abiertos'),
       detalle: 'Casos de prioridad Alta sin finalizar',
-      ayuda: 'Casos de todo el equipo con prioridad Alta que todavía no están en estado Finalizado.',
+      ayuda: `${sujeto} con prioridad Alta que todavía no están en estado Finalizado.`,
       alerta: false,
     },
   ]

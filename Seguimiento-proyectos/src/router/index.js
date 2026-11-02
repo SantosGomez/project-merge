@@ -10,6 +10,7 @@ import AdminDashboardPage from '../pages/AdminDashboardPage.vue'
 import AuditoriaFichaPage from '../pages/AuditoriaFichaPage.vue'
 import AuditoriasPage from '../pages/AuditoriasPage.vue'
 import CambiarContrasenaPage from '../pages/CambiarContrasenaPage.vue'
+import ContadorDashboardPage from '../pages/ContadorDashboardPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
@@ -117,6 +118,16 @@ const routes = [
           perfil: PROFILES.contador,
           screenId: SCREEN_IDS.myCases,
           titulo: 'Mis casos',
+        },
+      },
+      {
+        path: 'contador/dashboard',
+        name: 'contador-dashboard',
+        component: ContadorDashboardPage,
+        meta: {
+          requiereSesion: true,
+          perfil: PROFILES.contador,
+          titulo: 'Mi resumen',
         },
       },
       // El alta y el restablecimiento de cuentas se hacen en diálogos del directorio.

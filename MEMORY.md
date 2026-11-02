@@ -11,6 +11,8 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas.
 - PWA para contadores: **publicado** (src-pwa, Workbox, standalone, íconos DelGrow).
 - Vencimiento lo captura el contador (obligatorio, ≥ inicio); prioridad ya no lo recalcula.
 - Calendario `q-date` en fechas del caso (máscara DD-MM-YYYY, bloquea días antes del inicio).
+- «Mi resumen» del contador (2026-11-02, sin commit): ruta `contador/dashboard` (`ContadorDashboardPage.vue`) + ítem en el menú del contador; el inicio de sesión sigue en «Mis casos». Pestaña Casos = `ResumenEquipo propios` con TODOS sus casos, calculado en el frontend (`utils/resumenMisCasos.js` sobre la lista de `/casos/mis-casos`, sin backend nuevo). Pestaña Auditorías = `TableroAuditorias propias` completo (la API ya filtra). Props `propios`/`propias` y `tarjetasResumen(r, { propios })` solo cambian textos; el admin queda igual. El contador solo recibe `aviso-nuevo`/`reconectado` por SSE (`caso-actualizado` y `auditoria-actualizada` van solo al admin). `destinoVolverFicha` reconoce también `contador-dashboard` («Volver a mi resumen», misma pestaña y vista).
+- Verificar en navegador como contador: el backend solo acepta CORS desde `:9000`; crear un contador `zz_test_*` con datos y borrarlo al final (no usar cuentas reales). El panel oscuro del navegador se ve a través del fondo transparente de la app: emular `colorScheme: light` y recargar.
 
 ## Nuevo Módulo de Auditorías (próximos pasos)
 

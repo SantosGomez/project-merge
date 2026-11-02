@@ -209,6 +209,16 @@ test('tarjetasResumen arma las 3 tarjetas KPI del dashboard con su número, desg
   }
 })
 
+test('tarjetasResumen habla del equipo por defecto y de «tus casos» con propios', () => {
+  const ayudas = (opciones) => tarjetasResumen({}, opciones).map((t) => t.ayuda)
+
+  for (const ayuda of ayudas()) assert.match(ayuda, /todo el equipo/)
+  for (const ayuda of ayudas({ propios: true })) {
+    assert.match(ayuda, /^Tus casos/)
+    assert.doesNotMatch(ayuda, /equipo/)
+  }
+})
+
 test('tarjetasResumen marca «Vencidos» como alerta solo cuando hay alguno', () => {
   const alerta = (resumen) => tarjetasResumen(resumen).find((t) => t.clave === 'vencidos').alerta
   assert.equal(alerta({ vencidos: 2 }), true)

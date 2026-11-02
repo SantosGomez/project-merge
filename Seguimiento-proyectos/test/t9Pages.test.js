@@ -558,7 +558,7 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
 
   it('ResumenEquipo pinta una tarjeta por cada elemento de tarjetasResumen, con tooltip y estados de carga y error', () => {
     assert.ok(existeComponente, 'existe components/ResumenEquipo.vue')
-    assert.match(componente, /tarjetasResumen\(props\.resumen\)/)
+    assert.match(componente, /tarjetasResumen\(props\.resumen, \{ propios: props\.propios \}\)/)
     assert.match(componente, /v-for="tarjeta in tarjetas"/)
     assert.match(componente, /<q-tooltip[^>]*>\{\{ tarjeta\.ayuda \}\}<\/q-tooltip>/)
     assert.match(componente, /<ScreenLoader/)
