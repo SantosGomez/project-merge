@@ -2,8 +2,8 @@
   <q-page class="auditorias-page">
     <div class="auditorias-page__head">
       <p class="auditorias-page__lead">
-        Registra y da seguimiento a las auditorías asignadas. Cambia el estado y el resto de los datos
-        con «Editar».
+        Registra y da seguimiento a las auditorías asignadas. Cambia el estado y el resto de los
+        datos con «Editar».
       </p>
       <q-btn
         class="auditorias-page__register-btn control-touch gt-xs"
@@ -21,11 +21,7 @@
 
     <ScreenLoader v-if="cargando" text="Cargando auditorías…" />
 
-    <ErrorState
-      v-else-if="errorCarga"
-      :detail="mensajeError"
-      @retry="reintentar"
-    />
+    <ErrorState v-else-if="errorCarga" :detail="mensajeError" @retry="reintentar" />
 
     <div v-else class="auditorias-page__body">
       <EmptyState
@@ -47,7 +43,7 @@
             type="button"
             class="resumen-semaforo"
             :class="[
-              `resumen-semaforo--${tarjeta.clase}`,
+              `semaforo--${tarjeta.clase}`,
               { 'resumen-semaforo--activa': filtroSemaforo === tarjeta.valor },
             ]"
             :aria-pressed="filtroSemaforo === tarjeta.valor ? 'true' : 'false'"
@@ -55,7 +51,9 @@
           >
             <span class="resumen-semaforo__valor">{{ conteoSemaforo[tarjeta.valor] }}</span>
             <span class="resumen-semaforo__etiqueta">{{ tarjeta.etiqueta }}</span>
-            <q-tooltip max-width="260px">{{ tarjeta.ayuda }} Haz clic para ver solo estas.</q-tooltip>
+            <q-tooltip max-width="260px"
+              >{{ tarjeta.ayuda }} Haz clic para ver solo estas.</q-tooltip
+            >
           </q-card>
         </section>
 
@@ -122,8 +120,8 @@
         <div v-if="auditoriasFiltradas.length === 0" class="sin-resultados" role="status">
           <q-icon name="filter_alt" size="28px" color="grey-7" aria-hidden="true" />
           <p class="sin-resultados__texto">
-            Ninguna auditoría cumple la búsqueda o los filtros. Cambia el texto, el estado o el semáforo, o usa
-            «Limpiar filtros».
+            Ninguna auditoría cumple la búsqueda o los filtros. Cambia el texto, el estado o el
+            semáforo, o usa «Limpiar filtros».
           </p>
         </div>
 
@@ -157,7 +155,9 @@
         aria-haspopup="dialog"
         @click="abrirRegistro"
       >
-        <q-tooltip anchor="center left" self="center right">Registrar una auditoría nueva.</q-tooltip>
+        <q-tooltip anchor="center left" self="center right"
+          >Registrar una auditoría nueva.</q-tooltip
+        >
       </q-btn>
     </q-page-sticky>
 
@@ -185,7 +185,11 @@ import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarAuditorias } from '../services/auditoriaService.js'
 import { listCounters } from '../services/counterService.js'
-import { contarPorSemaforo, filtrarAuditorias, ordenarAuditorias } from '../utils/listaAuditorias.js'
+import {
+  contarPorSemaforo,
+  filtrarAuditorias,
+  ordenarAuditorias,
+} from '../utils/listaAuditorias.js'
 import { useSessionStore } from '../stores/session.js'
 
 const $q = useQuasar()
@@ -215,16 +219,36 @@ const orden = ref('urgencia')
 
 // Tarjetas del resumen: el semáforo lo calcula el backend desde la bitácora (próximo plazo pendiente).
 const tarjetasSemaforo = [
-  { valor: 'Vencido', clase: 'vencido', etiqueta: 'Vencidas', ayuda: 'Un plazo pendiente ya pasó.' },
-  { valor: 'Crítico', clase: 'critico', etiqueta: 'Críticas', ayuda: 'Un plazo pendiente vence en 7 días o menos.' },
+  {
+    valor: 'Vencido',
+    clase: 'vencido',
+    etiqueta: 'Vencidas',
+    ayuda: 'Un plazo pendiente ya pasó.',
+  },
+  {
+    valor: 'Crítico',
+    clase: 'critico',
+    etiqueta: 'Críticas',
+    ayuda: 'Un plazo pendiente vence en 7 días o menos.',
+  },
   {
     valor: 'Atención',
     clase: 'atencion',
     etiqueta: 'En atención',
     ayuda: 'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos.',
   },
-  { valor: 'En tiempo', clase: 'en-tiempo', etiqueta: 'En tiempo', ayuda: 'Sin vencimientos cercanos.' },
-  { valor: 'Concluida', clase: 'concluida', etiqueta: 'Concluidas', ayuda: 'Auditorías completadas.' },
+  {
+    valor: 'En tiempo',
+    clase: 'en-tiempo',
+    etiqueta: 'En tiempo',
+    ayuda: 'Sin vencimientos cercanos.',
+  },
+  {
+    valor: 'Concluida',
+    clase: 'concluida',
+    etiqueta: 'Concluidas',
+    ayuda: 'Auditorías completadas.',
+  },
 ]
 
 const opcionesOrden = [
@@ -250,7 +274,10 @@ const auditoriasFiltradas = computed(() =>
 )
 
 const hayFiltros = computed(
-  () => filtroEstado.value !== 'todos' || filtroSemaforo.value !== 'todos' || (texto.value ?? '').trim() !== '',
+  () =>
+    filtroEstado.value !== 'todos' ||
+    filtroSemaforo.value !== 'todos' ||
+    (texto.value ?? '').trim() !== '',
 )
 
 // Un segundo clic en la misma tarjeta quita el filtro.
@@ -374,6 +401,7 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
   min-height: 44px;
   padding: 10px 12px;
   border-left-width: 5px;
+  border-left-color: var(--semaforo-color);
   border-radius: 10px;
   background: var(--dg-superficie);
   color: var(--dg-texto);
@@ -404,26 +432,6 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
   font-weight: 600;
 }
 
-.resumen-semaforo--vencido {
-  border-left-color: var(--dg-error);
-}
-
-.resumen-semaforo--critico {
-  border-left-color: var(--dg-prioridad-alta-borde);
-}
-
-.resumen-semaforo--atencion {
-  border-left-color: var(--dg-importante);
-}
-
-.resumen-semaforo--en-tiempo {
-  border-left-color: var(--dg-exito-borde);
-}
-
-.resumen-semaforo--concluida {
-  border-left-color: var(--dg-neutro-borde);
-}
-
 /* En el celular, las cinco en una sola fila para no empujar la lista hacia abajo */
 @media (max-width: 599px) {
   .auditorias-page__resumen {
@@ -436,27 +444,8 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
     padding: 6px 2px;
     border-left-width: 1px;
     border-top-width: 4px;
+    border-top-color: var(--semaforo-color);
     text-align: center;
-  }
-
-  .resumen-semaforo--vencido {
-    border-top-color: var(--dg-error);
-  }
-
-  .resumen-semaforo--critico {
-    border-top-color: var(--dg-prioridad-alta-borde);
-  }
-
-  .resumen-semaforo--atencion {
-    border-top-color: var(--dg-importante);
-  }
-
-  .resumen-semaforo--en-tiempo {
-    border-top-color: var(--dg-exito-borde);
-  }
-
-  .resumen-semaforo--concluida {
-    border-top-color: var(--dg-neutro-borde);
   }
 
   .resumen-semaforo__valor {

@@ -45,7 +45,7 @@
               flat
               bordered
               class="indicador"
-              :class="`indicador--${indicador.clave}`"
+              :class="indicador.semaforo ? `semaforo--${claseSemaforo(indicador.semaforo)}` : null"
             >
               <span class="indicador__valor">{{ indicadores[indicador.clave] }}</span>
               <span class="indicador__etiqueta">{{ indicador.etiqueta }}</span>
@@ -63,11 +63,11 @@
                     <span class="grafica__etiqueta">{{ barra.semaforo }}</span>
                     <q-linear-progress
                       :value="barra.proporcion"
-                      :color="barra.color"
                       track-color="dg-fondo-suave"
                       size="14px"
                       rounded
-                      class="grafica__barra"
+                      class="grafica__barra grafica__barra--semaforo"
+                      :class="`semaforo--${barra.clase}`"
                       :aria-label="`${barra.semaforo}: ${barra.valor} de ${auditorias.length}`"
                     />
                     <span class="grafica__valor">{{ barra.valor }}</span>
@@ -184,8 +184,8 @@
                 @keydown.enter="verFicha(auditoria.id)"
               >
                 <td
-                  class="avance__cliente"
-                  :class="`avance__franja--${claseSemaforo(auditoria.semaforo)}`"
+                  class="avance__cliente avance__franja"
+                  :class="`semaforo--${claseSemaforo(auditoria.semaforo)}`"
                 >
                   {{ auditoria.cliente }}
                   <div class="avance__tenue">Expediente {{ auditoria.noExpediente }}</div>
@@ -205,8 +205,8 @@
                 <td class="avance__fecha">{{ textoDiasPlazo(auditoria.diasParaVencer) }}</td>
                 <td>
                   <span
-                    class="avance__semaforo"
-                    :class="`avance__semaforo--${claseSemaforo(auditoria.semaforo)}`"
+                    class="avance__semaforo semaforo-etiqueta"
+                    :class="`semaforo--${claseSemaforo(auditoria.semaforo)}`"
                   >
                     {{ auditoria.semaforo }}
                   </span>
@@ -242,7 +242,7 @@
                 bordered
                 tabindex="0"
                 class="kanban__tarjeta"
-                :class="`kanban__tarjeta--${claseSemaforo(auditoria.semaforo)}`"
+                :class="`semaforo--${claseSemaforo(auditoria.semaforo)}`"
                 @click="verFicha(auditoria.id)"
                 @keydown.enter="verFicha(auditoria.id)"
               >
@@ -250,8 +250,8 @@
                 <span class="kanban__dato">{{ auditoria.tipoAud }}</span>
                 <span class="kanban__dato">Expediente {{ auditoria.noExpediente }}</span>
                 <span
-                  class="avance__semaforo kanban__semaforo"
-                  :class="`avance__semaforo--${claseSemaforo(auditoria.semaforo)}`"
+                  class="avance__semaforo kanban__semaforo semaforo-etiqueta"
+                  :class="`semaforo--${claseSemaforo(auditoria.semaforo)}`"
                 >
                   {{ auditoria.semaforo }}
                 </span>
@@ -284,8 +284,8 @@ import {
   indicadoresAuditorias,
   marcasDeFases,
   tablaTipoFase,
-  textoDiasPlazo,
 } from '../utils/tableroAuditorias.js'
+import { claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -301,29 +301,24 @@ const tarjetasIndicadores = [
   { clave: 'activas', etiqueta: 'Activas', ayuda: 'Auditorías que no están concluidas.' },
   {
     clave: 'vencidas',
+    semaforo: 'Vencido',
     etiqueta: 'Vencidas',
     ayuda: 'Tienen un plazo pendiente de la bitácora que ya pasó.',
   },
   {
     clave: 'criticas',
+    semaforo: 'Crítico',
     etiqueta: 'Críticas (≤ 7 días)',
     ayuda: 'Un plazo pendiente vence en 7 días o menos.',
   },
   {
     clave: 'atencion',
+    semaforo: 'Atención',
     etiqueta: 'En atención',
     ayuda: 'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos.',
   },
 ]
 
-const SEMAFORO_CLASE = {
-  Vencido: 'vencido',
-  Crítico: 'critico',
-  Atención: 'atencion',
-  'En tiempo': 'en-tiempo',
-  Concluida: 'concluida',
-}
-const claseSemaforo = (semaforo) => SEMAFORO_CLASE[semaforo] ?? 'en-tiempo'
 const SIMBOLO_MARCA = { cumplida: '✔', actual: '●', pendiente: '' }
 
 const auditorias = ref([])
@@ -332,15 +327,6 @@ const cargando = ref(true)
 const errorCarga = ref(null)
 
 const indicadores = computed(() => indicadoresAuditorias(auditorias.value))
-
-// Color de la barra de cada semáforo (paleta $dg-colores), igual que su franja en la lista.
-const COLOR_SEMAFORO = {
-  Vencido: 'dg-error',
-  Crítico: 'dg-prioridad-alta-borde',
-  Atención: 'dg-importante',
-  'En tiempo': 'dg-exito-borde',
-  Concluida: 'dg-neutro-borde',
-}
 
 // Proporción 0-1 para la barra; sin datos, barra vacía.
 const proporcion = (valor, total) => (total > 0 ? valor / total : 0)
@@ -351,7 +337,7 @@ const barrasSemaforo = computed(() => {
     semaforo,
     valor: conteo[semaforo],
     proporcion: proporcion(conteo[semaforo], auditorias.value.length),
-    color: COLOR_SEMAFORO[semaforo],
+    clase: claseSemaforo(semaforo),
   }))
 })
 
@@ -449,6 +435,8 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
   gap: 2px;
   padding: 14px 16px;
   border-left-width: 5px;
+  /* Color del semáforo que cuenta la tarjeta; «Activas» no es un semáforo y usa el acento */
+  border-left-color: var(--semaforo-color, var(--dg-acento));
   border-radius: 10px;
   background: var(--dg-superficie);
 }
@@ -464,22 +452,6 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
   color: var(--dg-texto-secundario);
   font-size: 0.9rem;
   font-weight: 600;
-}
-
-.indicador--activas {
-  border-left-color: var(--dg-acento);
-}
-
-.indicador--vencidas {
-  border-left-color: var(--dg-error);
-}
-
-.indicador--criticas {
-  border-left-color: var(--dg-prioridad-alta-borde);
-}
-
-.indicador--atencion {
-  border-left-color: var(--dg-importante);
 }
 
 /* Gráficas del resumen: dos tarjetas lado a lado en pantallas anchas */
@@ -536,6 +508,11 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
   font-size: 0.85rem;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+/* Cada barra de semáforo toma su color de la clase global semaforo--<clase> */
+.grafica__barra--semaforo {
+  color: var(--semaforo-color);
 }
 
 .grafica__valor {
@@ -611,6 +588,7 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
   gap: 2px;
   padding: 10px;
   border-left-width: 5px;
+  border-left-color: var(--semaforo-color);
   border-radius: 8px;
   background: var(--dg-superficie);
   cursor: pointer;
@@ -623,26 +601,6 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
 .kanban__tarjeta:focus-visible {
   outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
-}
-
-.kanban__tarjeta--vencido {
-  border-left-color: var(--dg-error);
-}
-
-.kanban__tarjeta--critico {
-  border-left-color: var(--dg-prioridad-alta-borde);
-}
-
-.kanban__tarjeta--atencion {
-  border-left-color: var(--dg-importante);
-}
-
-.kanban__tarjeta--en-tiempo {
-  border-left-color: var(--dg-exito-borde);
-}
-
-.kanban__tarjeta--concluida {
-  border-left-color: var(--dg-neutro-borde);
 }
 
 .kanban__cliente {
@@ -695,24 +653,8 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
 }
 
 /* Franja del semáforo en el borde izquierdo de la fila */
-.avance__franja--vencido {
-  box-shadow: inset 5px 0 0 var(--dg-error);
-}
-
-.avance__franja--critico {
-  box-shadow: inset 5px 0 0 var(--dg-prioridad-alta-borde);
-}
-
-.avance__franja--atencion {
-  box-shadow: inset 5px 0 0 var(--dg-importante);
-}
-
-.avance__franja--en-tiempo {
-  box-shadow: inset 5px 0 0 var(--dg-exito-borde);
-}
-
-.avance__franja--concluida {
-  box-shadow: inset 5px 0 0 var(--dg-neutro-borde);
+.avance__franja {
+  box-shadow: inset 5px 0 0 var(--semaforo-color);
 }
 
 .avance__tenue {
@@ -743,31 +685,5 @@ const verFicha = (id) => router.push({ name: 'auditoria-ficha', params: { id } }
   font-size: 0.8rem;
   font-weight: 600;
   white-space: nowrap;
-}
-
-.avance__semaforo--vencido {
-  background: var(--dg-error);
-  color: var(--dg-superficie);
-}
-
-.avance__semaforo--critico {
-  border: 1px solid var(--dg-prioridad-alta-borde);
-  background: var(--dg-prioridad-alta-fondo);
-  color: var(--dg-prioridad-alta);
-}
-
-.avance__semaforo--atencion {
-  background: var(--dg-importante-fondo);
-  color: var(--dg-importante-texto);
-}
-
-.avance__semaforo--en-tiempo {
-  background: var(--dg-exito-fondo);
-  color: var(--dg-exito);
-}
-
-.avance__semaforo--concluida {
-  background: var(--dg-neutro-fondo);
-  color: var(--dg-texto-secundario);
 }
 </style>

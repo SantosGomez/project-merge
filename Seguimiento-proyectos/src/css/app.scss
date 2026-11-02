@@ -99,6 +99,51 @@ body {
 
 // Campos de formulario de los diálogos (alta de usuario, restablecer contraseña y caso).
 // Estaban copiados en cada diálogo; aquí se definen una sola vez.
+/*
+ * Semáforo de auditorías: sus colores viven solo aquí. Cada componente agrega la clase
+ * `semaforo--<clase>` (ver utils/semaforoAuditoria.js) y usa las variables:
+ * --semaforo-color para franjas, bordes y barras; --semaforo-fondo y --semaforo-texto para la etiqueta.
+ */
+.semaforo--vencido {
+  --semaforo-color: var(--dg-error);
+  --semaforo-fondo: var(--dg-error);
+  --semaforo-texto: var(--dg-superficie);
+}
+
+.semaforo--critico {
+  --semaforo-color: var(--dg-prioridad-alta-borde);
+  --semaforo-fondo: var(--dg-prioridad-alta-fondo);
+  --semaforo-texto: var(--dg-prioridad-alta);
+}
+
+.semaforo--atencion {
+  --semaforo-color: var(--dg-importante);
+  --semaforo-fondo: var(--dg-importante-fondo);
+  --semaforo-texto: var(--dg-importante-texto);
+}
+
+.semaforo--en-tiempo {
+  --semaforo-color: var(--dg-exito-borde);
+  --semaforo-fondo: var(--dg-exito-fondo);
+  --semaforo-texto: var(--dg-exito);
+}
+
+.semaforo--concluida {
+  --semaforo-color: var(--dg-neutro-borde);
+  --semaforo-fondo: var(--dg-neutro-fondo);
+  --semaforo-texto: var(--dg-texto-secundario);
+}
+
+/* Etiqueta (chip) del semáforo; «Crítico» lleva además su borde */
+.semaforo-etiqueta {
+  background: var(--semaforo-fondo);
+  color: var(--semaforo-texto);
+}
+
+.semaforo-etiqueta.semaforo--critico {
+  border: 1px solid var(--semaforo-color);
+}
+
 .form-group {
   display: flex;
   flex-direction: column;

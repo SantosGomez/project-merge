@@ -21,7 +21,7 @@
     />
 
     <template v-else-if="auditoria">
-      <q-card flat bordered class="ficha__cabecera" :class="`ficha__cabecera--${semaforoClase}`">
+      <q-card flat bordered class="ficha__cabecera" :class="`semaforo--${semaforoClase}`">
         <q-card-section>
           <div class="ficha__titulo-fila">
             <h1 class="ficha__cliente">{{ auditoria.cliente }}</h1>
@@ -33,8 +33,8 @@
               dense
               square
               icon="traffic"
-              class="ficha__chip"
-              :class="`ficha__semaforo--${semaforoClase}`"
+              class="ficha__chip semaforo-etiqueta"
+              :class="`semaforo--${semaforoClase}`"
             >
               {{ auditoria.semaforo }}
               <q-tooltip>{{ AYUDA_SEMAFORO[auditoria.semaforo] }}</q-tooltip>
@@ -78,7 +78,7 @@
             <q-icon name="event" size="20px" aria-hidden="true" />
             <span v-if="auditoria.proximoVencimiento">
               <strong>Próximo:</strong> {{ auditoria.queVence }} · vence
-              {{ auditoria.proximoVencimiento }} ({{ textoDias(auditoria.diasParaVencer) }})
+              {{ auditoria.proximoVencimiento }} ({{ textoDiasPlazo(auditoria.diasParaVencer) }})
             </span>
             <span v-else>Sin plazos pendientes en la bitácora</span>
           </p>
@@ -197,6 +197,7 @@ import { listarFases, obtenerAuditoria } from '../services/auditoriaService.js'
 import { listCounters } from '../services/counterService.js'
 import { useSessionStore } from '../stores/session.js'
 import { destinoVolverFicha, plazoDeEvento } from '../utils/listaAuditorias.js'
+import { AYUDA_SEMAFORO, claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -214,21 +215,6 @@ const ESTADO_CLASE = {
   Completado: 'completado',
   'Aplazado por acta': 'aplazado',
 }
-const SEMAFORO_CLASE = {
-  Vencido: 'vencido',
-  Crítico: 'critico',
-  Atención: 'atencion',
-  'En tiempo': 'en-tiempo',
-  Concluida: 'concluida',
-}
-const AYUDA_SEMAFORO = {
-  Vencido: 'Un plazo pendiente de la bitácora ya pasó.',
-  Crítico: 'Un plazo pendiente vence en 7 días o menos.',
-  Atención:
-    'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos para concluir.',
-  'En tiempo': 'Sin vencimientos cercanos.',
-  Concluida: 'La auditoría está completada.',
-}
 const ETIQUETA_FASE = { cumplida: 'Cumplida', actual: 'Actual', pendiente: 'Pendiente' }
 
 const auditoria = ref(null)
@@ -239,7 +225,7 @@ const errorCarga = ref(null)
 const dialogoEdicionAbierto = ref(false)
 
 const estadoClase = computed(() => ESTADO_CLASE[auditoria.value?.estado] ?? 'pendiente')
-const semaforoClase = computed(() => SEMAFORO_CLASE[auditoria.value?.semaforo] ?? 'en-tiempo')
+const semaforoClase = computed(() => claseSemaforo(auditoria.value?.semaforo))
 
 const faseActualId = computed(() => auditoria.value?.faseActual?.id ?? 1)
 const estadoDeFase = (id) => {
@@ -258,12 +244,6 @@ const diasAutoridad = computed(() =>
     ? plazoDeEvento({ fechaLimite: auditoria.value.fechaVencimiento, estado: '' }).dias
     : null,
 )
-
-const textoDias = (dias) => {
-  if (dias === 0) return 'vence hoy'
-  if (dias < 0) return `venció hace ${-dias} ${-dias === 1 ? 'día' : 'días'}`
-  return `en ${dias} ${dias === 1 ? 'día' : 'días'}`
-}
 
 const cargar = async () => {
   cargando.value = true
@@ -328,27 +308,8 @@ const imprimir = () => window.print()
 
 .ficha__cabecera {
   border-left-width: 6px;
+  border-left-color: var(--semaforo-color);
   background: var(--dg-superficie);
-}
-
-.ficha__cabecera--vencido {
-  border-left-color: var(--dg-error);
-}
-
-.ficha__cabecera--critico {
-  border-left-color: var(--dg-prioridad-alta-borde);
-}
-
-.ficha__cabecera--atencion {
-  border-left-color: var(--dg-importante);
-}
-
-.ficha__cabecera--en-tiempo {
-  border-left-color: var(--dg-exito-borde);
-}
-
-.ficha__cabecera--concluida {
-  border-left-color: var(--dg-neutro-borde);
 }
 
 .ficha__titulo-fila {
@@ -391,32 +352,6 @@ const imprimir = () => window.print()
 .ficha__estado--aplazado {
   background: var(--dg-error-fondo);
   color: var(--dg-error);
-}
-
-.ficha__semaforo--vencido {
-  background: var(--dg-error);
-  color: var(--dg-superficie);
-}
-
-.ficha__semaforo--critico {
-  background: var(--dg-prioridad-alta-fondo);
-  color: var(--dg-prioridad-alta);
-  border: 1px solid var(--dg-prioridad-alta-borde);
-}
-
-.ficha__semaforo--atencion {
-  background: var(--dg-importante-fondo);
-  color: var(--dg-importante-texto);
-}
-
-.ficha__semaforo--en-tiempo {
-  background: var(--dg-exito-fondo);
-  color: var(--dg-exito);
-}
-
-.ficha__semaforo--concluida {
-  background: var(--dg-neutro-fondo);
-  color: var(--dg-texto-secundario);
 }
 
 .ficha__expediente {

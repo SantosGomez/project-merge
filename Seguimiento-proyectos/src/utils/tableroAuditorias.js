@@ -39,18 +39,8 @@ export const marcasDeFases = (faseActual, semaforo) => {
   })
 }
 
-/**
- * Días para el próximo vencimiento en palabras, sin números negativos.
- * @param {number|null} dias
- * @returns {string}
- */
-export const textoDiasPlazo = (dias) => {
-  if (dias === null || dias === undefined) return '—'
-  if (dias === 0) return 'vence hoy'
-  const cuantos = Math.abs(dias)
-  const unidad = cuantos === 1 ? 'día' : 'días'
-  return dias < 0 ? `venció hace ${cuantos} ${unidad}` : `en ${cuantos} ${unidad}`
-}
+// Se movió a semaforoAuditoria.js (lo usan también la lista y la ficha); se sigue exportando aquí.
+export { textoDiasPlazo } from './semaforoAuditoria.js'
 
 const faseDe = (auditoria) => auditoria.faseActual?.id ?? 1
 const cerosPorFase = () => Array(TOTAL_FASES).fill(0)
