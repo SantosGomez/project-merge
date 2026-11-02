@@ -67,6 +67,32 @@
 
       <q-tab-panels v-model="pestana" keep-alive animated class="dashboard-page__paneles">
         <q-tab-panel name="casos" class="dashboard-page__panel">
+          <!-- Barra de acciones rápidas (R2): Registrar caso + Ver todos -->
+          <div class="dashboard-page__acciones" v-if="pestana === 'casos'">
+            <q-btn
+              class="control-touch"
+              color="primary"
+              no-caps
+              unelevated
+              icon="add_circle"
+              label="Registrar caso"
+              :to="{ name: 'contador-casos' }"
+            >
+              <q-tooltip>Abre el formulario para registrar un caso nuevo.</q-tooltip>
+            </q-btn>
+            <q-btn
+              class="control-touch"
+              color="secondary"
+              no-caps
+              unelevated
+              icon="list_alt"
+              label="Ver todos"
+              :to="{ name: 'contador-casos', query: { filtro: null } }"
+            >
+              <q-tooltip>Ver la lista completa de tus casos sin filtros.</q-tooltip>
+            </q-btn>
+          </div>
+
           <ResumenEquipo
             propios
             seleccionable
