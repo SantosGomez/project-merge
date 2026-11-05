@@ -17,6 +17,13 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas. Todo lo de abajo ya es
 - Colores del semáforo centralizados en `.semaforo--<clase>` (`app.scss`) y `utils/semaforoAuditoria.js`.
 - Rediseño UI de inputs y selects (completado, 2026-11-05): Rebanadas 0 a 6 listas (`app.scss`, `CaseFormDialog.vue`, `CasoItem.vue`, `MyCasesPage.vue`, `AdminDashboardPage.vue`, `AuditoriasPage.vue`, `AuditoriaFormDialog.vue`, `BitacoraAuditoria.vue`, `CountersDirectoryPage.vue`, `NewUserDialog.vue`, `ResetPasswordDialog.vue`, `LoginPage.vue`, `CambiarContrasenaPage.vue`). Selectores compactos en línea (`caso-item__estado`, `paginacion__por-pagina`) preservan su ancho en móvil.
 
+## Revisión de UI con skills (rama `revision-ui`, desde `main`, 2026-11-05)
+
+- Ramas: `main` = Docker/producción; `experimento` = chat por auditoría (sin unir); `revision-ui` = revisión de todo el frontend con las skills `impeccable` y `emil-design-eng`.
+- Rebanada 0 lista: `PRODUCT.md` (entrevista: contadores en escritorio en oficina; éxito = que no se venzan plazos y ver la carga del equipo; WCAG AA) y `DESIGN.md` (modo scan; North Star «El expediente ordenado», componentes modernos y suaves, sombras suaves en azul marino ≤12 %). Encabezados en inglés porque la herramienta los lee por nombre. Sin sidecar `.impeccable/design.json` (solo sirve al panel «live»).
+- Herramienta: `sh .agents/skills/impeccable/scripts/impeccable context` (binario en `~/.impeccable/bin`); tras editar UI, `impeccable detect --json <archivos>`.
+- Plan: 1 Acceso, 2 Estructura y estados compartidos, 3 «Mis casos», 4 «Mi resumen», 5 Dashboard admin, 6 Auditorías lista/registro, 7 Ficha y bitácora, 8 Directorio de usuarios, 9 Revisión de conjunto. Cada rebanada: informe (critique + audit + clarify + harden + tabla emil) → el usuario elige → TDD → navegador → commit.
+
 ## Pendientes
 
 - Boceto de auditorías: campo Importancia, aviso al Socio Director, días inhábiles SAT, campos RFC/Unidad/Socio/Multa (no existen en las tablas: proponer cambio de esquema antes).
