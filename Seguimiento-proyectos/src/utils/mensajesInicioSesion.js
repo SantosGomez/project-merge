@@ -10,6 +10,13 @@ import { construirError } from './mensajes.js'
 const SOBRE_QUE = 'el inicio de sesión'
 
 /**
+ * Aviso del bloqueo por demasiados intentos fallidos, en trato de tú. Los 15 minutos son la
+ * ventana del límite del backend (`windowMs` en Backend/src/app.js): si cambia allá, cambia aquí.
+ */
+export const MENSAJE_BLOQUEO_LOGIN =
+  'Se bloqueó el inicio de sesión por demasiados intentos fallidos. Espera 15 minutos y vuelve a intentarlo.'
+
+/**
  * Error de red o de servidor del login en lenguaje llano, con las tres partes de RNF-01.
  * Si el backend explicó el fallo con su propio `mensaje`, ese texto se respeta.
  * @param {{ estado: string, mensaje: string, datos?: Object|null }} error - error normalizado de api.js.

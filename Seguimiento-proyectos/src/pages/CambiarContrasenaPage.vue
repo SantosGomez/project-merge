@@ -35,6 +35,7 @@
           :color="coinciden ? 'dg-exito-oscuro' : undefined"
           :rules="[reglaNueva]"
           lazy-rules
+          hint="Mínimo 8 caracteres, distinta a la que te dio el administrador."
           @update:model-value="alEscribir"
         >
           <template #prepend>
@@ -52,7 +53,6 @@
               class="cambio-form__ver"
               flat
               round
-              dense
               :icon="verNueva ? 'visibility_off' : 'visibility'"
               :aria-label="verNueva ? 'Ocultar contraseña nueva' : 'Mostrar contraseña nueva'"
               :aria-pressed="verNueva"
@@ -60,17 +60,6 @@
             >
               <q-tooltip>{{ verNueva ? 'Ocultar contraseña' : 'Mostrar contraseña' }}</q-tooltip>
             </q-btn>
-            <q-icon
-              name="info"
-              class="cambio-form__help-icon"
-              tabindex="0"
-              role="img"
-              aria-label="Ayuda sobre la contraseña nueva"
-            >
-              <q-tooltip>
-                Al menos 8 caracteres y distinta a la que te dio el administrador.
-              </q-tooltip>
-            </q-icon>
           </template>
         </q-input>
 
@@ -103,7 +92,6 @@
               class="cambio-form__ver"
               flat
               round
-              dense
               :icon="verConfirmacion ? 'visibility_off' : 'visibility'"
               :aria-label="verConfirmacion ? 'Ocultar confirmación' : 'Mostrar confirmación'"
               :aria-pressed="verConfirmacion"
@@ -111,15 +99,6 @@
             >
               <q-tooltip>{{ verConfirmacion ? 'Ocultar contraseña' : 'Mostrar contraseña' }}</q-tooltip>
             </q-btn>
-            <q-icon
-              name="info"
-              class="cambio-form__help-icon"
-              tabindex="0"
-              role="img"
-              aria-label="Ayuda sobre la confirmación"
-            >
-              <q-tooltip>Escribe otra vez la contraseña nueva para evitar errores.</q-tooltip>
-            </q-icon>
           </template>
         </q-input>
 
@@ -326,7 +305,10 @@ const salir = async () => {
   gap: 16px;
 }
 
+/* Área táctil de 44 px (antes 34 px con `dense`). */
 .cambio-form__ver {
+  min-width: 44px;
+  min-height: 44px;
   color: var(--dg-texto-secundario);
 }
 
@@ -337,11 +319,6 @@ const salir = async () => {
 
 .cambio-form__control--coinciden :deep(.q-field__bottom) {
   color: var(--dg-exito-oscuro);
-}
-
-.cambio-form__help-icon {
-  cursor: help;
-  color: var(--dg-acento);
 }
 
 .cambio-form__submit {
@@ -356,11 +333,6 @@ const salir = async () => {
 
 /* Foco visible en todo el formulario (RNF-07). */
 .cambio-form__control :deep(.q-field__control:focus-within) {
-  outline: 3px solid var(--dg-foco);
-  outline-offset: 2px;
-}
-
-.cambio-form__help-icon:focus-visible {
   outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
 }

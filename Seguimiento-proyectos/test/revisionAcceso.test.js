@@ -111,3 +111,78 @@ describe('Foco visible en «Mantener sesión iniciada»', () => {
     assert.match(login, /\.login-form__mantener:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--dg-foco\)/)
   })
 })
+
+// --- Grupo B: legibilidad, textos y áreas táctiles --------------------------------------
+
+const variables = leer('../src/css/quasar.variables.scss')
+const cambio = leer('../src/pages/CambiarContrasenaPage.vue')
+const plantillaCambio = cambio.split('<script')[0]
+const caducada = leer('../src/components/AvisoSesionCaducada.vue')
+const plantillaCaducada = caducada.split('<script')[0]
+const colorDe = (nombre) => variables.match(new RegExp(String.raw`\$${nombre}:\s*(#[0-9a-fA-F]{6})`))?.[1]
+const deLaPaleta = (nombre) =>
+  variables
+    .match(/\$dg-colores:\s*\(([\s\S]*?)\);/)?.[1]
+    .match(new RegExp(String.raw`(?:^|\s)${nombre}:\s*(#[0-9a-fA-F]{6})`))?.[1]
+
+describe('Tooltips y colores de aviso en toda la app', () => {
+  it('los tooltips usan la tinta de la paleta y letra legible', () => {
+    assert.match(deLaPaleta('texto') ?? '', /^#[0-9a-f]{6}$/i, 'se leyó el color de la paleta')
+    assert.equal(colorDe('tooltip-background'), deLaPaleta('texto'), 'fondo = dg-texto')
+    assert.match(variables, /\$tooltip-fontsize:\s*0\.8125rem/, '13 px en escritorio')
+    assert.match(variables, /\$tooltip-mobile-fontsize:\s*0\.875rem/, '14 px en celular')
+  })
+
+  it('los avisos de error y éxito de Quasar son los de la paleta', () => {
+    assert.match(colorDe('negative') ?? '', /^#[0-9a-f]{6}$/i, 'se leyó $negative')
+    assert.equal(colorDe('negative'), deLaPaleta('error'), '$negative = dg-error')
+    assert.equal(colorDe('positive'), deLaPaleta('exito'), '$positive = dg-exito')
+  })
+})
+
+describe('Textos de acceso en trato de tú y sin jerga', () => {
+  it('el login no usa «usted» ni la palabra «Credenciales»', () => {
+    assert.doesNotMatch(login, /Debe iniciar sesión|Verifique|Credenciales no válidas/)
+    assert.match(login, /'El correo o la contraseña no son correctos\. Revísalos y vuelve a intentarlo\.'/)
+    assert.match(plantillaLogin, /Inicia sesión para abrir esta pantalla\./)
+    assert.match(plantillaLogin, /Tu sesión se cerró\. Vuelve a iniciar sesión para continuar\./)
+  })
+
+  it('el bloqueo por intentos se explica en tú, sin el texto del servidor en usted', () => {
+    assert.match(login, /errorBloqueo\.value = MENSAJE_BLOQUEO_LOGIN/)
+  })
+
+  it('«Sesión caducada» es un aviso breve, sin «token» ni rótulos de plantilla', () => {
+    assert.match(plantillaCaducada, /<h2[^>]*>Tu sesión se cerró<\/h2>/)
+    assert.doesNotMatch(caducada, /token|Qué ocurrió:|Sobre qué dato|inicie sesión|su sesión/i)
+    assert.match(plantillaCaducada, /Vuelve a iniciar sesión para continuar\./)
+    assert.match(plantillaCaducada, /label="Ir al inicio de sesión"/)
+  })
+})
+
+describe('Requisito de la contraseña nueva visible', () => {
+  it('el requisito va como ayuda fija bajo el campo, no solo en un tooltip', () => {
+    const campo = plantillaCambio.slice(plantillaCambio.indexOf('ref="nuevaInput"'), plantillaCambio.indexOf('ref="confirmacionInput"'))
+    assert.match(campo, /hint="Mínimo 8 caracteres, distinta a la que te dio el administrador\."/)
+    assert.doesNotMatch(campo, /cambio-form__help-icon/, 'ya no hace falta el icono de ayuda')
+  })
+
+  it('«Confirmar contraseña» no lleva icono de ayuda: su etiqueta se lee completa a 375 px', () => {
+    assert.doesNotMatch(plantillaCambio, /cambio-form__help-icon/)
+  })
+})
+
+describe('Áreas táctiles de 44 px en los botones del ojo', () => {
+  it('el ojo de la contraseña mide al menos 44 px en el login y en el cambio', () => {
+    for (const [fuente, clase] of [[login, 'login-form__ver-contrasena'], [cambio, 'cambio-form__ver']]) {
+      const plantilla = fuente.split('<script')[0]
+      const boton = plantilla.slice(plantilla.indexOf(`class="${clase}"`) - 40, plantilla.indexOf(`class="${clase}"`) + 200)
+      assert.doesNotMatch(boton, /\bdense\b/, `${clase}: sin dense`)
+      assert.match(
+        fuente,
+        new RegExp(String.raw`\.${clase}\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px`),
+        `${clase}: 44 px`,
+      )
+    }
+  })
+})

@@ -333,8 +333,8 @@ describe('Login por correo — verificación estática de P-1', () => {
   it('los avisos hablan de correo, no de usuario', () => {
     assert.ok(login.includes('Falta el correo. Escríbelo para iniciar sesión.'), 'aviso de campo vacío')
     assert.ok(
-      login.includes('Credenciales no válidas. Verifique el correo y la contraseña e intente de nuevo.'),
-      'aviso genérico de credenciales',
+      login.includes('El correo o la contraseña no son correctos. Revísalos y vuelve a intentarlo.'),
+      'aviso genérico de credenciales (sin decir cuál falló)',
     )
   })
 })

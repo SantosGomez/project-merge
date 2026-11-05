@@ -44,14 +44,11 @@
         </q-banner>
 
         <q-banner v-if="sesionCaducada" class="notice notice--expired" role="alert">
-          <p class="notice__text">
-            Tu sesión caducó. Ya estás en la pantalla de inicio de sesión: vuelve a entrar para
-            continuar; mientras tanto no se muestra información de contadores ni de casos.
-          </p>
+          <p class="notice__text">Tu sesión se cerró. Vuelve a iniciar sesión para continuar.</p>
         </q-banner>
 
         <q-banner v-if="sesionRequerida" class="notice notice--required" role="status">
-          <p class="notice__text">Debe iniciar sesión para acceder a esta pantalla.</p>
+          <p class="notice__text">Inicia sesión para abrir esta pantalla.</p>
         </q-banner>
 
         <q-banner v-if="errorPerfil" class="notice notice--invalid" role="alert">
@@ -148,7 +145,6 @@
                   class="login-form__ver-contrasena"
                   flat
                   round
-                  dense
                   :icon="verContrasena ? 'visibility_off' : 'visibility'"
                   :aria-label="verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                   :aria-pressed="verContrasena"
@@ -208,7 +204,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { arranqueFallido } from '../router/accessState.js'
 import { ESTADOS_ERROR } from '../services/api.js'
 import { useSessionStore } from '../stores/session.js'
-import { errorDeConexionLogin } from '../utils/mensajesInicioSesion.js'
+import { MENSAJE_BLOQUEO_LOGIN, errorDeConexionLogin } from '../utils/mensajesInicioSesion.js'
 import { validarCredenciales } from '../utils/validators.js'
 
 /*
@@ -367,11 +363,10 @@ const submit = async () => {
   if (!resultado.ok) {
     if (resultado.error?.estado === ESTADOS_ERROR.CREDENCIALES_INVALIDAS) {
       // Mensaje genérico: no se indica cuál de los dos datos falló (RF-04).
-      errorCredenciales.value =
-        'Credenciales no válidas. Verifique el correo y la contraseña e intente de nuevo.'
+      errorCredenciales.value = 'El correo o la contraseña no son correctos. Revísalos y vuelve a intentarlo.'
     } else if (resultado.error?.estado === ESTADOS_ERROR.DEMASIADOS_INTENTOS) {
-      // El backend dice cuánto esperar; mientras tanto no se ofrece «Reintentar».
-      errorBloqueo.value = resultado.error.mensaje
+      // Mientras dura el bloqueo no se ofrece «Reintentar».
+      errorBloqueo.value = MENSAJE_BLOQUEO_LOGIN
     } else {
       // Red o servidor: mensaje de tres partes con la opción de reintentar (RF-36).
       errorConexion.value = errorDeConexionLogin(resultado.error)
@@ -514,7 +509,10 @@ const submit = async () => {
   outline-offset: 2px;
 }
 
+/* Área táctil de 44 px (antes 34 px con `dense`). */
 .login-form__ver-contrasena {
+  min-width: 44px;
+  min-height: 44px;
   color: var(--dg-texto-secundario);
 }
 

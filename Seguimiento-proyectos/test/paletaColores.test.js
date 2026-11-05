@@ -83,6 +83,8 @@ const PARES_DE_TEXTO = [
   ['error-texto', 'error-fondo'],
   ['error', 'error-fondo-suave'], ['texto-secundario', 'error-fondo-suave'],
   ['error-aviso-texto', 'error-aviso-fondo'],
+  // Revisión de UI, rebanada 1: tooltips (texto claro sobre la tinta) y avisos de Quasar
+  ['texto-claro', 'texto'], ['texto-claro', 'error'], ['texto-claro', 'exito'],
 ]
 
 // Textos del menú lateral sobre su fondo oscuro ($primary de Quasar).

@@ -23,10 +23,18 @@ $secondary-white-alternative: #e5e6eb;
 $dark: #1d1d1d;
 $dark-page: #121212;
 
-$positive: #21ba45;
-$negative: #c10015;
+// Avisos y errores de Quasar (notify, errores de campo) con los colores `exito` y `error` de
+// $dg-colores: el verde y el rojo de fábrica no daban contraste AA con texto blanco.
+$positive: #1b5e20;
+$negative: #a3231b;
 $info: #31ccec;
 $warning: #f2c037;
+
+// Tooltips de toda la app: fondo `texto` de $dg-colores y letra legible. El gris y los 10 px de
+// fábrica quedaban en 4.4:1 (WCAG pide 4.5:1).
+$tooltip-background: #102a43;
+$tooltip-fontsize: 0.8125rem;
+$tooltip-mobile-fontsize: 0.875rem;
 
 // Paleta de la app por papel. `app.scss` la publica como variables CSS (`--dg-texto`) y como
 // clases de color de Quasar (`text-dg-texto`, `bg-dg-texto`), así se usa `color="dg-acento"`
