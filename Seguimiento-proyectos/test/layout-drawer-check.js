@@ -61,7 +61,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(!header.includes('abrirDialogoCierre'), 'la barra ya no abre el diálogo de cierre')
     assert.ok(!src.includes('botonCerrarSesion'), 'no queda la ref botonCerrarSesion')
     assert.ok(!src.includes('.layout-bar__close'), 'no queda la clase layout-bar__close')
-    assert.ok(header.includes('Volver'), 'la barra conserva Volver')
+    assert.ok(!header.includes('icon="arrow_back"'), 'la barra ya no tiene «Volver»')
     assert.ok(header.includes('icon="menu"'), 'la barra conserva el botón de menú')
     assert.ok(header.includes('layout-bar__title'), 'la barra conserva el título')
   })
@@ -691,14 +691,6 @@ describe('Directorio de usuarios (rebanada 2: el usuario de sistema entra) — v
     assert.match(seccion, /<q-item-label>Directorio<\/q-item-label>/, 'nombre de la opción')
     assert.match(seccion, /<q-tooltip>Ir al directorio de usuarios<\/q-tooltip>/, 'tooltip de la opción')
     assert.match(seccion, /aria-label="Ir al directorio de usuarios"/, 'nombre accesible')
-  })
-
-  it('«Volver» solo aparece si la sesión puede abrir la pantalla de destino', () => {
-    const inicio = src.indexOf('const backRouteName')
-    const calculo = src.slice(inicio, src.indexOf('\nconst ', inicio + 1))
-
-    assert.match(calculo, /decidirAcceso\(/, 'usa la misma regla que el guard')
-    assert.match(calculo, /accion === 'permitir' \? destino : null/, 'sin permiso no hay «Volver»')
   })
 
   it('«Ver casos» solo se muestra al administrador', () => {

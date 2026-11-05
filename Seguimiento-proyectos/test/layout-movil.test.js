@@ -1,6 +1,6 @@
 /*
  * Verificación estática de la barra móvil en MaquetaLayout.vue (historia #6).
- * No monta Vue; comprueba la fila única, el «Volver» de solo icono y el recorte del título.
+ * No monta Vue; comprueba la fila única, que ya no hay «Volver» y el recorte del título.
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
@@ -18,43 +18,20 @@ const cssRule = (selector) => {
 
 const barra = src.slice(src.indexOf('<q-header'), src.indexOf('</q-header>'))
 
-const botonVolver = () => {
-  const icono = barra.indexOf('icon="arrow_back"')
-  const inicio = barra.lastIndexOf('<q-btn', icono)
-  return barra.slice(inicio, barra.indexOf('>', inicio) + 1)
-}
-
 describe('Barra móvil — verificación estática', () => {
-  it('la barra pone menú, flecha y título en una sola fila, en ese orden', () => {
+  it('la barra pone menú y título en una sola fila, en ese orden', () => {
     assert.match(cssRule('.layout-bar__row'), /flex-wrap:\s*nowrap/, 'la fila no salta de línea')
 
     const menu = barra.indexOf('icon="menu"')
-    const flecha = barra.indexOf('icon="arrow_back"')
     const titulo = barra.indexOf('layout-bar__title')
 
-    assert.ok(menu >= 0 && flecha >= 0 && titulo >= 0, 'faltan menú, flecha o título')
-    assert.ok(menu < flecha, 'el menú va antes que la flecha')
-    assert.ok(flecha < titulo, 'la flecha va antes del título')
+    assert.ok(menu >= 0 && titulo >= 0, 'faltan menú o título')
+    assert.ok(menu < titulo, 'el menú va antes del título')
   })
 
-  it('el «Volver» de la barra es solo una flecha con el mismo destino y nombre accesible', () => {
-    const boton = botonVolver()
-
-    assert.ok(boton, 'falta el «Volver» de la barra')
-    assert.match(boton, /icon="arrow_back"/, 'sigue siendo la flecha de volver')
-    assert.doesNotMatch(boton, /(^|\s)label="/, 'ya no muestra la palabra «Volver»')
-    assert.ok(boton.includes(':to="{ name: backRouteName }"'), 'conserva el destino de vuelta')
-    assert.ok(
-      boton.includes(':aria-label="`Volver a ${backTitle}`"'),
-      'conserva el nombre accesible',
-    )
-  })
-
-  it('el tooltip de la flecha dice «Volver a <pantalla>»', () => {
-    assert.ok(
-      barra.includes('<q-tooltip>Volver a {{ backTitle }}</q-tooltip>'),
-      'el tooltip nombra la pantalla anterior',
-    )
+  it('la barra ya no tiene el botón «Volver»', () => {
+    assert.ok(!barra.includes('icon="arrow_back"'), 'no queda la flecha de volver')
+    assert.ok(!src.includes('backRouteName'), 'no queda el cálculo del destino de vuelta')
   })
 
   it('el título de la barra se recorta con «…» sin pasar a otra línea', () => {
