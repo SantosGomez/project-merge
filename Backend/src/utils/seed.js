@@ -367,6 +367,20 @@ async function migrarAuditorias() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
 
+  // Chat de la auditoría: mensajes entre el administrador y los contadores asignados.
+  await query(`
+    CREATE TABLE IF NOT EXISTS auditoria_mensajes (
+      IdMensaje INT AUTO_INCREMENT PRIMARY KEY,
+      IdAuditoria INT NOT NULL,
+      IdUsuario INT NOT NULL,
+      Mensaje VARCHAR(1000) NOT NULL,
+      CreadoEn DATETIME NOT NULL,
+      INDEX idx_auditoria_mensajes_auditoria (IdAuditoria, IdMensaje),
+      CONSTRAINT fk_auditoria_mensajes_auditoria FOREIGN KEY (IdAuditoria) REFERENCES auditorias(IdAuditoria) ON DELETE CASCADE,
+      CONSTRAINT fk_auditoria_mensajes_usuario FOREIGN KEY (IdUsuario) REFERENCES usuarios(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
   for (const [id, fase, descripcion] of FASES_AUDITORIA) {
     await query('INSERT IGNORE INTO fases_aud (IdFase, Fase, Descripcion) VALUES (?, ?, ?)', [id, fase, descripcion]);
   }

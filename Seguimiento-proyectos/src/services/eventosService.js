@@ -11,7 +11,7 @@
 import { ESTADOS_ERROR, URL_BASE_API, api as apiPorDefecto } from './api.js'
 
 /** Avisos que manda el servidor y se reenvían a quien los escuche. */
-const AVISOS_DEL_SERVIDOR = ['caso-actualizado', 'aviso-nuevo', 'auditoria-actualizada']
+const AVISOS_DEL_SERVIDOR = ['caso-actualizado', 'aviso-nuevo', 'auditoria-actualizada', 'mensaje-auditoria']
 
 const ESPERA_INICIAL_MS = 5000
 const ESPERA_MAXIMA_MS = 60 * 1000
@@ -113,8 +113,8 @@ export const crearEventosService = (opciones = {}) => {
   }
 
   /**
-   * Escucha un aviso: 'caso-actualizado', 'aviso-nuevo', 'auditoria-actualizada', 'reconectado' o
-   * 'sesion-cerrada'.
+   * Escucha un aviso: 'caso-actualizado', 'aviso-nuevo', 'auditoria-actualizada', 'mensaje-auditoria',
+   * 'reconectado' o 'sesion-cerrada'.
    * @returns {Function} deja de escuchar.
    */
   const escuchar = (nombre, funcion) => {

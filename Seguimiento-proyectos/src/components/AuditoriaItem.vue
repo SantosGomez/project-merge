@@ -102,6 +102,19 @@
         no-caps
         dense
         color="dg-acento"
+        icon="forum"
+        label="Mensajes"
+        class="control-touch"
+        :disable="deshabilitado"
+        @click="emit('abrir-chat')"
+      >
+        <q-tooltip>Abre el chat con el administrador y los contadores de esta auditoría.</q-tooltip>
+      </q-btn>
+      <q-btn
+        flat
+        no-caps
+        dense
+        color="dg-acento"
         icon="visibility"
         label="Ver ficha"
         class="control-touch"
@@ -149,7 +162,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['ver-detalle', 'editar'])
+const emit = defineEmits(['ver-detalle', 'editar', 'abrir-chat'])
 
 const TOTAL_FASES = 6
 

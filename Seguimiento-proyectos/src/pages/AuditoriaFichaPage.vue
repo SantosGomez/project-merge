@@ -54,6 +54,17 @@
               flat
               no-caps
               color="dg-acento"
+              icon="forum"
+              label="Mensajes"
+              class="control-touch"
+              @click="chatAbierto = true"
+            >
+              <q-tooltip>Abre el chat con el administrador y los contadores de esta auditoría.</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              no-caps
+              color="dg-acento"
               icon="print"
               label="Imprimir ficha"
               class="control-touch"
@@ -180,6 +191,8 @@
         :es-admin="session.esAdministrador"
         @guardada="alGuardar"
       />
+
+      <ChatAuditoria v-model="chatAbierto" :auditoria-id="auditoria.id" :cliente="auditoria.cliente" />
     </template>
   </q-page>
 </template>
@@ -191,6 +204,7 @@ import { useQuasar } from 'quasar'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import BitacoraAuditoria from '../components/BitacoraAuditoria.vue'
+import ChatAuditoria from '../components/ChatAuditoria.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarFases, obtenerAuditoria } from '../services/auditoriaService.js'
@@ -223,6 +237,7 @@ const contadores = ref([])
 const cargando = ref(true)
 const errorCarga = ref(null)
 const dialogoEdicionAbierto = ref(false)
+const chatAbierto = ref(false)
 
 const estadoClase = computed(() => ESTADO_CLASE[auditoria.value?.estado] ?? 'pendiente')
 const semaforoClase = computed(() => claseSemaforo(auditoria.value?.semaforo))

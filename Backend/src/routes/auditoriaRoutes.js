@@ -10,6 +10,7 @@ const {
   updateEvento,
   deleteEvento,
 } = require('../controllers/AuditoriaEventoController');
+const { listMensajes, createMensaje } = require('../controllers/MensajeAuditoriaController');
 const { asyncHandler } = require('../utils/asyncHandler');
 
 // GET /auditorias — Listar auditorías (el contador solo ve aquellas donde está asignado)
@@ -38,5 +39,11 @@ router.patch('/:id/eventos/:eventoId', authenticateToken, requireAdminOrContador
 
 // DELETE /auditorias/:id/eventos/:eventoId — Borrar un evento capturado por error
 router.delete('/:id/eventos/:eventoId', authenticateToken, requireAdminOrContador, asyncHandler(deleteEvento));
+
+// GET /auditorias/:id/mensajes — Chat de la auditoría (administrador o contador asignado)
+router.get('/:id/mensajes', authenticateToken, requireAdminOrContador, asyncHandler(listMensajes));
+
+// POST /auditorias/:id/mensajes — Enviar un mensaje al chat (administrador o contador asignado)
+router.post('/:id/mensajes', authenticateToken, requireAdminOrContador, asyncHandler(createMensaje));
 
 module.exports = router;

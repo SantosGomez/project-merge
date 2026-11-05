@@ -170,6 +170,23 @@ const leerEvento = (data, sobreQue) => {
 }
 
 /**
+ * Mensaje del chat de la API en la forma de las pantallas. La hora local
+ * `AAAA-MM-DD HH:mm:ss` se reacomoda como texto a `DD-MM-AAAA HH:mm`.
+ * También traduce el mensaje que llega en vivo con el aviso «mensaje-auditoria».
+ * @param {Object} mensaje - mensaje tal como lo devuelve el backend.
+ * @returns {Object}
+ */
+export const mensajeDeBackend = (mensaje) => {
+  const [fecha = '', hora = ''] = String(mensaje.creado_en ?? '').split(' ')
+  return {
+    id: mensaje.id,
+    texto: mensaje.texto,
+    autor: mensaje.autor,
+    fechaHora: `${fechaParaFormulario(fecha)} ${hora.slice(0, 5)}`.trim(),
+  }
+}
+
+/**
  * Crea el servicio de auditorías con api inyectable.
  * @param {Object} [opciones] - inyección para pruebas.
  * @param {Object} [opciones.api] - instancia de axios (o api falsa).
@@ -275,6 +292,33 @@ export const crearAuditoriaService = (opciones = {}) => {
     await api.delete(`/auditorias/${auditoriaId}/eventos/${eventoId}`)
   }
 
+  /**
+   * GET /auditorias/:id/mensajes: chat de la auditoría en orden de envío.
+   * @param {number|string} auditoriaId
+   * @returns {Promise<Array<Object>>}
+   */
+  const listarMensajes = async (auditoriaId) => {
+    const { data } = await api.get(`/auditorias/${auditoriaId}/mensajes`)
+    if (!Array.isArray(data?.mensajes)) {
+      throw crearErrorInesperado('los mensajes de la auditoría')
+    }
+    return data.mensajes.map(mensajeDeBackend)
+  }
+
+  /**
+   * POST /auditorias/:id/mensajes: envía un mensaje al chat de la auditoría.
+   * @param {number|string} auditoriaId
+   * @param {string} texto - mensaje escrito por la persona.
+   * @returns {Promise<Object>} mensaje enviado, ya traducido.
+   */
+  const enviarMensaje = async (auditoriaId, texto) => {
+    const { data } = await api.post(`/auditorias/${auditoriaId}/mensajes`, { texto })
+    if (!data?.nuevo_mensaje || typeof data.nuevo_mensaje !== 'object') {
+      throw crearErrorInesperado('el mensaje enviado')
+    }
+    return mensajeDeBackend(data.nuevo_mensaje)
+  }
+
   return {
     listarAuditorias,
     obtenerAuditoria,
@@ -285,6 +329,8 @@ export const crearAuditoriaService = (opciones = {}) => {
     registrarEvento,
     actualizarEvento,
     borrarEvento,
+    listarMensajes,
+    enviarMensaje,
   }
 }
 
@@ -300,3 +346,5 @@ export const listarEventos = servicioPorDefecto.listarEventos
 export const registrarEvento = servicioPorDefecto.registrarEvento
 export const actualizarEvento = servicioPorDefecto.actualizarEvento
 export const borrarEvento = servicioPorDefecto.borrarEvento
+export const listarMensajes = servicioPorDefecto.listarMensajes
+export const enviarMensaje = servicioPorDefecto.enviarMensaje

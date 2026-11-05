@@ -17,10 +17,22 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas. Todo lo de abajo ya es
 - Colores del semáforo centralizados en `.semaforo--<clase>` (`app.scss`) y `utils/semaforoAuditoria.js`.
 - Rediseño UI de inputs y selects (completado, 2026-11-05): Rebanadas 0 a 6 listas (`app.scss`, `CaseFormDialog.vue`, `CasoItem.vue`, `MyCasesPage.vue`, `AdminDashboardPage.vue`, `AuditoriasPage.vue`, `AuditoriaFormDialog.vue`, `BitacoraAuditoria.vue`, `CountersDirectoryPage.vue`, `NewUserDialog.vue`, `ResetPasswordDialog.vue`, `LoginPage.vue`, `CambiarContrasenaPage.vue`). Selectores compactos en línea (`caso-item__estado`, `paginacion__por-pagina`) preservan su ancho en móvil.
 
+## Experimento: chat por auditoría (rama `experimento`, 2026-11-05)
+
+- Rama `experimento` (en GitHub) para probar sin tocar `main`, que es lo que va a Docker. Antes de presentar avances: `git switch main` y reiniciar dev. La BD MariaDB es compartida entre ramas.
+- Diseño aprobado: hilo por auditoría (admin + contadores asignados, mismos permisos que la bitácora), panel lateral con `q-chat-message`, tiempo real por SSE. Sin no leídos/editar/borrar/adjuntos por ahora.
+- Rebanada 1 lista (backend): tabla `auditoria_mensajes` (en `seed.js`), `MensajeAuditoriaModel.js`, `MensajeAuditoriaController.js` (reusa `auditoriaPermitida`, ahora exportada de `AuditoriaEventoController.js`), `GET`/`POST /auditorias/:id/mensajes` (cuerpo `{ texto }`, máx. 1000; respuesta `nuevo_mensaje`). Test: `Backend/test/auditoriaMensajes.test.js`; `soporte-pruebas/bd.js` borra los mensajes de prueba.
+- Rebanada 2 lista (panel): `components/ChatAuditoria.vue` (`q-dialog position="right" full-height`, 420 px / 100vw en móvil, `q-chat-message`, Enter envía y Mayús+Enter salto de línea, máx. 1000). `auditoriaService.js`: `listarMensajes`/`enviarMensaje` (hora `DD-MM-AAAA HH:mm`). Botón «Mensajes» en `AuditoriaItem.vue` (emite `abrir-chat`, lo maneja `AuditoriasPage.vue`) y en la cabecera de `AuditoriaFichaPage.vue`. `session.id` es texto: comparar con `Number(session.id)`. Test: `test/chatAuditoria.test.js` y 3 más en `auditoriaService.test.js`. Verificado en navegador (móvil y escritorio).
+- La tabla de auditorías de escritorio (`AuditoriasTabla`) no tiene botón «Mensajes»: en escritorio se entra por la ficha.
+- Para probar en navegador con los servidores de otra sesión en 3000/9000: `launch.json` tiene `backend-experimento-3011` (CORS a :9012) y `frontend-experimento-9012`.
+- Rebanada 3 lista (tiempo real): aviso SSE `mensaje-auditoria` `{ auditoriaId, mensaje }` al admin y a los contadores asignados (`avisarMensajeAuditoria` en `utils/avisosAuditoria.js`). El panel lo escucha (filtra por auditoría, no repite por `id` porque el propio llega en la respuesta y en el aviso) y recarga con `reconectado`. `mensajeDeBackend` exportado de `auditoriaService.js`. Verificado con dos sesiones (admin y contador) en vivo.
+- Experimento completo (3 rebanadas). Ideas para después: no leídos, botón en `AuditoriasTabla`, editar/borrar, adjuntos.
+
 ## Pendientes
 
 - Boceto de auditorías: campo Importancia, aviso al Socio Director, días inhábiles SAT, campos RFC/Unidad/Socio/Multa (no existen en las tablas: proponer cambio de esquema antes).
-- 5 fallos de layout del frontend que ya existían; `authRoutes` «correo en mayúsculas» falla a veces (carrera entre archivos de prueba).
+- `authRoutes` «correo en mayúsculas» falla a veces (carrera entre archivos de prueba).
+- `verificarPruebas.js` da FALLA porque `auditoria*`, `eventosRoutes` e `importarCuentas` no están en `MINIMOS` y `userModel` tiene 5 de 9 (ya pasaba antes del chat).
 
 ## Backend (lo esencial)
 

@@ -5,7 +5,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { crearAuditoriaService } from '../src/services/auditoriaService.js'
+import { crearAuditoriaService, mensajeDeBackend as mensajeDeBackendApi } from '../src/services/auditoriaService.js'
 
 // Api falsa con manejadores por método; registra todas las llamadas.
 const crearApiFalsa = (manejadores = {}) => {
@@ -184,4 +184,61 @@ test('obtenerAuditoria hace GET /auditorias/:id y la traduce', async () => {
   assert.deepEqual(api.llamadas, [{ metodo: 'GET', url: '/auditorias/7', cuerpo: undefined }])
   assert.equal(auditoria.fechaInicio, '15-02-2026')
   assert.equal(auditoria.semaforo, 'Crítico')
+})
+
+// Mensaje tal como lo devuelve GET/POST /auditorias/:id/mensajes (chat, experimento).
+const mensajeDeBackend = (extra = {}) => ({
+  id: 15,
+  auditoria_id: 7,
+  texto: 'Ya subí los contratos al expediente.',
+  autor: { id: 3, nombre: 'Brenda Chávez', rol: 'contador' },
+  creado_en: '2026-11-05 09:07:30',
+  ...extra,
+})
+
+test('listarMensajes hace GET /auditorias/:id/mensajes y muestra la hora como DD-MM-AAAA HH:mm', async () => {
+  const api = crearApiFalsa({
+    GET: async () => ({ data: { mensajes: [mensajeDeBackend(), mensajeDeBackend({ id: 16, texto: 'Gracias' })] } }),
+  })
+
+  const mensajes = await crearAuditoriaService({ api }).listarMensajes(7)
+
+  assert.deepEqual(api.llamadas, [{ metodo: 'GET', url: '/auditorias/7/mensajes', cuerpo: undefined }])
+  assert.deepEqual(mensajes[0], {
+    id: 15,
+    texto: 'Ya subí los contratos al expediente.',
+    autor: { id: 3, nombre: 'Brenda Chávez', rol: 'contador' },
+    fechaHora: '05-11-2026 09:07',
+  })
+  assert.equal(mensajes[1].texto, 'Gracias')
+})
+
+test('listarMensajes lanza el error de tres partes si la respuesta no trae la lista', async () => {
+  const api = crearApiFalsa({ GET: async () => ({ data: {} }) })
+
+  await assert.rejects(crearAuditoriaService({ api }).listarMensajes(7), (error) => {
+    assert.match(error.mensaje, /mensajes/)
+    return true
+  })
+})
+
+test('enviarMensaje hace POST /auditorias/:id/mensajes con el texto y devuelve el mensaje traducido', async () => {
+  const api = crearApiFalsa({ POST: async () => ({ data: { nuevo_mensaje: mensajeDeBackend() } }) })
+
+  const mensaje = await crearAuditoriaService({ api }).enviarMensaje(7, 'Ya subí los contratos al expediente.')
+
+  assert.deepEqual(api.llamadas, [
+    { metodo: 'POST', url: '/auditorias/7/mensajes', cuerpo: { texto: 'Ya subí los contratos al expediente.' } },
+  ])
+  assert.equal(mensaje.id, 15)
+  assert.equal(mensaje.fechaHora, '05-11-2026 09:07')
+})
+
+test('mensajeDeBackend traduce el mensaje que llega en vivo con la misma forma que la lista', () => {
+  assert.deepEqual(mensajeDeBackendApi(mensajeDeBackend()), {
+    id: 15,
+    texto: 'Ya subí los contratos al expediente.',
+    autor: { id: 3, nombre: 'Brenda Chávez', rol: 'contador' },
+    fechaHora: '05-11-2026 09:07',
+  })
 })

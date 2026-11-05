@@ -239,4 +239,4 @@ async function deleteEvento(req, res) {
   return res.status(200).json({ mensaje: 'Evento borrado correctamente' });
 }
 
-module.exports = { createEvento, listEventos, listFases, updateEvento, deleteEvento };
+module.exports = { createEvento, listEventos, listFases, updateEvento, deleteEvento, auditoriaPermitida };

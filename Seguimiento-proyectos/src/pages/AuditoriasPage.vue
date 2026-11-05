@@ -160,6 +160,7 @@
             :nombres-contadores="item.contadores.map((c) => c.nombre)"
             @ver-detalle="verFicha(item.id)"
             @editar="abrirEdicion(item.id)"
+            @abrir-chat="chatAbierto = item"
           />
         </div>
       </template>
@@ -189,6 +190,14 @@
       @registrada="alRegistrar"
       @guardada="alGuardar"
     />
+
+    <ChatAuditoria
+      v-if="chatAbierto"
+      :model-value="Boolean(chatAbierto)"
+      :auditoria-id="chatAbierto.id"
+      :cliente="chatAbierto.cliente"
+      @update:model-value="(abierto) => !abierto && (chatAbierto = null)"
+    />
   </q-page>
 </template>
 
@@ -199,6 +208,7 @@ import { useQuasar } from 'quasar'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import AuditoriaItem from '../components/AuditoriaItem.vue'
+import ChatAuditoria from '../components/ChatAuditoria.vue'
 import AuditoriasTabla from '../components/AuditoriasTabla.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
@@ -313,6 +323,8 @@ const limpiarFiltros = () => {
 
 const dialogoRegistroAbierto = ref(false)
 const auditoriaEnEdicion = ref(null)
+// Auditoría cuyo chat está abierto en el panel lateral (null = cerrado).
+const chatAbierto = ref(null)
 
 const cargar = async () => {
   cargando.value = true
