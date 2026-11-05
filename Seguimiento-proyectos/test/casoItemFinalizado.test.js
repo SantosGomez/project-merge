@@ -1,6 +1,6 @@
-// Pruebas estáticas: en «Mis casos» (contador) un caso Finalizado se pinta en verde.
+// Pruebas estáticas: un caso Finalizado se pinta en verde en «Mis casos» (contador)
+// y en el detalle de casos del dashboard del administrador (solo lectura).
 // El texto «Finalizado» sigue visible: el color nunca es el único indicador.
-// No aplica a la vista de solo lectura del administrador.
 
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
@@ -19,12 +19,12 @@ const bloqueDe = (selector) => {
   return encontrado ? encontrado[1] : ''
 }
 
-describe('Caso Finalizado en «Mis casos»', () => {
-  it('solo el contador ve el verde cuando el estado es finalizado', () => {
+describe('Caso Finalizado en «Mis casos» y en el dashboard del administrador', () => {
+  it('el verde aplica en ambas vistas cuando el estado es finalizado', () => {
     assert.match(
       casoItem,
-      /const esFinalizado = computed\(\(\) => !props\.soloLectura && props\.caso\.status === 'finalizado'\)/,
-      'la condición excluye la vista de solo lectura'
+      /const esFinalizado = computed\(\(\) => props\.caso\.status === 'finalizado'\)/,
+      'la condición ya no excluye la vista de solo lectura'
     )
     assert.match(plantilla, /'caso-item--finalizado': esFinalizado/)
   })
@@ -45,8 +45,24 @@ describe('Caso Finalizado en «Mis casos»', () => {
 
   it('el estado se ve en verde y sigue mostrando el texto «Finalizado»', () => {
     assert.match(plantilla, /:color="esFinalizado \? 'dg-exito' : 'primary'"/)
-    assert.match(bloqueDe('.caso-item--finalizado .caso-item__estado'), /color:\s*var\(--dg-exito\)/)
+    assert.match(
+      bloqueDe('.caso-item--finalizado .caso-item__estado:not(.caso-item__prioridad)'),
+      /color:\s*var\(--dg-exito\)/
+    )
     assert.match(plantilla, /label="Estado"/, 'el selector sigue etiquetado')
     assert.match(plantilla, /option-label="label"/, 'el estado se muestra como texto, no solo color')
+  })
+
+  it('en la vista del administrador el texto del estado se pinta en verde', () => {
+    assert.match(plantilla, /class="caso-item__estado-fijo"/, 'el estado sigue visible como texto')
+    const bloque = bloqueDe('.caso-item--finalizado .caso-item__estado-fijo')
+    assert.match(bloque, /color:\s*var\(--dg-exito\)/)
+    assert.match(bloque, /border-color:\s*var\(--dg-exito-borde\)/)
+    assert.doesNotMatch(bloque, /#[0-9a-fA-F]{3,8}/, 'sin hexadecimales en el componente')
+  })
+
+  it('el selector de prioridad del administrador no se pinta de verde', () => {
+    assert.match(plantilla, /class="caso-item__estado caso-item__prioridad selector-moderno"/)
+    assert.doesNotMatch(estilos, /\.caso-item--finalizado \.caso-item__estado\s*\{/)
   })
 })

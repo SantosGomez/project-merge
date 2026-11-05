@@ -84,7 +84,7 @@
         label="Prioridad"
         :aria-label="`Cambiar la prioridad del caso de ${caso.client}`"
         :disable="deshabilitado"
-        class="caso-item__estado selector-moderno"
+        class="caso-item__estado caso-item__prioridad selector-moderno"
         @update:model-value="(prioridad) => emit('cambiar-prioridad', prioridad)"
       >
         <template #selected-item="scope">
@@ -231,11 +231,8 @@ const props = defineProps({
 
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
 
-/*
- * El verde de Finalizado es solo del contador: en la vista de consulta del administrador
- * la fila se queda con sus colores neutros.
- */
-const esFinalizado = computed(() => !props.soloLectura && props.caso.status === 'finalizado')
+/* El verde de Finalizado aplica al contador y a la vista de consulta del administrador. */
+const esFinalizado = computed(() => props.caso.status === 'finalizado')
 
 const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar', 'cambiar-prioridad'])
 
@@ -267,7 +264,8 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
   background: var(--dg-exito-fondo);
 }
 
-.caso-item--finalizado .caso-item__estado {
+/* El selector de prioridad del administrador comparte la clase y conserva sus colores. */
+.caso-item--finalizado .caso-item__estado:not(.caso-item__prioridad) {
   color: var(--dg-exito);
 }
 
@@ -359,6 +357,13 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
   font-size: 0.85rem;
   font-weight: 600;
   cursor: help;
+}
+
+/* En la vista del administrador, el texto «Finalizado» acompaña al verde de la fila. */
+.caso-item--finalizado .caso-item__estado-fijo {
+  border-color: var(--dg-exito-borde);
+  background: var(--dg-exito-fondo);
+  color: var(--dg-exito);
 }
 
 .caso-item__estado-fijo:focus-visible {
