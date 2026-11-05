@@ -91,7 +91,7 @@
             <q-input
               ref="usernameInput"
               v-model="form.username"
-              class="login-form__control"
+              class="login-form__control input-moderno"
               label="Correo"
               type="email"
               autocomplete="email"
@@ -125,7 +125,7 @@
             <q-input
               ref="passwordInput"
               v-model="form.password"
-              class="login-form__control"
+              class="login-form__control input-moderno"
               label="Contraseña"
               :type="verContrasena ? 'text' : 'password'"
               autocomplete="current-password"

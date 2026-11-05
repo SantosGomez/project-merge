@@ -38,12 +38,16 @@
               autocomplete="new-password"
               outlined
               dense
+              class="input-moderno"
               aria-required="true"
               aria-describedby="restablecer-password-ayuda"
               :error="!!errores.password"
               :error-message="errores.password"
               @update:model-value="errores.password = null"
             >
+              <template #prepend>
+                <q-icon name="lock_reset" />
+              </template>
               <q-tooltip>Contraseña nueva de la cuenta; compártela con la persona por un medio seguro.</q-tooltip>
             </q-input>
             <p id="restablecer-password-ayuda" class="form-help">

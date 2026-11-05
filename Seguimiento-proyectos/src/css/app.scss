@@ -176,3 +176,123 @@ body {
   color: var(--dg-error-aviso-texto);
   font-size: 0.9rem;
 }
+
+/*
+ * ── Controles de formulario modernos ──────────────────────────────────────────
+ * Caja refinada para q-input y q-select: esquinas redondeadas, borde sutil,
+ * sombra tenue, hover con elevación suave y foco con anillo.
+ * Úsalo con class="input-moderno" en q-input o class="selector-moderno" en q-select.
+ */
+.input-moderno .q-field__control,
+.selector-moderno .q-field__control {
+  border-radius: 10px !important;
+  border-color: var(--dg-borde) !important;
+  box-shadow: 0 1px 2px rgba(16, 42, 67, 0.04);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.input-moderno:hover .q-field__control,
+.selector-moderno:hover .q-field__control {
+  border-color: var(--dg-borde-fuerte) !important;
+  box-shadow: 0 2px 6px rgba(16, 42, 67, 0.08);
+}
+
+.input-moderno .q-field--focused .q-field__control,
+.input-moderno.q-field--focused .q-field__control,
+.selector-moderno .q-field--focused .q-field__control,
+.selector-moderno.q-field--focused .q-field__control {
+  border-color: var(--dg-foco) !important;
+  box-shadow: 0 0 0 3px rgba(11, 92, 173, 0.12);
+}
+
+/* Icono del chevron del q-select: rotación al abrir */
+.selector-moderno .q-select__dropdown-icon {
+  transition: transform 0.25s ease;
+}
+
+.selector-moderno.q-field--focused .q-select__dropdown-icon {
+  transform: rotate(180deg);
+}
+
+/* Texto seleccionado con peso medio */
+.selector-moderno .q-field__native,
+.selector-moderno .q-field__prefix {
+  font-weight: 500;
+  color: var(--dg-texto);
+}
+
+/* Icono del prepend con color sutil */
+.input-moderno .q-field__prepend .q-icon,
+.selector-moderno .q-field__prepend .q-icon {
+  color: var(--dg-texto-tenue);
+  font-size: 20px;
+}
+
+/* Ancho completo en móvil para campos de formulario (excepto selectores compactos en línea) */
+@media (max-width: 599px) {
+  .form-group .input-moderno,
+  .form-group .selector-moderno,
+  .selector-moderno:not(.caso-item__estado):not(.paginacion__por-pagina) {
+    width: 100%;
+  }
+}
+
+/*
+ * ── Menú flotante de selects modernos ─────────────────────────────────────────
+ * Quasar monta el popup en el body; los estilos deben ser globales.
+ * Aplica popup-content-class="menu-seleccion-custom" en el q-select.
+ */
+.menu-seleccion-custom {
+  border-radius: 12px !important;
+  padding: 6px !important;
+  box-shadow:
+    0 4px 16px rgba(16, 42, 67, 0.10),
+    0 1px 4px rgba(16, 42, 67, 0.06) !important;
+}
+
+/* Cada opción dentro del menú */
+.item-opcion-custom {
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 2px 0;
+  min-height: 40px;
+  transition: background 0.15s ease;
+}
+
+.item-opcion-custom:hover {
+  background: #f1f5f9;
+}
+
+/* Opción actualmente seleccionada */
+.opcion-seleccionada {
+  background: var(--dg-fondo-seleccion);
+  font-weight: 600;
+}
+
+/* Icono pequeño para la sección avatar en las opciones */
+.item-seccion-icono {
+  min-width: 28px !important;
+}
+
+/*
+ * ── Dots de estado/prioridad ──────────────────────────────────────────────────
+ * Puntos semáforo para q-selects de estado y prioridad.
+ * --dot-color se define inline o con una clase auxiliar.
+ */
+.punto-estado {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot-color, var(--dg-texto-tenue));
+  flex-shrink: 0;
+}
+
+.punto-estado-sm {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot-color, var(--dg-texto-tenue));
+  flex-shrink: 0;
+}

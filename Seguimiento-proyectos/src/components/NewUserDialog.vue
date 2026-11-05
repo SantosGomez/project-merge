@@ -29,12 +29,16 @@
               autocomplete="off"
               outlined
               dense
+              class="input-moderno"
               aria-required="true"
               aria-describedby="nuevo-nombre-ayuda"
               :error="!!errores.nombre"
               :error-message="errores.nombre"
               @update:model-value="alEditar('nombre')"
             >
+              <template #prepend>
+                <q-icon name="person" />
+              </template>
               <q-tooltip>Nombre que se verá en el menú y en el directorio; sin títulos como Lic. o Ing.</q-tooltip>
             </q-input>
             <p id="nuevo-nombre-ayuda" class="form-help">Máximo 150 caracteres.</p>
@@ -53,12 +57,16 @@
               autocomplete="off"
               outlined
               dense
+              class="input-moderno"
               aria-required="true"
               aria-describedby="nuevo-correo-ayuda"
               :error="!!errores.correo"
               :error-message="errores.correo"
               @update:model-value="alEditar('correo')"
             >
+              <template #prepend>
+                <q-icon name="email" />
+              </template>
               <q-tooltip>Correo con el que la persona iniciará sesión; no puede repetir uno existente.</q-tooltip>
             </q-input>
             <p id="nuevo-correo-ayuda" class="form-help">Máximo 150 caracteres. No puede estar ya en uso.</p>
@@ -76,12 +84,16 @@
               autocomplete="new-password"
               outlined
               dense
+              class="input-moderno"
               aria-required="true"
               aria-describedby="nuevo-password-ayuda"
               :error="!!errores.password"
               :error-message="errores.password"
               @update:model-value="alEditar('password')"
             >
+              <template #prepend>
+                <q-icon name="lock" />
+              </template>
               <q-tooltip>Contraseña inicial de la cuenta; compártela con la persona por un medio seguro.</q-tooltip>
             </q-input>
             <p id="nuevo-password-ayuda" class="form-help">
@@ -100,6 +112,12 @@
               placeholder="Elige un rol"
               outlined
               dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              class="selector-moderno"
               emit-value
               map-options
               aria-required="true"
@@ -108,6 +126,22 @@
               :error-message="errores.rol"
               @update:model-value="alEditar('rol')"
             >
+              <template #prepend>
+                <q-icon name="badge" />
+              </template>
+              <template #option="{ itemProps, opt, selected }">
+                <q-item
+                  v-bind="itemProps"
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ opt.label }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="selected" side>
+                    <q-icon name="check" size="18px" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </template>
               <q-tooltip>El rol decide qué pantallas verá la persona al iniciar sesión.</q-tooltip>
             </q-select>
             <p id="nuevo-rol-ayuda" class="form-help">

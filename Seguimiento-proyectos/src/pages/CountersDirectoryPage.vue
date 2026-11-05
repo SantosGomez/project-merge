@@ -71,7 +71,7 @@
             <div class="directory-filtros">
               <q-input
                 v-model="filtros.texto"
-                class="directory-filtros__buscar"
+                class="directory-filtros__buscar input-moderno"
                 label="Buscar por nombre o correo"
                 outlined
                 dense
@@ -85,14 +85,35 @@
               </q-input>
               <q-select
                 v-model="filtros.rol"
-                class="directory-filtros__rol"
+                class="directory-filtros__rol selector-moderno"
                 :options="OPCIONES_ROL"
                 label="Rol"
                 outlined
                 dense
+                options-dense
+                dropdown-icon="expand_more"
+                popup-content-class="menu-seleccion-custom"
+                transition-show="jump-down"
+                transition-hide="jump-up"
                 emit-value
                 map-options
               >
+                <template #prepend>
+                  <q-icon name="badge" />
+                </template>
+                <template #option="{ itemProps, opt, selected }">
+                  <q-item
+                    v-bind="itemProps"
+                    :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                  >
+                    <q-item-section>
+                      <q-item-label>{{ opt.label }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section v-if="selected" side>
+                      <q-icon name="check" size="18px" color="primary" />
+                    </q-item-section>
+                  </q-item>
+                </template>
                 <q-tooltip>Muestra solo las cuentas del rol elegido.</q-tooltip>
               </q-select>
               <div class="directory-filtros__resumen">

@@ -53,11 +53,33 @@
               placeholder="Elige o escribe: orden de visita, requerimiento, acta parcial, multa…"
               outlined
               dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              class="selector-moderno"
               aria-required="true"
               @filter="filtrarEventos"
               @input-value="(texto) => (form.evento = texto)"
               @update:model-value="elegirEvento"
             >
+              <template #prepend>
+                <q-icon name="event_note" />
+              </template>
+              <template #option="{ itemProps, opt, selected }">
+                <q-item
+                  v-bind="itemProps"
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ opt }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="selected" side>
+                    <q-icon name="check" size="18px" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </template>
               <q-tooltip
                 >Al elegir un evento de la lista se propone su fase; puedes cambiarla.</q-tooltip
               >
@@ -72,8 +94,30 @@
               map-options
               outlined
               dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              class="selector-moderno"
               aria-required="true"
             >
+              <template #prepend>
+                <q-icon name="flag" />
+              </template>
+              <template #option="{ itemProps, opt, selected }">
+                <q-item
+                  v-bind="itemProps"
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ opt.label }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="selected" side>
+                    <q-icon name="check" size="18px" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </template>
               <q-tooltip>Etapa del procedimiento a la que pertenece el evento.</q-tooltip>
             </q-select>
           </div>
@@ -84,8 +128,31 @@
               :options="ESTADOS_EVENTO"
               outlined
               dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              class="selector-moderno"
               aria-required="true"
-            />
+            >
+              <template #prepend>
+                <q-icon name="tune" />
+              </template>
+              <template #option="{ itemProps, opt, selected }">
+                <q-item
+                  v-bind="itemProps"
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ opt }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="selected" side>
+                    <q-icon name="check" size="18px" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <div v-for="campo in CAMPOS_FECHA" :key="campo.clave" class="form-group">
             <label class="form-label">
@@ -98,8 +165,12 @@
               maxlength="10"
               outlined
               dense
+              class="input-moderno"
               :aria-required="campo.requerido ? 'true' : 'false'"
             >
+              <template #prepend>
+                <q-icon name="calendar_month" />
+              </template>
               <template #append>
                 <q-icon
                   name="event"
@@ -135,7 +206,12 @@
               maxlength="200"
               outlined
               dense
-            />
+              class="input-moderno"
+            >
+              <template #prepend>
+                <q-icon name="tag" />
+              </template>
+            </q-input>
           </div>
           <div class="form-group bitacora__ancho">
             <label class="form-label">Descripción</label>
@@ -146,7 +222,12 @@
               maxlength="2000"
               outlined
               dense
-            />
+              class="input-moderno"
+            >
+              <template #prepend>
+                <q-icon name="description" />
+              </template>
+            </q-input>
           </div>
           <div class="form-group bitacora__ancho">
             <label class="form-label">Observaciones</label>
@@ -157,7 +238,12 @@
               maxlength="2000"
               outlined
               dense
-            />
+              class="input-moderno"
+            >
+              <template #prepend>
+                <q-icon name="sticky_note_2" />
+              </template>
+            </q-input>
           </div>
           <p v-if="errorGuardado" class="bitacora__error bitacora__ancho" role="alert">
             {{ errorGuardado.mensaje ?? 'No se pudo guardar el evento. Intenta de nuevo.' }}

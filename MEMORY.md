@@ -14,6 +14,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas. Todo lo de abajo ya es
 - «Mis casos» (2026-11-02, sin commit): los casos Finalizados se pintan en verde solo para el contador (`CasoItem.vue`: fondo `dg-exito-fondo`, borde `dg-estado-finalizado`, estado `dg-exito`); el verde gana sobre «Importante» y el texto «Finalizado» sigue visible. Test: `test/casoItemFinalizado.test.js`.
 - SSE: `auditoria-actualizada` al admin y a los contadores asignados; `caso-actualizado` solo al admin.
 - Colores del semáforo centralizados en `.semaforo--<clase>` (`app.scss`) y `utils/semaforoAuditoria.js`.
+- Rediseño UI de inputs y selects (completado, 2026-11-05): Rebanadas 0 a 6 listas (`app.scss`, `CaseFormDialog.vue`, `CasoItem.vue`, `MyCasesPage.vue`, `AdminDashboardPage.vue`, `AuditoriasPage.vue`, `AuditoriaFormDialog.vue`, `BitacoraAuditoria.vue`, `CountersDirectoryPage.vue`, `NewUserDialog.vue`, `ResetPasswordDialog.vue`, `LoginPage.vue`, `CambiarContrasenaPage.vue`). Selectores compactos en línea (`caso-item__estado`, `paginacion__por-pagina`) preservan su ancho en móvil.
 
 ## Pendientes
 
@@ -33,6 +34,13 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas. Todo lo de abajo ya es
 - Contrato de fechas y edición de casos: ver `AGENTS.md`.
 - Rate limit de login apagable en pruebas; sin `JWT_SECRET` en producción el servidor no arranca.
 - El usuario descartó por ahora: encabezado de ficha en dos columnas, pruebas del servicio de eventos.
+- **Patrón de diseño para `q-select` moderno (2026-11-04):** los selectores nativos de Quasar (`dense outlined`) se ven demasiado simples y planos. Para darles acabado visual profesional tipo Uiverse/SaaS ejecutivo alineado con la identidad DCA:
+  1. **Props estándar:** `dense outlined options-dense dropdown-icon="expand_more" popup-content-class="menu-seleccion-custom" transition-show="jump-down" transition-hide="jump-up"` y clase `selector-moderno`.
+  2. **Slot `#prepend`:** icono semántico del selector (`calendar_month`, `tune`, `description`, etc.) para anclar visualmente su función.
+  3. **Slot `#selected-item="scope"`:** texto con peso medio (`text-weight-medium text-primary`), sentence case (`text-capitalize` si es fecha) y dot semáforo (`punto-estado-sm`) si representa un estado o prioridad. Usar siempre `scope.opt?.label ?? scope.opt` para tolerar valores escalares o reactivos.
+  4. **Slot `#option="{ itemProps, opt, selected }"`:** `<q-item v-bind="itemProps" :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]">`, con `<q-item-section avatar class="item-seccion-icono">` para icono o dot semáforo (`punto-estado`), etiqueta de texto y check (`check`) o badge contextual (`badge-mes-actual`) en el lado derecho.
+  5. **Estilos flotantes en `app.scss`:** `.menu-seleccion-custom` (tarjeta flotante con `border-radius: 12px`, padding 6px, sombra suave de profundidad y hover `#f1f5f9`), `.punto-estado` (10px) y `.punto-estado-sm` (8px) viven en `app.scss` porque Quasar monta el menú en el `body`.
+  6. **Estilos de caja en el componente (`.selector-moderno`):** esquinas redondeadas (`border-radius: 10px`), borde sutil `#dcdfe4`, sombra tenue de apoyo, hover con elevación suave, foco con anillo `box-shadow: 0 0 0 3px rgba(17, 30, 48, 0.12)`, chevron con transición fluida de rotación y ancho 100% responsivo bajo 600px.
 
 ## Aprendizajes y errores a evitar
 

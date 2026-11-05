@@ -32,12 +32,17 @@
               outlined
               dense
               counter
+              class="input-moderno"
               aria-required="true"
               aria-describedby="client-help"
               :error="!!errorDeCampo('client_required', 'client_too_long')"
               :error-message="errorDeCampo('client_required', 'client_too_long')"
               @update:model-value="clearFormError()"
-            />
+            >
+              <template #prepend>
+                <q-icon name="person" />
+              </template>
+            </q-input>
             <p id="client-help" class="form-help">Máximo 80 caracteres visibles.</p>
           </div>
 
@@ -54,6 +59,12 @@
               placeholder="Elige una prioridad"
               outlined
               dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              class="selector-moderno"
               emit-value
               map-options
               aria-required="true"
@@ -62,10 +73,20 @@
               :error-message="errorDeCampo('priority_required')"
               @update:model-value="clearFormError()"
             >
+              <template #prepend>
+                <q-icon name="flag" />
+              </template>
               <template #option="scope">
-                <q-item v-bind="scope.itemProps" clickable>
+                <q-item
+                  v-bind="scope.itemProps"
+                  clickable
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': scope.selected }]"
+                >
                   <q-item-section>
                     <PriorityTag :priority="scope.opt.value" />
+                  </q-item-section>
+                  <q-item-section v-if="scope.selected" side>
+                    <q-icon name="check" size="18px" color="primary" />
                   </q-item-section>
                 </q-item>
               </template>
@@ -92,6 +113,7 @@
               outlined
               dense
               counter
+              class="input-moderno"
               :aria-required="modoEdicion ? 'true' : 'false'"
               aria-describedby="fecha-inicio-help"
               :error="!!errorDeCampo('fecha_inicio_invalido')"
@@ -138,6 +160,7 @@
               outlined
               dense
               counter
+              class="input-moderno"
               aria-required="true"
               aria-describedby="fecha-vencimiento-help"
               :error="!!errorDeCampo('fecha_vencimiento_invalido')"
@@ -196,11 +219,49 @@
                 option-value="value"
                 outlined
                 dense
+                options-dense
+                dropdown-icon="expand_more"
+                popup-content-class="menu-seleccion-custom"
+                transition-show="jump-down"
+                transition-hide="jump-up"
+                class="selector-moderno"
                 emit-value
                 map-options
                 aria-required="true"
                 aria-describedby="estado-help"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="tune" />
+                </template>
+                <template #selected-item="scope">
+                  <div class="row items-center q-gutter-x-sm no-wrap">
+                    <span
+                      class="punto-estado-sm"
+                      :style="{ '--dot-color': `var(--dg-estado-${(scope.opt?.value ?? estado)?.replace(/_/g, '-')})` }"
+                    />
+                    <span class="text-weight-medium text-primary">{{ scope.opt?.label ?? scope.opt }}</span>
+                  </div>
+                </template>
+                <template #option="{ itemProps, opt, selected }">
+                  <q-item
+                    v-bind="itemProps"
+                    :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                  >
+                    <q-item-section avatar class="item-seccion-icono">
+                      <span
+                        class="punto-estado"
+                        :style="{ '--dot-color': `var(--dg-estado-${opt.value?.replace(/_/g, '-')})` }"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ opt.label }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section v-if="selected" side>
+                      <q-icon name="check" size="18px" color="primary" />
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
               <p id="estado-help" class="form-help">
                 Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.
               </p>
@@ -241,10 +302,15 @@
               dense
               rows="3"
               maxlength="1000"
+              class="input-moderno"
               aria-describedby="descripcion-help"
               :error="!!errorDeCampo('descripcion_demasiado_largo')"
               :error-message="errorDeCampo('descripcion_demasiado_largo')"
-            />
+            >
+              <template #prepend>
+                <q-icon name="description" />
+              </template>
+            </q-input>
             <p id="descripcion-help" class="form-help">Máximo 1000 caracteres.</p>
           </div>
 
@@ -258,10 +324,15 @@
               dense
               rows="3"
               maxlength="2000"
+              class="input-moderno"
               aria-describedby="observaciones-help"
               :error="!!errorDeCampo('observaciones_demasiado_largo')"
               :error-message="errorDeCampo('observaciones_demasiado_largo')"
-            />
+            >
+              <template #prepend>
+                <q-icon name="sticky_note_2" />
+              </template>
+            </q-input>
             <p id="observaciones-help" class="form-help">Máximo 2000 caracteres.</p>
           </div>
 
@@ -278,6 +349,12 @@
               placeholder="Elige un contador"
               outlined
               dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              class="selector-moderno"
               emit-value
               map-options
               aria-required="true"
@@ -286,6 +363,25 @@
               :error-message="errorDeCampo('contador_required')"
               @update:model-value="clearFormError()"
             >
+              <template #prepend>
+                <q-icon name="person_search" />
+              </template>
+              <template #option="{ itemProps, opt, selected }">
+                <q-item
+                  v-bind="itemProps"
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                >
+                  <q-item-section avatar class="item-seccion-icono">
+                    <q-icon name="person" size="18px" color="primary" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ opt.label }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="selected" side>
+                    <q-icon name="check" size="18px" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </template>
               <q-tooltip>El caso aparecerá en «Mis casos» de esta persona y se le enviará un aviso.</q-tooltip>
             </q-select>
             <p id="contador-help" class="form-help">Contador que atenderá el caso.</p>

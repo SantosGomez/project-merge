@@ -27,11 +27,16 @@
                 outlined
                 dense
                 counter
+                class="input-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo('cliente')"
                 :error-message="errorDeCampo('cliente')"
                 @update:model-value="clearError()"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="person" />
+                </template>
+              </q-input>
             </div>
 
             <div class="form-group">
@@ -44,11 +49,16 @@
                 outlined
                 dense
                 counter
+                class="input-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo('noExpediente')"
                 :error-message="errorDeCampo('noExpediente')"
                 @update:model-value="clearError()"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="folder_open" />
+                </template>
+              </q-input>
             </div>
 
             <div class="form-group">
@@ -61,11 +71,16 @@
                 outlined
                 dense
                 counter
+                class="input-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo('dependencia')"
                 :error-message="errorDeCampo('dependencia')"
                 @update:model-value="clearError()"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="account_balance" />
+                </template>
+              </q-input>
             </div>
 
             <div class="form-group">
@@ -80,6 +95,12 @@
                 placeholder="Elige o escribe: Revisión de Gabinete, Visita Domiciliaria…"
                 outlined
                 dense
+                options-dense
+                dropdown-icon="expand_more"
+                popup-content-class="menu-seleccion-custom"
+                transition-show="jump-down"
+                transition-hide="jump-up"
+                class="selector-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo('tipoAud')"
                 :error-message="errorDeCampo('tipoAud')"
@@ -87,6 +108,22 @@
                 @input-value="escribirTipo"
                 @update:model-value="elegirTipo"
               >
+                <template #prepend>
+                  <q-icon name="category" />
+                </template>
+                <template #option="{ itemProps, opt, selected }">
+                  <q-item
+                    v-bind="itemProps"
+                    :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                  >
+                    <q-item-section>
+                      <q-item-label>{{ opt }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section v-if="selected" side>
+                      <q-icon name="check" size="18px" color="primary" />
+                    </q-item-section>
+                  </q-item>
+                </template>
                 <q-tooltip>Puedes elegir un tipo de la lista o escribir otro.</q-tooltip>
               </q-select>
             </div>
@@ -111,11 +148,15 @@
                 maxlength="10"
                 outlined
                 dense
+                class="input-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo(campo.clave)"
                 :error-message="errorDeCampo(campo.clave)"
                 @update:model-value="clearError()"
               >
+                <template #prepend>
+                  <q-icon name="calendar_month" />
+                </template>
                 <template #append>
                   <q-icon name="event" class="auditoria-form__cal" tabindex="0" role="button" aria-label="Abrir calendario">
                     <q-popup-proxy cover :breakpoint="700" transition-show="scale" transition-hide="scale">
@@ -148,10 +189,33 @@
                 :options="opcionesEstado"
                 outlined
                 dense
+                options-dense
+                dropdown-icon="expand_more"
+                popup-content-class="menu-seleccion-custom"
+                transition-show="jump-down"
+                transition-hide="jump-up"
+                class="selector-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo('estado')"
                 :error-message="errorDeCampo('estado')"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="tune" />
+                </template>
+                <template #option="{ itemProps, opt, selected }">
+                  <q-item
+                    v-bind="itemProps"
+                    :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                  >
+                    <q-item-section>
+                      <q-item-label>{{ opt }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section v-if="selected" side>
+                      <q-icon name="check" size="18px" color="primary" />
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
             <div v-else class="form-group">
               <span class="form-label">Estatus de la auditoría</span>
@@ -168,6 +232,12 @@
                 multiple
                 outlined
                 dense
+                options-dense
+                dropdown-icon="expand_more"
+                popup-content-class="menu-seleccion-custom"
+                transition-show="jump-down"
+                transition-hide="jump-up"
+                class="selector-moderno"
                 emit-value
                 map-options
                 use-chips
@@ -175,7 +245,27 @@
                 :error="!!errorDeCampo('contadores')"
                 :error-message="errorDeCampo('contadores')"
                 @update:model-value="clearError()"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="group" />
+                </template>
+                <template #option="{ itemProps, opt, selected }">
+                  <q-item
+                    v-bind="itemProps"
+                    :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                  >
+                    <q-item-section avatar class="item-seccion-icono">
+                      <q-icon name="person" size="18px" color="primary" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ opt.label }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section v-if="selected" side>
+                      <q-icon name="check" size="18px" color="primary" />
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
             <div v-else-if="!modoEdicion" class="form-group">
               <span class="form-label">Contadores asignados</span>
@@ -197,10 +287,15 @@
                 rows="2"
                 maxlength="2000"
                 counter
+                class="input-moderno"
                 :error="!!errorDeCampo('descripcion')"
                 :error-message="errorDeCampo('descripcion')"
                 @update:model-value="clearError()"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="description" />
+                </template>
+              </q-input>
             </div>
 
             <div class="form-group auditoria-form__ancho-completo">
@@ -214,10 +309,15 @@
                 rows="3"
                 maxlength="2000"
                 counter
+                class="input-moderno"
                 :error="!!errorDeCampo('observacion')"
                 :error-message="errorDeCampo('observacion')"
                 @update:model-value="clearError()"
-              />
+              >
+                <template #prepend>
+                  <q-icon name="sticky_note_2" />
+                </template>
+              </q-input>
             </div>
           </fieldset>
 

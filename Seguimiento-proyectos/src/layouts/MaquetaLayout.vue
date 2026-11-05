@@ -128,7 +128,27 @@
           </template>
 
           <template v-if="session.esContador">
+            
             <q-item-label header>Mis casos</q-item-label>
+            
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'contador-dashboard' }"
+              aria-label="Ir a mi resumen"
+            >
+              <q-item-section avatar>
+                <q-icon name="insights" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Mi resumen</q-item-label>
+                <q-item-label caption>Gráficas de casos y auditorías</q-item-label>
+              </q-item-section>
+              <q-tooltip>Ir a mi resumen con las gráficas de tus casos y auditorías</q-tooltip>
+            </q-item>
+
 
             <q-item
               clickable
@@ -148,24 +168,7 @@
               <q-tooltip>Ir a mis casos</q-tooltip>
             </q-item>
 
-            <q-item
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
-              :to="{ name: 'contador-dashboard' }"
-              aria-label="Ir a mi resumen"
-            >
-              <q-item-section avatar>
-                <q-icon name="insights" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Mi resumen</q-item-label>
-                <q-item-label caption>Gráficas de casos y auditorías</q-item-label>
-              </q-item-section>
-              <q-tooltip>Ir a mi resumen con las gráficas de tus casos y auditorías</q-tooltip>
-            </q-item>
-
+            
             <q-item
               clickable
               v-ripple

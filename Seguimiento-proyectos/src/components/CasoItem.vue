@@ -70,6 +70,11 @@
         v-if="puedeCambiarPrioridad"
         dense
         outlined
+        options-dense
+        dropdown-icon="expand_more"
+        popup-content-class="menu-seleccion-custom"
+        transition-show="jump-down"
+        transition-hide="jump-up"
         :model-value="caso.priority"
         :options="opcionesPrioridad"
         option-label="label"
@@ -79,9 +84,37 @@
         label="Prioridad"
         :aria-label="`Cambiar la prioridad del caso de ${caso.client}`"
         :disable="deshabilitado"
-        class="caso-item__estado"
+        class="caso-item__estado selector-moderno"
         @update:model-value="(prioridad) => emit('cambiar-prioridad', prioridad)"
       >
+        <template #selected-item="scope">
+          <div class="row items-center q-gutter-x-xs no-wrap">
+            <span
+              class="punto-estado-sm"
+              :style="{ '--dot-color': `var(--dg-prioridad-${scope.opt?.value ?? caso.priority})` }"
+            />
+            <span class="text-weight-medium">{{ scope.opt?.label ?? scope.opt }}</span>
+          </div>
+        </template>
+        <template #option="{ itemProps, opt, selected }">
+          <q-item
+            v-bind="itemProps"
+            :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+          >
+            <q-item-section avatar class="item-seccion-icono">
+              <span
+                class="punto-estado"
+                :style="{ '--dot-color': `var(--dg-prioridad-${opt.value})` }"
+              />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ opt.label }}</q-item-label>
+            </q-item-section>
+            <q-item-section v-if="selected" side>
+              <q-icon name="check" size="18px" color="primary" />
+            </q-item-section>
+          </q-item>
+        </template>
         <q-tooltip>Cambia la prioridad y avisa al contador. La fecha de vencimiento no cambia.</q-tooltip>
       </q-select>
       <span class="caso-item__estado-fijo" tabindex="0">
@@ -94,6 +127,11 @@
       <q-select
         dense
         outlined
+        options-dense
+        dropdown-icon="expand_more"
+        popup-content-class="menu-seleccion-custom"
+        transition-show="jump-down"
+        transition-hide="jump-up"
         :model-value="caso.status"
         :options="opcionesEstado"
         option-label="label"
@@ -104,9 +142,37 @@
         :aria-label="`Cambiar estado del caso de ${caso.client}`"
         :color="esFinalizado ? 'dg-exito' : 'primary'"
         :disable="deshabilitado"
-        class="caso-item__estado"
+        class="caso-item__estado selector-moderno"
         @update:model-value="(estado) => emit('cambiar-estado', estado)"
       >
+        <template #selected-item="scope">
+          <div class="row items-center q-gutter-x-xs no-wrap">
+            <span
+              class="punto-estado-sm"
+              :style="{ '--dot-color': `var(--dg-estado-${(scope.opt?.value ?? caso.status)?.replace(/_/g, '-')})` }"
+            />
+            <span class="text-weight-medium">{{ scope.opt?.label ?? scope.opt }}</span>
+          </div>
+        </template>
+        <template #option="{ itemProps, opt, selected }">
+          <q-item
+            v-bind="itemProps"
+            :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+          >
+            <q-item-section avatar class="item-seccion-icono">
+              <span
+                class="punto-estado"
+                :style="{ '--dot-color': `var(--dg-estado-${opt.value?.replace(/_/g, '-')})` }"
+              />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ opt.label }}</q-item-label>
+            </q-item-section>
+            <q-item-section v-if="selected" side>
+              <q-icon name="check" size="18px" color="primary" />
+            </q-item-section>
+          </q-item>
+        </template>
         <q-tooltip>Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.</q-tooltip>
       </q-select>
       <q-btn

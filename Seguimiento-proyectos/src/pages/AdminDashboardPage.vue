@@ -11,13 +11,11 @@
           <!-- El texto de ayuda describe la pestaña abierta -->
           <p v-if="pestana === 'casos'" class="dashboard-page__lead">
             Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el
-            detalle de sus casos. Esta pantalla es de solo consulta: aquí no se cambia el estado ni
-            la prioridad de ningún caso.
+            detalle de sus casos.
           </p>
           <p v-else class="dashboard-page__lead">
             Revisa el avance de todas las auditorías: sus indicadores, en qué fase va cada una y qué
-            vence después. Haz clic en una auditoría para abrir su ficha; para registrar una nueva
-            usa «Asignar auditoría».
+            vence después. Haz clic en una auditoría para abrir su ficha.
           </p>
         </div>
         <q-btn
@@ -141,7 +139,7 @@
                   type="search"
                   label="Buscar contador por nombre"
                   aria-label="Buscar contador por nombre"
-                  class="counter-search"
+                  class="counter-search input-moderno"
                 >
                   <template #prepend>
                     <q-icon name="search" aria-hidden="true" />

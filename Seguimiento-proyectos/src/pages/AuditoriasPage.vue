@@ -67,7 +67,7 @@
               debounce="200"
               placeholder="Buscar por cliente o expediente"
               aria-label="Buscar por cliente o expediente"
-              class="auditorias-page__buscar"
+              class="auditorias-page__buscar input-moderno"
             >
               <template #prepend><q-icon name="search" aria-hidden="true" /></template>
             </q-input>
@@ -79,9 +79,29 @@
               dense
               outlined
               options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
               label="Ordenar por"
-              class="auditorias-page__orden"
+              class="auditorias-page__orden selector-moderno"
             >
+              <template #prepend>
+                <q-icon name="sort" />
+              </template>
+              <template #option="{ itemProps, opt, selected }">
+                <q-item
+                  v-bind="itemProps"
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ opt.label }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="selected" side>
+                    <q-icon name="check" size="18px" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </template>
               <q-tooltip>Por urgencia: primero lo vencido y lo que vence antes.</q-tooltip>
             </q-select>
           </div>

@@ -25,7 +25,7 @@
         <q-input
           ref="nuevaInput"
           v-model="form.nueva"
-          class="cambio-form__control"
+          class="cambio-form__control input-moderno"
           :class="{ 'cambio-form__control--coinciden': coinciden }"
           label="Contraseña nueva"
           :type="verNueva ? 'text' : 'password'"
@@ -77,7 +77,7 @@
         <q-input
           ref="confirmacionInput"
           v-model="form.confirmacion"
-          class="cambio-form__control"
+          class="cambio-form__control input-moderno"
           :class="{ 'cambio-form__control--coinciden': coinciden }"
           label="Confirmar contraseña"
           :type="verConfirmacion ? 'text' : 'password'"

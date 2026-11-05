@@ -74,9 +74,26 @@
             dense
             outlined
             options-dense
+            dropdown-icon="expand_more"
+            popup-content-class="menu-seleccion-custom"
+            transition-show="jump-down"
+            transition-hide="jump-up"
             label="Por página"
-            class="paginacion__por-pagina"
+            class="paginacion__por-pagina selector-moderno"
           >
+            <template #option="{ itemProps, opt, selected }">
+              <q-item
+                v-bind="itemProps"
+                :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+              >
+                <q-item-section>
+                  <q-item-label>{{ opt }}</q-item-label>
+                </q-item-section>
+                <q-item-section v-if="selected" side>
+                  <q-icon name="check" size="18px" color="primary" />
+                </q-item-section>
+              </q-item>
+            </template>
             <q-tooltip>Cuántos casos se muestran en cada página.</q-tooltip>
           </q-select>
           <q-pagination
