@@ -211,6 +211,21 @@ test('un 404 se normaliza como no_encontrado con el mensaje del backend', async 
   })
 })
 
+test('un 429 se normaliza como demasiados_intentos con el mensaje del backend', async () => {
+  const mensaje = 'Demasiados intentos fallidos sobre inicio de sesión: Espere 15 minutos antes de volver a intentarlo'
+  const { api } = crearApi({
+    almacen: crearAlmacenFalso(),
+    adaptador: crearAdaptador((config) => falloHttp(config, 429, { mensaje })),
+  })
+
+  await assert.rejects(api.post('/auth/login', {}), (error) => {
+    assert.equal(error.estado, 'demasiados_intentos')
+    assert.equal(error.mensaje, mensaje)
+    assert.equal(error.codigoHttp, 429)
+    return true
+  })
+})
+
 test('un 500 se normaliza como servidor con el mensaje del backend', async () => {
   const mensaje = 'Error interno del servidor sobre la petición: intente nuevamente'
   const { api } = crearApi({

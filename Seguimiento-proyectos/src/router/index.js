@@ -14,6 +14,7 @@ import ContadorDashboardPage from '../pages/ContadorDashboardPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
+import PaginaNoEncontrada from '../pages/[...path].vue'
 import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
@@ -133,6 +134,19 @@ const routes = [
       // El alta y el restablecimiento de cuentas se hacen en diálogos del directorio.
       { path: 'usuarios/alta', redirect: { name: 'admin-directorio' } },
       { path: 'usuarios/restablecer-contrasena', redirect: { name: 'admin-directorio' } },
+    ],
+  },
+  {
+    // Cualquier otra dirección: página 404 con salida, en vez de una pantalla en blanco.
+    path: '/:pathMatch(.*)*',
+    component: LoginLayout,
+    children: [
+      {
+        path: '',
+        name: 'no-encontrada',
+        component: PaginaNoEncontrada,
+        meta: { titulo: 'Página no encontrada' },
+      },
     ],
   },
 ]

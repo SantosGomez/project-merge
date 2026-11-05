@@ -655,10 +655,10 @@ describe('Sección «Usuarios» y aviso de acceso (historia 9a) — verificació
   it('el aviso de acceso denegado lleva a la pantalla principal de cualquier rol', () => {
     assert.match(
       aviso,
-      /PANTALLA_PRINCIPAL_POR_ROL\[maqueta\.session\?\.profile\]/,
+      /PANTALLA_PRINCIPAL_POR_ROL\[sesion\.rol\]/,
       'la vuelta sale del rol de la sesión, no de «admin o contador»',
     )
-    assert.match(aviso, /formatearRol\(maqueta\.session\?\.profile\)/, 'nombra el rol de la sesión')
+    assert.match(aviso, /formatearRol\(sesion\.rol\)/, 'nombra el rol de la sesión')
   })
 })
 

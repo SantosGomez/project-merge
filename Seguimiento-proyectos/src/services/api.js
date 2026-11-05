@@ -47,6 +47,7 @@ export const ESTADOS_ERROR = Object.freeze({
   SIN_SESION: 'sin_sesion',
   SIN_PERMISO: 'sin_permiso',
   NO_ENCONTRADO: 'no_encontrado',
+  DEMASIADOS_INTENTOS: 'demasiados_intentos',
   SOLICITUD_INVALIDA: 'solicitud_invalida',
   SERVIDOR: 'servidor',
   RED: 'red',
@@ -197,6 +198,10 @@ const clasificarRespuesta = (error, respuesta) => {
   }
   if (codigo === 404) {
     return ESTADOS_ERROR.NO_ENCONTRADO
+  }
+  if (codigo === 429) {
+    // Límite de intentos (p. ej. 10 logins fallidos en 15 min): reintentar en el acto no sirve.
+    return ESTADOS_ERROR.DEMASIADOS_INTENTOS
   }
   if (codigo >= 500) {
     return ESTADOS_ERROR.SERVIDOR

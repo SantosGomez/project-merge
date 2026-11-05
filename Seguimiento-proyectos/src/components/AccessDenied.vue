@@ -37,15 +37,7 @@
             <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
           </q-item-section>
           <q-item-section>
-            <q-item-label class="access-denied__help-texto">El perfil lo determina la cuenta de ejemplo con la que iniciaste sesión: no se elige a mano.</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item class="access-denied__help-item">
-          <q-item-section avatar class="access-denied__help-icono">
-            <q-icon name="info" size="18px" color="dg-acento" aria-hidden="true" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label class="access-denied__help-texto">La maqueta no ofrece ningún control que lleve a una pantalla del otro perfil: cada cuenta de ejemplo solo abre las pantallas de su perfil.</q-item-label>
+            <q-item-label class="access-denied__help-texto">Si necesitas ver esta pantalla, pídele al administrador que revise tu perfil.</q-item-label>
           </q-item-section>
         </q-item>
       </q-list>
@@ -56,7 +48,7 @@
 <script setup>
 import { computed, useId } from 'vue'
 
-import { useMaquetaStore } from '../stores/maqueta.js'
+import { useSessionStore } from '../stores/session.js'
 import { PANTALLA_PRINCIPAL_POR_ROL } from '../utils/accessRules.js'
 import { formatearRol } from '../utils/formateadores.js'
 
@@ -64,15 +56,13 @@ import { formatearRol } from '../utils/formateadores.js'
  * Aviso de acceso denegado (RF-6): se muestra en la dirección solicitada, sin cambiar de pantalla,
  * y ofrece volver a la pantalla principal del perfil conectado (P-2 para administrador, P-5 para contador).
  */
-const maqueta = useMaquetaStore()
+const sesion = useSessionStore()
 
 /** Pantalla principal del perfil conectado (Definiciones: pantalla principal del perfil). */
-const homeRouteName = computed(
-  () => PANTALLA_PRINCIPAL_POR_ROL[maqueta.session?.profile] ?? 'admin-dashboard',
-)
+const homeRouteName = computed(() => PANTALLA_PRINCIPAL_POR_ROL[sesion.rol] ?? 'admin-dashboard')
 
 /** Perfil de la sesión actual, con su nombre legible en minúsculas. */
-const profileLabel = computed(() => formatearRol(maqueta.session?.profile).toLowerCase())
+const profileLabel = computed(() => formatearRol(sesion.rol).toLowerCase())
 
 const titleId = useId()
 </script>

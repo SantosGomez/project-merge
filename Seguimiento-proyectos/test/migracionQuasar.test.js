@@ -55,10 +55,12 @@ describe('Rebanada 2: piezas pequeñas', () => {
   })
 
   it('las ayudas de acceso denegado y sesión caducada son q-list con un q-item por punto', () => {
-    for (const ruta of ['components/AccessDenied.vue', 'components/AvisoSesionCaducada.vue']) {
+    // Acceso denegado quedó con dos puntos al quitar los textos de la maqueta (revisión de UI, rebanada 1).
+    const puntos = { 'components/AccessDenied.vue': 2, 'components/AvisoSesionCaducada.vue': 3 }
+    for (const [ruta, cantidad] of Object.entries(puntos)) {
       const plantilla = leer(ruta).split('<script')[0]
       assert.match(plantilla, /<q-list[^>]*dense/, `${ruta}: lista de Quasar`)
-      assert.equal((plantilla.match(/<q-item[\s>]/g) ?? []).length, 3, `${ruta}: los tres puntos de ayuda`)
+      assert.equal((plantilla.match(/<q-item[\s>]/g) ?? []).length, cantidad, `${ruta}: los puntos de ayuda`)
     }
   })
 })

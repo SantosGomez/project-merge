@@ -71,6 +71,11 @@
           <p class="notice__text">{{ errorCredenciales }}</p>
         </q-banner>
 
+        <!-- Bloqueo por intentos fallidos: reintentar en el acto no sirve, así que no hay botón. -->
+        <q-banner v-if="errorBloqueo" class="notice notice--invalid" role="alert">
+          <p class="notice__text">{{ errorBloqueo }}</p>
+        </q-banner>
+
         <q-banner v-if="errorConexion" class="notice notice--invalid" role="alert">
           <p class="notice__text">{{ errorConexion.mensaje }}</p>
           <q-btn
@@ -203,7 +208,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { arranqueFallido } from '../router/accessState.js'
 import { ESTADOS_ERROR } from '../services/api.js'
 import { useSessionStore } from '../stores/session.js'
-import { construirError } from '../utils/mensajes.js'
+import { errorDeConexionLogin } from '../utils/mensajesInicioSesion.js'
 import { validarCredenciales } from '../utils/validators.js'
 
 /*
@@ -219,6 +224,8 @@ const missing = reactive({ username: false, password: false })
 const errorCredenciales = ref('')
 const errorConexion = ref(null)
 const errorPerfil = ref('')
+/** Bloqueo temporal del login por demasiados intentos fallidos (límite del backend). */
+const errorBloqueo = ref('')
 const enviando = ref(false)
 const validandoArranque = ref(false)
 const usernameInput = ref(null)
@@ -239,7 +246,8 @@ const sesionRequerida = computed(
   () =>
     route.query.aviso === 'sesion' &&
     errorCredenciales.value === '' &&
-    errorConexion.value === null,
+    errorConexion.value === null &&
+    errorBloqueo.value === '',
 )
 
 /** Escribir en el formulario retira el error de ese campo y el aviso de cierre (RF-46/47). */
@@ -248,6 +256,7 @@ const alEscribir = (campo) => {
   errorCredenciales.value = ''
   errorConexion.value = null
   errorPerfil.value = ''
+  errorBloqueo.value = ''
   sesion.limpiarAvisoSesion()
 }
 
@@ -261,6 +270,7 @@ watch(
     errorCredenciales.value = ''
     errorConexion.value = null
     errorPerfil.value = ''
+    errorBloqueo.value = ''
   },
 )
 
@@ -272,7 +282,7 @@ const focusFirstProblem = async () => {
     usernameInput.value?.focus()
   } else if (missing.password) {
     passwordInput.value?.focus()
-  } else if (errorCredenciales.value !== '' || errorConexion.value !== null) {
+  } else if (errorCredenciales.value !== '' || errorConexion.value !== null || errorBloqueo.value !== '') {
     usernameInput.value?.focus()
   }
 }
@@ -334,6 +344,7 @@ const submit = async () => {
   errorCredenciales.value = ''
   errorConexion.value = null
   errorPerfil.value = ''
+  errorBloqueo.value = ''
 
   const revision = validarCredenciales(form.username, form.password)
   missing.username = revision.faltantes.includes('username')
@@ -358,15 +369,12 @@ const submit = async () => {
       // Mensaje genérico: no se indica cuál de los dos datos falló (RF-04).
       errorCredenciales.value =
         'Credenciales no válidas. Verifique el correo y la contraseña e intente de nuevo.'
+    } else if (resultado.error?.estado === ESTADOS_ERROR.DEMASIADOS_INTENTOS) {
+      // El backend dice cuánto esperar; mientras tanto no se ofrece «Reintentar».
+      errorBloqueo.value = resultado.error.mensaje
     } else {
       // Red o servidor: mensaje de tres partes con la opción de reintentar (RF-36).
-      errorConexion.value =
-        resultado.error ??
-        construirError(
-          'No se pudo iniciar sesión',
-          'el inicio de sesión',
-          'verifique su conexión e intente de nuevo',
-        )
+      errorConexion.value = errorDeConexionLogin(resultado.error)
     }
 
     await focusFirstProblem()
@@ -513,6 +521,13 @@ const submit = async () => {
 .login-form__help-icon:focus-visible {
   outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
+}
+
+/* Quasar no dibuja el foco de la casilla con teclado: lleva el mismo anillo que los demás (WCAG 2.4.7). */
+.login-form__mantener:focus-visible {
+  outline: 3px solid var(--dg-foco) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* El botón de Quasar trae la clase `no-outline`, que anula el contorno; se refuerza a propósito. */
