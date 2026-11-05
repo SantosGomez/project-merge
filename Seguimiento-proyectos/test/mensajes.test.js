@@ -4,7 +4,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { construirError } from '../src/utils/mensajes.js'
+import { QUE_HACER, construirError, separarMensajeError } from '../src/utils/mensajes.js'
 
 test('construirError une las tres partes en el orden y con el formato del plan', () => {
   assert.deepEqual(
@@ -77,4 +77,26 @@ test('construirError devuelve un mensaje que no dice solo "Error"', () => {
 
   assert.notEqual(mensaje.trim(), 'Error', 'no se admiten mensajes de una sola palabra (RNF-01)')
   assert.ok(mensaje.length > 0, 'el mensaje no puede quedar vacío (RNF-01)')
+})
+
+// Revisión de UI, rebanada 2: ErrorState muestra las tres partes por separado.
+test('separarMensajeError divide un mensaje de tres partes; si no tiene ese formato devuelve null', () => {
+  assert.deepEqual(
+    separarMensajeError(
+      'Qué ocurrió: No se pudo conectar con el servidor. Sobre: tus casos. Qué hacer: Revisa tu conexión a internet y vuelve a intentarlo.',
+    ),
+    {
+      queOcurrio: 'No se pudo conectar con el servidor',
+      sobreQue: 'tus casos',
+      queHacer: 'Revisa tu conexión a internet y vuelve a intentarlo',
+    },
+  )
+  assert.equal(separarMensajeError('Demasiados intentos fallidos sobre inicio de sesión: Espere'), null)
+  assert.equal(separarMensajeError(undefined), null)
+})
+
+test('los «qué hacer» compartidos van en trato de tú', () => {
+  for (const texto of Object.values(QUE_HACER)) {
+    assert.doesNotMatch(texto, /Reintente|Verifique|avise|intente /, texto)
+  }
 })

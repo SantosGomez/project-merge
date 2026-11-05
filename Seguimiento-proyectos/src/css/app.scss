@@ -48,9 +48,17 @@
   font-display: swap;
 }
 
-// Se aplica Matter a todo el cuerpo de la aplicacion
+// La app es de tema claro: el navegador no debe pintar controles ni fondo en oscuro aunque el
+// sistema esté en modo oscuro (revisión de UI, rebanada 2).
+:root {
+  color-scheme: light;
+}
+
+// Se aplica Matter a todo el cuerpo de la aplicacion. El fondo es explícito: transparente, en un
+// sistema en modo oscuro el contenido quedaba sobre negro.
 body {
   font-family: 'Matter', 'Roboto', sans-serif;
+  background: var(--dg-superficie);
 }
 
 // Los titulos principales usan Monument Extended

@@ -16,6 +16,7 @@ import {
   getConteosPorEstado as getConteosPorEstadoPorDefecto,
   listCounters as listCountersPorDefecto,
 } from '../services/counterService.js'
+import { QUE_HACER } from '../utils/mensajes.js'
 import { screenState } from '../utils/screenState.js'
 
 const contadoresPorDefecto = {
@@ -45,7 +46,7 @@ const normalizarError = (error, sobreQue) =>
         ESTADOS_ERROR.RED,
         'No se pudieron obtener los datos del servidor',
         sobreQue,
-        'Reintente la operación; si el problema continúa, avise al administrador',
+        QUE_HACER.reintentar,
       )
 
 /**

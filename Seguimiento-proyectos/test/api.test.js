@@ -267,9 +267,41 @@ test('una respuesta de error sin mensaje del backend se convierte en error de tr
     assert.ok(error.mensaje.includes('Qué ocurrió:'), 'falta la parte de qué ocurrió (RNF-01)')
     assert.ok(error.mensaje.includes('Sobre:'), 'falta la parte de sobre qué (RNF-01)')
     assert.ok(error.mensaje.includes('Qué hacer:'), 'falta la parte de qué hacer (RNF-01)')
-    assert.ok(error.mensaje.includes('GET /contadores'), 'el mensaje indica sobre qué petición')
+    // Revisión de UI, rebanada 2: el «sobre qué» nombra el dato, no la petición técnica.
+    assert.ok(error.mensaje.includes('Sobre: los contadores y sus casos.'), 'el mensaje nombra el dato que falló')
+    assert.doesNotMatch(error.mensaje, /GET|\/contadores|petición/, 'sin la ruta técnica')
+    assert.ok(error.mensaje.includes('Vuelve a intentarlo en unos segundos'), 'el qué hacer va en tú')
     return true
   })
+})
+
+test('el «sobre qué» de un error traduce cada ruta a lo que la persona entiende', async () => {
+  const casos = [
+    ['/casos/mis-casos', 'tus casos'],
+    ['/casos/12/prioridad', 'la prioridad del caso'],
+    ['/casos', 'los casos'],
+    ['/contadores/resumen?importantes=1', 'el resumen del equipo'],
+    ['/contadores/3/casos', 'los contadores y sus casos'],
+    ['/auditorias/fases', 'las fases de auditoría'],
+    ['/auditorias/7/eventos', 'la bitácora de la auditoría'],
+    ['/auditorias/7', 'las auditorías'],
+    ['/notificaciones/leidas', 'tus avisos'],
+    ['/eventos/pase', 'los avisos en tiempo real'],
+    ['/usuarios/restablecer-contrasena', 'el restablecimiento de contraseña'],
+    ['/usuarios', 'las cuentas de usuario'],
+    ['/auth/contrasena', 'el cambio de contraseña'],
+    ['/otra/ruta', 'la información de esta pantalla'],
+  ]
+  for (const [ruta, nombre] of casos) {
+    const { api } = crearApi({
+      almacen: crearAlmacenFalso(),
+      adaptador: crearAdaptador((config) => falloHttp(config, 500, {})),
+    })
+    await assert.rejects(api.get(ruta), (error) => {
+      assert.ok(error.mensaje.includes(`Sobre: ${nombre}.`), `${ruta} → ${nombre}: ${error.mensaje}`)
+      return true
+    })
+  }
 })
 
 test('un error de red se normaliza como red con mensaje de tres partes', async () => {
@@ -286,8 +318,8 @@ test('un error de red se normaliza como red con mensaje de tres partes', async (
     assert.equal(error.datos, null)
     assert.ok(error.mensaje.includes('No se pudo conectar con el servidor'))
     assert.ok(error.mensaje.includes('Qué ocurrió:'))
-    assert.ok(error.mensaje.includes('Sobre:'))
-    assert.ok(error.mensaje.includes('Qué hacer:'))
+    assert.ok(error.mensaje.includes('Sobre: tus casos.'))
+    assert.ok(error.mensaje.includes('Qué hacer: Revisa tu conexión a internet y vuelve a intentarlo.'))
     return true
   })
 })

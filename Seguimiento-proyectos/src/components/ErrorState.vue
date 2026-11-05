@@ -3,12 +3,23 @@
     <h2 :id="titleId" class="error-state__title">{{ title }}</h2>
 
     <!--
-      Si el detalle ya es un mensaje completo de tres partes (construirError o el backend),
-      se muestra tal cual para no repetir las etiquetas. Si es una frase corta sobre qué falló,
-      se envuelve en las tres partes de RNF-01.
+      Si el detalle ya es un mensaje de tres partes (construirError), se separa para mostrar cada
+      parte con su etiqueta. Si es una frase corta sobre qué falló, se envuelve en las tres partes
+      de RNF-01.
     -->
-    <template v-if="mensajeCompleto">
-      <p class="error-state__part">{{ detail }}</p>
+    <template v-if="partes">
+      <p class="error-state__part">
+        <strong class="error-state__part-label">Qué ocurrió:</strong>
+        {{ partes.queOcurrio }}.
+      </p>
+      <p class="error-state__part">
+        <strong class="error-state__part-label">Sobre qué dato o acción:</strong>
+        {{ partes.sobreQue }}.
+      </p>
+      <p class="error-state__part">
+        <strong class="error-state__part-label">Qué hacer:</strong>
+        {{ partes.queHacer }}.
+      </p>
     </template>
     <template v-else>
       <p class="error-state__part">
@@ -43,6 +54,8 @@
 <script setup>
 import { computed, useId } from 'vue'
 
+import { separarMensajeError } from '../utils/mensajes.js'
+
 const props = defineProps({
   /** Qué falló, en una frase (parte "qué ocurrió" de RNF-1). */
   title: {
@@ -65,11 +78,8 @@ const emit = defineEmits(['retry'])
 
 const titleId = useId()
 
-/** El detalle ya trae las tres partes: se muestra tal cual, sin repetir etiquetas. */
-const mensajeCompleto = computed(() => {
-  const texto = String(props.detail ?? '')
-  return texto.includes('Qué ocurrió:') && texto.includes('Qué hacer:')
-})
+/** Las tres partes del detalle, o null si el detalle es solo una frase sobre qué falló. */
+const partes = computed(() => separarMensajeError(props.detail))
 </script>
 
 <style scoped>

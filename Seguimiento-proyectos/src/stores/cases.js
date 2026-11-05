@@ -17,6 +17,7 @@ import {
   crearCaso as crearCasoPorDefecto,
   getMisCasos as getMisCasosPorDefecto,
 } from '../services/caseService.js'
+import { QUE_HACER } from '../utils/mensajes.js'
 import { screenState } from '../utils/screenState.js'
 
 const casosPorDefecto = {
@@ -35,7 +36,7 @@ const normalizarError = (error, sobreQue) =>
         ESTADOS_ERROR.RED,
         'No se pudieron obtener los datos del servidor',
         sobreQue,
-        'Reintente la operación; si el problema continúa, avise al administrador',
+        QUE_HACER.reintentar,
       )
 
 /**

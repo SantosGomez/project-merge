@@ -1,5 +1,15 @@
 <template>
   <q-layout view="lHh Lpr lFf">
+    <!-- Primer elemento con foco: con teclado evita cruzar todo el menú en cada pantalla. -->
+    <q-btn
+      unelevated
+      no-caps
+      color="primary"
+      label="Saltar al contenido"
+      class="saltar-contenido"
+      @click="saltarAlContenido"
+    />
+
     <q-header v-if="$q.screen.lt.md" elevated class="bg-primary text-white">
       <div class="layout-bar">
         <div class="layout-bar__row">
@@ -34,7 +44,6 @@
       @focusin="alEntrarFoco"
       @focusout="alSalirFoco"
       class="bg-primary menu-lateral"
-      aria-label="Navegación principal"
       transition-show="slide-right"
       transition-hide="slide-left"
     >
@@ -68,6 +77,8 @@
       </div>
 
       <q-scroll-area class="drawer-nav">
+        <!-- El menú es la navegación principal: así lo anuncian los lectores de pantalla. -->
+        <nav aria-label="Navegación principal">
         <q-list padding>
           <template v-if="session.esAdministrador">
             <q-item-label header>Administración</q-item-label>
@@ -78,6 +89,7 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'admin-dashboard' }"
+              :aria-current="paginaActual('admin-dashboard')"
               aria-label="Ir al dashboard del administrador"
             >
               <q-item-section avatar>
@@ -96,6 +108,7 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'admin-directorio' }"
+              :aria-current="paginaActual('admin-directorio')"
               aria-label="Ir al directorio de usuarios"
             >
               <q-item-section avatar>
@@ -114,6 +127,7 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'auditorias' }"
+              :aria-current="paginaActual('auditorias')"
               aria-label="Ir a auditorías"
             >
               <q-item-section avatar>
@@ -137,6 +151,7 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'contador-dashboard' }"
+              :aria-current="paginaActual('contador-dashboard')"
               aria-label="Ir a mi resumen"
             >
               <q-item-section avatar>
@@ -156,6 +171,7 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'contador-casos' }"
+              :aria-current="paginaActual('contador-casos')"
               aria-label="Ir a mis casos"
             >
               <q-item-section avatar>
@@ -175,6 +191,7 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'auditorias' }"
+              :aria-current="paginaActual('auditorias')"
               aria-label="Ir a auditorías"
             >
               <q-item-section avatar>
@@ -197,6 +214,7 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'admin-directorio' }"
+              :aria-current="paginaActual('admin-directorio')"
               aria-label="Ir al directorio de usuarios"
             >
               <q-item-section avatar>
@@ -210,6 +228,7 @@
             </q-item>
           </template>
         </q-list>
+        </nav>
       </q-scroll-area>
 
       <div class="drawer-usuario" v-if="session.autenticado">
@@ -245,7 +264,7 @@
       </div>
     </q-drawer>
 
-    <q-page-container class="contenedor-paginas">
+    <q-page-container id="contenido-principal" tabindex="-1" class="contenedor-paginas">
       <header v-if="$q.screen.gt.sm" class="page-header">
         <h1 class="page-header__title">{{ pageTitle }}</h1>
         <CampanaAvisos v-if="session.esContador" class="page-header__campana" />
@@ -361,6 +380,14 @@ const cerrandoSesion = ref(false)
 
 const pageTitle = computed(() => route.meta.titulo ?? 'Pantalla')
 
+/** `aria-current` de cada opción del menú: el lector anuncia en qué pantalla estás. */
+const paginaActual = (nombre) => (route.name === nombre ? 'page' : undefined)
+
+/** «Saltar al contenido»: lleva el foco al contenido de la página. */
+const saltarAlContenido = () => {
+  document.getElementById('contenido-principal')?.focus()
+}
+
 
 const iniciales = computed(() => formatearIniciales(session.nombreVisible))
 const rolLegible = computed(() => formatearRol(session.rol))
@@ -431,6 +458,33 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* «Saltar al contenido»: invisible hasta que recibe el foco con el teclado; entonces aparece arriba. */
+.saltar-contenido {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 3000;
+}
+
+.saltar-contenido:not(:focus) {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.saltar-contenido:focus-visible {
+  outline: 3px solid var(--dg-foco) !important;
+  outline-offset: 2px;
+}
+
+/* El contenido recibe el foco del salto sin dibujar un anillo alrededor de toda la página. */
+.contenedor-paginas:focus {
+  outline: none;
+}
+
 .layout-bar {
   display: flex;
   flex-direction: column;

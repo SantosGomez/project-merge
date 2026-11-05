@@ -21,7 +21,7 @@
 //   POST /auth/logout lo resuelve quien cierra; ninguno dispara el aviso.
 
 import axios from 'axios'
-import { construirError } from '../utils/mensajes.js'
+import { QUE_HACER, construirError } from '../utils/mensajes.js'
 
 /** URL del backend real (spec 002). En Docker se compila con API_URL=/api (Nginx la reenvía al backend). */
 // Sin `?.`: el compilador solo sustituye la expresión exacta import.meta.env.API_URL
@@ -152,14 +152,35 @@ export const crearErrorInesperado = (sobreQue) =>
     ESTADOS_ERROR.RESPUESTA_INESPERADA,
     'La respuesta del servidor no tiene el formato esperado',
     sobreQue,
-    'Reintente la operación; si el problema continúa, avise al administrador',
+    QUE_HACER.reintentar,
   )
 
-// Descripción de la petición para la parte "sobre qué" de RNF-01.
+/*
+ * Parte "sobre qué" de RNF-01: el dato que falló, dicho como lo entiende la persona, en vez de
+ * la petición técnica («GET /casos/mis-casos»). Va de lo más específico a lo más general.
+ */
+const DATO_POR_RUTA = [
+  [/^\/auth\/login/, 'el inicio de sesión'],
+  [/^\/auth\/logout/, 'el cierre de sesión'],
+  [/^\/auth\/contrasena/, 'el cambio de contraseña'],
+  [/^\/auth/, 'tu sesión'],
+  [/^\/casos\/mis-casos/, 'tus casos'],
+  [/^\/casos\/[^/]+\/prioridad/, 'la prioridad del caso'],
+  [/^\/casos/, 'los casos'],
+  [/^\/contadores\/resumen/, 'el resumen del equipo'],
+  [/^\/contadores/, 'los contadores y sus casos'],
+  [/^\/auditorias\/fases/, 'las fases de auditoría'],
+  [/^\/auditorias\/[^/]+\/eventos/, 'la bitácora de la auditoría'],
+  [/^\/auditorias/, 'las auditorías'],
+  [/^\/notificaciones/, 'tus avisos'],
+  [/^\/eventos/, 'los avisos en tiempo real'],
+  [/^\/usuarios\/restablecer-contrasena/, 'el restablecimiento de contraseña'],
+  [/^\/usuarios/, 'las cuentas de usuario'],
+]
+
 const describirPeticion = (config) => {
-  const metodo = typeof config?.method === 'string' ? config.method.toUpperCase() : null
-  const url = typeof config?.url === 'string' && config.url.trim() !== '' ? config.url : null
-  return metodo && url ? `la petición ${metodo} ${url}` : 'la petición al servidor'
+  const ruta = typeof config?.url === 'string' ? config.url.split('?')[0] : ''
+  return DATO_POR_RUTA.find(([patron]) => patron.test(ruta))?.[1] ?? 'la información de esta pantalla'
 }
 
 // Indica si la petición va a una ruta concreta (ignora la cadena de consulta).
@@ -213,22 +234,10 @@ const clasificarRespuesta = (error, respuesta) => {
 const construirMensaje = (estado, contexto, tiempoAgotado) => {
   if (estado === ESTADOS_ERROR.RED) {
     return tiempoAgotado
-      ? construirError(
-          'El servidor no respondió a tiempo',
-          contexto,
-          'Reintente la operación; si el problema continúa, avise al administrador',
-        ).mensaje
-      : construirError(
-          'No se pudo conectar con el servidor',
-          contexto,
-          'Verifique su conexión e intente de nuevo',
-        ).mensaje
+      ? construirError('El servidor no respondió a tiempo', contexto, QUE_HACER.reintentar).mensaje
+      : construirError('No se pudo conectar con el servidor', contexto, QUE_HACER.revisarConexion).mensaje
   }
-  return construirError(
-    'El servidor no pudo completar la petición',
-    contexto,
-    'Reintente la operación en unos segundos',
-  ).mensaje
+  return construirError('El servidor no pudo completar la operación', contexto, QUE_HACER.esperar).mensaje
 }
 
 /**
