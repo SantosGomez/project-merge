@@ -48,6 +48,7 @@
               :bg-color="esPropio(mensaje) ? 'dg-info-fondo' : 'dg-neutro-fondo'"
               :text-color="esPropio(mensaje) ? 'dg-info-texto' : 'primary'"
               class="chat-auditoria__mensaje"
+              :class="{ 'chat-auditoria__mensaje--entrando': recientes.has(mensaje.id) }"
             >
               <div class="chat-auditoria__texto">{{ mensaje.texto }}</div>
             </q-chat-message>
@@ -69,7 +70,7 @@
             counter
             label="Escribe un mensaje"
             hint="Enter envía · Mayús+Enter hace un salto de línea"
-            :disable="enviando || cargando || Boolean(errorCarga)"
+            :disable="cargando || Boolean(errorCarga)"
             class="chat-auditoria__campo col input-moderno"
             @keydown.enter.exact.prevent="enviar"
           />
@@ -82,7 +83,7 @@
             label="Enviar"
             :loading="enviando"
             :disable="!puedeEnviar"
-            class="control-touch"
+            class="chat-auditoria__enviar control-touch"
           >
             <q-tooltip>Envía el mensaje a todos los participantes de la auditoría.</q-tooltip>
           </q-btn>
@@ -131,6 +132,8 @@ const errorCarga = ref(null)
 const texto = ref('')
 const enviando = ref(false)
 const areaMensajes = ref(null)
+// Mensajes de otros que acaban de llegar en vivo: solo esos entran con animación.
+const recientes = ref(new Set())
 
 const puedeEnviar = computed(
   () => !enviando.value && !cargando.value && !errorCarga.value && texto.value.trim() !== '',
@@ -139,23 +142,33 @@ const puedeEnviar = computed(
 /** El mensaje lo escribió quien tiene la sesión abierta: va a la derecha (el id guardado es texto). */
 const esPropio = (mensaje) => mensaje.autor.id === Number(session.id)
 
-/** Lleva la vista al mensaje más reciente. */
-const bajarAlFinal = async () => {
+/**
+ * Lleva la vista al mensaje más reciente. Al abrir el chat salta sin animar
+ * (nadie pidió ese movimiento); con un mensaje nuevo se desliza.
+ */
+const bajarAlFinal = async (animar = true) => {
   await nextTick()
-  areaMensajes.value?.setScrollPercentage('vertical', 1, 150)
+  areaMensajes.value?.setScrollPercentage('vertical', 1, animar ? 150 : 0)
 }
 
-const cargar = async () => {
-  cargando.value = true
-  errorCarga.value = null
+/**
+ * Carga el chat. En silencio (al reconectar) no muestra el aviso de carga ni borra
+ * la lista: si falla, se quedan los mensajes que ya se veían.
+ */
+const cargar = async ({ silencioso = false } = {}) => {
+  if (!silencioso) {
+    cargando.value = true
+    errorCarga.value = null
+  }
   try {
     mensajes.value = await listarMensajes(props.auditoriaId)
+    errorCarga.value = null
   } catch (error) {
-    errorCarga.value = error.mensaje ?? 'los mensajes de la auditoría.'
+    if (!silencioso) errorCarga.value = error.mensaje ?? 'los mensajes de la auditoría.'
   } finally {
     cargando.value = false
   }
-  bajarAlFinal()
+  bajarAlFinal(false)
 }
 
 /**
@@ -164,18 +177,22 @@ const cargar = async () => {
  */
 const agregarMensaje = (nuevo) => {
   if (mensajes.value.some((m) => m.id === nuevo.id)) return
+  if (!esPropio(nuevo)) recientes.value.add(nuevo.id)
   mensajes.value.push(nuevo)
   bajarAlFinal()
 }
 
 const enviar = async () => {
   if (!puedeEnviar.value) return
+  // El campo se vacía al instante para seguir escribiendo mientras se envía.
+  const enviado = texto.value.trim()
+  texto.value = ''
   enviando.value = true
   try {
-    agregarMensaje(await enviarMensaje(props.auditoriaId, texto.value.trim()))
-    texto.value = ''
+    agregarMensaje(await enviarMensaje(props.auditoriaId, enviado))
   } catch (error) {
-    // El texto se conserva para que la persona pueda reintentar sin reescribirlo.
+    // Se devuelve el texto (si no se escribió otro) para reintentar sin reescribirlo.
+    if (texto.value === '') texto.value = enviado
     $q.notify({ type: 'negative', message: error.mensaje ?? 'No se pudo enviar el mensaje.' })
   } finally {
     enviando.value = false
@@ -198,7 +215,7 @@ const alRecibirMensaje = (datos) => {
 
 /** Tras perder la conexión pudieron llegar mensajes: se recarga el chat si está abierto. */
 const recargarSiAbierto = () => {
-  if (props.modelValue) cargar()
+  if (props.modelValue) cargar({ silencioso: true })
 }
 
 const dejarDeEscuchar = [
@@ -272,6 +289,44 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
 .chat-auditoria__redactar {
   padding: 12px 16px;
+}
+
+/* Un mensaje que llega en vivo sube un poco mientras aparece; ease-out fuerte, sin rebote. */
+.chat-auditoria__mensaje--entrando {
+  animation: chat-entrar 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes chat-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* El botón confirma la pulsación con una leve reducción. */
+.chat-auditoria__enviar {
+  transition: transform 160ms ease-out;
+}
+
+.chat-auditoria__enviar:active {
+  transform: scale(0.97);
+}
+
+/* Con movimiento reducido no hay desplazamiento: solo el desvanecido ayuda a notarlo. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-auditoria__mensaje--entrando {
+    animation-name: chat-aparecer;
+  }
+
+  .chat-auditoria__enviar:active {
+    transform: none;
+  }
+}
+
+@keyframes chat-aparecer {
+  from {
+    opacity: 0;
+  }
 }
 
 /* En el celular el panel ocupa todo el ancho. */

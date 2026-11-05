@@ -90,3 +90,55 @@ describe('Mensajes del chat en tiempo real', () => {
     assert.match(script, /mensajeDeBackend\(datos\.mensaje\)/)
   })
 })
+
+describe('Detalles de interacción del chat (revisión de diseño)', () => {
+  const campo = plantilla.match(/<q-input[\s\S]*?\/>/)?.[0] ?? ''
+
+  it('el campo no se deshabilita al enviar, para no perder el foco', () => {
+    assert.ok(campo, 'existe el campo del mensaje')
+    assert.doesNotMatch(campo, /enviando/, 'el envío solo bloquea el botón')
+  })
+
+  it('al abrir salta al final sin animar; solo anima con mensajes nuevos', () => {
+    assert.match(script, /const bajarAlFinal = async \(animar = true\)/)
+    assert.match(script, /setScrollPercentage\('vertical', 1, animar \? 150 : 0\)/)
+    assert.match(script, /bajarAlFinal\(false\)/, 'la carga inicial no anima el desplazamiento')
+  })
+
+  it('al reconectar recarga en silencio, sin el aviso de carga', () => {
+    assert.match(script, /const cargar = async \(\{ silencioso = false \} = \{\}\)/)
+    assert.match(script, /cargar\(\{ silencioso: true \}\)/)
+  })
+
+  it('solo los mensajes de otros entran con animación; los propios aparecen al instante', () => {
+    assert.match(plantilla, /'chat-auditoria__mensaje--entrando': recientes\.has\(mensaje\.id\)/)
+    assert.match(script, /if \(!esPropio\(nuevo\)\) recientes\.value\.add\(nuevo\.id\)/)
+    const entrada = estilos.match(/\.chat-auditoria__mensaje--entrando\s*\{([^}]*)\}/)?.[1] ?? ''
+    assert.match(entrada, /200ms/)
+    assert.match(entrada, /cubic-bezier\(0\.23, 1, 0\.32, 1\)/, 'ease-out fuerte')
+  })
+
+  it('con movimiento reducido la entrada es solo un desvanecido', () => {
+    assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?chat-auditoria__mensaje--entrando/)
+  })
+
+  it('el botón «Enviar» responde al presionarlo', () => {
+    assert.match(plantilla, /class="chat-auditoria__enviar control-touch"/)
+    assert.match(estilos, /\.chat-auditoria__enviar\s*\{[^}]*transition:\s*transform 160ms ease-out/)
+    assert.match(estilos, /\.chat-auditoria__enviar:active\s*\{[^}]*transform:\s*scale\(0\.97\)/)
+  })
+})
+
+describe('FAB de mensajes en la ficha (celular)', () => {
+  const sticky = ficha.match(/<q-page-sticky[\s\S]*?<\/q-page-sticky>/)?.[0] ?? ''
+
+  it('un botón flotante abajo a la derecha abre el chat, solo en pantallas chicas', () => {
+    assert.ok(sticky, 'existe el botón flotante')
+    assert.match(sticky, /class="lt-sm"/)
+    assert.match(sticky, /position="bottom-right"/)
+    assert.match(sticky, /<q-btn[\s\S]*?fab[\s\S]*?icon="forum"/)
+    assert.match(sticky, /aria-label="Abrir mensajes de la auditoría"/)
+    assert.match(sticky, /@click="chatAbierto = true"/)
+    assert.match(sticky, /<q-tooltip/)
+  })
+})

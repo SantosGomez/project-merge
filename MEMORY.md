@@ -26,6 +26,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas. Todo lo de abajo ya es
 - La tabla de auditorías de escritorio (`AuditoriasTabla`) no tiene botón «Mensajes»: en escritorio se entra por la ficha.
 - Para probar en navegador con los servidores de otra sesión en 3000/9000: `launch.json` tiene `backend-experimento-3011` (CORS a :9012) y `frontend-experimento-9012`.
 - Rebanada 3 lista (tiempo real): aviso SSE `mensaje-auditoria` `{ auditoriaId, mensaje }` al admin y a los contadores asignados (`avisarMensajeAuditoria` en `utils/avisosAuditoria.js`). El panel lo escucha (filtra por auditoría, no repite por `id` porque el propio llega en la respuesta y en el aviso) y recarga con `reconectado`. `mensajeDeBackend` exportado de `auditoriaService.js`. Verificado con dos sesiones (admin y contador) en vivo.
+- Pulido con la skill emil-design-eng (2026-11-05): el campo no se deshabilita al enviar (perdía el foco; se vacía al instante y se devuelve el texto si falla), al abrir salta al final sin animar, al reconectar recarga en silencio, solo los mensajes de otros entran animados (200ms, `cubic-bezier(0.23, 1, 0.32, 1)`, solo opacidad con movimiento reducido), «Enviar» con `scale(0.97)` al presionar. FAB `forum` en la ficha solo en celular (`lt-sm`); no en la lista (el chat es por auditoría y ahí ya está el FAB de registrar). Al imprimir, la ficha oculta todos los `.q-btn`.
 - Experimento completo (3 rebanadas). Ideas para después: no leídos, botón en `AuditoriasTabla`, editar/borrar, adjuntos.
 
 ## Pendientes

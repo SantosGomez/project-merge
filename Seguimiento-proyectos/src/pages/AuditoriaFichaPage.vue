@@ -193,6 +193,20 @@
       />
 
       <ChatAuditoria v-model="chatAbierto" :auditoria-id="auditoria.id" :cliente="auditoria.cliente" />
+
+      <!-- En el celular el chat queda a la mano del pulgar; el panel se abre desde ese mismo lado -->
+      <q-page-sticky class="lt-sm" position="bottom-right" :offset="[16, 16]">
+        <q-btn
+          fab
+          color="primary"
+          icon="forum"
+          aria-label="Abrir mensajes de la auditoría"
+          aria-haspopup="dialog"
+          @click="chatAbierto = true"
+        >
+          <q-tooltip anchor="center left" self="center right">Abre el chat de esta auditoría.</q-tooltip>
+        </q-btn>
+      </q-page-sticky>
     </template>
   </q-page>
 </template>
