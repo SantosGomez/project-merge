@@ -228,6 +228,16 @@ body {
   font-size: 20px;
 }
 
+/* Con movimiento reducido los campos y selectores cambian de estado al instante, sin transición. */
+@media (prefers-reduced-motion: reduce) {
+  .input-moderno .q-field__control,
+  .selector-moderno .q-field__control,
+  .selector-moderno .q-select__dropdown-icon,
+  .item-opcion-custom {
+    transition: none !important;
+  }
+}
+
 /* Ancho completo en móvil para campos de formulario (excepto selectores compactos en línea) */
 @media (max-width: 599px) {
   .form-group .input-moderno,

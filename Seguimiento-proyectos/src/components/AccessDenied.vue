@@ -103,7 +103,6 @@ const titleId = useId()
 .access-denied__help {
   margin-top: 24px;
   padding: 16px;
-  border-left: 4px solid var(--dg-acento);
   border-radius: 8px;
   background: var(--dg-fondo-hover);
   text-align: left;

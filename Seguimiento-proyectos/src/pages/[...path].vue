@@ -8,6 +8,8 @@
         fit="cover"
         width="240px"
         height="52px"
+        loading="eager"
+        fetchpriority="high"
         no-spinner
       />
 

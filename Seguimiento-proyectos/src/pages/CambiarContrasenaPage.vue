@@ -9,6 +9,8 @@
           fit="cover"
           width="240px"
           height="52px"
+          loading="eager"
+          fetchpriority="high"
           no-spinner
         />
         <h1 class="cambio-page__title">Crea tu contraseña</h1>
@@ -270,6 +272,7 @@ const salir = async () => {
   margin: 0 0 4px;
   color: var(--dg-texto);
   font-size: 1.5rem;
+  font-weight: 600;
   line-height: 1.25;
   text-wrap: balance;
 }
@@ -324,6 +327,12 @@ const salir = async () => {
 .cambio-form__submit {
   margin-top: 4px;
   font-size: 1rem;
+  transition: transform 160ms ease-out;
+}
+
+/* Responde al presionarlo: confirma que se escuchó el clic. */
+.cambio-form__submit:active {
+  transform: scale(0.97);
 }
 
 .control-touch {
@@ -345,13 +354,10 @@ const salir = async () => {
   outline-offset: 2px;
 }
 
+/* Con movimiento reducido el botón no cambia de escala (las transiciones de los campos se apagan en app.scss). */
 @media (prefers-reduced-motion: reduce) {
-  .cambio-page__card,
-  .cambio-form__control,
-  .cambio-form__submit,
-  .notice {
-    transition: none !important;
-    animation: none !important;
+  .cambio-form__submit:active {
+    transform: none;
   }
 }
 

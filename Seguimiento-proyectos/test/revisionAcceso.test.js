@@ -186,3 +186,52 @@ describe('Áreas táctiles de 44 px en los botones del ojo', () => {
     }
   })
 })
+
+// --- Grupo C: detalles -------------------------------------------------------------------
+
+const indexHtml = leer('../index.html')
+const appScss = leer('../src/css/app.scss')
+
+describe('Detalles de las pantallas de acceso', () => {
+  it('la pestaña del navegador lleva el nombre de la app', () => {
+    assert.match(indexHtml, /<title>Seguimiento de Proyectos<\/title>/)
+    assert.match(indexHtml, /<meta name="description" content="Seguimiento de Proyectos · Grupo DelGrow S\.C\." \/>/)
+  })
+
+  it('la bienvenida es neutra y los títulos de las tarjetas van en peso 600', () => {
+    assert.match(plantillaLogin, /<h1 class="login-page__title">Te damos la bienvenida<\/h1>/)
+    for (const [fuente, clase] of [[login, 'login-page__title'], [cambio, 'cambio-page__title']]) {
+      assert.match(fuente, new RegExp(String.raw`\.${clase}\s*\{[^}]*font-weight:\s*600`), `${clase}: peso 600`)
+    }
+  })
+
+  it('el logo, que es lo primero que se ve, carga de inmediato', () => {
+    for (const fuente of [login, cambio, noEncontrada]) {
+      const logo = fuente.slice(fuente.indexOf('<q-img'), fuente.indexOf('/>', fuente.indexOf('<q-img')))
+      assert.match(logo, /loading="eager"/)
+      assert.match(logo, /fetchpriority="high"/)
+    }
+  })
+
+  it('el botón principal responde al presionarlo (sin moverse con movimiento reducido)', () => {
+    for (const [fuente, clase] of [[login, 'login-form__submit'], [cambio, 'cambio-form__submit']]) {
+      assert.match(fuente, new RegExp(String.raw`\.${clase}\s*\{[^}]*transition:\s*transform 160ms ease-out`), `${clase}: transición`)
+      assert.match(fuente, new RegExp(String.raw`\.${clase}:active\s*\{[^}]*transform:\s*scale\(0\.97\)`), `${clase}: escala al presionar`)
+      const reducido = fuente.slice(fuente.indexOf('@media (prefers-reduced-motion: reduce)'))
+      assert.match(reducido, new RegExp(String.raw`\.${clase}:active\s*\{[^}]*transform:\s*none`), `${clase}: sin escala`)
+    }
+  })
+
+  it('el movimiento reducido apaga las transiciones reales de campos y selectores', () => {
+    const reducido = appScss.slice(appScss.indexOf('@media (prefers-reduced-motion: reduce)'))
+    assert.ok(appScss.includes('@media (prefers-reduced-motion: reduce)'), 'existe la regla global')
+    for (const selector of ['.input-moderno .q-field__control', '.selector-moderno .q-field__control', '.selector-moderno .q-select__dropdown-icon']) {
+      assert.ok(reducido.includes(selector), `apaga ${selector}`)
+    }
+    assert.match(reducido, /transition:\s*none !important/)
+  })
+
+  it('la ayuda de «Acceso denegado» ya no lleva el borde lateral decorativo', () => {
+    assert.doesNotMatch(aviso, /\.access-denied__help\s*\{[^}]*border-left/)
+  })
+})

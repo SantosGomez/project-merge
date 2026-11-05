@@ -10,9 +10,11 @@
           fit="cover"
           width="240px"
           height="52px"
+          loading="eager"
+          fetchpriority="high"
           no-spinner
         />
-        <h1 class="login-page__title">Bienvenido</h1>
+        <h1 class="login-page__title">Te damos la bienvenida</h1>
         <p class="login-page__lead">Inicia sesión con tu cuenta para ver tus casos.</p>
       </div>
 
@@ -413,17 +415,15 @@ const submit = async () => {
   margin: 0 0 4px;
   color: var(--dg-texto);
   font-size: 1.5rem;
+  font-weight: 600;
   line-height: 1.25;
   text-wrap: balance;
 }
 
+/* Con movimiento reducido el botón no cambia de escala (las transiciones de los campos se apagan en app.scss). */
 @media (prefers-reduced-motion: reduce) {
-  .login-page__card,
-  .login-form__control,
-  .login-form__submit,
-  .notice {
-    transition: none !important;
-    animation: none !important;
+  .login-form__submit:active {
+    transform: none;
   }
 }
 
@@ -496,6 +496,12 @@ const submit = async () => {
   min-height: 48px;
   margin-top: 4px;
   font-size: 1rem;
+  transition: transform 160ms ease-out;
+}
+
+/* Responde al presionarlo: confirma que se escuchó el clic. */
+.login-form__submit:active {
+  transform: scale(0.97);
 }
 
 .control-touch {
