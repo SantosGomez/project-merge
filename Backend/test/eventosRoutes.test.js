@@ -455,9 +455,26 @@ async function testParticipantesRecibenMensajesDelChat() {
   for (const conexion of [admin, asignado]) {
     const aviso = await conexion.esperar('mensaje-auditoria');
     assert.ok(aviso, 'recibe el mensaje en vivo');
-    assert.deepStrictEqual(aviso.datos, { auditoriaId, mensaje: enviado.body.nuevo_mensaje });
+    assert.deepStrictEqual(aviso.datos, {
+      auditoriaId,
+      cliente: 'zz_test Auditoría con chat en vivo',
+      mensaje: enviado.body.nuevo_mensaje,
+    });
   }
   assert.strictEqual(await otro.esperar('mensaje-auditoria', 200), null, 'un contador no asignado no lo recibe');
+  assert.strictEqual(await asignado.esperar('aviso-nuevo', 200), null, 'quien escribe no recibe aviso en su campana');
+
+  // Si escribe el administrador, la campana del contador asignado se actualiza en vivo
+  const delAdmin = await peticion(
+    servidor.puerto,
+    'POST',
+    `/auditorias/${auditoriaId}/mensajes`,
+    { texto: 'Revisa el acta.' },
+    tokenAdmin
+  );
+  assert.strictEqual(delAdmin.statusCode, 201);
+  assert.deepStrictEqual((await asignado.esperar('aviso-nuevo'))?.datos, { auditoriaId });
+  assert.strictEqual(await admin.esperar('aviso-nuevo', 200), null, 'el administrador no tiene campana del chat');
 
   for (const conexion of conexiones) conexion.cerrar();
 }

@@ -101,6 +101,7 @@ import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import { enviarMensaje, listarMensajes, mensajeDeBackend } from '../services/auditoriaService.js'
 import { eventos } from '../services/eventosService.js'
+import { auditoriaConChatAbierto } from '../utils/avisosChat.js'
 import { useSessionStore } from '../stores/session.js'
 
 const props = defineProps({
@@ -202,6 +203,8 @@ const enviar = async () => {
 watch(
   () => props.modelValue,
   (abierto) => {
+    // Con el panel abierto no tiene caso el aviso emergente de esta misma auditoría.
+    auditoriaConChatAbierto.value = abierto ? props.auditoriaId : null
     if (abierto) cargar()
   },
   { immediate: true },
@@ -222,7 +225,10 @@ const dejarDeEscuchar = [
   eventos.escuchar('mensaje-auditoria', alRecibirMensaje),
   eventos.escuchar('reconectado', recargarSiAbierto),
 ]
-onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
+onBeforeUnmount(() => {
+  dejarDeEscuchar.forEach((dejar) => dejar())
+  if (auditoriaConChatAbierto.value === props.auditoriaId) auditoriaConChatAbierto.value = null
+})
 </script>
 
 <style scoped>

@@ -253,6 +253,15 @@ const errorCarga = ref(null)
 const dialogoEdicionAbierto = ref(false)
 const chatAbierto = ref(false)
 
+// Desde el aviso «Ver mensajes» se llega con ?chat=1: la ficha abre el chat directamente.
+watch(
+  () => route.query.chat,
+  (chat) => {
+    if (chat) chatAbierto.value = true
+  },
+  { immediate: true },
+)
+
 const estadoClase = computed(() => ESTADO_CLASE[auditoria.value?.estado] ?? 'pendiente')
 const semaforoClase = computed(() => claseSemaforo(auditoria.value?.semaforo))
 

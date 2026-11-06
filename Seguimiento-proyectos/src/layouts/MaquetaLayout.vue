@@ -314,6 +314,7 @@ import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
+import { auditoriaConChatAbierto, avisoDeMensaje } from '../utils/avisosChat.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
 import { guardarMenuFijado, leerMenuFijado } from '../utils/preferenciaMenu.js'
 
@@ -400,6 +401,37 @@ const manejarActividad = () => {
 // Tiempo real: el servidor puede avisar que la sesión ya no vale (vencida o revocada)
 const dejarDeEscucharSesion = eventos.escuchar('sesion-cerrada', () => session.caducarSesion())
 
+/**
+ * Mensaje nuevo del chat: aviso emergente con «Ver mensajes» para el contador, en cualquier
+ * pantalla. El aviso también queda en la campana (lo guarda el backend).
+ */
+const alRecibirMensajeDelChat = (datos) => {
+  const aviso = avisoDeMensaje(datos, {
+    esContador: session.esContador,
+    usuarioId: session.id,
+    chatAbiertoId: auditoriaConChatAbierto.value,
+  })
+  if (!aviso) return
+  $q.notify({
+    icon: 'forum',
+    color: 'primary',
+    message: aviso.titulo,
+    caption: aviso.texto,
+    position: 'top-right',
+    timeout: 8000,
+    actions: [
+      {
+        label: 'Ver mensajes',
+        color: 'white',
+        noCaps: true,
+        handler: () =>
+          router.push({ name: 'auditoria-ficha', params: { id: aviso.auditoriaId }, query: { chat: '1' } }),
+      },
+    ],
+  })
+}
+const dejarDeEscucharChat = eventos.escuchar('mensaje-auditoria', alRecibirMensajeDelChat)
+
 // Al caducar o cerrar sesión se corta la conexión; al volver a entrar se abre otra
 watch(
   () => session.autenticado,
@@ -423,6 +455,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   eventos.desconectar()
   dejarDeEscucharSesion()
+  dejarDeEscucharChat()
   window.removeEventListener('click', manejarActividad, true)
   window.removeEventListener('keydown', manejarActividad, true)
   window.removeEventListener('pointerdown', manejarActividad, true)

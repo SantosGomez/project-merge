@@ -23,7 +23,7 @@ let tokenOtroContador;
 let tokenAdmin;
 let auditoria;
 
-async function registrarAuditoria(token) {
+async function registrarAuditoria(token, cambios = {}) {
   const respuesta = await peticion(
     servidor.puerto,
     'POST',
@@ -37,10 +37,43 @@ async function registrarAuditoria(token) {
       periodo_final: '31-12-2023',
       fecha_inicio: '15-02-2026',
       fecha_vencimiento: '15-02-2027',
+      ...cambios,
     },
     token
   );
   return respuesta.body.auditoria;
+}
+
+async function avisosDe(token) {
+  return (await peticion(servidor.puerto, 'GET', '/notificaciones', undefined, token)).body.notificaciones;
+}
+
+async function testAvisoEnLaCampanaParaLosContadoresAsignados() {
+  const compartida = await registrarAuditoria(tokenAdmin, {
+    cliente: 'Cliente Avisos del Chat',
+    contadores: [contador.id, otroContador.id],
+  });
+  const antesAdmin = (await avisosDe(tokenAdmin)).length;
+  const antesContador = (await avisosDe(tokenContador)).length;
+
+  // Escribe un contador: le llega al otro contador asignado, no a él mismo ni al administrador
+  const largo = `Subí los contratos. ${'x'.repeat(300)}`;
+  assert.strictEqual((await enviarMensaje(largo, tokenContador, compartida.id)).statusCode, 201);
+  const [aviso] = await avisosDe(tokenOtroContador);
+  assert.ok(aviso, 'el otro contador asignado recibe el aviso');
+  assert.match(aviso.mensaje, new RegExp(`^${contador.nombre} escribió en la auditoría de Cliente Avisos del Chat: «Subí los contratos\\.`));
+  assert.ok(aviso.mensaje.length <= 200, 'el texto del mensaje va recortado');
+  assert.match(aviso.mensaje, /…»$/);
+  assert.strictEqual(aviso.leida, false);
+  assert.strictEqual((await avisosDe(tokenContador)).length, antesContador, 'quien escribe no recibe aviso');
+  assert.strictEqual((await avisosDe(tokenAdmin)).length, antesAdmin, 'el administrador no recibe aviso del chat');
+
+  // Escribe el administrador: les llega a los dos contadores asignados
+  assert.strictEqual((await enviarMensaje('Revisen el acta, por favor.', tokenAdmin, compartida.id)).statusCode, 201);
+  for (const token of [tokenContador, tokenOtroContador]) {
+    const [ultimo] = await avisosDe(token);
+    assert.match(ultimo.mensaje, /escribió en la auditoría de Cliente Avisos del Chat: «Revisen el acta, por favor\.»$/);
+  }
 }
 
 async function enviarMensaje(texto, token, auditoriaId = auditoria.id) {
@@ -144,4 +177,5 @@ describe('Chat de auditorías', () => {
   test('solo el administrador y los contadores asignados leen y escriben', testPermisos);
   test('el mensaje no puede ir vacío ni pasar de 1000 caracteres', testValidaciones);
   test('el chat se lista en el orden en que se enviaron los mensajes', testListaEnOrden);
+  test('cada mensaje deja un aviso en la campana de los otros contadores asignados', testAvisoEnLaCampanaParaLosContadoresAsignados);
 });
