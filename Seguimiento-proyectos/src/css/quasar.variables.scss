@@ -104,8 +104,10 @@ $dg-colores: (
   // Aviso general de error de los diálogos de usuario (alta y restablecer contraseña)
   error-aviso-texto: #8a1c1c,
   error-aviso-fondo: #fde8e8,
-  // Textos sobre el menú lateral oscuro ($primary)
+  // Menú lateral oscuro ($primary): textos, línea sobre el usuario y fondo de la opción activa
   texto-claro: #ffffff,
   texto-claro-tenue: #c9cfd8,
+  borde-menu: rgba(255, 255, 255, 0.16),
+  fondo-menu-activo: rgba(255, 255, 255, 0.1),
 );
 

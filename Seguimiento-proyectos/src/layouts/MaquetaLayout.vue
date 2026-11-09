@@ -97,16 +97,16 @@
               active-class="q-item--nav-activo"
               :to="{ name: 'admin-dashboard' }"
               :aria-current="paginaActual('admin-dashboard')"
-              aria-label="Ir al dashboard admin"
+              aria-label="Ir al resumen del equipo"
             >
               <q-item-section avatar>
                 <q-icon name="dashboard" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>Dashboard admin</q-item-label>
+                <q-item-label>Resumen del equipo</q-item-label>
                 <q-item-label caption>Ver conteos y casos</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir al dashboard del administrador</q-tooltip>
+              <q-tooltip>Ir al resumen del equipo: conteos y casos de cada contador</q-tooltip>
             </q-item>
 
             <q-item
@@ -150,7 +150,7 @@
 
           <template v-if="session.esContador">
             
-            <q-item-label header>Mis casos</q-item-label>
+            <q-item-label header>Mi trabajo</q-item-label>
             
             <q-item
               clickable
@@ -263,7 +263,7 @@
               <q-icon name="logout" />
             </q-item-section>
             <q-item-section>
-              <q-item-label>Cerrar Sesión</q-item-label>
+              <q-item-label>Cerrar sesión</q-item-label>
             </q-item-section>
             <q-tooltip>Cierra la sesión actual y vuelve a la pantalla de inicio de sesión.</q-tooltip>
           </q-item>
@@ -298,7 +298,7 @@
       <q-card class="dialogo-cierre">
         <q-card-section>
           <h2 id="dialogo-cierre-titulo" class="dialogo-cierre__titulo">¿Cerrar sesión?</h2>
-          <p class="dialogo-cierre__texto">Tendrá que iniciar sesión de nuevo.</p>
+          <p class="dialogo-cierre__texto">Tendrás que iniciar sesión de nuevo.</p>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -642,6 +642,7 @@ onBeforeUnmount(() => {
   flex: 1 1 180px;
   min-width: 0;
   margin: 0;
+  color: var(--dg-texto);
   font-size: 1.4rem;
   font-weight: 600;
   line-height: 1.2;
@@ -738,7 +739,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-top: 1px solid var(--dg-borde-menu);
 }
 
 .drawer-usuario__fila {
@@ -808,7 +809,7 @@ onBeforeUnmount(() => {
 }
 
 .q-item--nav-activo {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--dg-fondo-menu-activo);
   box-shadow: inset 3px 0 0 var(--q-secondary);
 }
 
@@ -833,6 +834,7 @@ onBeforeUnmount(() => {
 
 .dialogo-cierre__titulo {
   margin: 0 0 8px;
+  color: var(--dg-texto);
   font-size: 1.15rem;
   font-weight: 600;
   line-height: 1.3;

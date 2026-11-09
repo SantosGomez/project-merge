@@ -193,3 +193,91 @@ describe('Títulos de estados y nombres accesibles', () => {
     }
   })
 })
+
+// Grupo C: textos del menú, colores sueltos, borde lateral del error, un solo h1 y fecha de avisos.
+const leerC = (relativa) => readFileSync(fileURLToPath(new URL(relativa, import.meta.url)), 'utf8')
+const layoutC = leerC('../src/layouts/MaquetaLayout.vue')
+const plantillaC = layoutC.split('<script')[0]
+const estilosC = layoutC.slice(layoutC.indexOf('<style'))
+const reglaDe = (fuente, clase) => fuente.match(new RegExp(String.raw`\.${clase}\s*\{([^}]*)\}`))?.[1]
+
+describe('Grupo C: textos del menú en tú y sin ambigüedad', () => {
+  it('«Cerrar sesión» en minúscula y el diálogo de cierre en tú', () => {
+    assert.doesNotMatch(plantillaC, /Cerrar Sesión/)
+    assert.match(plantillaC, /<q-item-label>Cerrar sesión<\/q-item-label>/)
+    assert.doesNotMatch(plantillaC, /Tendrá que/)
+    assert.match(plantillaC, /<p class="dialogo-cierre__texto">Tendrás que iniciar sesión de nuevo\.<\/p>/)
+  })
+
+  it('el menú del administrador dice «Resumen del equipo» y la pantalla se titula igual', () => {
+    assert.doesNotMatch(plantillaC, /Dashboard admin|dashboard admin/)
+    assert.match(plantillaC, /<q-item-label>Resumen del equipo<\/q-item-label>/)
+    assert.match(plantillaC, /aria-label="Ir al resumen del equipo"/)
+    const router = leerC('../src/router/index.js')
+    assert.match(router, /titulo: 'Resumen del equipo'/)
+    assert.doesNotMatch(router, /titulo: 'Dashboard del administrador'/)
+  })
+
+  it('la sección del contador se llama «Mi trabajo» (ya no repite «Mis casos»)', () => {
+    assert.match(plantillaC, /<q-item-label header>Mi trabajo<\/q-item-label>/)
+    assert.doesNotMatch(plantillaC, /<q-item-label header>Mis casos<\/q-item-label>/)
+  })
+
+  it('el vacío de «Mis casos» habla de casos registrados en el título y en el mensaje', () => {
+    const misCasos = leerC('../src/pages/MyCasesPage.vue').split('<script')[0]
+    const vacio = misCasos.match(/title="No tienes casos registrados"\s*message="([^"]+)"/)?.[1]
+    assert.ok(vacio, 'existe el vacío de «Mis casos»')
+    assert.doesNotMatch(vacio, /asignados/)
+    assert.match(vacio, /registrado/)
+  })
+})
+
+describe('Grupo C: colores desde la paleta', () => {
+  it('ScreenLoader usa el texto secundario de la paleta', () => {
+    const loader = leerC('../src/components/ScreenLoader.vue')
+    assert.doesNotMatch(loader, /#[0-9a-fA-F]{3,6}\b/)
+    assert.match(reglaDe(loader, 'screen-loader__text') ?? '', /color:\s*var\(--dg-texto-secundario\)/)
+  })
+
+  it('el layout no tiene rgba sueltos: el borde y el fondo activo del menú están en la paleta', () => {
+    assert.doesNotMatch(estilosC, /rgba\(/)
+    assert.match(reglaDe(estilosC, 'drawer-usuario') ?? '', /border-top:\s*1px solid var\(--dg-borde-menu\)/)
+    assert.match(reglaDe(estilosC, 'q-item--nav-activo') ?? '', /background:\s*var\(--dg-fondo-menu-activo\)/)
+    const variables = leerC('../src/css/quasar.variables.scss')
+    assert.match(variables, /borde-menu:\s*rgba\(255, 255, 255, 0\.16\)/)
+    assert.match(variables, /fondo-menu-activo:\s*rgba\(255, 255, 255, 0\.1\)/)
+  })
+
+  it('los títulos del encabezado y del diálogo de cierre usan el color de texto de la paleta', () => {
+    for (const clase of ['page-header__title', 'dialogo-cierre__titulo']) {
+      assert.match(reglaDe(estilosC, clase) ?? '', /color:\s*var\(--dg-texto\)/, clase)
+    }
+  })
+})
+
+describe('Grupo C: aviso de error sin franja lateral', () => {
+  it('ErrorState tiene un borde parejo, sin el borde izquierdo de 6 px', () => {
+    const regla = reglaDe(leerC('../src/components/ErrorState.vue'), 'error-state')
+    assert.ok(regla, 'existe la regla .error-state')
+    assert.doesNotMatch(regla, /border-left/)
+    assert.match(regla, /border:\s*1px solid/)
+  })
+})
+
+describe('Grupo C: un solo h1 por pantalla (el del encabezado)', () => {
+  for (const pagina of ['AdminDashboardPage', 'ContadorDashboardPage', 'AuditoriaFichaPage']) {
+    it(`${pagina} no repite el h1 del encabezado: su título va en h2`, () => {
+      const plantilla = leerC(`../src/pages/${pagina}.vue`).split('<script')[0]
+      assert.doesNotMatch(plantilla, /<h1[\s>]/)
+      assert.match(plantilla, /<h2 class="(dashboard-page__title|ficha__cliente)">/)
+    })
+  }
+})
+
+describe('Grupo C: fecha de los avisos de la campana', () => {
+  it('la fecha usa el texto tenue de la paleta (no el gris de Quasar)', () => {
+    const campana = leerC('../src/components/CampanaAvisos.vue')
+    assert.match(campana.split('<script')[0], /<q-item-label caption class="campana-avisos__fecha">/)
+    assert.match(reglaDe(campana, 'campana-avisos__fecha') ?? '', /color:\s*var\(--dg-texto-tenue\)/)
+  })
+})

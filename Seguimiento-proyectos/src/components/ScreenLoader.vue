@@ -33,7 +33,7 @@ defineProps({
 .screen-loader__text {
   max-width: 32em;
   margin: 0;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
   line-height: 1.45;
 }

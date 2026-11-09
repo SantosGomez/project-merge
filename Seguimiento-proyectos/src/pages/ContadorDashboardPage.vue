@@ -3,9 +3,9 @@
     <div class="dashboard-page__inner">
       <div class="dashboard-page__head">
         <div class="dashboard-page__title-area">
-          <h1 class="dashboard-page__title">
+          <h2 class="dashboard-page__title">
             Buen día<template v-if="session.nombreVisible">, {{ session.nombreVisible }}</template>
-          </h1>
+          </h2>
           <!-- El texto de ayuda describe la pestaña abierta -->
           <p v-if="pestana === 'casos'" class="dashboard-page__lead">
             Revisa de un vistazo cuántos casos tienes en cada estado, cuántos ya vencieron y cuántos

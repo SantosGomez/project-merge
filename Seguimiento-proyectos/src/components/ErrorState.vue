@@ -86,7 +86,6 @@ const partes = computed(() => separarMensajeError(props.detail))
 .error-state {
   padding: 24px 16px;
   border: 1px solid var(--dg-error-borde-suave);
-  border-left: 6px solid var(--dg-error);
   border-radius: 12px;
   background: var(--dg-error-fondo);
 }

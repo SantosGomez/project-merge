@@ -22,7 +22,7 @@
           </q-item-section>
           <q-item-section>
             <q-item-label class="campana-avisos__mensaje">{{ aviso.mensaje }}</q-item-label>
-            <q-item-label caption>
+            <q-item-label caption class="campana-avisos__fecha">
               {{ aviso.fecha }}<span v-if="!aviso.leida"> · Nuevo</span>
             </q-item-label>
           </q-item-section>
@@ -127,6 +127,10 @@ watch(() => route.fullPath, cargar)
 
 .campana-avisos__item--nuevo {
   background: var(--dg-fondo-hover);
+}
+
+.campana-avisos__fecha {
+  color: var(--dg-texto-tenue);
 }
 
 .campana-avisos__mensaje {

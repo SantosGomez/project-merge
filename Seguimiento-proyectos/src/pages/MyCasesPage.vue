@@ -32,7 +32,7 @@
       <EmptyState
         v-if="cases.casos.length === 0"
         title="No tienes casos registrados"
-        message="Aún no hay casos asignados a tu cuenta. Usa el control «Registrar caso» para registrar el primero y empezar a gestionar tu carga."
+        message="Aún no has registrado ningún caso. Usa el control «Registrar caso» para registrar el primero y empezar a gestionar tu carga."
         action-label="Registrar caso"
         @action="abrirRegistro"
       />

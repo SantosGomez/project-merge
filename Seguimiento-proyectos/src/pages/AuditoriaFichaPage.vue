@@ -24,7 +24,7 @@
       <q-card flat bordered class="ficha__cabecera" :class="`semaforo--${semaforoClase}`">
         <q-card-section>
           <div class="ficha__titulo-fila">
-            <h1 class="ficha__cliente">{{ auditoria.cliente }}</h1>
+            <h2 class="ficha__cliente">{{ auditoria.cliente }}</h2>
             <q-chip dense square class="ficha__chip" :class="`ficha__estado--${estadoClase}`">
               {{ auditoria.estado }}
               <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>

@@ -69,7 +69,7 @@ const routes = [
           requiereSesion: true,
           perfil: PROFILES.administrador,
           screenId: SCREEN_IDS.dashboard,
-          titulo: 'Dashboard del administrador',
+          titulo: 'Resumen del equipo',
           volverA: 'admin-directorio',
         },
       },

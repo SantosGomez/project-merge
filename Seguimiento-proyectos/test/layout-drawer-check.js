@@ -97,7 +97,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('<q-item-label header'), 'falta header de lista')
   })
 
-  it('el administrador ve solo la sección «Administración» con Dashboard admin y Directorio, y no las opciones del contador', () => {
+  it('el administrador ve solo la sección «Administración» con Resumen del equipo y Directorio, y no las opciones del contador', () => {
     const inicioAdmin = src.indexOf('<template v-if="session.esAdministrador">')
     const finAdmin = src.indexOf('</template>', inicioAdmin)
     assert.ok(inicioAdmin >= 0, 'falta el bloque <template v-if="session.esAdministrador">')
@@ -105,7 +105,7 @@ describe('Drawer sidebar — verificación estática', () => {
 
     const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
     assert.match(bloqueAdmin, />Administración</, 'falta el título Administración')
-    assert.ok(bloqueAdmin.includes("name: 'admin-dashboard'"), 'falta Dashboard admin')
+    assert.ok(bloqueAdmin.includes("name: 'admin-dashboard'"), 'falta Resumen del equipo')
     assert.ok(bloqueAdmin.includes("name: 'admin-directorio'"), 'falta Directorio')
     assert.ok(
       !bloqueAdmin.includes("name: 'contador-registro'"),
@@ -142,14 +142,14 @@ describe('Drawer sidebar — verificación estática', () => {
     )
   })
 
-  it('el contador ve solo la sección «Mis casos» con la opción Mis casos y no las opciones del administrador', () => {
+  it('el contador ve solo la sección «Mi trabajo» con la opción Mis casos y no las opciones del administrador', () => {
     const inicioContador = src.indexOf('<template v-if="session.esContador">')
     const finContador = src.indexOf('</template>', inicioContador)
     assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.esContador">')
     assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
 
     const bloqueContador = src.slice(inicioContador, finContador)
-    assert.match(bloqueContador, /header>Mis casos<\/q-item-label>/, 'falta el título Mis casos')
+    assert.match(bloqueContador, /header>Mi trabajo<\/q-item-label>/, 'falta el título Mi trabajo')
     assert.ok(bloqueContador.includes("name: 'contador-casos'"), 'falta Mis casos')
     assert.ok(
       !src.includes("name: 'contador-registro'"),
@@ -157,7 +157,7 @@ describe('Drawer sidebar — verificación estática', () => {
     )
     assert.ok(
       !bloqueContador.includes("name: 'admin-dashboard'"),
-      'el contador no ve Dashboard admin',
+      'el contador no ve Resumen del equipo',
     )
     assert.ok(!bloqueContador.includes("name: 'admin-directorio'"), 'el contador no ve Directorio')
 
@@ -311,13 +311,13 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.match(nav, /min-height:\s*0/, 'la lista puede encogerse y hacer scroll')
   })
 
-  it('el pie ofrece «Cerrar Sesión» con su tooltip y abre la confirmación existente', () => {
+  it('el pie ofrece «Cerrar sesión» con su tooltip y abre la confirmación existente', () => {
     const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('</q-drawer>'))
     assert.ok(pie.includes('class="q-item--nav"'), 'la opción usa el estilo del menú')
     assert.match(
       pie,
-      /<q-item-label>Cerrar Sesión<\/q-item-label>/,
-      'falta la etiqueta Cerrar Sesión',
+      /<q-item-label>Cerrar sesión<\/q-item-label>/,
+      'falta la etiqueta Cerrar sesión',
     )
     assert.match(pie, /<q-icon name="logout" \/>/, 'falta el icono de salir')
     assert.match(pie, /@click="abrirDialogoCierre"/, 'la opción abre la confirmación existente')
@@ -327,13 +327,13 @@ describe('Drawer sidebar — verificación estática', () => {
       'falta el tooltip de la opción',
     )
     assert.ok(
-      pie.indexOf('Cerrar Sesión') > pie.indexOf('drawer-usuario__rol'),
+      pie.indexOf('Cerrar sesión') > pie.indexOf('drawer-usuario__rol'),
       'la opción va debajo del nombre y el rol',
     )
     assert.ok(src.includes('dialogoCierreAbierto'), 'falta el diálogo de confirmación')
   })
 
-  it('el icono de Cerrar Sesión queda alineado con el avatar y la lista', () => {
+  it('el icono de Cerrar sesión queda alineado con el avatar y la lista', () => {
     const pie = cssRule('.drawer-usuario')
     const relleno = pie.match(/padding:\s*\d+px\s+(\d+)px/)?.[1]
     assert.ok(relleno, 'el pie declara relleno horizontal')
@@ -352,7 +352,7 @@ describe('Drawer sidebar — verificación estática', () => {
     )
   })
 
-  it('la opción «Cerrar Sesión» del pie se desactiva mientras se cierra la sesión', () => {
+  it('la opción «Cerrar sesión» del pie se desactiva mientras se cierra la sesión', () => {
     const clic = src.indexOf('@click="abrirDialogoCierre"')
     assert.ok(clic >= 0, 'falta la opción que abre el cierre')
 
@@ -403,7 +403,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('group'), 'falta icono group')
     assert.ok(src.includes('list_alt'), 'falta icono list_alt')
     assert.ok(src.includes('aria-label='), 'falta aria-label en items')
-    assert.ok(src.includes('Ir al dashboard del administrador'), 'falta aria-label dashboard')
+    assert.ok(src.includes('Ir al resumen del equipo'), 'falta aria-label del resumen del equipo')
     assert.ok(src.includes('Ir al directorio de usuarios'), 'falta aria-label directorio')
     assert.ok(src.includes('Ir a mis casos'), 'falta aria-label mis casos')
   })
@@ -527,7 +527,7 @@ describe('Drawer compacto — verificación estática', () => {
   })
 
   it('solo el foco visible (teclado) despliega; el que devuelve el diálogo tras un clic no', () => {
-    // QDialog devuelve el foco a «Cerrar Sesión» al ocultarse; tras un clic ese foco no es visible.
+    // QDialog devuelve el foco a «Cerrar sesión» al ocultarse; tras un clic ese foco no es visible.
     assert.match(
       declaracion('alEntrarFoco'),
       /focoEnMenu\.value = evento\.target\.matches\(':focus-visible'\)/,

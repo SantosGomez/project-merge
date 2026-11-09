@@ -3,11 +3,11 @@
     <div class="dashboard-page__inner">
       <div class="dashboard-page__head">
         <div class="dashboard-page__title-area">
-          <h1 class="dashboard-page__title">
+          <h2 class="dashboard-page__title">
             Buen día, bienvenido<template v-if="session.nombreVisible">
               Contador {{ session.nombreVisible }}</template
             >
-          </h1>
+          </h2>
           <!-- El texto de ayuda describe la pestaña abierta -->
           <p v-if="pestana === 'casos'" class="dashboard-page__lead">
             Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el
