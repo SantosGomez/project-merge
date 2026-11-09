@@ -18,7 +18,7 @@ describe('El administrador asigna un caso a un contador', () => {
     assert.match(dialogo, /contadores: \{\s*type: Array,\s*default: null/)
     assert.match(plantilla, /v-if="modoAsignacion"[^>]*>[\s\S]*?<q-select[^>]*v-model="contadorId"/)
     assert.match(plantilla, /:options="opcionesContador"/)
-    assert.match(dialogo, /code: 'contador_required'/)
+    assert.match(dialogo, /errores\.contador_required = /)
     assert.match(dialogo, /Elige el contador que atenderá el caso\./)
   })
 

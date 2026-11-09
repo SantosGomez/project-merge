@@ -10,7 +10,7 @@
       <q-btn
         flat
         round
-        :color="caso.important ? 'amber-9' : 'grey-6'"
+        :color="caso.important ? 'dg-importante' : 'dg-texto-tenue'"
         :icon="caso.important ? 'star' : 'star_border'"
         :aria-pressed="caso.important ? 'true' : 'false'"
         :aria-label="
@@ -31,11 +31,18 @@
     <q-item-section class="caso-item__datos">
       <q-item-label class="caso-item__cliente">
         <span class="caso-item__nombre">{{ caso.client }}</span>
-        <span v-if="caso.important && !soloLectura" class="caso-item__importante" tabindex="0">
+        <span v-if="caso.important && !soloLectura" class="caso-item__importante">
           Importante
           <q-tooltip>Caso marcado como importante: requiere seguimiento especial.</q-tooltip>
         </span>
         <PriorityTag :priority="caso.priority" />
+        <!-- Lo urgente se ve primero: etiqueta a nivel de fila, con texto (el color no es el único aviso). -->
+        <span v-if="vencido" class="caso-item__alerta caso-item__alerta--vencido">
+          <q-icon name="error_outline" aria-hidden="true" /> Vencido
+        </span>
+        <span v-else-if="proximo" class="caso-item__alerta caso-item__alerta--pronto">
+          <q-icon name="schedule" aria-hidden="true" /> Vence pronto
+        </span>
       </q-item-label>
 
       <q-item-label v-if="caso.description" caption lines="2" class="caso-item__descripcion" :title="caso.description">
@@ -51,14 +58,9 @@
           tabindex="0"
         >
           <q-icon name="schedule" aria-hidden="true" /> Vence {{ caso.dueDate }}
-          <strong v-if="vencido">· Vencido</strong>
-          <q-tooltip>{{
-            vencido
-              ? 'La fecha de vencimiento ya pasó y el caso no está finalizado.'
-              : 'Fecha límite calculada en días hábiles según la prioridad.'
-          }}</q-tooltip>
+          <q-tooltip>{{ ayudaVence }}</q-tooltip>
         </span>
-        <span v-if="caso.inProgressSince && !soloLectura" tabindex="0" class="caso-item__ayuda">
+        <span v-if="caso.inProgressSince && !soloLectura" class="caso-item__ayuda">
           <q-icon name="play_circle_outline" aria-hidden="true" /> En proceso desde {{ caso.inProgressSince }}
           <q-tooltip>Primer día en que el caso pasó a «En proceso».</q-tooltip>
         </span>
@@ -230,6 +232,15 @@ const props = defineProps({
 })
 
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
+const proximo = computed(() => Boolean(props.caso.proximo) && !props.soloLectura)
+
+// El vencimiento lo pone el contador; nunca se calcula a partir de la prioridad.
+const ayudaVence = computed(() => {
+  if (vencido.value) return 'La fecha de vencimiento ya pasó y el caso no está finalizado.'
+  return props.soloLectura
+    ? 'Fecha límite que puso el contador al registrar el caso.'
+    : 'Fecha límite para terminar el caso. La pones tú y puedes cambiarla con «Editar».'
+})
 
 /* El verde de Finalizado aplica al contador y a la vista de consulta del administrador. */
 const esFinalizado = computed(() => props.caso.status === 'finalizado')
@@ -250,8 +261,8 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 
 /* El ámbar acompaña a la etiqueta «Importante»: el color no es el único aviso. */
 .caso-item--importante {
-  border-left-color: #b45309;
-  background: #fffaf0;
+  border-left-color: var(--dg-importante);
+  background: var(--dg-importante-fondo-suave);
 }
 
 /*
@@ -284,7 +295,7 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.4;
@@ -297,8 +308,8 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 .caso-item__importante {
   padding: 1px 8px;
   border-radius: 999px;
-  background: #fff4d6;
-  color: #8a4b00;
+  background: var(--dg-importante-fondo);
+  color: var(--dg-importante-texto);
   font-size: 0.75rem;
   font-weight: 700;
   cursor: help;
@@ -306,7 +317,7 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 
 .caso-item__descripcion {
   margin-top: 4px;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.9rem;
   overflow-wrap: anywhere;
 }
@@ -316,7 +327,7 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
   flex-wrap: wrap;
   gap: 4px 16px;
   margin-top: 6px;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.85rem;
 }
 
@@ -326,13 +337,35 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 }
 
 .caso-item__vence--vencido {
-  color: #a3231b;
+  color: var(--dg-error);
 }
 
-.caso-item__importante:focus-visible,
-.caso-item__vence:focus-visible,
-.caso-item__ayuda:focus-visible {
-  outline: 3px solid #0b5cad;
+/* «Vencido» y «Vence pronto» junto al cliente; el borde distingue «Vence pronto» de «Importante». */
+.caso-item__alerta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.caso-item__alerta--vencido {
+  border-color: var(--dg-error);
+  background: var(--dg-error-fondo);
+  color: var(--dg-error);
+}
+
+.caso-item__alerta--pronto {
+  border-color: var(--dg-aviso-borde);
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
+}
+
+.caso-item__vence:focus-visible {
+  outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
 }
 
@@ -350,10 +383,10 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 
 .caso-item__estado-fijo {
   padding: 2px 10px;
-  border: 1px solid #c9d4e0;
+  border: 1px solid var(--dg-borde-fuerte);
   border-radius: 999px;
-  background: #f5f8fb;
-  color: #102a43;
+  background: var(--dg-fondo-suave);
+  color: var(--dg-texto);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: help;
@@ -367,7 +400,7 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 }
 
 .caso-item__estado-fijo:focus-visible {
-  outline: 3px solid #0b5cad;
+  outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
 }
 

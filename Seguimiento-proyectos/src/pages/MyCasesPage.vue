@@ -2,8 +2,7 @@
   <q-page class="my-cases-page">
     <div class="my-cases-page__head">
       <p class="my-cases-page__lead">
-        Revisa y actualiza los casos que tienes asignados. Cambia el estado desde la lista y el resto
-        de los datos, incluida la prioridad, con «Editar».
+        Aquí están los casos que registraste y los que te asignó el administrador. Cambia el estado desde la lista; para el resto de los datos usa «Editar».
       </p>
       <q-btn
         class="my-cases-page__register-btn control-touch"
@@ -31,8 +30,8 @@
     <div v-else class="my-cases-page__body">
       <EmptyState
         v-if="cases.casos.length === 0"
-        title="No tienes casos registrados"
-        message="Aún no has registrado ningún caso. Usa el control «Registrar caso» para registrar el primero y empezar a gestionar tu carga."
+        title="Todavía no tienes casos"
+        message="Registra el primero con «Registrar caso». Los casos que te asigne el administrador también aparecerán aquí."
         action-label="Registrar caso"
         @action="abrirRegistro"
       />
@@ -41,29 +40,37 @@
         <FiltrosCasos v-model="filtros" />
 
         <div v-if="paginacion.totalPaginas === 0" class="sin-resultados" role="status">
-          <q-icon name="filter_alt" size="28px" color="grey-7" aria-hidden="true" />
-          <p class="sin-resultados__texto">
-            Ningún caso cumple estos filtros. Cambia el estado o usa «Limpiar filtros» para ver tus casos abiertos.
+          <q-icon name="filter_alt" size="28px" color="dg-texto-tenue" aria-hidden="true" />
+          <p v-if="sonFiltrosIniciales" class="sin-resultados__texto">
+            No tienes casos abiertos. Los terminados están en el filtro «Finalizado».
           </p>
+          <template v-else>
+            <p class="sin-resultados__texto">Ningún caso cumple estos filtros.</p>
+            <q-btn
+              flat
+              no-caps
+              color="primary"
+              icon="filter_alt_off"
+              label="Limpiar filtros"
+              class="sin-resultados__limpiar control-touch"
+              @click="limpiarFiltros"
+            >
+              <q-tooltip>Vuelve a mostrar los casos abiertos, sin otros filtros.</q-tooltip>
+            </q-btn>
+          </template>
         </div>
 
+        <!-- Las filas van directo en la lista: así se pintan los separadores y todas existen en la página. -->
         <q-list v-else bordered separator class="case-list" aria-label="Tus casos">
-          <!-- Cada fila entra con un desvanecido al aparecer en pantalla; el alto mínimo evita saltos. -->
-          <q-intersection
+          <CasoItem
             v-for="item in filas"
             :key="item.id"
-            once
-            transition="fade"
-            class="case-list__entrada"
-          >
-            <CasoItem
-              :caso="item"
-              :deshabilitado="cases.guardando"
-              @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
-              @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
-              @editar="abrirEdicion(item.id)"
-            />
-          </q-intersection>
+            :caso="item"
+            :deshabilitado="guardandoId === item.id"
+            @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
+            @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
+            @editar="abrirEdicion(item.id)"
+          />
         </q-list>
 
         <div v-if="paginacion.totalPaginas > 0" class="paginacion">
@@ -134,9 +141,12 @@ import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
+import { STATUS_LABELS } from '../utils/constants.js'
 import { casoAFila } from '../utils/filasVista.js'
 import {
+  FILTROS_INICIALES,
   OPCIONES_POR_PAGINA,
+  esCasoProximoAVencer,
   esCasoVencido,
   filtrarCasos,
   filtrosDesdeConsulta,
@@ -159,48 +169,79 @@ watch([filtros, porPagina], () => {
   pagina.value = 1
 })
 
-const hoy = hoyLocal()
+// «Hoy» se recalcula al volver a la ventana: si la app queda abierta de un día para otro,
+// los vencidos y los próximos a vencer se actualizan.
+const hoy = ref(hoyLocal())
+const actualizarHoy = () => {
+  if (document.visibilityState === 'visible') hoy.value = hoyLocal()
+}
 
 const paginacion = computed(() =>
-  paginar(filtrarCasos(cases.casos, filtros.value, hoy), pagina.value, porPagina.value),
+  paginar(filtrarCasos(cases.casos, filtros.value, hoy.value), pagina.value, porPagina.value),
 )
 
 const filas = computed(() =>
-  paginacion.value.elementos.map((caso) => ({ ...casoAFila(caso), vencido: esCasoVencido(caso, hoy) })),
+  paginacion.value.elementos.map((caso) => ({
+    ...casoAFila(caso),
+    vencido: esCasoVencido(caso, hoy.value),
+    proximo: esCasoProximoAVencer(caso, hoy.value),
+  })),
 )
 
+const sonFiltrosIniciales = computed(() =>
+  Object.keys(FILTROS_INICIALES).every((clave) => filtros.value[clave] === FILTROS_INICIALES[clave]),
+)
+
+const limpiarFiltros = () => {
+  filtros.value = { ...FILTROS_INICIALES }
+}
+
+// Un fallo al guardar un cambio se avisa aparte: la lista sigue a la vista.
 const screenStateName = computed(() =>
   screenState({
     loading: cases.cargando,
-    error: cases.error || errorCambio.value,
+    error: cases.error,
     rows: cases.casos,
   }),
 )
 
 const dialogoRegistroAbierto = ref(false)
 const casoEnEdicion = ref(null)
-const errorCambio = ref(null)
-const ultimoCambio = ref(null)
+// Fila que se está guardando: solo esa se deshabilita mientras tanto.
+const guardandoId = ref(null)
 
-const mensajeError = computed(() => {
-  const error = cases.error || errorCambio.value
-  return error?.mensaje ?? 'tus casos asignados.'
-})
+const mensajeError = computed(() => cases.error?.mensaje ?? 'la lista de tus casos.')
 
-// Guarda un cambio de estado, prioridad o importante; se recuerda para poder reintentarlo si falla.
+const clienteDe = (caseId) =>
+  cases.casos.find((caso) => String(caso.id) === String(caseId))?.cliente ?? 'este cliente'
+
+const avisoDeExito = (cliente, cambios) => {
+  if (cambios.estado === 'finalizado') {
+    return `Caso de ${cliente} marcado como Finalizado. Lo encuentras en el filtro «Finalizado».`
+  }
+  if (cambios.estado) return `Estado cambiado a «${STATUS_LABELS[cambios.estado] ?? cambios.estado}».`
+  return 'Cambio guardado.'
+}
+
+// Guarda un cambio de estado o de importante. Si falla, el aviso ofrece repetir el mismo cambio.
 const guardarCambio = async (caseId, cambios) => {
   if (cases.guardando) return
-  errorCambio.value = null
-  ultimoCambio.value = { id: caseId, cambios }
+  const cliente = clienteDe(caseId)
+  guardandoId.value = caseId
 
   const resultado = await cases.actualizarCaso(caseId, cambios)
+  guardandoId.value = null
 
   if (resultado.ok) {
-    $q.notify({ type: 'positive', message: 'Cambio guardado.' })
-    ultimoCambio.value = null
+    $q.notify({ type: 'positive', message: avisoDeExito(cliente, cambios) })
   } else {
-    errorCambio.value = resultado.error
-    $q.notify({ type: 'negative', message: resultado.error?.mensaje ?? 'Error al guardar el cambio.' })
+    $q.notify({
+      type: 'negative',
+      message: `No se guardó el cambio del caso de ${cliente}.`,
+      caption: resultado.error?.mensaje ?? 'Revisa tu conexión y vuelve a intentarlo.',
+      timeout: 8000,
+      actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: () => guardarCambio(caseId, cambios) }],
+    })
   }
 }
 
@@ -228,21 +269,13 @@ const alRegistrar = async () => {
   }
 }
 
-const retry = async () => {
-  if (errorCambio.value && ultimoCambio.value) {
-    const { id, cambios } = ultimoCambio.value
-    await guardarCambio(id, cambios)
-    return
-  }
-
-  errorCambio.value = null
-  ultimoCambio.value = null
-  await cases.reintentar()
-}
+const retry = () => cases.reintentar()
 
 onMounted(() => {
   cases.cargarCasos()
+  document.addEventListener('visibilitychange', actualizarHoy)
 })
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', actualizarHoy))
 
 // Tiempo real: si el administrador cambia una prioridad, la lista se actualiza sola
 const dejarDeEscuchar = [
@@ -269,7 +302,7 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
   flex: 1 1 260px;
   min-width: 0;
   margin: 0;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
   line-height: 1.5;
 }
@@ -280,7 +313,7 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 }
 
 .my-cases-page__register-btn:focus-visible {
-  outline: 3px solid #0b5cad !important;
+  outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
 }
 
@@ -292,29 +325,26 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
 .case-list {
   overflow: hidden;
-  border-color: #dbe4ee;
+  border-color: var(--dg-borde);
   border-radius: 10px;
-  background: #ffffff;
-}
-
-/* Alto mínimo de la fila mientras aún no aparece en pantalla (QIntersection). */
-.case-list__entrada {
-  min-height: 88px;
+  background: var(--dg-superficie);
 }
 
 .sin-resultados {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 16px;
-  border: 1px dashed #c9d4e0;
+  border: 1px dashed var(--dg-borde-fuerte);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--dg-superficie);
 }
 
 .sin-resultados__texto {
   margin: 0;
-  color: #334e68;
+  flex: 1 1 220px;
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
 }
 
@@ -327,7 +357,7 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
 .paginacion__texto {
   margin: 0;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.9rem;
 }
 

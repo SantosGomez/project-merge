@@ -52,6 +52,8 @@ const NOMBRES = [
   'error-fondo-suave',
   // Rebanada 5: aviso general de error de los diálogos de usuario
   'error-aviso-texto', 'error-aviso-fondo',
+  // Revisión de UI, rebanada 3: fondo de la fila de un caso importante (antes #fffaf0 suelto)
+  'importante-fondo-suave',
 ]
 
 test('la paleta $dg-colores define cada color por su papel en formato #rrggbb', () => {
@@ -85,6 +87,10 @@ const PARES_DE_TEXTO = [
   ['error-aviso-texto', 'error-aviso-fondo'],
   // Revisión de UI, rebanada 1: tooltips (texto claro sobre la tinta) y avisos de Quasar
   ['texto-claro', 'texto'], ['texto-claro', 'error'], ['texto-claro', 'exito'],
+  // Revisión de UI, rebanada 3: fila de caso importante y etiqueta «Vencido»
+  ['texto', 'importante-fondo-suave'], ['texto-secundario', 'importante-fondo-suave'],
+  ['texto-tenue', 'importante-fondo-suave'], ['importante-texto', 'importante-fondo-suave'],
+  ['error', 'error-fondo'],
 ]
 
 // Textos del menú lateral sobre su fondo oscuro ($primary de Quasar).

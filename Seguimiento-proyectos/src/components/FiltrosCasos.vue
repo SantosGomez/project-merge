@@ -1,14 +1,14 @@
 <template>
   <section class="filtros-casos" aria-label="Filtros de casos">
-    <div class="filtros-casos__grupo" role="group" aria-labelledby="filtro-estado-titulo">
+    <div class="filtros-casos__grupo filtros-casos__grupo--estados" role="group" aria-labelledby="filtro-estado-titulo">
       <span id="filtro-estado-titulo" class="filtros-casos__titulo">Estado</span>
       <q-chip
         v-for="opcion in opcionesVisibles"
         :key="opcion.valor"
         clickable
         :outline="filtros.estado !== opcion.valor"
-        :color="filtros.estado === opcion.valor ? 'primary' : 'grey-7'"
-        :text-color="filtros.estado === opcion.valor ? 'white' : 'grey-9'"
+        :color="filtros.estado === opcion.valor ? 'primary' : 'dg-texto-tenue'"
+        :text-color="filtros.estado === opcion.valor ? 'white' : 'dg-texto'"
         :aria-pressed="filtros.estado === opcion.valor ? 'true' : 'false'"
         class="filtros-casos__chip"
         @click="cambiar({ estado: opcion.valor })"
@@ -21,7 +21,7 @@
     <div v-if="conInterruptores" class="filtros-casos__grupo">
       <q-toggle
         :model-value="filtros.soloImportantes"
-        color="amber-9"
+        color="dg-importante"
         checked-icon="star"
         unchecked-icon="star_border"
         label="Solo importantes"
@@ -32,7 +32,7 @@
       </q-toggle>
       <q-toggle
         :model-value="filtros.soloVencidos"
-        color="negative"
+        color="dg-error"
         label="Solo vencidos"
         class="filtros-casos__toggle"
         @update:model-value="(valor) => cambiar({ soloVencidos: valor })"
@@ -139,9 +139,9 @@ const cambiar = (cambio) => {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid #dbe4ee;
+  border: 1px solid var(--dg-borde);
   border-radius: 10px;
-  background: #f5f8fb;
+  background: var(--dg-fondo-suave);
 }
 
 .filtros-casos__grupo {
@@ -152,25 +152,37 @@ const cambiar = (cambio) => {
   min-width: 0;
 }
 
+/* Entre filas de chips, 12 px: sus áreas táctiles (44 px) no se enciman al saltar de línea. */
+.filtros-casos__grupo--estados {
+  row-gap: 12px;
+}
+
 .filtros-casos__titulo {
   margin-right: 4px;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
-/* Área táctil cómoda sin agrandar el chip a la vista. */
+/* El chip se ve de 32 px, pero su área táctil llega a 44 px con 6 px invisibles arriba y abajo. */
 .filtros-casos__chip {
+  position: relative;
   min-height: 32px;
   margin: 0;
   font-weight: 600;
 }
 
+.filtros-casos__chip::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
+}
+
 .filtros-casos__toggle {
   min-height: 44px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-weight: 600;
 }
 

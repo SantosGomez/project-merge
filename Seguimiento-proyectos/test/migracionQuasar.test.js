@@ -144,6 +144,7 @@ describe('Rebanada 5: formularios', () => {
     ]) {
       assert.ok(plantilla.includes(`:error-message="errorDeCampo(${codigos})"`), `error-message de ${codigos}`)
     }
-    assert.match(componente, /codigos\.includes\(formError\.value\?\.code\) \? formError\.value\.message : null/)
+    // Revisión de UI, rebanada 3: varios errores a la vez, uno por campo.
+    assert.match(componente, /codigos\.map\(\(codigo\) => erroresCampo\.value\[codigo\]\)\.find\(Boolean\) \?\? null/)
   })
 })

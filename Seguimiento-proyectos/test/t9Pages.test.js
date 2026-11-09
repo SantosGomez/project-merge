@@ -110,7 +110,7 @@ describe('T9 — registro de caso en diálogo (P-4, RF-19 a RF-25, RF-43)', () =
     assert.match(caseFormSource, /CASE_ERROR_CODES\.priorityRequired/)
     assert.match(caseFormSource, /El cliente es obligatorio\./)
     assert.match(caseFormSource, /El cliente supera los 80 caracteres permitidos\./)
-    assert.match(caseFormSource, /Se debe elegir una prioridad\./)
+    assert.match(caseFormSource, /Elige una prioridad\./)
   })
 
   it('registra con el store, limpia y cierra el diálogo al confirmar (RF-21)', () => {
@@ -128,7 +128,8 @@ describe('T9 — registro de caso en diálogo (P-4, RF-19 a RF-25, RF-43)', () =
   })
 
   it('no se puede cerrar mientras se guarda y los errores se reintentan sin perder lo escrito', () => {
-    assert.match(caseFormSource, /:persistent="cases\.guardando"/)
+    // Revisión de UI, rebanada 3: también es persistente si hay datos sin guardar (pregunta antes de descartar).
+    assert.match(caseFormSource, /:persistent="cases\.guardando \|\| hayDatosSinGuardar"/)
     assert.match(caseFormSource, /:disable="cases\.guardando"/)
     assert.match(caseFormSource, /<ErrorState/)
     assert.match(caseFormSource, /@retry="submitCase"/)
@@ -388,8 +389,9 @@ describe('Mis casos (rebanada 6) — un solo flujo para guardar cambios', () => 
   // Los avisos son notificaciones de Quasar (plugin Notify), que se van solas.
   it('al guardar avisa con una notificación de éxito o de error', () => {
     const guardar = cuerpoGuardar.indexOf('cases.actualizarCaso(')
-    assert.ok(cuerpoGuardar.indexOf("$q.notify({ type: 'positive', message: 'Cambio guardado.' })") > guardar, 'avisa el éxito después de guardar')
-    assert.match(cuerpoGuardar, /\$q\.notify\(\{ type: 'negative'/, 'avisa el error')
+    // Revisión de UI, rebanada 3: el aviso de éxito dice qué cambió (y dónde quedó un caso Finalizado).
+    assert.ok(cuerpoGuardar.indexOf("$q.notify({ type: 'positive', message: avisoDeExito(cliente, cambios) })") > guardar, 'avisa el éxito después de guardar')
+    assert.match(cuerpoGuardar, /\$q\.notify\(\{\s*type: 'negative'/, 'avisa el error')
     assert.doesNotMatch(myCasesSource, /confirmation/, 'sin el aviso fijo anterior')
   })
 
@@ -397,8 +399,10 @@ describe('Mis casos (rebanada 6) — un solo flujo para guardar cambios', () => 
     assert.match(quasarConfig, /plugins: \[[^\]]*'Notify'/)
   })
 
+  // Revisión de UI, rebanada 3: «Reintentar» va en el aviso del fallo; el de la pantalla solo recarga la lista.
   it('reintentar repite el último cambio tal cual, sin ramas por campo', () => {
-    assert.match(cuerpoRetry, /guardarCambio\(/)
+    assert.match(cuerpoGuardar, /handler: \(\) => guardarCambio\(caseId, cambios\)/)
+    assert.match(myCasesSource, /const retry = \(\) => cases\.reintentar\(\)/)
     assert.doesNotMatch(cuerpoRetry, /cambios\.estado|cambios\.prioridad/)
   })
 })
@@ -421,7 +425,7 @@ describe('Editar caso — fila con fechas y botón «Editar»', () => {
     assert.match(boton, /:disable="deshabilitado"/)
     assert.match(boton, /@click="emit\('editar'\)"/)
     assert.match(boton, /<q-tooltip>Abre el formulario para cambiar la información del caso/)
-    assert.match(myCasesSource, /:deshabilitado="cases\.guardando"/)
+    assert.match(myCasesSource, /:deshabilitado="guardandoId === item\.id"/)
     assert.match(myCasesSource, /@editar="abrirEdicion\(item\.id\)"/)
   })
 
@@ -461,11 +465,11 @@ describe('Editar caso — CaseFormDialog en modo edición', () => {
     const inicio = caseFormSource.indexOf('for="fecha-vencimiento-field"')
     assert.ok(inicio > 0, 'existe el campo de vencimiento')
     const campo = caseFormSource.slice(caseFormSource.lastIndexOf('<div class="form-group', inicio), caseFormSource.indexOf('</div>', inicio))
-    assert.match(campo, /Fecha de vencimiento <span aria-label="obligatorio" class="required-mark">\*<\/span>/)
+    assert.match(campo, /Fecha de vencimiento <span aria-hidden="true" class="required-mark">\*<\/span>/)
     assert.match(campo, /v-model="fechaVencimiento"/)
     assert.match(campo, /placeholder="DD-MM-AAAA"/)
     assert.match(campo, /<q-tooltip>/)
-    assert.match(caseFormSource, /validarFechaVencimiento\(fechaVencimiento\.value, fechaLimpia, hoyLocal\(\)\)/)
+    assert.match(caseFormSource, /validarFechaVencimiento\(\s*fechaVencimiento\.value,\s*inicioValido \? fechaLimpia : '',\s*hoyLocal\(\),?\s*\)/)
     assert.match(caseFormSource, /fechaVencimiento: fechaVencimiento\.value/, 'en edición se compara con el guardado')
     assert.match(caseFormSource, /fechaVencimiento\.value = fechaParaFormulario\(caso\?\.fecha_vencimiento\)/)
   })
@@ -496,7 +500,7 @@ describe('Editar caso — CaseFormDialog en modo edición', () => {
     assert.match(caseFormSource, /cases\.actualizarCaso\(props\.caso\.id, cambios\.value\)/)
     assert.match(caseFormSource, /emit\('guardado'/)
     assert.match(caseFormSource, /:disable="cases\.guardando \|\| \(modoEdicion && !hayCambios\)"/)
-    assert.match(caseFormSource, /Aún no cambias ningún dato/)
+    assert.match(caseFormSource, /Todavía no has cambiado ningún dato/)
   })
 })
 

@@ -207,7 +207,7 @@ export const paginar = (lista, pagina, porPagina) => {
     elementos,
     pagina: paginaValida,
     totalPaginas,
-    texto: `Mostrando ${inicio + 1}–${inicio + elementos.length} de ${total} casos`,
+    texto: `Mostrando ${inicio + 1}–${inicio + elementos.length} de ${total} ${total === 1 ? 'caso' : 'casos'}`,
   }
 }
 

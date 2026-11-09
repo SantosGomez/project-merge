@@ -39,6 +39,12 @@ const normalizarError = (error, sobreQue) =>
         QUE_HACER.reintentar,
       )
 
+// Igual, pero para un guardado: decir «obtener los datos» confundiría a quien acaba de guardar.
+const normalizarErrorDeGuardado = (error, sobreQue) =>
+  error && typeof error.mensaje === 'string'
+    ? error
+    : crearErrorFrontend(ESTADOS_ERROR.RED, 'No se pudo guardar en el servidor', sobreQue, QUE_HACER.reintentar)
+
 /**
  * Crea la definición del store de casos con dependencias inyectables.
  * @param {Object} [dependencias] - inyección para pruebas.
@@ -99,7 +105,7 @@ export const crearCasesStore = (dependencias = {}) => {
             return { ok: false, descartado: true }
           }
 
-          this.error = normalizarError(error, 'la carga de sus casos')
+          this.error = normalizarError(error, 'la carga de tus casos')
           this.cargando = false
           return { ok: false, error: this.error }
         }
@@ -161,7 +167,7 @@ export const crearCasesStore = (dependencias = {}) => {
             return { ok: false, descartado: true }
           }
 
-          return { ok: false, error: normalizarError(error, 'el registro del caso') }
+          return { ok: false, error: normalizarErrorDeGuardado(error, 'el registro del caso') }
         } finally {
           if (versionActual === version) {
             this.guardando = false
@@ -181,7 +187,7 @@ export const crearCasesStore = (dependencias = {}) => {
           const caso = await servicio.asignarCaso(contadorId, ...datosDelCaso)
           return { ok: true, caso }
         } catch (error) {
-          return { ok: false, error: normalizarError(error, 'la asignación del caso') }
+          return { ok: false, error: normalizarErrorDeGuardado(error, 'la asignación del caso') }
         } finally {
           this.guardando = false
         }
@@ -218,7 +224,7 @@ export const crearCasesStore = (dependencias = {}) => {
             return { ok: false, descartado: true }
           }
 
-          return { ok: false, error: normalizarError(error, 'el cambio del caso') }
+          return { ok: false, error: normalizarErrorDeGuardado(error, 'el cambio del caso') }
         } finally {
           if (versionActual === version) {
             this.guardando = false

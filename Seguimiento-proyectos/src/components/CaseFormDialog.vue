@@ -1,11 +1,12 @@
 <template>
   <q-dialog
     v-model="dialogoAbierto"
-    :persistent="cases.guardando"
+    :persistent="cases.guardando || hayDatosSinGuardar"
     aria-labelledby="registro-caso-titulo"
     @show="enfocarCliente"
+    @shake="pedirDescartar"
   >
-    <q-card class="registro-caso">
+    <q-card ref="tarjeta" class="registro-caso">
       <q-form
         class="registro-caso__form"
         novalidate
@@ -20,7 +21,7 @@
         <q-card-section class="registro-caso__body">
           <div class="form-group">
             <label for="client-field" class="form-label"
-              >Cliente <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Cliente <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-input
               ref="clienteInput"
@@ -28,7 +29,7 @@
               v-model="client"
               type="text"
               placeholder="Nombre del cliente"
-              maxlength="81"
+              maxlength="80"
               outlined
               dense
               counter
@@ -37,7 +38,7 @@
               aria-describedby="client-help"
               :error="!!errorDeCampo('client_required', 'client_too_long')"
               :error-message="errorDeCampo('client_required', 'client_too_long')"
-              @update:model-value="clearFormError()"
+              @update:model-value="clearFormError('client_required', 'client_too_long')"
             >
               <template #prepend>
                 <q-icon name="person" />
@@ -48,7 +49,7 @@
 
           <div class="form-group">
             <label for="priority-field" class="form-label"
-              >Prioridad <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Prioridad <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-select
               for="priority-field"
@@ -71,7 +72,7 @@
               aria-describedby="priority-help"
               :error="!!errorDeCampo('priority_required')"
               :error-message="errorDeCampo('priority_required')"
-              @update:model-value="clearFormError()"
+              @update:model-value="clearFormError('priority_required')"
             >
               <template #prepend>
                 <q-icon name="flag" />
@@ -96,13 +97,13 @@
                 </div>
               </template>
             </q-select>
-            <p id="priority-help" class="form-help">Selecciona una de las tres opciones.</p>
+            <p id="priority-help" class="form-help">Indica qué tan urgente es el caso. No cambia la fecha de vencimiento.</p>
           </div>
 
           <div class="form-group">
             <label for="fecha-inicio-field" class="form-label"
               >Fecha de inicio
-              <span v-if="modoEdicion" aria-label="obligatorio" class="required-mark">*</span></label
+              <span v-if="modoEdicion" aria-hidden="true" class="required-mark">*</span></label
             >
             <q-input
               for="fecha-inicio-field"
@@ -112,13 +113,12 @@
               maxlength="10"
               outlined
               dense
-              counter
               class="input-moderno"
               :aria-required="modoEdicion ? 'true' : 'false'"
               aria-describedby="fecha-inicio-help"
               :error="!!errorDeCampo('fecha_inicio_invalido')"
               :error-message="errorDeCampo('fecha_inicio_invalido')"
-              @update:model-value="clearFormError()"
+              @update:model-value="clearFormError('fecha_inicio_invalido')"
             >
               <template #append>
                 <q-icon
@@ -134,7 +134,7 @@
                       v-model="fechaInicio"
                       mask="DD-MM-YYYY"
                       today-btn
-                      @update:model-value="clearFormError()"
+                      @update:model-value="clearFormError('fecha_inicio_invalido')"
                     >
                       <div class="row justify-end">
                         <q-btn v-close-popup label="Listo" color="primary" flat no-caps />
@@ -149,7 +149,7 @@
 
           <div class="form-group">
             <label for="fecha-vencimiento-field" class="form-label"
-              >Fecha de vencimiento <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Fecha de vencimiento <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-input
               for="fecha-vencimiento-field"
@@ -159,13 +159,12 @@
               maxlength="10"
               outlined
               dense
-              counter
               class="input-moderno"
               aria-required="true"
               aria-describedby="fecha-vencimiento-help"
               :error="!!errorDeCampo('fecha_vencimiento_invalido')"
               :error-message="errorDeCampo('fecha_vencimiento_invalido')"
-              @update:model-value="clearFormError()"
+              @update:model-value="clearFormError('fecha_vencimiento_invalido')"
             >
               <template #append>
                 <q-icon
@@ -182,7 +181,7 @@
                       mask="DD-MM-YYYY"
                       :options="permitirVencimiento"
                       :default-year-month="mesInicialVencimiento"
-                      @update:model-value="clearFormError()"
+                      @update:model-value="clearFormError('fecha_vencimiento_invalido')"
                     >
                       <div class="row justify-end">
                         <q-btn v-close-popup label="Listo" color="primary" flat no-caps />
@@ -209,7 +208,7 @@
           <div class="form-group registro-caso__estado">
             <template v-if="modoEdicion">
               <label for="estado-field" class="form-label"
-                >Estado <span aria-label="obligatorio" class="required-mark">*</span></label
+                >Estado <span aria-hidden="true" class="required-mark">*</span></label
               >
               <q-select
                 for="estado-field"
@@ -278,7 +277,7 @@
           <div class="form-group">
             <q-toggle
               v-model="importante"
-              color="amber-9"
+              color="dg-importante"
               checked-icon="star"
               unchecked-icon="star_border"
               label="Caso importante"
@@ -338,7 +337,7 @@
 
           <div v-if="modoAsignacion" class="form-group registro-caso__ancho-completo">
             <label for="contador-field" class="form-label"
-              >Contador asignado <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Contador asignado <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-select
               for="contador-field"
@@ -361,7 +360,7 @@
               aria-describedby="contador-help"
               :error="!!errorDeCampo('contador_required')"
               :error-message="errorDeCampo('contador_required')"
-              @update:model-value="clearFormError()"
+              @update:model-value="clearFormError('contador_required')"
             >
               <template #prepend>
                 <q-icon name="person_search" />
@@ -405,7 +404,7 @@
 
         <q-card-actions align="right" class="registro-caso__actions">
           <p v-if="modoEdicion && !hayCambios" class="form-help registro-caso__sin-cambios">
-            Aún no cambias ningún dato.
+            Todavía no has cambiado ningún dato.
           </p>
           <q-btn
             flat
@@ -432,6 +431,30 @@
           </q-btn>
         </q-card-actions>
       </q-form>
+
+      <!-- Esc, un clic fuera o «Cancelar» con datos escritos: se pregunta antes de perderlos. -->
+      <q-dialog
+        v-model="confirmacionAbierta"
+        transition-show="fade"
+        transition-hide="fade"
+        :transition-duration="150"
+        aria-labelledby="descartar-titulo"
+      >
+        <q-card class="confirmar-descartar">
+          <q-card-section>
+            <h2 id="descartar-titulo" class="confirmar-descartar__titulo">¿Descartar los cambios?</h2>
+            <p class="confirmar-descartar__texto">Lo que escribiste en este formulario se perderá.</p>
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn v-close-popup autofocus flat no-caps label="Seguir editando" class="control-touch">
+              <q-tooltip>Vuelve al formulario con todo lo que escribiste.</q-tooltip>
+            </q-btn>
+            <q-btn color="dg-error" unelevated no-caps label="Descartar" class="control-touch" @click="descartar">
+              <q-tooltip>Cierra el formulario y pierde lo que escribiste.</q-tooltip>
+            </q-btn>
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </q-card>
   </q-dialog>
 </template>
@@ -527,9 +550,12 @@ const session = useSessionStore()
 
 const client = ref('')
 const priority = ref('')
-const formError = ref(null)
+// Errores de validación por código de campo: { client_required: 'El cliente es obligatorio.', … }.
+const erroresCampo = ref({})
 const errorGuardado = ref(null)
 const clienteInput = ref(null)
+const tarjeta = ref(null)
+const confirmacionAbierta = ref(false)
 
 const assignedCounter = computed(() =>
   session.nombreVisible ? { id: session.id, name: session.nombreVisible } : null,
@@ -580,6 +606,17 @@ const cambios = computed(() =>
 
 const hayCambios = computed(() => Object.keys(cambios.value).length > 0)
 
+// Hay algo que se perdería al cerrar: en edición, un cambio; en registro, cualquier dato escrito.
+const hayDatosSinGuardar = computed(() => {
+  if (modoEdicion.value) return hayCambios.value
+  const campos = [client, priority, fechaInicio, fechaVencimiento, descripcion, observaciones]
+  return (
+    campos.some((campo) => String(campo.value ?? '').trim() !== '') ||
+    importante.value ||
+    contadorId.value !== null
+  )
+})
+
 const assignedCounterName = computed(() =>
   assignedCounter.value ? assignedCounter.value.name : 'Sin asignar',
 )
@@ -588,13 +625,24 @@ const statusLabel = STATUS_LABELS[STATUSES[0]]
 
 const mensajeError = computed(() => errorGuardado.value?.mensaje ?? textos.value.errorDetalle)
 
-const clearFormError = () => {
-  formError.value = null
+/** Al escribir en un campo se borra solo su error; los de los demás campos siguen a la vista. */
+const clearFormError = (...codigos) => {
+  const restantes = { ...erroresCampo.value }
+  codigos.forEach((codigo) => delete restantes[codigo])
+  erroresCampo.value = restantes
 }
 
-/** Mensaje que va bajo el campo (error-message) si el error actual es de ese campo; si no, null. */
-const errorDeCampo = (...codigos) =>
-  codigos.includes(formError.value?.code) ? formError.value.message : null
+/** Mensaje que va bajo el campo (error-message) si alguno de sus códigos tiene error; si no, null. */
+const errorDeCampo = (...codigos) => codigos.map((codigo) => erroresCampo.value[codigo]).find(Boolean) ?? null
+
+/** Lleva la vista y el foco al primer campo con error (en celular puede estar fuera de la pantalla). */
+const enfocarPrimerError = () =>
+  nextTick(() => {
+    const campo = tarjeta.value?.$el?.querySelector('.q-field--error')
+    if (!campo) return
+    campo.scrollIntoView({ block: 'center' })
+    campo.querySelector('input, textarea, [tabindex="0"]')?.focus({ preventScroll: true })
+  })
 
 // Registro: formulario vacío. Edición: los valores actuales del caso.
 const reiniciarFormulario = () => {
@@ -608,7 +656,7 @@ const reiniciarFormulario = () => {
   observaciones.value = caso?.observaciones ?? ''
   importante.value = Boolean(caso?.importante)
   contadorId.value = null
-  formError.value = null
+  erroresCampo.value = {}
   errorGuardado.value = null
 }
 
@@ -623,105 +671,111 @@ watch(dialogoAbierto, (abierto) => {
   }
 })
 
+// Esc o clic fuera con datos escritos (el diálogo es persistente y «sacude»): se pregunta antes.
+const pedirDescartar = () => {
+  if (cases.guardando) return
+  confirmacionAbierta.value = true
+}
+
 const cerrar = () => {
   // Mientras el alta está en curso, el diálogo no se puede cerrar.
   if (cases.guardando) return
+  if (hayDatosSinGuardar.value) {
+    confirmacionAbierta.value = true
+    return
+  }
   dialogoAbierto.value = false
+}
+
+const descartar = () => {
+  confirmacionAbierta.value = false
+  dialogoAbierto.value = false
+}
+
+const MENSAJES_VENCIMIENTO = {
+  vencimiento_requerido: 'La fecha de vencimiento es obligatoria. Usa el formato DD-MM-AAAA.',
+  fecha_formato_invalido: 'Formato de fecha inválido. Usa DD-MM-AAAA.',
+  fecha_invalida: 'La fecha no existe. Escribe una fecha real en formato DD-MM-AAAA.',
+}
+
+/** Todos los errores del formulario de una vez, por código de campo ({} si todo está bien). */
+const validarFormulario = (clienteLimpio, prioridadBackend, fechaLimpia) => {
+  const errores = {}
+
+  const validacionCliente = validarCliente(clienteLimpio)
+  if (!validacionCliente.valido) {
+    if (validacionCliente.error === 'cliente_requerido') {
+      errores[CASE_ERROR_CODES.clientRequired] = 'El cliente es obligatorio.'
+    } else {
+      errores[CASE_ERROR_CODES.clientTooLong] = 'El cliente supera los 80 caracteres permitidos.'
+    }
+  }
+
+  if (!validarPrioridad(prioridadBackend).valido) {
+    errores[CASE_ERROR_CODES.priorityRequired] = 'Elige una prioridad.'
+  }
+
+  let inicioValido = true
+  if (modoEdicion.value && fechaLimpia === '') {
+    inicioValido = false
+    errores.fecha_inicio_invalido = 'La fecha de inicio es obligatoria al editar. Usa el formato DD-MM-AAAA.'
+  } else {
+    const validacionFecha = validarFechaInicio(fechaLimpia)
+    if (!validacionFecha.valido) {
+      inicioValido = false
+      errores.fecha_inicio_invalido =
+        validacionFecha.error === 'fecha_invalida'
+          ? 'La fecha no existe. Escribe una fecha real en formato DD-MM-AAAA.'
+          : 'Formato de fecha inválido. Usa DD-MM-AAAA.'
+    }
+  }
+
+  // Con un inicio inválido el vencimiento se revisa solo por sí mismo (no se compara con el inicio).
+  const validacionVencimiento = validarFechaVencimiento(
+    fechaVencimiento.value,
+    inicioValido ? fechaLimpia : '',
+    hoyLocal(),
+  )
+  if (!validacionVencimiento.valido) {
+    if (validacionVencimiento.error === 'vencimiento_antes_del_inicio') {
+      if (inicioValido) {
+        errores.fecha_vencimiento_invalido = fechaLimpia
+          ? 'El vencimiento no puede ser anterior a la fecha de inicio.'
+          : 'El vencimiento no puede ser anterior a hoy (fecha de inicio vacía).'
+      }
+    } else {
+      errores.fecha_vencimiento_invalido = MENSAJES_VENCIMIENTO[validacionVencimiento.error]
+    }
+  }
+
+  if (!validarTextoOpcional(descripcion.value, 'descripcion', MAX_DESCRIPCION_LENGTH).valido) {
+    errores.descripcion_demasiado_largo = 'La descripción no debe superar los 1000 caracteres.'
+  }
+
+  if (!validarTextoOpcional(observaciones.value, 'observaciones', MAX_OBSERVACIONES_LENGTH).valido) {
+    errores.observaciones_demasiado_largo = 'Las observaciones no deben superar los 2000 caracteres.'
+  }
+
+  if (modoAsignacion.value && contadorId.value === null) {
+    errores.contador_required = 'Elige el contador que atenderá el caso.'
+  }
+
+  return errores
 }
 
 const submitCase = async () => {
   if (cases.guardando) return
 
-  clearFormError()
   errorGuardado.value = null
 
   const clienteLimpio = client.value.trim()
-
-  const validacionCliente = validarCliente(clienteLimpio)
-  if (!validacionCliente.valido) {
-    formError.value = {
-      code:
-        validacionCliente.error === 'cliente_requerido'
-          ? CASE_ERROR_CODES.clientRequired
-          : CASE_ERROR_CODES.clientTooLong,
-      message:
-        validacionCliente.error === 'cliente_requerido'
-          ? 'El cliente es obligatorio.'
-          : 'El cliente supera los 80 caracteres permitidos.',
-    }
-    return
-  }
-
   const prioridadBackend = prioridadABackend(priority.value)
-  const validacionPrioridad = validarPrioridad(prioridadBackend)
-  if (!validacionPrioridad.valido) {
-    formError.value = {
-      code: CASE_ERROR_CODES.priorityRequired,
-      message: 'Se debe elegir una prioridad.',
-    }
-    return
-  }
-
   const fechaLimpia = fechaInicio.value.trim()
-  if (modoEdicion.value && fechaLimpia === '') {
-    formError.value = {
-      code: 'fecha_inicio_invalido',
-      message: 'La fecha de inicio es obligatoria al editar. Use el formato DD-MM-AAAA.',
-    }
-    return
-  }
-  const validacionFecha = validarFechaInicio(fechaLimpia)
-  if (!validacionFecha.valido) {
-    formError.value = {
-      code: 'fecha_inicio_invalido',
-      message:
-        validacionFecha.error === 'fecha_invalida'
-          ? 'La fecha no existe. Use una fecha real en formato DD-MM-AAAA.'
-          : 'Formato de fecha inválido. Use DD-MM-AAAA.',
-    }
-    return
-  }
 
-  const validacionVencimiento = validarFechaVencimiento(fechaVencimiento.value, fechaLimpia, hoyLocal())
-  if (!validacionVencimiento.valido) {
-    const mensajes = {
-      vencimiento_requerido: 'La fecha de vencimiento es obligatoria. Use el formato DD-MM-AAAA.',
-      fecha_formato_invalido: 'Formato de fecha inválido. Use DD-MM-AAAA.',
-      fecha_invalida: 'La fecha no existe. Use una fecha real en formato DD-MM-AAAA.',
-      vencimiento_antes_del_inicio: fechaLimpia
-        ? 'El vencimiento no puede ser anterior a la fecha de inicio.'
-        : 'El vencimiento no puede ser anterior a hoy (fecha de inicio vacía).',
-    }
-    formError.value = {
-      code: 'fecha_vencimiento_invalido',
-      message: mensajes[validacionVencimiento.error],
-    }
-    return
-  }
-
-  const validacionDescripcion = validarTextoOpcional(descripcion.value, 'descripcion', MAX_DESCRIPCION_LENGTH)
-  if (!validacionDescripcion.valido) {
-    formError.value = {
-      code: 'descripcion_demasiado_largo',
-      message: 'La descripción no debe superar los 1000 caracteres.',
-    }
-    return
-  }
-
-  const validacionObservaciones = validarTextoOpcional(observaciones.value, 'observaciones', MAX_OBSERVACIONES_LENGTH)
-  if (!validacionObservaciones.valido) {
-    formError.value = {
-      code: 'observaciones_demasiado_largo',
-      message: 'Las observaciones no deben superar los 2000 caracteres.',
-    }
-    return
-  }
-
-  if (modoAsignacion.value && contadorId.value === null) {
-    formError.value = {
-      code: 'contador_required',
-      message: 'Elige el contador que atenderá el caso.',
-    }
+  // Se revisan todos los campos a la vez: el contador ve juntos todos los errores.
+  erroresCampo.value = validarFormulario(clienteLimpio, prioridadBackend, fechaLimpia)
+  if (Object.keys(erroresCampo.value).length > 0) {
+    enfocarPrimerError()
     return
   }
 
@@ -914,5 +968,24 @@ const submitCase = async () => {
 .control-touch {
   min-width: 44px;
   min-height: 44px;
+}
+
+/* Confirmación de descartar: mismo aspecto que la de cerrar sesión. */
+.confirmar-descartar {
+  width: min(400px, calc(100vw - 32px));
+}
+
+.confirmar-descartar__titulo {
+  margin: 0 0 8px;
+  color: var(--dg-texto);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.confirmar-descartar__texto {
+  margin: 0;
+  color: var(--dg-texto-secundario);
+  line-height: 1.5;
 }
 </style>

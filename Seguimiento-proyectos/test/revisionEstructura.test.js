@@ -223,12 +223,13 @@ describe('Grupo C: textos del menú en tú y sin ambigüedad', () => {
     assert.doesNotMatch(plantillaC, /<q-item-label header>Mis casos<\/q-item-label>/)
   })
 
-  it('el vacío de «Mis casos» habla de casos registrados en el título y en el mensaje', () => {
+  // Rebanada 3: el contador ve los casos que registra y los que le asigna el administrador.
+  it('el vacío de «Mis casos» menciona los casos registrados y los asignados', () => {
     const misCasos = leerC('../src/pages/MyCasesPage.vue').split('<script')[0]
-    const vacio = misCasos.match(/title="No tienes casos registrados"\s*message="([^"]+)"/)?.[1]
+    const vacio = misCasos.match(/title="Todavía no tienes casos"\s*message="([^"]+)"/)?.[1]
     assert.ok(vacio, 'existe el vacío de «Mis casos»')
-    assert.doesNotMatch(vacio, /asignados/)
-    assert.match(vacio, /registrado/)
+    assert.match(vacio, /Registra el primero/)
+    assert.match(vacio, /te asigne el administrador/)
   })
 })
 
