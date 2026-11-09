@@ -19,7 +19,7 @@
           class="auditoria-item__semaforo semaforo-etiqueta"
           :class="`semaforo--${semaforoClase}`"
         >
-          {{ auditoria.semaforo }}
+          {{ etiquetaSemaforo(auditoria.semaforo) }}
           <q-tooltip>{{ AYUDA_SEMAFORO[auditoria.semaforo] }}</q-tooltip>
         </q-chip>
       </div>
@@ -142,7 +142,12 @@
 
 <script setup>
 import { computed } from 'vue'
-import { AYUDA_SEMAFORO, claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
+import {
+  AYUDA_SEMAFORO,
+  claseSemaforo,
+  etiquetaSemaforo,
+  textoDiasPlazo,
+} from '../utils/semaforoAuditoria.js'
 
 const props = defineProps({
   /** Auditoría en la forma de las pantallas (auditoriaService). */

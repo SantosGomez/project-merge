@@ -17,15 +17,27 @@
       <q-td
         :props="props"
         class="auditorias-tabla__franja"
-        :class="`semaforo--${claseSemaforo(props.row.semaforo)}`"
+        :class="[
+          `semaforo--${claseSemaforo(props.row.semaforo)}`,
+          {
+            'auditorias-tabla__filtro-activo':
+              filtroSemaforo !== 'todos' &&
+              props.row.semaforo === filtroSemaforo,
+          },
+        ]"
       >
         <q-chip
           dense
           square
           class="auditorias-tabla__semaforo semaforo-etiqueta"
           :class="`semaforo--${claseSemaforo(props.row.semaforo)}`"
+          :aria-pressed="
+            filtroSemaforo !== 'todos' && props.row.semaforo === filtroSemaforo
+              ? 'true'
+              : 'false'
+          "
         >
-          {{ props.row.semaforo }}
+          {{ etiquetaSemaforo(props.row.semaforo) }}
           <q-tooltip>{{ AYUDA_SEMAFORO[props.row.semaforo] }}</q-tooltip>
         </q-chip>
       </q-td>
@@ -50,6 +62,7 @@
           :class="`auditorias-tabla__estado--${ESTADO_CLASE[props.row.estado] ?? 'pendiente'}`"
         >
           {{ props.row.estado }}
+          <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>
         </q-chip>
       </q-td>
     </template>
@@ -121,13 +134,23 @@
 <script setup>
 import { ref } from 'vue'
 
-import { AYUDA_SEMAFORO, claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
+import {
+  AYUDA_SEMAFORO,
+  claseSemaforo,
+  etiquetaSemaforo,
+  textoDiasPlazo,
+} from '../utils/semaforoAuditoria.js'
 
 defineProps({
   /** Auditorías ya filtradas y ordenadas por la página (auditoriaService). */
   auditorias: {
     type: Array,
     required: true,
+  },
+  /** Semáforo seleccionado en el resumen ('todos' = sin filtro). */
+  filtroSemaforo: {
+    type: String,
+    default: 'todos',
   },
 })
 
@@ -248,6 +271,12 @@ const etapaDeFase = (fase) => {
 
 .auditorias-tabla__acciones {
   white-space: nowrap;
+}
+
+/* Fila resaltada cuando su semáforo es el filtro activo del resumen */
+.auditorias-tabla__filtro-activo {
+  background: var(--dg-fondo-seleccion);
+  box-shadow: inset 0 0 0 2px var(--dg-acento);
 }
 
 .control-touch {

@@ -19,7 +19,21 @@
       </q-btn>
     </div>
 
-    <ScreenLoader v-if="cargando" text="Cargando auditorías…" />
+    <div v-if="cargando" class="auditorias-page__carga">
+      <q-skeleton
+        type="rectangle"
+        animated
+        class="auditorias-page__skeleton"
+        :style="{ width: '120px', height: '120px' }"
+      />
+      <q-skeleton
+        type="rectangle"
+        animated
+        class="auditorias-page__skeleton"
+        :style="{ width: '90%', height: '140px', marginTop: '8px' }"
+      />
+      <p class="auditorias-page__skeleton-texto">Cargando auditorías…</p>
+    </div>
 
     <ErrorState v-else-if="errorCarga" :detail="mensajeError" @retry="reintentar" />
 
@@ -148,6 +162,7 @@
         <AuditoriasTabla
           v-else-if="vistaTabla"
           :auditorias="auditoriasFiltradas"
+          :filtro-semaforo="filtroSemaforo"
           @ver-detalle="verFicha"
           @editar="abrirEdicion"
         />
@@ -212,7 +227,6 @@ import ChatAuditoria from '../components/ChatAuditoria.vue'
 import AuditoriasTabla from '../components/AuditoriasTabla.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
-import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarAuditorias } from '../services/auditoriaService.js'
 import { listCounters } from '../services/counterService.js'
 import {
@@ -532,6 +546,24 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
 
 .auditorias-page__limpiar {
   margin-left: auto;
+}
+
+.auditorias-page__carga {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0;
+}
+
+.auditorias-page__skeleton {
+  margin: 0;
+}
+
+.auditorias-page__skeleton-texto {
+  margin: 0;
+  color: var(--dg-texto-tenue);
+  font-size: 0.95rem;
 }
 
 .auditorias-page__lista {

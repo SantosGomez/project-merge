@@ -670,4 +670,15 @@ const submit = async () => {
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .auditoria-form .q-select,
+  .auditoria-form .q-date,
+  .auditoria-form .q-popup-proxy,
+  .auditoria-form .q-menu,
+  .auditoria-form .q-dialog {
+    transition: none !important;
+    animation: none !important;
+  }
+}
 </style>
