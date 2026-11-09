@@ -26,3 +26,13 @@ Thumbs.db
 
 # Plantilla de variables de Docker (sin claves reales)
 !.env.example
+
+# Respaldos de la base: tienen hashes de contraseñas, nunca se suben
+*.sql
+
+# Herramientas locales: configuración de los servidores de prueba y skills de diseño instaladas aquí
+.claude/launch.json
+.agents/skills/impeccable/
+.agents/skills/emil-design-eng/
+.claude/skills/impeccable/
+.claude/skills/emil-design-eng/
