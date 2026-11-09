@@ -17,25 +17,13 @@
       <q-td
         :props="props"
         class="auditorias-tabla__franja"
-        :class="[
-          `semaforo--${claseSemaforo(props.row.semaforo)}`,
-          {
-            'auditorias-tabla__filtro-activo':
-              filtroSemaforo !== 'todos' &&
-              props.row.semaforo === filtroSemaforo,
-          },
-        ]"
+        :class="`semaforo--${claseSemaforo(props.row.semaforo)}`"
       >
         <q-chip
           dense
           square
           class="auditorias-tabla__semaforo semaforo-etiqueta"
           :class="`semaforo--${claseSemaforo(props.row.semaforo)}`"
-          :aria-pressed="
-            filtroSemaforo !== 'todos' && props.row.semaforo === filtroSemaforo
-              ? 'true'
-              : 'false'
-          "
         >
           {{ etiquetaSemaforo(props.row.semaforo) }}
           <q-tooltip>{{ AYUDA_SEMAFORO[props.row.semaforo] }}</q-tooltip>
@@ -61,7 +49,7 @@
           class="auditorias-tabla__estado"
           :class="`auditorias-tabla__estado--${ESTADO_CLASE[props.row.estado] ?? 'pendiente'}`"
         >
-          {{ props.row.estado }}
+          {{ etiquetaEstado(props.row.estado) }}
           <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>
         </q-chip>
       </q-td>
@@ -138,6 +126,7 @@ import {
   AYUDA_SEMAFORO,
   claseSemaforo,
   etiquetaSemaforo,
+  etiquetaEstado,
   textoDiasPlazo,
 } from '../utils/semaforoAuditoria.js'
 
@@ -146,11 +135,6 @@ defineProps({
   auditorias: {
     type: Array,
     required: true,
-  },
-  /** Semáforo seleccionado en el resumen ('todos' = sin filtro). */
-  filtroSemaforo: {
-    type: String,
-    default: 'todos',
   },
 })
 
@@ -271,12 +255,6 @@ const etapaDeFase = (fase) => {
 
 .auditorias-tabla__acciones {
   white-space: nowrap;
-}
-
-/* Fila resaltada cuando su semáforo es el filtro activo del resumen */
-.auditorias-tabla__filtro-activo {
-  background: var(--dg-fondo-seleccion);
-  box-shadow: inset 0 0 0 2px var(--dg-acento);
 }
 
 .control-touch {

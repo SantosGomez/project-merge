@@ -47,7 +47,7 @@ describe('Auditorías: botón flotante en móvil (< 600 px)', () => {
   const pagina = read('../src/pages/AuditoriasPage.vue')
 
   it('en móvil el registro va en un FAB y se oculta el botón del encabezado', () => {
-    assert.match(pagina, /class="auditorias-page__register-btn control-touch gt-xs"/)
+    assert.match(pagina, /class="auditorias-page__register-btn control-touch gt-xs[^"]*"/)
     assert.match(pagina, /<q-page-sticky[\s\S]*?class="lt-sm"[\s\S]*?position="bottom-right"/)
     assert.match(pagina, /<q-btn[\s\S]*?fab[\s\S]*?icon="add"[\s\S]*?aria-label="Registrar auditoría"[\s\S]*?@click="abrirRegistro"/)
   })

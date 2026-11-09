@@ -1,11 +1,15 @@
 <template>
   <q-dialog
     v-model="dialogoAbierto"
-    :persistent="guardando"
+    :persistent="guardando || hayDatosSinGuardar"
+    transition-show="dialogo-entra"
+    transition-hide="dialogo-sale"
+    :transition-duration="220"
     aria-labelledby="auditoria-titulo"
     @show="enfocarCliente"
+    @shake="pedirDescartar"
   >
-    <q-card class="auditoria-form">
+    <q-card ref="tarjeta" class="auditoria-form">
       <q-form class="auditoria-form__form" novalidate :aria-label="textos.formulario" @submit="submit">
         <q-card-section class="auditoria-form__head">
           <h2 id="auditoria-titulo" class="auditoria-form__title">{{ textos.titulo }}</h2>
@@ -17,10 +21,11 @@
             <legend class="auditoria-form__seccion-titulo">Identificación</legend>
 
             <div class="form-group">
-              <label class="form-label">Cliente <span class="required-mark">*</span></label>
+              <label for="aud-cliente" class="form-label">Cliente <span aria-hidden="true" class="required-mark">*</span></label>
               <q-input
                 ref="clienteInput"
                 v-model="cliente"
+                for="aud-cliente"
                 type="text"
                 placeholder="Nombre del cliente auditado"
                 maxlength="100"
@@ -31,7 +36,7 @@
                 aria-required="true"
                 :error="!!errorDeCampo('cliente')"
                 :error-message="errorDeCampo('cliente')"
-                @update:model-value="clearError()"
+                @update:model-value="clearError('cliente')"
               >
                 <template #prepend>
                   <q-icon name="person" />
@@ -40,9 +45,10 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">No. de expediente / orden <span class="required-mark">*</span></label>
+              <label for="aud-expediente" class="form-label">No. de expediente / orden <span aria-hidden="true" class="required-mark">*</span></label>
               <q-input
                 v-model="noExpediente"
+                for="aud-expediente"
                 type="text"
                 placeholder="VDM-0001/2026"
                 maxlength="100"
@@ -53,7 +59,7 @@
                 aria-required="true"
                 :error="!!errorDeCampo('noExpediente')"
                 :error-message="errorDeCampo('noExpediente')"
-                @update:model-value="clearError()"
+                @update:model-value="clearError('noExpediente')"
               >
                 <template #prepend>
                   <q-icon name="folder_open" />
@@ -62,9 +68,10 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">Dependencia <span class="required-mark">*</span></label>
+              <label for="aud-dependencia" class="form-label">Dependencia <span aria-hidden="true" class="required-mark">*</span></label>
               <q-input
                 v-model="dependencia"
+                for="aud-dependencia"
                 type="text"
                 placeholder="Quién audita: SAT – ADAF, Secretaría de Finanzas…"
                 maxlength="200"
@@ -75,7 +82,7 @@
                 aria-required="true"
                 :error="!!errorDeCampo('dependencia')"
                 :error-message="errorDeCampo('dependencia')"
-                @update:model-value="clearError()"
+                @update:model-value="clearError('dependencia')"
               >
                 <template #prepend>
                   <q-icon name="account_balance" />
@@ -84,8 +91,9 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">Tipo de auditoría <span class="required-mark">*</span></label>
+              <label for="aud-tipo" class="form-label">Tipo de auditoría <span aria-hidden="true" class="required-mark">*</span></label>
               <q-select
+                for="aud-tipo"
                 :model-value="tipoAud"
                 :options="opcionesTipo"
                 use-input
@@ -100,6 +108,7 @@
                 popup-content-class="menu-seleccion-custom"
                 transition-show="jump-down"
                 transition-hide="jump-up"
+                :transition-duration="180"
                 class="selector-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo('tipoAud')"
@@ -140,8 +149,9 @@
             <legend class="auditoria-form__seccion-titulo">Periodo y fechas</legend>
 
             <div v-for="campo in CAMPOS_FECHA" :key="campo.clave" class="form-group">
-              <label class="form-label">{{ campo.etiqueta }} <span class="required-mark">*</span></label>
+              <label :for="`aud-${campo.clave}`" class="form-label">{{ campo.etiqueta }} <span aria-hidden="true" class="required-mark">*</span></label>
               <q-input
+                :for="`aud-${campo.clave}`"
                 v-model="fechas[campo.clave]"
                 type="text"
                 placeholder="DD-MM-AAAA"
@@ -150,22 +160,34 @@
                 dense
                 class="input-moderno"
                 aria-required="true"
+                :hint="campo.ayuda"
                 :error="!!errorDeCampo(campo.clave)"
                 :error-message="errorDeCampo(campo.clave)"
-                @update:model-value="clearError()"
+                @update:model-value="clearError(campo.clave)"
               >
                 <template #prepend>
                   <q-icon name="calendar_month" />
                 </template>
                 <template #append>
-                  <q-icon name="event" class="auditoria-form__cal" tabindex="0" role="button" aria-label="Abrir calendario">
-                    <q-popup-proxy cover :breakpoint="700" transition-show="scale" transition-hide="scale">
+                  <q-icon
+                    name="event"
+                    class="auditoria-form__cal"
+                    tabindex="0"
+                    role="button"
+                    :aria-label="`Abrir calendario: ${campo.etiqueta}`"
+                  >
+                    <q-popup-proxy
+                      :breakpoint="700"
+                      transition-show="jump-down"
+                      transition-hide="jump-up"
+                      :transition-duration="180"
+                    >
                       <q-date
                         v-model="fechas[campo.clave]"
                         mask="DD-MM-YYYY"
                         today-btn
                         :options="campo.desde ? (dia) => diaNoAnterior(dia, fechas[campo.desde]) : undefined"
-                        @update:model-value="clearError()"
+                        @update:model-value="clearError(campo.clave)"
                       >
                         <div class="row justify-end">
                           <q-btn v-close-popup label="Listo" color="primary" flat no-caps />
@@ -174,17 +196,17 @@
                     </q-popup-proxy>
                   </q-icon>
                 </template>
-                <q-tooltip>{{ campo.ayuda }}</q-tooltip>
               </q-input>
             </div>
           </fieldset>
 
           <fieldset class="auditoria-form__seccion">
-            <legend class="auditoria-form__seccion-titulo">Estatus y asignación</legend>
+            <legend class="auditoria-form__seccion-titulo">Estado y asignación</legend>
 
             <div v-if="modoEdicion" class="form-group">
-              <label class="form-label">Estatus de la auditoría <span class="required-mark">*</span></label>
+              <label for="aud-estado" class="form-label">Estado de la auditoría <span aria-hidden="true" class="required-mark">*</span></label>
               <q-select
+                for="aud-estado"
                 v-model="estado"
                 :options="opcionesEstado"
                 outlined
@@ -194,6 +216,7 @@
                 popup-content-class="menu-seleccion-custom"
                 transition-show="jump-down"
                 transition-hide="jump-up"
+                :transition-duration="180"
                 class="selector-moderno"
                 aria-required="true"
                 :error="!!errorDeCampo('estado')"
@@ -218,13 +241,14 @@
               </q-select>
             </div>
             <div v-else class="form-group">
-              <span class="form-label">Estatus de la auditoría</span>
+              <span class="form-label">Estado de la auditoría</span>
               <p class="estado-fijo">Pendiente</p>
             </div>
 
             <div v-if="esAdmin" class="form-group">
-              <label class="form-label">Contadores asignados <span class="required-mark">*</span></label>
+              <label for="aud-contadores" class="form-label">Contadores asignados <span aria-hidden="true" class="required-mark">*</span></label>
               <q-select
+                for="aud-contadores"
                 v-model="contadoresSeleccionados"
                 :options="opcionesContador"
                 option-label="label"
@@ -237,6 +261,7 @@
                 popup-content-class="menu-seleccion-custom"
                 transition-show="jump-down"
                 transition-hide="jump-up"
+                :transition-duration="180"
                 class="selector-moderno"
                 emit-value
                 map-options
@@ -244,7 +269,7 @@
                 aria-required="true"
                 :error="!!errorDeCampo('contadores')"
                 :error-message="errorDeCampo('contadores')"
-                @update:model-value="clearError()"
+                @update:model-value="clearError('contadores')"
               >
                 <template #prepend>
                   <q-icon name="group" />
@@ -277,8 +302,9 @@
             <legend class="auditoria-form__seccion-titulo">Notas (opcional)</legend>
 
             <div class="form-group auditoria-form__ancho-completo">
-              <label class="form-label">Descripción</label>
+              <label for="aud-descripcion" class="form-label">Descripción</label>
               <q-input
+                for="aud-descripcion"
                 v-model="descripcion"
                 type="textarea"
                 placeholder="Qué se revisa: impuestos, ejercicio, alcance…"
@@ -290,7 +316,7 @@
                 class="input-moderno"
                 :error="!!errorDeCampo('descripcion')"
                 :error-message="errorDeCampo('descripcion')"
-                @update:model-value="clearError()"
+                @update:model-value="clearError('descripcion')"
               >
                 <template #prepend>
                   <q-icon name="description" />
@@ -299,8 +325,9 @@
             </div>
 
             <div class="form-group auditoria-form__ancho-completo">
-              <label class="form-label">Observación</label>
+              <label for="aud-observacion" class="form-label">Observación</label>
               <q-input
+                for="aud-observacion"
                 v-model="observacion"
                 type="textarea"
                 placeholder="Notas de seguimiento para el equipo"
@@ -312,7 +339,7 @@
                 class="input-moderno"
                 :error="!!errorDeCampo('observacion')"
                 :error-message="errorDeCampo('observacion')"
-                @update:model-value="clearError()"
+                @update:model-value="clearError('observacion')"
               >
                 <template #prepend>
                   <q-icon name="sticky_note_2" />
@@ -331,7 +358,7 @@
         </q-card-section>
 
         <q-card-actions align="right" class="auditoria-form__actions">
-          <q-btn flat no-caps label="Cancelar" class="control-touch" :disable="guardando" @click="cerrar">
+          <q-btn flat no-caps label="Cancelar" class="control-touch boton-presionable" :disable="guardando" @click="cerrar">
             <q-tooltip>{{ textos.tooltipCancelar }}</q-tooltip>
           </q-btn>
           <q-btn
@@ -341,7 +368,7 @@
             :icon="modoEdicion ? 'save' : 'add_circle'"
             no-caps
             unelevated
-            class="control-touch"
+            class="control-touch boton-presionable"
             :loading="guardando"
             :disable="guardando"
           >
@@ -349,6 +376,30 @@
           </q-btn>
         </q-card-actions>
       </q-form>
+
+      <!-- Esc, un clic fuera o «Cancelar» con datos escritos: se pregunta antes de perderlos. -->
+      <q-dialog
+        v-model="confirmacionAbierta"
+        transition-show="fade"
+        transition-hide="fade"
+        :transition-duration="150"
+        aria-labelledby="descartar-auditoria-titulo"
+      >
+        <q-card class="confirmar-descartar">
+          <q-card-section>
+            <h2 id="descartar-auditoria-titulo" class="confirmar-descartar__titulo">¿Descartar los cambios?</h2>
+            <p class="confirmar-descartar__texto">Lo que escribiste en este formulario se perderá.</p>
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn v-close-popup autofocus flat no-caps label="Seguir editando" class="control-touch boton-presionable">
+              <q-tooltip>Vuelve al formulario con todo lo que escribiste.</q-tooltip>
+            </q-btn>
+            <q-btn color="dg-error" unelevated no-caps label="Descartar" class="control-touch boton-presionable" @click="descartar">
+              <q-tooltip>Cierra el formulario y pierde lo que escribiste.</q-tooltip>
+            </q-btn>
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </q-card>
   </q-dialog>
 </template>
@@ -358,6 +409,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import ErrorState from './ErrorState.vue'
 import { actualizarAuditoria, registrarAuditoria } from '../services/auditoriaService.js'
+import { fechaADominioBackend } from '../utils/fechasCaso.js'
 import { TIPOS_AUDITORIA, campoConError, diaNoAnterior, filtrarSugerencias } from '../utils/formularioAuditoria.js'
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
@@ -386,7 +438,7 @@ const modoEdicion = computed(() => props.auditoria !== null)
 const TEXTOS_REGISTRO = {
   titulo: 'Registrar auditoría',
   formulario: 'Formulario de registro de auditoría',
-  ayuda: 'Completa los campos marcados con *. El estatus inicial siempre es Pendiente.',
+  ayuda: 'Completa los campos marcados con *. El estado inicial siempre es Pendiente.',
   boton: 'Registrar auditoría',
   tooltipBoton: 'Guarda la auditoría.',
   tooltipCancelar: 'Cierra el formulario sin registrar la auditoría.',
@@ -405,20 +457,42 @@ const TEXTOS_EDICION = {
 
 // Fechas del formulario; `desde` bloquea en el calendario los días anteriores a esa otra fecha.
 const CAMPOS_FECHA = [
-  { clave: 'periodoInicio', etiqueta: 'Periodo revisado: desde', ayuda: 'Primer día del periodo que se revisa.' },
+  {
+    clave: 'periodoInicio',
+    etiqueta: 'Periodo revisado: desde',
+    ayuda: 'Primer día del periodo que se revisa.',
+    requerido: 'Escribe la fecha de inicio del periodo revisado.',
+  },
   {
     clave: 'periodoFinal',
     etiqueta: 'Periodo revisado: hasta',
     desde: 'periodoInicio',
     ayuda: 'Último día del periodo que se revisa; no puede ser anterior al inicio.',
+    requerido: 'Escribe el final del periodo revisado.',
+    anterior: 'El final del periodo no puede ser anterior a su inicio.',
   },
-  { clave: 'fechaInicio', etiqueta: 'Fecha de inicio', ayuda: 'Notificación de inicio de la auditoría.' },
+  {
+    clave: 'fechaInicio',
+    etiqueta: 'Fecha de inicio',
+    ayuda: 'Notificación de inicio de la auditoría.',
+    requerido: 'Escribe la fecha de inicio.',
+  },
   {
     clave: 'fechaVencimiento',
     etiqueta: 'Fecha de vencimiento',
     desde: 'fechaInicio',
     ayuda: 'Plazo de la autoridad para concluir; no puede ser anterior a la fecha de inicio.',
+    requerido: 'Escribe la fecha de vencimiento.',
+    anterior: 'La fecha de vencimiento no puede ser anterior a la fecha de inicio.',
   },
+]
+
+// Campos de texto obligatorios y su mensaje, en el orden del formulario (el foco va al primero).
+const CAMPOS_TEXTO = [
+  ['cliente', 'Escribe el nombre del cliente.'],
+  ['noExpediente', 'Escribe el no. de expediente u orden.'],
+  ['dependencia', 'Escribe la dependencia que audita.'],
+  ['tipoAud', 'Elige o escribe el tipo de auditoría.'],
 ]
 
 const textos = computed(() => (modoEdicion.value ? TEXTOS_EDICION : TEXTOS_REGISTRO))
@@ -437,8 +511,13 @@ const estado = ref('Pendiente')
 const contadoresSeleccionados = ref([])
 
 const clienteInput = ref(null)
-const formError = ref(null)
+const tarjeta = ref(null)
+// Errores de validación por campo: { cliente: 'Escribe el nombre del cliente.', … }.
+const erroresCampo = ref({})
 const errorGuardado = ref(null)
+const confirmacionAbierta = ref(false)
+// Foto del formulario al abrirlo: si algo cambió, cerrar pide confirmación.
+const fotoInicial = ref('')
 
 const opcionesEstado = ['Pendiente', 'En Proceso', 'Completado', 'Aplazado por acta']
 const opcionesTipo = ref([...TIPOS_AUDITORIA])
@@ -447,13 +526,46 @@ const opcionesContador = computed(() =>
   (props.contadores ?? []).map((c) => ({ label: c.nombre, value: c.id })),
 )
 
-const mensajeError = computed(() => errorGuardado.value?.mensaje ?? 'los datos de la auditoría.')
+// Sin mensaje del servidor: se aclara que lo escrito sigue ahí (recargar la página lo perdería).
+const mensajeError = computed(
+  () =>
+    errorGuardado.value?.mensaje ??
+    'Qué ocurrió: No se guardó la auditoría. Sobre: la conexión con el servidor. Qué hacer: Revisa tu conexión y pulsa «Reintentar»; tus datos siguen en el formulario.',
+)
 
-const clearError = () => {
-  formError.value = null
+/** Al escribir en un campo se borra solo su error; los de los demás siguen a la vista. */
+const clearError = (campo) => {
+  const restantes = { ...erroresCampo.value }
+  delete restantes[campo]
+  erroresCampo.value = restantes
 }
 
-const errorDeCampo = (campo) => (formError.value?.campo === campo ? formError.value.mensaje : null)
+const errorDeCampo = (campo) => erroresCampo.value[campo] ?? null
+
+/** Lleva la vista y el foco al primer campo con error (en celular puede estar fuera de la pantalla). */
+const enfocarPrimerError = () =>
+  nextTick(() => {
+    const campo = tarjeta.value?.$el?.querySelector('.q-field--error')
+    if (!campo) return
+    campo.scrollIntoView({ block: 'center' })
+    campo.querySelector('input, textarea, [tabindex="0"]')?.focus({ preventScroll: true })
+  })
+
+const fotoDelFormulario = () =>
+  JSON.stringify([
+    cliente.value,
+    noExpediente.value,
+    dependencia.value,
+    tipoAud.value,
+    estatal.value,
+    fechas.value,
+    descripcion.value,
+    observacion.value,
+    estado.value,
+    contadoresSeleccionados.value,
+  ])
+
+const hayDatosSinGuardar = computed(() => fotoDelFormulario() !== fotoInicial.value)
 
 const enfocarCliente = () => {
   nextTick(() => clienteInput.value?.focus())
@@ -468,12 +580,12 @@ const filtrarTipos = (texto, actualizar) => {
 
 const escribirTipo = (texto) => {
   tipoAud.value = texto
-  clearError()
+  clearError('tipoAud')
 }
 
 const elegirTipo = (valor) => {
   tipoAud.value = valor ?? ''
-  clearError()
+  clearError('tipoAud')
 }
 
 const reiniciarFormulario = () => {
@@ -493,41 +605,68 @@ const reiniciarFormulario = () => {
   observacion.value = a?.observacion ?? ''
   estado.value = a?.estado ?? 'Pendiente'
   contadoresSeleccionados.value = (a?.contadores ?? []).map((c) => c.id)
-  formError.value = null
+  erroresCampo.value = {}
   errorGuardado.value = null
+  fotoInicial.value = fotoDelFormulario()
 }
 
 watch(dialogoAbierto, (abierto) => {
   if (abierto) reiniciarFormulario()
 })
 
+// Esc o clic fuera con datos escritos (el diálogo es persistente y «sacude»): se pregunta antes.
+const pedirDescartar = () => {
+  if (!guardando.value) confirmacionAbierta.value = true
+}
+
 const cerrar = () => {
   if (guardando.value) return
+  if (hayDatosSinGuardar.value) {
+    confirmacionAbierta.value = true
+    return
+  }
   dialogoAbierto.value = false
 }
 
-const validarRequerido = (valor, campo, etiqueta) => {
-  if (!valor || String(valor).trim() === '') {
-    formError.value = { campo, mensaje: `${etiqueta} es obligatorio.` }
-    return false
+const descartar = () => {
+  confirmacionAbierta.value = false
+  dialogoAbierto.value = false
+}
+
+const vacio = (valor) => !valor || String(valor).trim() === ''
+
+/** Todos los errores a la vez, por campo ({} si todo está bien). */
+const validarFormulario = () => {
+  const errores = {}
+  const textos = { cliente, noExpediente, dependencia, tipoAud }
+  for (const [campo, mensaje] of CAMPOS_TEXTO) {
+    if (vacio(textos[campo].value)) errores[campo] = mensaje
   }
-  return true
+  for (const campo of CAMPOS_FECHA) {
+    const valor = fechas.value[campo.clave]
+    if (vacio(valor)) {
+      errores[campo.clave] = campo.requerido
+    } else if (!fechaADominioBackend(valor)) {
+      errores[campo.clave] = 'Escribe la fecha como DD-MM-AAAA.'
+    } else if (campo.desde) {
+      // AAAA-MM-DD se compara como texto; solo si la otra fecha también es válida.
+      const desde = fechaADominioBackend(fechas.value[campo.desde])
+      if (desde && fechaADominioBackend(valor) < desde) errores[campo.clave] = campo.anterior
+    }
+  }
+  if (props.esAdmin && contadoresSeleccionados.value.length === 0) {
+    errores.contadores = 'Elige al menos un contador.'
+  }
+  return errores
 }
 
 const submit = async () => {
   if (guardando.value) return
-  clearError()
   errorGuardado.value = null
 
-  if (!validarRequerido(cliente.value, 'cliente', 'El cliente')) return
-  if (!validarRequerido(noExpediente.value, 'noExpediente', 'El no. de expediente')) return
-  if (!validarRequerido(dependencia.value, 'dependencia', 'La dependencia')) return
-  if (!validarRequerido(tipoAud.value, 'tipoAud', 'El tipo de auditoría')) return
-  for (const campo of CAMPOS_FECHA) {
-    if (!validarRequerido(fechas.value[campo.clave], campo.clave, campo.etiqueta)) return
-  }
-  if (props.esAdmin && contadoresSeleccionados.value.length === 0) {
-    formError.value = { campo: 'contadores', mensaje: 'Seleccione al menos un contador.' }
+  erroresCampo.value = validarFormulario()
+  if (Object.keys(erroresCampo.value).length > 0) {
+    enfocarPrimerError()
     return
   }
 
@@ -556,8 +695,10 @@ const submit = async () => {
   } catch (error) {
     // Si el error nombra un campo, se muestra junto a él; si no, en el aviso general.
     const campo = campoConError(error?.mensaje)
-    if (campo) formError.value = { campo, mensaje: error.mensaje }
-    else errorGuardado.value = error
+    if (campo) {
+      erroresCampo.value = { [campo]: error.mensaje }
+      enfocarPrimerError()
+    } else errorGuardado.value = error
   } finally {
     guardando.value = false
   }
@@ -671,14 +812,22 @@ const submit = async () => {
   text-transform: uppercase;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .auditoria-form .q-select,
-  .auditoria-form .q-date,
-  .auditoria-form .q-popup-proxy,
-  .auditoria-form .q-menu,
-  .auditoria-form .q-dialog {
-    transition: none !important;
-    animation: none !important;
-  }
+/* Confirmación de descartar: mismo aspecto que en el formulario de casos. */
+.confirmar-descartar {
+  width: min(400px, calc(100vw - 32px));
+}
+
+.confirmar-descartar__titulo {
+  margin: 0 0 8px;
+  color: var(--dg-texto);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.confirmar-descartar__texto {
+  margin: 0;
+  color: var(--dg-texto-secundario);
+  line-height: 1.5;
 }
 </style>

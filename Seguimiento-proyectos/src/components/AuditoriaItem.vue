@@ -9,7 +9,7 @@
           class="auditoria-item__estado"
           :class="`auditoria-item__estado--${estadoClase}`"
         >
-          {{ auditoria.estado }}
+          {{ etiquetaEstado(auditoria.estado) }}
           <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>
         </q-chip>
         <q-chip
@@ -40,7 +40,7 @@
         <q-icon name="event" size="18px" aria-hidden="true" />
         <template v-if="auditoria.proximoVencimiento">
           <span>
-            <strong>Próximo:</strong> {{ auditoria.queVence }} · vence
+            <strong>Próximo:</strong> {{ auditoria.queVence }} ·
             {{ auditoria.proximoVencimiento }}
             <span class="auditoria-item__dias"
               >({{ textoDiasPlazo(auditoria.diasParaVencer) }})</span
@@ -104,7 +104,7 @@
         color="dg-acento"
         icon="forum"
         label="Mensajes"
-        class="control-touch"
+        class="control-touch boton-presionable"
         :disable="deshabilitado"
         @click="emit('abrir-chat')"
       >
@@ -117,7 +117,7 @@
         color="dg-acento"
         icon="visibility"
         label="Ver ficha"
-        class="control-touch"
+        class="control-touch boton-presionable"
         :disable="deshabilitado"
         @click="emit('ver-detalle')"
       >
@@ -130,7 +130,7 @@
         color="primary"
         icon="edit"
         label="Editar"
-        class="control-touch"
+        class="control-touch boton-presionable"
         :disable="deshabilitado"
         @click="emit('editar')"
       >
@@ -146,6 +146,7 @@ import {
   AYUDA_SEMAFORO,
   claseSemaforo,
   etiquetaSemaforo,
+  etiquetaEstado,
   textoDiasPlazo,
 } from '../utils/semaforoAuditoria.js'
 

@@ -6,7 +6,7 @@
         datos con «Editar».
       </p>
       <q-btn
-        class="auditorias-page__register-btn control-touch gt-xs"
+        class="auditorias-page__register-btn control-touch gt-xs boton-presionable"
         color="primary"
         no-caps
         unelevated
@@ -19,19 +19,9 @@
       </q-btn>
     </div>
 
-    <div v-if="cargando" class="auditorias-page__carga">
-      <q-skeleton
-        type="rectangle"
-        animated
-        class="auditorias-page__skeleton"
-        :style="{ width: '120px', height: '120px' }"
-      />
-      <q-skeleton
-        type="rectangle"
-        animated
-        class="auditorias-page__skeleton"
-        :style="{ width: '90%', height: '140px', marginTop: '8px' }"
-      />
+    <!-- Esqueleto con la forma de la lista; el texto se anuncia a los lectores de pantalla. -->
+    <div v-if="cargando" class="auditorias-page__carga" role="status">
+      <q-skeleton v-for="n in 3" :key="n" type="rect" height="88px" class="auditorias-page__skeleton" />
       <p class="auditorias-page__skeleton-texto">Cargando auditorías…</p>
     </div>
 
@@ -40,8 +30,8 @@
     <div v-else class="auditorias-page__body">
       <EmptyState
         v-if="auditoriasFiltradas.length === 0 && !hayFiltros"
-        title="No tienes auditorías registradas"
-        message="Aún no hay auditorías asignadas. Usa «Registrar auditoría» para registrar la primera y empezar a dar seguimiento."
+        title="Todavía no hay auditorías"
+        message="Registra la primera con «Registrar auditoría» para empezar a darle seguimiento."
         action-label="Registrar auditoría"
         @action="abrirRegistro"
       />
@@ -55,7 +45,7 @@
             bordered
             tag="button"
             type="button"
-            class="resumen-semaforo"
+            class="resumen-semaforo boton-presionable"
             :class="[
               `semaforo--${tarjeta.clase}`,
               { 'resumen-semaforo--activa': filtroSemaforo === tarjeta.valor },
@@ -66,7 +56,7 @@
             <span class="resumen-semaforo__valor">{{ conteoSemaforo[tarjeta.valor] }}</span>
             <span class="resumen-semaforo__etiqueta">{{ tarjeta.etiqueta }}</span>
             <q-tooltip max-width="260px"
-              >{{ tarjeta.ayuda }} Haz clic para ver solo estas.</q-tooltip
+              >{{ AYUDA_SEMAFORO[tarjeta.valor] }} Haz clic para ver solo estas.</q-tooltip
             >
           </q-card>
         </section>
@@ -97,6 +87,7 @@
               popup-content-class="menu-seleccion-custom"
               transition-show="jump-down"
               transition-hide="jump-up"
+              :transition-duration="180"
               label="Ordenar por"
               class="auditorias-page__orden selector-moderno"
             >
@@ -126,10 +117,10 @@
               :key="opcion.valor"
               clickable
               :outline="filtroEstado !== opcion.valor"
-              :color="filtroEstado === opcion.valor ? 'primary' : 'grey-7'"
-              :text-color="filtroEstado === opcion.valor ? 'white' : 'grey-9'"
+              :color="filtroEstado === opcion.valor ? 'primary' : 'dg-texto-tenue'"
+              :text-color="filtroEstado === opcion.valor ? 'dg-superficie' : 'dg-texto'"
               :aria-pressed="filtroEstado === opcion.valor ? 'true' : 'false'"
-              class="auditorias-page__chip"
+              class="auditorias-page__chip boton-presionable"
               @click="filtroEstado = opcion.valor"
             >
               {{ opcion.etiqueta }}
@@ -144,7 +135,7 @@
             color="primary"
             icon="filter_alt_off"
             label="Limpiar filtros"
-            class="auditorias-page__limpiar control-touch"
+            class="auditorias-page__limpiar control-touch boton-presionable"
             @click="limpiarFiltros"
           >
             <q-tooltip>Vuelve a mostrar todas las auditorías.</q-tooltip>
@@ -152,7 +143,7 @@
         </section>
 
         <div v-if="auditoriasFiltradas.length === 0" class="sin-resultados" role="status">
-          <q-icon name="filter_alt" size="28px" color="grey-7" aria-hidden="true" />
+          <q-icon name="filter_alt" size="28px" color="dg-texto-tenue" aria-hidden="true" />
           <p class="sin-resultados__texto">
             Ninguna auditoría cumple la búsqueda o los filtros. Cambia el texto, el estado o el
             semáforo, o usa «Limpiar filtros».
@@ -162,7 +153,6 @@
         <AuditoriasTabla
           v-else-if="vistaTabla"
           :auditorias="auditoriasFiltradas"
-          :filtro-semaforo="filtroSemaforo"
           @ver-detalle="verFicha"
           @editar="abrirEdicion"
         />
@@ -187,6 +177,7 @@
         fab
         color="primary"
         icon="add"
+        class="boton-presionable"
         aria-label="Registrar auditoría"
         aria-haspopup="dialog"
         @click="abrirRegistro"
@@ -217,7 +208,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
@@ -234,6 +225,7 @@ import {
   filtrarAuditorias,
   ordenarAuditorias,
 } from '../utils/listaAuditorias.js'
+import { AYUDA_SEMAFORO } from '../utils/semaforoAuditoria.js'
 import { useSessionStore } from '../stores/session.js'
 
 const $q = useQuasar()
@@ -254,7 +246,7 @@ const opcionesEstado = [
   { valor: 'Pendiente', etiqueta: 'Pendiente', ayuda: 'Auditorías que aún no se empiezan.' },
   { valor: 'En Proceso', etiqueta: 'En proceso', ayuda: 'Auditorías en trabajo.' },
   { valor: 'Completado', etiqueta: 'Completado', ayuda: 'Auditorías terminadas.' },
-  { valor: 'Aplazado por acta', etiqueta: 'Aplazado', ayuda: 'Auditorías aplazadas por acta.' },
+  { valor: 'Aplazado por acta', etiqueta: 'Aplazado por acta', ayuda: 'Auditorías aplazadas por acta.' },
 ]
 
 const filtroSemaforo = ref('todos')
@@ -267,32 +259,11 @@ const tarjetasSemaforo = [
     valor: 'Vencido',
     clase: 'vencido',
     etiqueta: 'Vencidas',
-    ayuda: 'Un plazo pendiente ya pasó.',
   },
-  {
-    valor: 'Crítico',
-    clase: 'critico',
-    etiqueta: 'Críticas',
-    ayuda: 'Un plazo pendiente vence en 7 días o menos.',
-  },
-  {
-    valor: 'Atención',
-    clase: 'atencion',
-    etiqueta: 'En atención',
-    ayuda: 'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos.',
-  },
-  {
-    valor: 'En tiempo',
-    clase: 'en-tiempo',
-    etiqueta: 'En tiempo',
-    ayuda: 'Sin vencimientos cercanos.',
-  },
-  {
-    valor: 'Concluida',
-    clase: 'concluida',
-    etiqueta: 'Concluidas',
-    ayuda: 'Auditorías completadas.',
-  },
+  { valor: 'Crítico', clase: 'critico', etiqueta: 'Críticas' },
+  { valor: 'Atención', clase: 'atencion', etiqueta: 'En atención' },
+  { valor: 'En tiempo', clase: 'en-tiempo', etiqueta: 'En tiempo' },
+  { valor: 'Concluida', clase: 'concluida', etiqueta: 'Concluidas' },
 ]
 
 const opcionesOrden = [
@@ -359,6 +330,18 @@ const cargar = async () => {
 
 onMounted(cargar)
 
+// Al volver a la ventana (por ejemplo, al día siguiente) el semáforo y los días se refrescan sin esqueleto.
+const alVolver = async () => {
+  if (document.visibilityState !== 'visible' || cargando.value || errorCarga.value) return
+  try {
+    auditorias.value = await listarAuditorias()
+  } catch {
+    // Se conserva la lista que ya se ve; la siguiente visita la actualiza.
+  }
+}
+document.addEventListener('visibilitychange', alVolver)
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolver))
+
 const abrirRegistro = () => {
   auditoriaEnEdicion.value = null
   dialogoRegistroAbierto.value = true
@@ -375,12 +358,18 @@ const abrirEdicion = (id) => {
 
 const alRegistrar = (auditoria) => {
   auditorias.value = [auditoria, ...auditorias.value]
-  $q.notify({ type: 'positive', message: 'Auditoría registrada.' })
+  // Si los filtros la ocultan, se dice por qué y se ofrece quitarlos.
+  const oculta = !auditoriasFiltradas.value.some((a) => a.id === auditoria.id)
+  $q.notify({
+    type: 'positive',
+    message: oculta ? 'Auditoría registrada. No aparece porque hay filtros activos.' : 'Auditoría registrada.',
+    actions: oculta ? [{ label: 'Limpiar filtros', color: 'white', noCaps: true, handler: limpiarFiltros }] : [],
+  })
 }
 
 const alGuardar = (auditoria) => {
   auditorias.value = auditorias.value.map((a) => (a.id === auditoria.id ? auditoria : a))
-  $q.notify({ type: 'positive', message: 'Cambios guardados.' })
+  $q.notify({ type: 'positive', message: 'Cambios de la auditoría guardados.' })
 }
 
 const reintentar = () => cargar()
@@ -499,7 +488,7 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
   }
 
   .resumen-semaforo__etiqueta {
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     line-height: 1.2;
     overflow-wrap: anywhere;
   }
@@ -526,7 +515,8 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
+  /* 12 px entre filas: las áreas táctiles de los chips no se enciman. */
+  gap: 12px 8px;
 }
 
 .auditorias-page__filtro-titulo {
@@ -538,10 +528,18 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
   text-transform: uppercase;
 }
 
+/* El chip se ve de 32 px; su área táctil llega a 44 px con 6 px invisibles arriba y abajo. */
 .auditorias-page__chip {
+  position: relative;
   min-height: 32px;
   margin: 0;
   font-weight: 600;
+}
+
+.auditorias-page__chip::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
 }
 
 .auditorias-page__limpiar {
@@ -551,13 +549,11 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
 .auditorias-page__carga {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 8px;
-  padding: 24px 0;
 }
 
 .auditorias-page__skeleton {
-  margin: 0;
+  border-radius: 12px;
 }
 
 .auditorias-page__skeleton-texto {

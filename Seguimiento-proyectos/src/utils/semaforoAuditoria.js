@@ -24,10 +24,13 @@ export const AYUDA_SEMAFORO = {
   Vencido: 'Un plazo pendiente de la bitácora ya pasó.',
   Crítico: 'Un plazo pendiente vence en 7 días o menos.',
   Atención:
-    'Un plazo vence en 20 días o menos, o a la autoridad le quedan 60 días o menos para concluir.',
+    'Un plazo de la bitácora vence en 20 días o menos, o faltan 60 días o menos para la fecha de vencimiento de la auditoría.',
   'En tiempo': 'Sin vencimientos cercanos.',
-  Concluida: 'La auditoría está completada.',
+  Concluida: 'Auditorías con estado Completado.',
 }
+
+/** Estado de la auditoría en pantalla: el backend guarda «En Proceso»; se muestra como en casos. */
+export const etiquetaEstado = (estado) => (estado === 'En Proceso' ? 'En proceso' : estado)
 
 /**
  * Días para el próximo vencimiento en palabras, sin números negativos.
