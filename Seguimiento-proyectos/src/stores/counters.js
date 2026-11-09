@@ -78,6 +78,8 @@ export const crearCountersStore = (dependencias = {}) => {
       cargandoDetalle: false,
       /** Error de tres partes de la última operación, o null (RF-36). */
       error: null,
+      /** Error de la carga del detalle: se muestra solo en el detalle, la lista sigue a la vista. */
+      errorDetalle: null,
     }),
 
     getters: {
@@ -93,7 +95,7 @@ export const crearCountersStore = (dependencias = {}) => {
       estadoDetalle: (state) =>
         screenState({
           loading: state.cargandoDetalle,
-          error: state.error,
+          error: state.errorDetalle,
           rows: state.casosDetalle,
         }),
     },
@@ -168,7 +170,7 @@ export const crearCountersStore = (dependencias = {}) => {
       /**
        * Selecciona un contador y carga su detalle (RF-13, RF-15, RF-17).
        * Al cambiar de contador, el detalle anterior se descarta de inmediato.
-       * Si la carga falla, la selección no se conserva (RF-36).
+       * Si la carga falla, se conserva la selección y el error queda en `errorDetalle`.
        * @param {number|string|null} id - identificador del contador.
        * @returns {Promise<{ ok: boolean, casos?: Array, error?: Object, descartado?: boolean }>}
        */
@@ -183,7 +185,7 @@ export const crearCountersStore = (dependencias = {}) => {
         this.contadorSeleccionadoId = id
         this.casosDetalle = []
         this.cargandoDetalle = true
-        this.error = null
+        this.errorDetalle = null
 
         try {
           const casos = await servicio.getCasosPorContador(id, SOLO_IMPORTANTES)
@@ -201,11 +203,11 @@ export const crearCountersStore = (dependencias = {}) => {
             return { ok: false, descartado: true }
           }
 
-          this.error = normalizarError(error, 'el detalle del contador')
-          this.contadorSeleccionadoId = null
+          // Se conserva la selección para que el detalle ofrezca reintentar sin tumbar la lista.
+          this.errorDetalle = normalizarError(error, 'el detalle del contador')
           this.casosDetalle = []
           this.cargandoDetalle = false
-          return { ok: false, error: this.error }
+          return { ok: false, error: this.errorDetalle }
         }
       },
 
@@ -258,6 +260,7 @@ export const crearCountersStore = (dependencias = {}) => {
         this.contadorSeleccionadoId = null
         this.casosDetalle = []
         this.cargandoDetalle = false
+        this.errorDetalle = null
       },
 
       /** Reintenta la carga completa de P-2 tras un error (RF-36). */

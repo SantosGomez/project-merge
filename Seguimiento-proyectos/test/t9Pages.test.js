@@ -346,8 +346,9 @@ describe('Contadores por nombre (rebanada 5a) — verificación estática', () =
   const detalle = existsSync(fileURLToPath(new URL(rutaDetalle, import.meta.url))) ? read(rutaDetalle) : ''
 
   it('el dashboard nombra al contador seleccionado con su nombre, no con su usuario', () => {
-    assert.match(detalle, /Casos importantes de \{\{ contador\.nombre \}\}/, 'texto del detalle')
-    assert.match(detalle, /El contador \$\{contador\.nombre\} no tiene casos/, 'aviso sin casos')
+    // Revisión de UI, rebanada 5: el título del panel ya dice «Casos importantes de …».
+    assert.match(detalle, /se le avisará a \{\{ contador\.nombre \}\}/, 'texto del detalle')
+    assert.match(detalle, /\$\{contador\.nombre\} no tiene casos/, 'aviso sin casos')
     assert.doesNotMatch(dashboard + detalle, /contador(Seleccionado)?\.usuario/, 'ya no lee el usuario')
   })
 })

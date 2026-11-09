@@ -278,7 +278,8 @@ test('detalle vacío: estadoDetalle en vacío con el contador seleccionado (RF-1
   assert.equal(store.estadoDetalle, 'vacio')
 })
 
-test('si falla el detalle: no se conserva la selección y se informa el error (RF-36)', async () => {
+// Revisión de UI, rebanada 5: el fallo del detalle se queda en el detalle (con reintentar) y la lista sigue.
+test('si falla el detalle: se conserva la selección y el error queda solo en el detalle', async () => {
   const servicio = crearServicioFalso({
     contadores: [{ id: 3, nombre: 'ana' }],
     errores: { casos: ERROR_DETALLE },
@@ -289,11 +290,16 @@ test('si falla el detalle: no se conserva la selección y se informa el error (R
   const resultado = await store.seleccionarContador(3)
 
   assert.equal(resultado.ok, false)
-  assert.equal(store.contadorSeleccionadoId, null, 'P-2 vuelve sin contador seleccionado')
+  assert.equal(store.contadorSeleccionadoId, 3, 'la selección se conserva para reintentar')
   assert.deepEqual(store.casosDetalle, [])
-  assert.deepEqual(store.error, ERROR_DETALLE)
-  assert.ok(esErrorDeTresPartes(store.error))
-  assert.equal(store.estadoPantalla, 'error')
+  assert.deepEqual(store.errorDetalle, ERROR_DETALLE)
+  assert.ok(esErrorDeTresPartes(store.errorDetalle))
+  assert.equal(store.error, null, 'la lista no se marca con error')
+  assert.equal(store.estadoPantalla, 'contenido')
+  assert.equal(store.estadoDetalle, 'error')
+
+  store.limpiarSeleccion()
+  assert.equal(store.errorDetalle, null, 'al quitar la selección se borra el error del detalle')
 })
 
 // --- reintento y reinicio -------------------------------------------------

@@ -1,16 +1,12 @@
 <template>
   <div class="detalle-contador">
     <p v-if="contador" class="detalle-contador__ayuda">
-      Casos importantes de {{ contador.nombre }}. Puedes cambiar la prioridad de cada caso y se
-      avisa a {{ contador.nombre }}. El estado y la fecha de vencimiento solo los cambia el contador.
-    </p>
-    <p v-else class="detalle-contador__ayuda">
-      Selecciona un contador de la lista para ver el cliente, el estado y la prioridad de cada uno
-      de sus casos importantes.
+      Puedes cambiar la prioridad de cada caso y se le avisará a {{ contador.nombre }}; el estado y
+      la fecha de vencimiento solo los cambia {{ contador.nombre }}.
     </p>
 
     <p v-if="!contador" class="detalle-contador__aviso" role="status">
-      Todavía no hay un contador seleccionado. Elige uno de la lista para ver sus casos.
+      Todavía no hay un contador seleccionado. Elige uno de la lista para ver sus casos importantes.
     </p>
 
     <ScreenLoader
@@ -18,15 +14,17 @@
       text="Cargando los casos del contador seleccionado…"
     />
 
-    <!--
-      El estado de error del detalle no llega aquí: el store lo comparte con la carga general y
-      la pantalla muestra el ErrorState completo, que al reintentar vuelve sin contador
-      seleccionado (RF-36).
-    -->
+    <!-- Un fallo del detalle se queda aquí: la lista de contadores sigue a la vista. -->
+    <ErrorState
+      v-else-if="estado === SCREEN_STATES.error"
+      :detail="error?.mensaje ?? 'los casos de este contador.'"
+      @retry="emit('reintentar')"
+    />
+
     <EmptyState
       v-else-if="estado === SCREEN_STATES.empty"
       title="Este contador no tiene casos importantes"
-      :message="`El contador ${contador.nombre} no tiene casos marcados como importantes. Selecciona otro contador de la lista para ver su detalle.`"
+      :message="`${contador.nombre} no tiene casos marcados como importantes.`"
     />
 
     <template v-else>
@@ -70,6 +68,7 @@
 <script setup>
 import CasoItem from './CasoItem.vue'
 import EmptyState from './EmptyState.vue'
+import ErrorState from './ErrorState.vue'
 import FiltrosCasos from './FiltrosCasos.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import { STATUS_LABELS } from '../utils/constants.js'
@@ -92,12 +91,14 @@ defineProps({
   paginacion: { type: Object, required: true },
   /** Mientras se guarda un cambio de prioridad, no se aceptan otros. */
   guardando: { type: Boolean, default: false },
+  /** Error de tres partes de la carga del detalle, o null. */
+  error: { type: Object, default: null },
 })
 
 /** Filtro de estado del detalle; lo comparten los chips y los conteos de la fila del contador. */
 const filtros = defineModel('filtros', { type: Object, required: true })
 
-const emit = defineEmits(['cambiar-pagina', 'cambiar-prioridad'])
+const emit = defineEmits(['cambiar-pagina', 'cambiar-prioridad', 'reintentar'])
 
 const ESTADOS_DETALLE = ['todos', 'pendiente', 'en_proceso', 'finalizado']
 </script>

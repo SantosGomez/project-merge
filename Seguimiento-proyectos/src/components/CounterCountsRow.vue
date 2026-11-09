@@ -7,7 +7,7 @@
         align="left"
         padding="2px 0"
         :ripple="false"
-        class="counter-row__select"
+        class="counter-row__select boton-presionable"
         :aria-pressed="selected"
         @click="emit('select')"
       >
@@ -33,10 +33,10 @@
           stack
           padding="4px 8px"
           :ripple="false"
-          class="counter-row__count"
+          class="counter-row__count boton-presionable"
           :class="{ 'counter-row__count--activo': estadoActivo === status }"
           :aria-pressed="estadoActivo === status ? 'true' : 'false'"
-          :aria-label="`${STATUS_LABELS[status]}: ${counts[status] ?? 0}. ${ayudaConteo(status)}`"
+          :aria-label="`${STATUS_LABELS[status]}: ${counts[status] ?? 0} casos importantes. Filtra el detalle.`"
           @click="emit('filtrar', status)"
         >
           <span class="counter-row__count-value">{{ counts[status] ?? 0 }}</span>
@@ -118,9 +118,23 @@ const emit = defineEmits(['select', 'filtrar'])
   color: var(--dg-texto);
 }
 
-.counter-row:hover {
-  border-color: var(--dg-acento);
-  background: var(--dg-fondo-hover);
+/* Solo con ratón y solo al pasar sobre el nombre: en táctil el hover se queda pegado. */
+@media (hover: hover) and (pointer: fine) {
+  .counter-row:not(.counter-row--selected):has(.counter-row__select:hover) {
+    border-color: var(--dg-acento);
+    background: var(--dg-fondo-hover);
+  }
+
+  .counter-row__count:hover {
+    border-color: var(--dg-acento);
+    background: var(--dg-superficie);
+  }
+}
+
+/* Al elegir un contador o un conteo, el color cambia con suavidad. */
+.counter-row,
+.counter-row__count {
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1), border-color 150ms cubic-bezier(0.23, 1, 0.32, 1), transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Sin el sombreado de q-btn al pasar el puntero o al enfocar: el estado se marca con borde y fondo. */
@@ -196,10 +210,6 @@ const emit = defineEmits(['select', 'filtrar'])
   line-height: inherit;
 }
 
-.counter-row__count:hover {
-  border-color: var(--dg-acento);
-  background: var(--dg-superficie);
-}
 
 /* Conteo por el que se filtra el detalle: borde y fondo azules, además de aria-pressed. */
 .counter-row__count--activo,
@@ -229,7 +239,7 @@ const emit = defineEmits(['select', 'filtrar'])
 
 .counter-row__count-label {
   color: var(--dg-texto-secundario);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.2;
   white-space: nowrap;
 }

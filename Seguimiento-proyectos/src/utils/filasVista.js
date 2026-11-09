@@ -13,9 +13,9 @@ import { formatearRol } from './formateadores.js'
 
 /** Texto de ayuda de cada conteo: qué está contando (RNF-03). */
 export const AYUDA_CONTEO = Object.freeze({
-  pendiente: 'Casos importantes de este contador en estado Pendiente: todavía no se han empezado. Tócalo para ver solo esos casos.',
-  en_proceso: 'Casos importantes de este contador en estado En proceso: están siendo atendidos. Tócalo para ver solo esos casos.',
-  finalizado: 'Casos importantes de este contador en estado Finalizado: ya están terminados. Tócalo para ver solo esos casos.',
+  pendiente: 'Casos importantes de este contador en estado Pendiente: todavía no se han empezado. Haz clic para ver solo esos casos.',
+  en_proceso: 'Casos importantes de este contador en estado En proceso: están siendo atendidos. Haz clic para ver solo esos casos.',
+  finalizado: 'Casos importantes de este contador en estado Finalizado: ya están terminados. Haz clic para ver solo esos casos.',
 })
 
 /**

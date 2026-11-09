@@ -4,6 +4,7 @@
     :class="{
       'caso-item--importante': caso.important && !soloLectura,
       'caso-item--finalizado': esFinalizado,
+      'caso-item--solo-lectura': soloLectura,
     }"
   >
     <q-item-section v-if="!soloLectura" avatar class="caso-item__estrella">
@@ -35,7 +36,8 @@
           Importante
           <q-tooltip>Caso marcado como importante: requiere seguimiento especial.</q-tooltip>
         </span>
-        <PriorityTag :priority="caso.priority" />
+        <!-- Con el selector de prioridad (admin) la etiqueta sobraría: el selector ya la muestra. -->
+        <PriorityTag v-if="!puedeCambiarPrioridad" :priority="caso.priority" />
         <!-- Lo urgente se ve primero: etiqueta a nivel de fila, con texto (el color no es el único aviso). -->
         <span v-if="vencido" class="caso-item__alerta caso-item__alerta--vencido">
           <q-icon name="error_outline" aria-hidden="true" /> Vencido
@@ -120,7 +122,7 @@
         </template>
         <q-tooltip>Cambia la prioridad y avisa al contador. La fecha de vencimiento no cambia.</q-tooltip>
       </q-select>
-      <span class="caso-item__estado-fijo" tabindex="0">
+      <span class="caso-item__estado-fijo">
         {{ STATUS_LABELS[caso.status] ?? caso.status }}
         <q-tooltip>Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.</q-tooltip>
       </span>
@@ -418,10 +420,6 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
   color: var(--dg-exito);
 }
 
-.caso-item__estado-fijo:focus-visible {
-  outline: 3px solid var(--dg-foco);
-  outline-offset: 2px;
-}
 
 /* En celular, las acciones bajan a su propia línea, alineadas con los datos. */
 @media (max-width: 599px) {
@@ -429,6 +427,11 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
     flex: 1 1 100%;
     justify-content: flex-start;
     padding-left: 48px;
+  }
+
+  /* Sin estrella (admin) no hay nada con qué alinear. */
+  .caso-item--solo-lectura .caso-item__acciones {
+    padding-left: 0;
   }
 }
 

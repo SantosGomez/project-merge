@@ -4,14 +4,12 @@
       <div class="dashboard-page__head">
         <div class="dashboard-page__title-area">
           <h2 class="dashboard-page__title">
-            Buen día, bienvenido<template v-if="session.nombreVisible">
-              Contador {{ session.nombreVisible }}</template
-            >
+            Hola<template v-if="session.nombreVisible">, {{ session.nombreVisible }}</template>
           </h2>
           <!-- El texto de ayuda describe la pestaña abierta -->
           <p v-if="pestana === 'casos'" class="dashboard-page__lead">
-            Revisa cuántos casos tiene cada contador en cada estado y selecciona uno para ver el
-            detalle de sus casos.
+            Revisa cuántos casos importantes tiene cada contador en cada estado y selecciona uno para
+            ver sus casos.
           </p>
           <p v-else class="dashboard-page__lead">
             Revisa el avance de todas las auditorías: sus indicadores, en qué fase va cada una y qué
@@ -19,10 +17,10 @@
           </p>
         </div>
         <q-btn
-          class="dashboard-page__directory-btn control-touch"
+          class="dashboard-page__directory-btn control-touch boton-presionable"
           color="primary"
           no-caps
-          unelevated
+          outline
           icon="groups"
           label="Ver directorio"
           :to="{ name: 'admin-directorio' }"
@@ -34,7 +32,7 @@
         <!-- El botón de asignar cambia con la pestaña: caso en «Casos», auditoría en «Auditorías» -->
         <q-btn
           v-if="pestana === 'casos'"
-          class="dashboard-page__asignar-btn control-touch"
+          class="dashboard-page__asignar-btn control-touch boton-presionable"
           color="primary"
           no-caps
           unelevated
@@ -50,7 +48,7 @@
         </q-btn>
         <q-btn
           v-else
-          class="dashboard-page__asignar-btn control-touch"
+          class="dashboard-page__asignar-btn control-touch boton-presionable"
           color="primary"
           no-caps
           unelevated
@@ -85,7 +83,15 @@
       </q-tabs>
 
       <!-- keep-alive: al cambiar de pestaña no se pierde el contador elegido en «Casos» -->
-      <q-tab-panels v-model="pestana" keep-alive animated class="dashboard-page__paneles">
+      <q-tab-panels
+        v-model="pestana"
+        keep-alive
+        animated
+        transition-prev="fade"
+        transition-next="fade"
+        :transition-duration="150"
+        class="dashboard-page__paneles"
+      >
         <q-tab-panel name="casos" class="dashboard-page__panel">
           <ResumenEquipo
             seleccionable
@@ -121,11 +127,9 @@
                   Contadores del equipo
                 </h2>
                 <p class="dashboard-panel__help">
-                  Cada conteo indica cuántos casos importantes tiene el contador en estado
-                  Pendiente, En proceso o Finalizado (0 si no tiene). Toca el nombre para ver todos
-                  sus casos importantes o un conteo para ver solo los de ese estado. Toca una
-                  tarjeta del resumen o un estado de la gráfica para ver solo a los contadores que
-                  tienen esos casos.
+                  Cada número es la cantidad de casos importantes del contador en ese estado. Haz
+                  clic en el nombre para ver todos sus casos o en un número para ver solo ese
+                  estado.
                 </p>
               </div>
 
@@ -149,7 +153,10 @@
                   >
                 </q-input>
                 <div class="counter-search__resultado" aria-live="polite">
-                  <span>{{ contadoresVisibles.length }} de {{ contadores.length }} contadores</span>
+                  <span
+                    >{{ contadoresVisibles.length }} de {{ contadores.length }}
+                    {{ contadores.length === 1 ? 'contador' : 'contadores' }}</span
+                  >
                   <q-chip
                     v-if="filtroKpi"
                     removable
@@ -163,7 +170,8 @@
                   >
                     <q-tooltip
                       >Solo se ven los contadores con casos importantes de este tipo, de más a
-                      menos. Toca la ✕ para ver a todos.</q-tooltip
+                      menos. Quita el filtro con el botón del chip para ver a todos. Las tarjetas y
+                      la gráfica de arriba también filtran esta lista.</q-tooltip
                     >
                   </q-chip>
                 </div>
@@ -211,7 +219,9 @@
               aria-labelledby="counter-detail-title"
             >
               <div class="dashboard-panel__head">
-                <h2 id="counter-detail-title" class="dashboard-panel__title">Detalle de casos</h2>
+                <h2 id="counter-detail-title" class="dashboard-panel__title">
+                  Casos importantes<template v-if="contadorSeleccionado"> de {{ contadorSeleccionado.nombre }}</template>
+                </h2>
               </div>
 
               <div class="dashboard-panel__body">
@@ -222,8 +232,10 @@
                   :filas="filasDetalle"
                   :paginacion="paginacionDetalle"
                   :guardando="guardandoPrioridad"
+                  :error="contadoresStore.errorDetalle"
                   @cambiar-pagina="(p) => (paginaDetalle = p)"
                   @cambiar-prioridad="cambiarPrioridad"
+                  @reintentar="reintentarDetalle"
                 />
               </div>
             </section>
@@ -243,12 +255,13 @@
         v-if="pantallaChica"
         v-model="dialogoDetalle"
         position="bottom"
+        :transition-duration="220"
         aria-labelledby="dialogo-detalle-titulo"
       >
         <q-card class="detalle-dialogo">
           <q-card-section class="detalle-dialogo__cabecera">
             <h2 id="dialogo-detalle-titulo" class="detalle-dialogo__titulo">
-              Casos de {{ contadorSeleccionado?.nombre }}
+              Casos importantes de {{ contadorSeleccionado?.nombre }}
             </h2>
             <q-btn
               v-close-popup
@@ -272,8 +285,10 @@
               :filas="filasDetalle"
               :paginacion="paginacionDetalle"
               :guardando="guardandoPrioridad"
+              :error="contadoresStore.errorDetalle"
               @cambiar-pagina="(p) => (paginaDetalle = p)"
               @cambiar-prioridad="cambiarPrioridad"
+              @reintentar="reintentarDetalle"
             />
           </q-card-section>
         </q-card>
@@ -372,7 +387,7 @@ const filtroKpi = ref(null)
 const ETIQUETAS_KPI = Object.freeze({
   vencidos: 'Vencidos',
   abiertos: 'Abiertos',
-  alta_abiertos: 'Prioridad Alta abierta',
+  alta_abiertos: 'Alta sin finalizar',
   pendiente: 'Pendiente',
   en_proceso: 'En proceso',
   finalizado: 'Finalizado',
@@ -454,6 +469,9 @@ const filtrarPorConteo = (contadorId, estado) => {
 /** Reintenta la carga completa; P-2 vuelve sin contador seleccionado (RF-36). */
 const reintentar = () => contadoresStore.reintentar()
 
+/** Reintenta solo el detalle del contador elegido; la lista no se toca. */
+const reintentarDetalle = () => contadoresStore.seleccionarContador(contadoresStore.contadorSeleccionadoId)
+
 /** Mientras se guarda un cambio de prioridad no se aceptan otros. */
 const guardandoPrioridad = ref(false)
 
@@ -475,25 +493,36 @@ const cambiarPrioridad = (caso, prioridad) => {
     cancel: { label: 'Cancelar', flat: true, noCaps: true },
     ok: { label: 'Cambiar prioridad', color: 'primary', unelevated: true, noCaps: true },
     persistent: true,
-  }).onOk(async () => {
-    guardandoPrioridad.value = true
-    try {
-      const actualizado = await cambiarPrioridadComoAdmin(caso.id, prioridad)
-      contadoresStore.reemplazarCasoDetalle(actualizado)
-      $q.notify({
-        type: 'positive',
-        message: `Prioridad actualizada. Se avisó a ${nombreContador}.`,
-      })
-      cargarResumen()
-    } catch (fallo) {
-      $q.notify({
-        type: 'negative',
-        message: fallo?.mensaje ?? 'No se pudo cambiar la prioridad. Inténtalo de nuevo.',
-      })
-    } finally {
-      guardandoPrioridad.value = false
-    }
-  })
+    transitionShow: 'dialogo-entra',
+    transitionHide: 'dialogo-sale',
+    transitionDuration: 220,
+  }).onOk(() => guardarPrioridad(caso, prioridad, nombreContador))
+}
+
+/** Guarda la prioridad ya confirmada; si falla, el aviso permite reintentar sin volver a confirmar. */
+const guardarPrioridad = async (caso, prioridad, nombreContador) => {
+  if (guardandoPrioridad.value) return
+  guardandoPrioridad.value = true
+  try {
+    const actualizado = await cambiarPrioridadComoAdmin(caso.id, prioridad)
+    contadoresStore.reemplazarCasoDetalle(actualizado)
+    $q.notify({
+      type: 'positive',
+      message: `Prioridad actualizada. Se avisó a ${nombreContador}.`,
+    })
+    cargarResumen()
+  } catch (fallo) {
+    $q.notify({
+      type: 'negative',
+      message: fallo?.mensaje ?? 'No se pudo cambiar la prioridad. Inténtalo de nuevo.',
+      timeout: 8000,
+      actions: [
+        { label: 'Reintentar', color: 'white', noCaps: true, handler: () => guardarPrioridad(caso, prioridad, nombreContador) },
+      ],
+    })
+  } finally {
+    guardandoPrioridad.value = false
+  }
 }
 
 /** Diálogo para registrar un caso a nombre de un contador (el backend le avisa). */
@@ -506,7 +535,9 @@ const dialogoAsignarAbierto = ref(false)
 const alAsignar = (caso) => {
   const nombreContador =
     contadores.value.find((contador) => contador.id === caso.contador_id)?.nombre ?? 'el contador'
-  $q.notify({ type: 'positive', message: `Caso asignado. Se avisó a ${nombreContador}.` })
+  // El dashboard solo muestra casos importantes: si no lo es, se dice por qué no aparece.
+  const nota = caso.importante ? '' : ' No aparece en el dashboard porque no está marcado como importante.'
+  $q.notify({ type: 'positive', message: `Caso asignado. Se avisó a ${nombreContador}.${nota}` })
   cargarResumen()
   contadoresStore.refrescarEnSilencio(caso.contador_id)
 }
@@ -558,6 +589,15 @@ const dejarDeEscuchar = [
   }),
 ]
 onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
+
+// Al volver a la pestaña (por ejemplo, al día siguiente) se refrescan cifras y conteos sin loader.
+const alVolver = () => {
+  if (document.visibilityState !== 'visible') return
+  cargarResumen()
+  contadoresStore.refrescarEnSilencio()
+}
+document.addEventListener('visibilitychange', alVolver)
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolver))
 
 onMounted(async () => {
   cargarResumen()
@@ -661,9 +701,9 @@ onMounted(async () => {
   flex-direction: column;
   min-width: 0;
   padding: 12px;
-  border: 1px solid #dbe4ee;
+  border: 1px solid var(--dg-borde);
   border-radius: 12px;
-  background: #f7f9fc;
+  background: var(--dg-fondo-panel);
 }
 
 .dashboard-panel__head {
@@ -672,14 +712,14 @@ onMounted(async () => {
 
 .dashboard-panel__title {
   margin: 0 0 6px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.15rem;
   line-height: 1.25;
 }
 
 .dashboard-panel__help {
   margin: 0;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
   line-height: 1.45;
 }
@@ -696,7 +736,7 @@ onMounted(async () => {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f7f9fc;
+  background: var(--dg-fondo-panel);
 }
 
 .counter-search__resultado {
@@ -705,7 +745,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px 8px;
   margin: -4px 0 0;
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.85rem;
 }
 
@@ -716,10 +756,10 @@ onMounted(async () => {
 .dashboard-panel__prompt {
   margin: 0;
   padding: 20px 16px;
-  border: 1px dashed #b9c4d0;
+  border: 1px dashed var(--dg-borde-discontinuo);
   border-radius: 10px;
-  background: #ffffff;
-  color: #334e68;
+  background: var(--dg-superficie);
+  color: var(--dg-texto-secundario);
   font-size: 0.95rem;
   line-height: 1.5;
   text-align: center;

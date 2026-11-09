@@ -82,7 +82,7 @@ describe('Dashboard del administrador: pestañas «Casos | Auditorías»', () =>
       pagina,
       /<q-tabs[\s\S]*?v-model="pestana"[\s\S]*?name="casos"[\s\S]*?name="auditorias"/,
     )
-    assert.match(pagina, /<q-tab-panels v-model="pestana"[\s\S]*?keep-alive/)
+    assert.match(pagina, /<q-tab-panels\s+v-model="pestana"[\s\S]*?keep-alive/)
     assert.match(pagina, /route\.query\.tab/)
     assert.match(pagina, /router\.replace\(/)
   })
@@ -307,7 +307,7 @@ describe('Dashboard: tiempo real y encabezado por pestaña', () => {
   it('el texto del encabezado cambia con la pestaña', () => {
     assert.match(
       pagina,
-      /<p v-if="pestana === 'casos'" class="dashboard-page__lead">\s*Revisa cuántos casos tiene/,
+      /<p v-if="pestana === 'casos'" class="dashboard-page__lead">\s*Revisa cuántos casos importantes tiene/,
     )
     assert.match(
       pagina,
