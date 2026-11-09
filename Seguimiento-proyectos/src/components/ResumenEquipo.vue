@@ -37,19 +37,24 @@
           class="resumen-tarjeta"
           :class="{
             'resumen-tarjeta--alerta': tarjeta.alerta,
+            'resumen-tarjeta--aviso': tarjeta.aviso,
             'resumen-tarjeta--clicable': seleccionable,
             'resumen-tarjeta--activa': seleccionable && activa === tarjeta.clave,
+            'boton-presionable': seleccionable,
           }"
-          tabindex="0"
-          :role="seleccionable ? 'button' : undefined"
-          :aria-pressed="seleccionable ? String(activa === tarjeta.clave) : undefined"
-          @click="seleccionable && emit('seleccionar', tarjeta.clave)"
-          @keydown.enter.prevent="seleccionable && emit('seleccionar', tarjeta.clave)"
-          @keydown.space="
-            seleccionable && ($event.preventDefault(), emit('seleccionar', tarjeta.clave))
-          "
         >
-          <q-card-section class="resumen-tarjeta__cuerpo">
+          <!-- El botón va dentro del li: la lista se conserva. «Presionado» solo cuando filtra (admin). -->
+          <q-card-section
+            class="resumen-tarjeta__cuerpo"
+            :tabindex="seleccionable ? 0 : undefined"
+            :role="seleccionable ? 'button' : undefined"
+            :aria-pressed="seleccionable && !propios ? String(activa === tarjeta.clave) : undefined"
+            @click="seleccionable && emit('seleccionar', tarjeta.clave)"
+            @keydown.enter.prevent="seleccionable && emit('seleccionar', tarjeta.clave)"
+            @keydown.space="
+              seleccionable && ($event.preventDefault(), emit('seleccionar', tarjeta.clave))
+            "
+          >
             <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
             <p class="resumen-tarjeta__valor">{{ tarjeta.valor }}</p>
             <p class="resumen-tarjeta__detalle">{{ tarjeta.detalle }}</p>
@@ -164,18 +169,21 @@ const tarjetas = computed(() =>
   flex: 1;
 }
 
-.resumen-tarjeta:focus-visible {
+.resumen-tarjeta__cuerpo:focus-visible {
   outline: 2px solid var(--q-primary);
   outline-offset: 2px;
 }
 
 .resumen-tarjeta--clicable {
   cursor: pointer;
-  transition: box-shadow 0.15s ease;
+  transition: box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.resumen-tarjeta--clicable:hover {
-  box-shadow: 0 0 0 2px var(--dg-fondo-seleccion);
+/* Solo con ratón: en táctil el hover se queda pegado. */
+@media (hover: hover) and (pointer: fine) {
+  .resumen-tarjeta--clicable:hover {
+    box-shadow: 0 0 0 2px var(--dg-borde-fuerte);
+  }
 }
 
 .resumen-tarjeta--activa {
@@ -185,6 +193,16 @@ const tarjetas = computed(() =>
 .resumen-tarjeta--alerta {
   border-left-color: var(--dg-error);
   background: var(--dg-error-fondo-suave);
+}
+
+/* Aviso (próximos a vencer, sin movimiento): ámbar; el rojo queda para lo vencido. */
+.resumen-tarjeta--aviso {
+  border-left-color: var(--dg-importante);
+  background: var(--dg-importante-fondo-suave);
+}
+
+.resumen-tarjeta--aviso .resumen-tarjeta__valor {
+  color: var(--dg-importante-texto);
 }
 
 .resumen-tarjeta__titulo {

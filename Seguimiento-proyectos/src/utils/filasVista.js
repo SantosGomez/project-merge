@@ -156,9 +156,9 @@ export const tarjetasResumen = (resumen, { propios = false, seleccionable = fals
     },
     {
       clave: 'alta_abiertos',
-      titulo: 'Prioridad Alta abierta',
+      titulo: 'Alta sin finalizar',
       valor: dato('alta_abiertos'),
-      detalle: 'Casos de prioridad Alta sin finalizar',
+      detalle: 'Pendientes o en proceso',
       ayuda: `${sujeto} con prioridad Alta que todavía no están en estado Finalizado.`,
       alerta: false,
     },
@@ -174,7 +174,9 @@ export const tarjetasResumen = (resumen, { propios = false, seleccionable = fals
         valor: proximos,
         detalle: 'Vencen hoy o en los próximos 3 días',
         ayuda: `${sujeto} sin finalizar cuya fecha de vencimiento es hoy o en los próximos 3 días.`,
-        alerta: proximos > 0,
+        alerta: false,
+        // Ámbar, no rojo: el rojo queda solo para lo que ya venció.
+        aviso: proximos > 0,
       },
       {
         clave: 'sinMovimiento',
@@ -182,23 +184,24 @@ export const tarjetasResumen = (resumen, { propios = false, seleccionable = fals
         valor: sinMovimiento,
         detalle: `Sin ningún cambio en ${DIAS_SIN_MOVIMIENTO} días o más`,
         ayuda: `${sujeto} sin finalizar que nadie ha editado en los últimos ${DIAS_SIN_MOVIMIENTO} días: ni estado, ni fechas, ni observaciones.`,
-        alerta: sinMovimiento > 0,
+        alerta: false,
+        aviso: sinMovimiento > 0,
       },
     )
   }
 
   if (!seleccionable) return tarjetas
   const alTocar = propios
-    ? 'Toca la tarjeta para verlos en «Mis casos».'
-    : 'Toca la tarjeta para ver solo a los contadores que tienen estos casos.'
+    ? 'Haz clic en la tarjeta para verlos en «Mis casos».'
+    : 'Haz clic en la tarjeta para ver solo a los contadores que tienen estos casos.'
   return tarjetas.map((tarjeta) => ({ ...tarjeta, ayuda: `${tarjeta.ayuda} ${alTocar}` }))
 }
 
 /** Color de cada estado en la dona del dashboard: ámbar (en espera), azul (en curso) y verde (listo). */
 export const COLOR_ESTADO = Object.freeze({
-  pendiente: '#b45309',
-  en_proceso: '#1f5f99',
-  finalizado: '#2f855a',
+  pendiente: 'var(--dg-estado-pendiente)',
+  en_proceso: 'var(--dg-estado-en-proceso)',
+  finalizado: 'var(--dg-estado-finalizado)',
 })
 
 /**

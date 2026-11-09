@@ -369,3 +369,13 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
     transform: none;
   }
 }
+
+/* Texto solo para lectores de pantalla (por ejemplo, el nombre de la fase en la tabla «Avance»). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}

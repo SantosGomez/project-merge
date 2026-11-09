@@ -10,8 +10,11 @@
     <q-card-section class="alertas-auditoria__cabecera">
       <q-icon name="warning_amber" size="sm" class="alertas-auditoria__icono" aria-hidden="true" />
       <h3 id="alertas-auditoria-titulo" class="alertas-auditoria__titulo">
-        {{ alertas.length === 1 ? 'Tienes 1 auditoría' : `Tienes ${alertas.length} auditorías` }}
-        que requieren atención
+        {{
+          alertas.length === 1
+            ? 'Tienes 1 auditoría vencida o crítica'
+            : `Tienes ${alertas.length} auditorías vencidas o críticas`
+        }}
       </h3>
     </q-card-section>
 
@@ -35,7 +38,7 @@
         <q-item-section>
           <q-item-label class="alertas-auditoria__cliente">
             {{ alerta.cliente }}
-            <span class="alertas-auditoria__expediente">· Exp. {{ alerta.noExpediente }}</span>
+            <span class="alertas-auditoria__expediente">· Expediente {{ alerta.noExpediente }}</span>
           </q-item-label>
           <q-item-label caption>
             <template v-if="alerta.queVence">{{ alerta.queVence }}: </template>
@@ -45,7 +48,7 @@
         <q-item-section side>
           <q-icon name="chevron_right" aria-hidden="true" />
         </q-item-section>
-        <q-tooltip>{{ AYUDA_SEMAFORO[alerta.semaforo] }} Toca para abrir su ficha.</q-tooltip>
+        <q-tooltip>{{ AYUDA_SEMAFORO[alerta.semaforo] }} Haz clic para abrir su ficha.</q-tooltip>
       </q-item>
     </q-list>
   </q-card>

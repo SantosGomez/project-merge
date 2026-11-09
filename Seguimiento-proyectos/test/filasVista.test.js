@@ -201,7 +201,7 @@ test('tarjetasResumen arma las 3 tarjetas KPI del dashboard con su número, desg
     [
       { clave: 'vencidos', titulo: 'Vencidos', valor: 1, detalle: 'Sin finalizar y con la fecha de vencimiento ya pasada' },
       { clave: 'abiertos', titulo: 'Abiertos', valor: 5, detalle: 'Pendientes: 3 · En proceso: 2' },
-      { clave: 'alta_abiertos', titulo: 'Prioridad Alta abierta', valor: 4, detalle: 'Casos de prioridad Alta sin finalizar' },
+      { clave: 'alta_abiertos', titulo: 'Alta sin finalizar', valor: 4, detalle: 'Pendientes o en proceso' },
     ],
   )
   for (const tarjeta of tarjetas) {
@@ -214,16 +214,16 @@ test('tarjetasResumen habla del equipo por defecto y de «tus casos» con propio
 
   for (const ayuda of ayudas()) {
     assert.match(ayuda, /todo el equipo/)
-    assert.doesNotMatch(ayuda, /Toca/, 'sin seleccionable la tarjeta no hace nada al tocarla')
+    assert.doesNotMatch(ayuda, /Haz clic/, 'sin seleccionable la tarjeta no hace nada al hacer clic')
   }
   for (const ayuda of ayudas({ seleccionable: true })) {
     assert.match(ayuda, /todo el equipo/)
-    assert.match(ayuda, /Toca la tarjeta para ver solo a los contadores que tienen estos casos\.$/)
+    assert.match(ayuda, /Haz clic en la tarjeta para ver solo a los contadores que tienen estos casos\.$/)
   }
   for (const ayuda of ayudas({ propios: true, seleccionable: true })) {
     assert.match(ayuda, /^Tus casos/)
     assert.doesNotMatch(ayuda, /equipo/)
-    assert.match(ayuda, /Toca la tarjeta para verlos en «Mis casos»\.$/)
+    assert.match(ayuda, /Haz clic en la tarjeta para verlos en «Mis casos»\.$/)
   }
 })
 
@@ -243,8 +243,10 @@ test('tarjetasResumen agrega «Próximos a vencer» solo en «Mi resumen» y no 
     tarjetasResumen(resumen, { propios: true }).find((t) => t.clave === clave)
   const proximos = tarjeta({ proximosAVencer: 2 }, 'proximosAVencer')
   assert.equal(proximos.valor, 2)
-  assert.equal(proximos.alerta, true)
-  assert.equal(tarjeta({}, 'proximosAVencer').alerta, false)
+  // Revisión de UI, rebanada 4: aviso ámbar, no alerta roja (el rojo queda para lo vencido).
+  assert.equal(proximos.aviso, true)
+  assert.equal(proximos.alerta, false)
+  assert.equal(tarjeta({}, 'proximosAVencer').aviso, false)
 })
 
 test('tarjetasResumen: «Sin movimiento» en «Mi resumen» cuenta los abiertos sin cambios en 7 días', () => {
@@ -252,8 +254,8 @@ test('tarjetasResumen: «Sin movimiento» en «Mi resumen» cuenta los abiertos 
     tarjetasResumen(resumen, { propios: true }).find((t) => t.clave === 'sinMovimiento')
 
   assert.equal(sinMovimiento({ sinMovimiento: 3 }).valor, 3)
-  assert.equal(sinMovimiento({ sinMovimiento: 3 }).alerta, true)
-  assert.equal(sinMovimiento({}).alerta, false)
+  assert.equal(sinMovimiento({ sinMovimiento: 3 }).aviso, true)
+  assert.equal(sinMovimiento({}).aviso, false)
   assert.match(sinMovimiento({}).ayuda, /7 días/)
 })
 
@@ -283,8 +285,8 @@ test('segmentosDona reparte la dona por estado: arcos en porcentaje y desplazami
   )
   assert.deepEqual(
     dona.segmentos.map((s) => s.color),
-    ['#b45309', '#1f5f99', '#2f855a'],
-    'ámbar, azul y verde',
+    ['var(--dg-estado-pendiente)', 'var(--dg-estado-en-proceso)', 'var(--dg-estado-finalizado)'],
+    'ámbar, azul y verde de la paleta',
   )
 })
 

@@ -16,7 +16,7 @@
             cy="21"
             r="15.9"
             fill="none"
-            :stroke="segmento.color"
+            :style="{ stroke: segmento.color }"
             stroke-width="6"
             pathLength="100"
             :stroke-dasharray="`${segmento.arco} ${100 - segmento.arco}`"
@@ -24,7 +24,7 @@
           />
         </g>
         <text x="21" y="21" class="dona-estados__total">{{ dona.total }}</text>
-        <text x="21" y="26.5" class="dona-estados__total-etiqueta">casos</text>
+        <text x="21" y="27.5" class="dona-estados__total-etiqueta">casos</text>
       </svg>
 
       <q-list tag="ul" class="dona-estados__leyenda">
@@ -33,18 +33,19 @@
           :key="segmento.clave"
           tag="li"
           class="dona-estados__item"
+          :class="{ 'boton-presionable': seleccionable }"
           :clickable="seleccionable"
           :active="activa === segmento.clave"
           active-class="dona-estados__item--activo"
-          :aria-pressed="seleccionable ? String(activa === segmento.clave) : undefined"
+          :aria-pressed="seleccionable && !propios ? String(activa === segmento.clave) : undefined"
           @click="seleccionable && emit('seleccionar', segmento.clave)"
         >
           <q-tooltip v-if="seleccionable">
             <template v-if="propios">
-              Toca para ver tus casos en estado {{ segmento.etiqueta }} en «Mis casos».
+              Haz clic para ver tus casos en estado {{ segmento.etiqueta }} en «Mis casos».
             </template>
             <template v-else>
-              Toca para ver solo a los contadores con casos en estado {{ segmento.etiqueta }}.
+              Haz clic para ver solo a los contadores con casos en estado {{ segmento.etiqueta }}.
             </template>
           </q-tooltip>
           <span
@@ -142,7 +143,7 @@ const descripcion = computed(
 
 .dona-estados__total-etiqueta {
   fill: var(--dg-texto-tenue);
-  font-size: 4px;
+  font-size: 5.5px;
   text-anchor: middle;
 }
 
@@ -166,6 +167,13 @@ const descripcion = computed(
   font-size: 0.9rem;
 }
 
+/* Con clic, cada estado de la leyenda tiene un área de 44 px (PRODUCT.md). */
+.dona-estados__item.q-item--clickable {
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 8px;
+}
+
 .dona-estados__item--activo {
   color: var(--q-primary);
   font-weight: 600;
@@ -180,5 +188,16 @@ const descripcion = computed(
 
 .dona-estados__cifra {
   color: var(--dg-texto-tenue);
+}
+
+/* Al llegar un cambio en tiempo real, los arcos se reacomodan en vez de saltar. */
+.dona-estados__grafica circle {
+  transition: stroke-dasharray 300ms cubic-bezier(0.23, 1, 0.32, 1), stroke-dashoffset 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dona-estados__grafica circle {
+    transition: none;
+  }
 }
 </style>

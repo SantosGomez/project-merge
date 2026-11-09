@@ -4,13 +4,13 @@
       <div class="dashboard-page__head">
         <div class="dashboard-page__title-area">
           <h2 class="dashboard-page__title">
-            Buen día<template v-if="session.nombreVisible">, {{ session.nombreVisible }}</template>
+            Hola<template v-if="session.nombreVisible">, {{ session.nombreVisible }}</template>
           </h2>
           <!-- El texto de ayuda describe la pestaña abierta -->
           <p v-if="pestana === 'casos'" class="dashboard-page__lead">
-            Revisa de un vistazo cuántos casos tienes en cada estado, cuántos ya vencieron y cuántos
-            son de prioridad Alta. Toca una tarjeta o un estado de la gráfica para ver esos casos en
-            «Mis casos».
+            Revisa cuántos casos tienes en cada estado, cuántos ya vencieron y cuántos son de
+            prioridad Alta. Haz clic en una tarjeta o en un estado de la leyenda para ver esos casos
+            en «Mis casos».
           </p>
           <p v-else class="dashboard-page__lead">
             Revisa el avance de tus auditorías: sus indicadores, en qué fase va cada una y qué vence
@@ -65,7 +65,15 @@
         </q-tab>
       </q-tabs>
 
-      <q-tab-panels v-model="pestana" keep-alive animated class="dashboard-page__paneles">
+      <q-tab-panels
+        v-model="pestana"
+        keep-alive
+        animated
+        transition-prev="fade"
+        transition-next="fade"
+        :transition-duration="150"
+        class="dashboard-page__paneles"
+      >
         <q-tab-panel name="casos" class="dashboard-page__panel">
           <ResumenEquipo
             propios
@@ -77,10 +85,13 @@
             @seleccionar="abrirMisCasos"
           />
 
+          <!-- Reserva el lugar de la agenda mientras carga: la página no salta al aparecer. -->
+          <q-skeleton v-if="cases.cargando" type="rect" height="180px" class="dashboard-page__esqueleto" />
           <AgendaCasos
-            v-if="!cases.cargando && !cases.error"
+            v-else-if="!cases.error"
             :casos="agenda"
-            :hoy="hoyLocal()"
+            :total-abiertos="resumen.abiertos"
+            :hoy="hoy"
             :cambiando="casoCambiando"
             @editar="abrirEdicion"
             @cambiar-estado="cambiarEstado"
@@ -137,8 +148,15 @@ const pestana = computed({
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
 })
 
-const resumen = computed(() => resumenMisCasos(cases.casos, hoyLocal()))
-const agenda = computed(() => agendaCasos(cases.casos, hoyLocal()))
+// «Hoy» se recalcula al volver a la ventana: si la app queda abierta de un día para otro,
+// los vencidos, los próximos a vencer y la agenda se actualizan.
+const hoy = ref(hoyLocal())
+const actualizarHoy = () => {
+  if (document.visibilityState === 'visible') hoy.value = hoyLocal()
+}
+
+const resumen = computed(() => resumenMisCasos(cases.casos, hoy.value))
+const agenda = computed(() => agendaCasos(cases.casos, hoy.value))
 
 const dialogoEdicionAbierto = ref(false)
 const casoEnEdicion = ref(null)
@@ -157,12 +175,21 @@ const casoCambiando = ref(null)
  * @param {string} estado - código interno del estado nuevo.
  */
 const cambiarEstado = async (casoId, estado) => {
+  const cliente = cases.casos.find((caso) => String(caso.id) === String(casoId))?.cliente ?? 'este cliente'
   casoCambiando.value = casoId
   const resultado = await cases.actualizarCaso(casoId, { estado })
   casoCambiando.value = null
 
   if (resultado.ok) {
-    $q.notify({ type: 'positive', message: `Caso cambiado a ${STATUS_LABELS[estado]}.` })
+    $q.notify({
+      type: 'positive',
+      message: `Caso de ${cliente} ahora está ${STATUS_LABELS[estado]}.`,
+      // Finalizar se hace con un clic: se puede deshacer (desde la agenda solo se finaliza lo que estaba En proceso).
+      actions:
+        estado === 'finalizado'
+          ? [{ label: 'Deshacer', color: 'white', noCaps: true, handler: () => cambiarEstado(casoId, 'en_proceso') }]
+          : [],
+    })
   } else if (!resultado.descartado) {
     $q.notify({ type: 'negative', message: resultado.error?.mensaje ?? 'Error al guardar el cambio.' })
   }
@@ -183,7 +210,9 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
 onMounted(() => {
   cases.cargarCasos()
+  document.addEventListener('visibilitychange', actualizarHoy)
 })
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', actualizarHoy))
 </script>
 
 <style scoped>
@@ -237,6 +266,10 @@ onMounted(() => {
 
 .dashboard-page__panel {
   padding: 12px 0 0;
+}
+
+.dashboard-page__esqueleto {
+  border-radius: 12px;
 }
 
 .control-touch {

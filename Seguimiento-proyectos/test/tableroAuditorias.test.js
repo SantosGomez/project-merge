@@ -106,11 +106,12 @@ describe('Tablero de auditorías: sub-pestañas Resumen y Avance', () => {
       tablero,
       /<q-tabs[\s\S]*?v-model="vista"[\s\S]*?name="resumen"[\s\S]*?name="avance"/,
     )
-    assert.match(tablero, /<q-tab-panels v-model="vista"/)
+    assert.match(tablero, /<q-tab-panels\s+v-model="vista"/)
   })
 
+  // Revisión de UI, rebanada 4: la primera vez con loader; al volver, refresco silencioso.
   it('carga las auditorías al mostrarse la pestaña', () => {
-    assert.match(tablero, /onActivated\(cargar\)/)
+    assert.match(tablero, /onActivated\(\(\) => \(fases\.value\.length > 0 \? refrescarEnSilencio\(\) : cargar\(\)\)\)/)
     assert.match(tablero, /listarAuditorias\(\)/)
   })
 
@@ -297,7 +298,7 @@ describe('Dashboard: tiempo real y encabezado por pestaña', () => {
     assert.match(tablero, /onBeforeUnmount\(/)
     const silencioso = tablero.slice(
       tablero.indexOf('const refrescarEnSilencio'),
-      tablero.indexOf('onActivated(cargar)'),
+      tablero.indexOf('onActivated('),
     )
     assert.match(silencioso, /listarAuditorias\(\)/)
     assert.doesNotMatch(silencioso, /cargando\.value = true/, 'sin loader: la vista no parpadea')

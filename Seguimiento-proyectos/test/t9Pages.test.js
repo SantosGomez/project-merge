@@ -588,7 +588,8 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
       /<DonaEstados[\s\S]*?:seleccionable="seleccionable"[\s\S]*?:activa="activa"[\s\S]*?@seleccionar="\(estado\) => emit\('seleccionar', estado\)"/,
     )
     assert.match(componente, /role="seleccionable \? 'button' : undefined"/, 'solo es botón con seleccionable')
-    assert.match(componente, /aria-pressed="seleccionable \? String\(activa === tarjeta\.clave\) : undefined"/)
+    // «Presionado» solo donde la tarjeta filtra (admin); en «Mi resumen» lleva a otra pantalla.
+    assert.match(componente, /aria-pressed="seleccionable && !propios \? String\(activa === tarjeta\.clave\) : undefined"/)
     assert.match(componente, /seleccionable: \{ type: Boolean, default: false \}/, 'no es clicable por defecto')
     assert.match(dona, /seleccionable: \{ type: Boolean, default: false \}/, 'la dona no es clicable por defecto')
     assert.match(dona, /emit\('seleccionar', segmento\.clave\)/)
@@ -613,7 +614,7 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
     assert.match(agenda, /emit\('editar', caso\.id\)/)
     assert.doesNotMatch(agenda, /#[0-9a-f]{3,6}\b/i, 'sin colores sueltos')
 
-    assert.match(miResumen, /agendaCasos\(cases\.casos, hoyLocal\(\)\)/)
+    assert.match(miResumen, /agendaCasos\(cases\.casos, hoy\.value\)/)
     assert.match(miResumen, /<AgendaCasos[\s\S]*?:casos="agenda"[\s\S]*?@editar="abrirEdicion"/)
     assert.match(miResumen, /<CaseFormDialog[\s\S]*?v-model="dialogoEdicionAbierto"[\s\S]*?:caso="casoEnEdicion"[\s\S]*?@guardado=/)
   })

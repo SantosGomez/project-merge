@@ -47,7 +47,14 @@
         </q-tab>
       </q-tabs>
 
-      <q-tab-panels v-model="vista" animated class="tablero__paneles">
+      <q-tab-panels
+        v-model="vista"
+        animated
+        transition-prev="fade"
+        transition-next="fade"
+        :transition-duration="150"
+        class="tablero__paneles"
+      >
         <q-tab-panel name="resumen" class="tablero__panel">
           <div class="tablero__indicadores">
             <q-card
@@ -74,7 +81,7 @@
                 </p>
                 <ul class="grafica__barras">
                   <li v-for="barra in barrasSemaforo" :key="barra.semaforo" class="grafica__fila">
-                    <span class="grafica__etiqueta">{{ barra.semaforo }}</span>
+                    <span class="grafica__etiqueta">{{ etiquetaSemaforo(barra.semaforo) }}</span>
                     <q-linear-progress
                       :value="barra.proporcion"
                       track-color="dg-fondo-suave"
@@ -82,7 +89,7 @@
                       rounded
                       class="grafica__barra grafica__barra--semaforo"
                       :class="`semaforo--${barra.clase}`"
-                      :aria-label="`${barra.semaforo}: ${barra.valor} de ${auditorias.length}`"
+                      :aria-label="`${etiquetaSemaforo(barra.semaforo)}: ${barra.valor} de ${auditorias.length}`"
                     />
                     <span class="grafica__valor">{{ barra.valor }}</span>
                   </li>
@@ -176,8 +183,8 @@
             <thead>
               <tr>
                 <th class="text-left">Cliente</th>
-                <th class="text-left">Tipo</th>
-                <th class="text-left">Dependencia</th>
+                <th class="text-left gt-xs">Tipo</th>
+                <th class="text-left gt-xs">Dependencia</th>
                 <th v-for="fase in fases" :key="fase.id" class="text-center avance__fase-th">
                   {{ fase.id }}
                   <q-tooltip>{{ fase.nombre }}</q-tooltip>
@@ -194,8 +201,10 @@
                 :key="auditoria.id"
                 class="avance__fila"
                 tabindex="0"
+                :aria-label="`Abrir la ficha de ${auditoria.cliente}`"
                 @click="verFicha(auditoria.id)"
                 @keydown.enter="verFicha(auditoria.id)"
+                @keydown.space.prevent="verFicha(auditoria.id)"
               >
                 <td
                   class="avance__cliente avance__franja"
@@ -204,15 +213,16 @@
                   {{ auditoria.cliente }}
                   <div class="avance__tenue">Expediente {{ auditoria.noExpediente }}</div>
                 </td>
-                <td>{{ auditoria.tipoAud }}</td>
-                <td>{{ auditoria.dependencia }}</td>
+                <td class="gt-xs">{{ auditoria.tipoAud }}</td>
+                <td class="gt-xs">{{ auditoria.dependencia }}</td>
                 <td
                   v-for="(marca, i) in marcasDeFases(auditoria.faseActual?.id, auditoria.semaforo)"
                   :key="i"
                   class="text-center"
                   :class="`avance__marca--${marca}`"
                 >
-                  {{ SIMBOLO_MARCA[marca] }}
+                  <span aria-hidden="true">{{ SIMBOLO_MARCA[marca] }}</span>
+                  <span class="sr-only">{{ textoMarca(marca, i) }}</span>
                 </td>
                 <td class="avance__fecha">{{ auditoria.proximoVencimiento || '—' }}</td>
                 <td>{{ auditoria.queVence || '—' }}</td>
@@ -222,7 +232,7 @@
                     class="avance__semaforo semaforo-etiqueta"
                     :class="`semaforo--${claseSemaforo(auditoria.semaforo)}`"
                   >
-                    {{ auditoria.semaforo }}
+                    {{ etiquetaSemaforo(auditoria.semaforo) }}
                   </span>
                 </td>
               </tr>
@@ -281,10 +291,13 @@
                 flat
                 bordered
                 tabindex="0"
+                role="link"
+                :aria-label="`Abrir la ficha de ${auditoria.cliente}`"
                 class="kanban__tarjeta"
                 :class="`semaforo--${claseSemaforo(auditoria.semaforo)}`"
                 @click="verFicha(auditoria.id)"
                 @keydown.enter="verFicha(auditoria.id)"
+                @keydown.space.prevent="verFicha(auditoria.id)"
               >
                 <span class="kanban__cliente">{{ auditoria.cliente }}</span>
                 <span class="kanban__dato">{{ auditoria.tipoAud }}</span>
@@ -293,7 +306,7 @@
                   class="avance__semaforo kanban__semaforo semaforo-etiqueta"
                   :class="`semaforo--${claseSemaforo(auditoria.semaforo)}`"
                 >
-                  {{ auditoria.semaforo }}
+                  {{ etiquetaSemaforo(auditoria.semaforo) }}
                 </span>
                 <span v-if="auditoria.proximoVencimiento" class="kanban__dato">
                   Vence {{ auditoria.proximoVencimiento }} ·
@@ -326,7 +339,7 @@ import {
   marcasDeFases,
   tablaTipoFase,
 } from '../utils/tableroAuditorias.js'
-import { claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
+import { claseSemaforo, etiquetaSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { hoyLocal } from '../utils/filtrosCasos.js'
 
@@ -368,6 +381,10 @@ const tarjetasIndicadores = [
 ]
 
 const SIMBOLO_MARCA = { cumplida: '✔', actual: '●', pendiente: '' }
+
+// Lo que el lector de pantalla dice en cada celda de fase (el símbolo solo se ve).
+const textoMarca = (marca, i) =>
+  marca === 'pendiente' ? '' : `${fases.value[i]?.nombre ?? `Fase ${i + 1}`}: ${marca === 'cumplida' ? 'cumplida' : 'fase actual'}`
 
 const auditorias = ref([])
 const fases = ref([])
@@ -436,8 +453,8 @@ const dejarDeEscuchar = [
 ]
 onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
-// La pestaña vive dentro de un keep-alive: se recarga cada vez que se vuelve a mostrar.
-onActivated(cargar)
+// keep-alive: la primera vez carga con loader; al volver a la pestaña solo refresca, sin parpadeo.
+onActivated(() => (fases.value.length > 0 ? refrescarEnSilencio() : cargar()))
 
 // El dashboard la llama al registrar una auditoría desde «Asignar auditoría».
 defineExpose({ cargar })
@@ -678,8 +695,17 @@ const imprimirReporte = () => window.print()
   cursor: pointer;
 }
 
-.kanban__tarjeta:hover {
-  background: var(--dg-fondo-hover);
+/* Solo con ratón: en táctil el hover se queda pegado. */
+@media (hover: hover) and (pointer: fine) {
+  .kanban__tarjeta:hover,
+  .avance__fila:hover {
+    background: var(--dg-fondo-hover);
+  }
+}
+
+.kanban__tarjeta,
+.avance__fila {
+  transition: background 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .kanban__tarjeta:focus-visible {

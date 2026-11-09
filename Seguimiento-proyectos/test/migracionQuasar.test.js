@@ -97,8 +97,9 @@ describe('Rebanada 4: filas de contadores, tarjetas del resumen y dona', () => {
   it('las tarjetas del resumen son q-card dentro de un q-list, con foco para leer su ayuda', () => {
     const plantilla = leer('components/ResumenEquipo.vue').split('<script')[0]
     assert.match(plantilla, /<q-list[^>]*tag="ul"[^>]*class="resumen-equipo__tarjetas"/)
-    assert.match(plantilla, /<q-card[^>]*tag="li"[^>]*v-for="tarjeta in tarjetas"[\s\S]*?tabindex="0"/)
-    assert.match(plantilla, /<q-card-section/)
+    // Revisión de UI, rebanada 4: el foco y el rol de botón van en la sección, dentro del li.
+    assert.match(plantilla, /<q-card[^>]*tag="li"[^>]*v-for="tarjeta in tarjetas"/)
+    assert.match(plantilla, /<q-card-section[\s\S]*?:tabindex="seleccionable \? 0 : undefined"/)
   })
 
   it('la dona es un SVG dentro de un q-card (excepción acordada) y su leyenda es un q-list', () => {

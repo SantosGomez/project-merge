@@ -9,6 +9,9 @@ const CLASE_SEMAFORO = {
   Concluida: 'concluida',
 }
 
+/** Texto del semáforo en pantalla: el backend manda «Atención», la app lo nombra «En atención» (PRODUCT.md). */
+export const etiquetaSemaforo = (semaforo) => (semaforo === 'Atención' ? 'En atención' : semaforo)
+
 /**
  * Clase CSS del semáforo, para usar como `semaforo--<clase>`. Uno desconocido cuenta como «En tiempo».
  * @param {string} semaforo
