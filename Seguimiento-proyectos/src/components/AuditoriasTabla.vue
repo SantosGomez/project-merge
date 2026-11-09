@@ -111,7 +111,7 @@
           color="dg-acento"
           icon="visibility"
           :aria-label="`Ver ficha de ${props.row.cliente}`"
-          class="control-touch"
+          class="control-touch boton-presionable"
           @click.stop="emit('ver-detalle', props.row.id)"
         >
           <q-tooltip>Abre la ficha con el avance por fase y la bitácora.</q-tooltip>
@@ -123,7 +123,7 @@
           color="primary"
           icon="edit"
           :aria-label="`Editar ${props.row.cliente}`"
-          class="control-touch"
+          class="control-touch boton-presionable"
           @click.stop="emit('editar', props.row.id)"
         >
           <q-tooltip>Abre el formulario para cambiar los datos de la auditoría.</q-tooltip>
@@ -271,8 +271,4 @@ const etapaDeFase = (fase) => {
   white-space: nowrap;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 </style>

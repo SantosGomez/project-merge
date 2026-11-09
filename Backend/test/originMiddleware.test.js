@@ -82,7 +82,7 @@ async function testOrigenNoPermitidoResponde403() {
   assert.ok(mensaje.includes('Origen no permitido'), 'falta la parte de qué ocurrió');
   assert.ok(mensaje.includes('origen de la petición'), 'falta la parte de sobre qué');
   assert.ok(
-    mensaje.includes('Use la aplicación web de desarrollo autorizada'),
+    mensaje.includes('Usa la aplicación web autorizada'),
     'falta la parte de qué hacer'
   );
 }

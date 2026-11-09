@@ -42,7 +42,7 @@ async function countCasesByStatus(req, res) {
   const contador = idNumerico ? await UserModel.findCounterById(idNumerico) : null;
   if (!contador) {
     return res.status(404).json(
-      buildError('No se encontró el contador', 'contador solicitado', 'Verifique el identificador del contador')
+      buildError('No se encontró el contador', 'contador solicitado', 'Revisa que el contador exista y actualiza la lista')
     );
   }
 
@@ -88,7 +88,7 @@ async function getCasesByCounter(req, res) {
   const contador = idNumerico ? await UserModel.findCounterById(idNumerico) : null;
   if (!contador) {
     return res.status(404).json(
-      buildError('No se encontró el contador', 'contador solicitado', 'Verifique el identificador del contador')
+      buildError('No se encontró el contador', 'contador solicitado', 'Revisa que el contador exista y actualiza la lista')
     );
   }
 
@@ -112,7 +112,7 @@ async function getMyCases(req, res) {
   const casos = await CaseModel.findByCounter(req.user.id);
   if (casos.length === 0) {
     return res.status(200).json({
-      mensaje: 'No tiene casos registrados aún',
+      mensaje: 'Aún no tienes casos registrados',
       casos: [],
     });
   }

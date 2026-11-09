@@ -40,7 +40,7 @@
 
     <template #action>
       <q-btn
-        class="error-state__button control-touch"
+        class="error-state__button control-touch boton-presionable"
         color="primary"
         no-caps
         icon="refresh"

@@ -27,7 +27,7 @@ async function abrirEventos(req, res) {
   const datos = typeof pase === 'string' && pase !== '' ? eventos.canjearPase(pase) : null;
   if (!datos) {
     return res.status(401).json(
-      buildError('Pase no válido o vencido', 'pase de eventos', 'Pida un pase nuevo e intente conectar otra vez')
+      buildError('Pase no válido o vencido', 'pase de eventos', 'Recarga la página para volver a conectarte')
     );
   }
 

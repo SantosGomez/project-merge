@@ -8,7 +8,7 @@
         clickable
         :outline="filtros.estado !== opcion.valor"
         :color="filtros.estado === opcion.valor ? 'primary' : 'dg-texto-tenue'"
-        :text-color="filtros.estado === opcion.valor ? 'white' : 'dg-texto'"
+        :text-color="filtros.estado === opcion.valor ? 'dg-superficie' : 'dg-texto'"
         :aria-pressed="filtros.estado === opcion.valor ? 'true' : 'false'"
         class="filtros-casos__chip boton-presionable"
         @click="cambiar({ estado: opcion.valor })"
@@ -190,8 +190,4 @@ const cambiar = (cambio) => {
   margin-left: auto;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 </style>

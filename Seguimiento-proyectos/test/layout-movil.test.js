@@ -56,7 +56,9 @@ describe('Barra móvil — verificación estática', () => {
     const relleno = cssRule('.layout-bar').match(/padding:\s*(\d+)px\s+(\d+)px\s*;/)?.[1]
     assert.ok(relleno !== undefined, 'la barra declara relleno vertical y horizontal en px')
 
-    const altoToque = Number(cssRule('.control-touch').match(/min-height:\s*(\d+)px/)?.[1] ?? 0)
+    // Revisión de UI, rebanada 9: la regla de 44 px es global (app.scss), ya no se copia en el layout.
+    const appScss = read('../src/css/app.scss')
+    const altoToque = Number(appScss.match(/\n\.control-touch\s*\{[^}]*min-height:\s*(\d+)px/)?.[1] ?? 0)
     assert.ok(altoToque >= 44, `el área táctil mide ${altoToque} px`)
 
     const alto = Number(relleno) * 2 + altoToque

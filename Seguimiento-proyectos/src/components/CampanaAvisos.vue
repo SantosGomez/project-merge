@@ -10,7 +10,15 @@
     <q-badge v-if="noLeidas > 0" floating rounded color="dg-error" :label="noLeidas > 9 ? '9+' : noLeidas" />
     <q-tooltip>Avisos sobre tus casos, por ejemplo cuando el administrador cambia una prioridad.</q-tooltip>
 
-    <q-menu anchor="bottom right" self="top right" class="campana-avisos__menu" @show="alAbrir">
+    <q-menu
+      anchor="bottom right"
+      self="top right"
+      transition-show="jump-down"
+      transition-hide="jump-up"
+      :transition-duration="180"
+      class="campana-avisos__menu"
+      @show="alAbrir"
+    >
       <div class="campana-avisos__cabecera">Avisos</div>
       <q-separator />
       <p v-if="error" class="campana-avisos__vacio" role="alert">{{ error }}</p>
@@ -18,7 +26,7 @@
       <q-list v-else separator class="campana-avisos__lista">
         <q-item v-for="aviso in avisos" :key="aviso.id" :class="{ 'campana-avisos__item--nuevo': !aviso.leida }">
           <q-item-section avatar>
-            <q-icon name="flag" :color="aviso.leida ? 'grey-6' : 'dg-acento'" aria-hidden="true" />
+            <q-icon name="flag" :color="aviso.leida ? 'dg-texto-tenue' : 'dg-acento'" aria-hidden="true" />
           </q-item-section>
           <q-item-section>
             <q-item-label class="campana-avisos__mensaje">{{ aviso.mensaje }}</q-item-label>

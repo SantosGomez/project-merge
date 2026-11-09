@@ -7,19 +7,19 @@ const { avisarCambioAuditoria } = require('../utils/avisosAuditoria');
 const ERROR_CONTADORES_FALTANTES = buildError(
   'Faltan los contadores asignados',
   'contadores',
-  'Seleccione al menos un contador para la auditoría'
+  'Elige al menos un contador para la auditoría'
 );
 const ERROR_CONTADOR_INVALIDO = buildError(
   'Contador no válido',
   'contadores',
-  'Seleccione solo cuentas con rol de contador'
+  'Elige solo cuentas con rol de contador'
 );
 
 const ESTADOS = ['Pendiente', 'En Proceso', 'Completado', 'Aplazado por acta'];
 const ERROR_ESTADO = buildError(
   'Estado no válido',
   'estado',
-  'Seleccione Pendiente, En Proceso, Completado o Aplazado por acta'
+  'Elige Pendiente, En proceso, Completado o Aplazado por acta'
 );
 const ERROR_NO_ASIGNADO = buildError(
   'Acceso denegado',
@@ -83,9 +83,9 @@ function validarAuditoria(cuerpo, actual = null) {
       continue;
     }
     const texto = typeof cuerpo[campo] === 'string' ? cuerpo[campo].trim() : '';
-    if (texto === '') return { error: buildError('Falta un dato obligatorio', nombre, `Ingrese ${nombre}`) };
+    if (texto === '') return { error: buildError('Falta un dato obligatorio', nombre, `Escribe ${nombre}`) };
     if (texto.length > maximo) {
-      return { error: buildError('Texto demasiado largo', nombre, `Use máximo ${maximo} caracteres`) };
+      return { error: buildError('Texto demasiado largo', nombre, `Usa máximo ${maximo} caracteres`) };
     }
     datos[campo] = texto;
   }
@@ -97,11 +97,11 @@ function validarAuditoria(cuerpo, actual = null) {
     }
     const valor = cuerpo[campo];
     if (valor !== null && valor !== undefined && typeof valor !== 'string') {
-      return { error: buildError('Dato inválido', nombre, `Envíe ${nombre} como texto`) };
+      return { error: buildError('Dato inválido', nombre, `Envía ${nombre} como texto`) };
     }
     const texto = (valor ?? '').trim();
     if (texto.length > maximo) {
-      return { error: buildError('Texto demasiado largo', nombre, `Use máximo ${maximo} caracteres`) };
+      return { error: buildError('Texto demasiado largo', nombre, `Usa máximo ${maximo} caracteres`) };
     }
     datos[campo] = texto === '' ? null : texto;
   }
@@ -113,13 +113,13 @@ function validarAuditoria(cuerpo, actual = null) {
     }
     const fecha = parseFechaInicio(cuerpo[campo]);
     if (!fecha) {
-      return { error: buildError('Fecha no válida', nombre, 'Use una fecha real con formato DD-MM-AAAA') };
+      return { error: buildError('Fecha no válida', nombre, 'Usa una fecha real con formato DD-MM-AAAA') };
     }
     datos[campo] = formatearFechaISO(fecha);
   }
 
   if (enviado('estatal') && cuerpo.estatal !== undefined && typeof cuerpo.estatal !== 'boolean') {
-    return { error: buildError('Dato inválido', 'estatal', 'Envíe estatal como true o false') };
+    return { error: buildError('Dato inválido', 'estatal', 'Envía estatal como true o false') };
   }
   datos.estatal = enviado('estatal') ? cuerpo.estatal === true : actual.estatal;
 
@@ -210,7 +210,7 @@ async function updateAuditoria(req, res) {
   const id = Number(req.params.id);
   const fila = Number.isInteger(id) && id > 0 ? await AuditoriaModel.findById(id) : null;
   if (!fila) {
-    return res.status(404).json(buildError('Auditoría no encontrada', 'auditoría', 'Actualice la lista e intente de nuevo'));
+    return res.status(404).json(buildError('Auditoría no encontrada', 'auditoría', 'Actualiza la lista y vuelve a intentarlo'));
   }
 
   const esAdmin = req.user.rol === 'administrador';
@@ -253,7 +253,7 @@ async function getAuditoria(req, res) {
   const id = Number(req.params.id);
   const fila = Number.isInteger(id) && id > 0 ? await AuditoriaModel.findById(id) : null;
   if (!fila) {
-    return res.status(404).json(buildError('Auditoría no encontrada', 'auditoría', 'Actualice la lista e intente de nuevo'));
+    return res.status(404).json(buildError('Auditoría no encontrada', 'auditoría', 'Actualiza la lista y vuelve a intentarlo'));
   }
   if (req.user.rol !== 'administrador' && !(await AuditoriaModel.estaAsignado(id, req.user.id))) {
     return res.status(403).json(ERROR_NO_ASIGNADO_VER);

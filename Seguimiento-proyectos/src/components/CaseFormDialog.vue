@@ -451,9 +451,9 @@
       <!-- Esc, un clic fuera o «Cancelar» con datos escritos: se pregunta antes de perderlos. -->
       <q-dialog
         v-model="confirmacionAbierta"
-        transition-show="fade"
-        transition-hide="fade"
-        :transition-duration="150"
+        transition-show="dialogo-entra"
+        transition-hide="dialogo-sale"
+        :transition-duration="220"
         aria-labelledby="descartar-titulo"
       >
         <q-card class="confirmar-descartar">
@@ -981,10 +981,6 @@ const submitCase = async () => {
   display: inline-flex;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 /* Confirmación de descartar: mismo aspecto que la de cerrar sesión. */
 .confirmar-descartar {

@@ -26,16 +26,16 @@ const conFechasLocales = casoConFechasLocales;
 
 // Mensajes de error (qué ocurrió, sobre qué, qué hacer) de cliente y prioridad (RF-19 a RF-21).
 const MENSAJES_ENTRADA_CASO = {
-  cliente_requerido: ['Falta el campo cliente', 'cliente', 'Ingrese el nombre del cliente'],
+  cliente_requerido: ['Falta el campo cliente', 'cliente', 'Escribe el nombre del cliente'],
   cliente_tipo_invalido: ['Dato inválido', 'cliente', 'El cliente debe enviarse como texto'],
   cliente_demasiado_largo: [
     'El cliente supera el máximo de caracteres permitidos',
     'cliente',
     'El cliente debe tener máximo 80 caracteres',
   ],
-  prioridad_requerida: ['Falta la prioridad', 'prioridad', 'Seleccione una prioridad: Alta, Media o Baja'],
+  prioridad_requerida: ['Falta la prioridad', 'prioridad', 'Elige una prioridad: Alta, Media o Baja'],
   prioridad_tipo_invalida: ['Dato inválido', 'prioridad', 'La prioridad debe enviarse como texto: Alta, Media o Baja'],
-  prioridad_invalida: ['Prioridad no válida', 'prioridad', 'Seleccione una prioridad válida: Alta, Media o Baja'],
+  prioridad_invalida: ['Prioridad no válida', 'prioridad', 'Elige una prioridad válida: Alta, Media o Baja'],
 };
 
 // Descripción y observaciones son opcionales: tipo texto y longitud máxima (RF-21).
@@ -55,7 +55,7 @@ const TEXTOS_OPCIONALES = {
 };
 
 // Importante es opcional, pero si viene debe ser un booleano real (no "true", 1 ni null)
-const ERROR_IMPORTANTE = buildError('Dato inválido', 'importante', 'Envíe importante como true o false');
+const ERROR_IMPORTANTE = buildError('Dato inválido', 'importante', 'Envía importante como true o false');
 
 function importanteInvalido(valor) {
   return valor !== undefined && typeof valor !== 'boolean';
@@ -64,25 +64,25 @@ function importanteInvalido(valor) {
 const ERROR_FECHA_INICIO = buildError(
   'Fecha de inicio no válida',
   'fecha_inicio',
-  'Use una fecha real con formato DD-MM-AAAA o AAAA-MM-DD'
+  'Usa una fecha real con formato DD-MM-AAAA o AAAA-MM-DD'
 );
 
 const ERROR_VENCIMIENTO_FALTANTE = buildError(
   'Falta la fecha de vencimiento',
   'fecha de vencimiento',
-  'Indique cuándo vence el caso con formato DD-MM-AAAA'
+  'Indica cuándo vence el caso con formato DD-MM-AAAA'
 );
 
 const ERROR_VENCIMIENTO_INVALIDO = buildError(
   'Fecha de vencimiento no válida',
   'fecha de vencimiento',
-  'Use una fecha real con formato DD-MM-AAAA o AAAA-MM-DD'
+  'Usa una fecha real con formato DD-MM-AAAA o AAAA-MM-DD'
 );
 
 const ERROR_VENCIMIENTO_ANTES_DEL_INICIO = buildError(
   'La fecha de vencimiento es anterior a la fecha de inicio',
   'fecha de vencimiento',
-  'Elija una fecha de vencimiento igual o posterior a la fecha de inicio'
+  'Elige una fecha de vencimiento igual o posterior a la fecha de inicio'
 );
 
 /**
@@ -234,7 +234,7 @@ async function updateCase(req, res) {
       buildError(
         'Nada que actualizar',
         'caso',
-        'Envíe al menos uno de: cliente, estado, prioridad, fecha de inicio, fecha de vencimiento, descripción, observaciones o importante'
+        'Envía al menos uno de: cliente, estado, prioridad, fecha de inicio, fecha de vencimiento, descripción, observaciones o importante'
       )
     );
   }
@@ -255,13 +255,13 @@ async function updateCase(req, res) {
 
   if (estado !== undefined && !validateStatus(estado)) {
     return res.status(400).json(
-      buildError('Estado no válido', 'estado', 'Use uno de los siguientes: Pendiente, En proceso, Finalizado')
+      buildError('Estado no válido', 'estado', 'Usa uno de estos: Pendiente, En proceso, Finalizado')
     );
   }
 
   if (prioridad !== undefined && !validatePriority(prioridad)) {
     return res.status(400).json(
-      buildError('Prioridad no válida', 'prioridad', 'Use una de las siguientes: Alta, Media, Baja')
+      buildError('Prioridad no válida', 'prioridad', 'Usa una de estas: Alta, Media, Baja')
     );
   }
 
@@ -357,7 +357,7 @@ async function cambiarPrioridadComoAdmin(req, res) {
   const casoActual = casoId ? await CaseModel.findById(casoId) : null;
   if (!casoActual) {
     return res.status(404).json(
-      buildError('No se encontró el caso', 'ID del caso', 'Verifique que el ID del caso sea correcto')
+      buildError('No se encontró el caso', 'ID del caso', 'Revisa que el caso exista y actualiza la lista')
     );
   }
 
@@ -393,7 +393,7 @@ async function asignarCaso(req, res) {
   const contador = contadorId ? await UserModel.findCounterById(contadorId) : null;
   if (!contador) {
     return res.status(404).json(
-      buildError('No se encontró el contador', 'contador solicitado', 'Verifique el identificador del contador')
+      buildError('No se encontró el contador', 'contador solicitado', 'Revisa que el contador exista y actualiza la lista')
     );
   }
 

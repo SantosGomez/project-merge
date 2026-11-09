@@ -253,7 +253,7 @@
               color="dg-acento"
               icon="print"
               label="Imprimir reporte"
-              class="control-touch"
+              class="control-touch boton-presionable"
               @click="imprimirReporte"
             >
               <q-tooltip>Imprime el Kanban o guárdalo como PDF, en hoja horizontal.</q-tooltip>

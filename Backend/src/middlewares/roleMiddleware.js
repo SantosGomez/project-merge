@@ -10,7 +10,7 @@ const { buildError } = require('../utils/errorUtils');
 async function requireAdmin(req, res, next) {
   if (!req.user) {
     res.status(403).json(
-      buildError('Acceso denegado', 'usuario autenticado', 'Inicie sesión con una cuenta de administrador')
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión con una cuenta de administrador')
     );
     return;
   }
@@ -35,7 +35,7 @@ async function requireAdmin(req, res, next) {
 async function requireAdminOrSistema(req, res, next) {
   if (!req.user) {
     res.status(403).json(
-      buildError('Acceso denegado', 'usuario autenticado', 'Inicie sesión para realizar esta acción')
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión para hacer esta acción')
     );
     return;
   }
@@ -60,7 +60,7 @@ async function requireAdminOrSistema(req, res, next) {
 async function requireAdminOrContador(req, res, next) {
   if (!req.user) {
     res.status(403).json(
-      buildError('Acceso denegado', 'usuario autenticado', 'Inicie sesión para realizar esta acción')
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión para hacer esta acción')
     );
     return;
   }
@@ -85,7 +85,7 @@ async function requireAdminOrContador(req, res, next) {
 async function requireContador(req, res, next) {
   if (!req.user) {
     res.status(403).json(
-      buildError('Acceso denegado', 'usuario autenticado', 'Inicie sesión con una cuenta de contador')
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión con una cuenta de contador')
     );
     return;
   }

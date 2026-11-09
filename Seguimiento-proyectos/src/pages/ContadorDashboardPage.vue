@@ -20,7 +20,7 @@
         <!-- El botón lleva a la pantalla de trabajo de la pestaña abierta -->
         <q-btn
           v-if="pestana === 'casos'"
-          class="dashboard-page__ir-btn control-touch"
+          class="dashboard-page__ir-btn control-touch boton-presionable"
           color="primary"
           no-caps
           unelevated
@@ -34,7 +34,7 @@
         </q-btn>
         <q-btn
           v-else
-          class="dashboard-page__ir-btn control-touch"
+          class="dashboard-page__ir-btn control-touch boton-presionable"
           color="primary"
           no-caps
           unelevated
@@ -272,10 +272,6 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', actualiza
   border-radius: 12px;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-07). */
 .dashboard-page__ir-btn:focus-visible {

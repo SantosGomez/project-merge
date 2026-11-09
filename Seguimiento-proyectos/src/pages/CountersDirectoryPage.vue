@@ -131,7 +131,7 @@
                   color="primary"
                   icon="filter_alt_off"
                   label="Limpiar filtros"
-                  class="control-touch"
+                  class="control-touch boton-presionable"
                   @click="limpiarFiltros"
                 >
                   <q-tooltip>Quita la búsqueda y el rol elegido.</q-tooltip>
@@ -437,9 +437,6 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolver)
   margin: 0;
 }
 
-.control-touch {
-  min-height: 44px;
-}
 
 .directory-panel__title {
   margin: 0 0 6px;

@@ -838,7 +838,7 @@ const confirmarBorrado = (ev) => {
     title: 'Borrar evento',
     message: `¿Borrar «${ev.evento}» del ${ev.fecha}? Esta acción no se puede deshacer.`,
     cancel: { label: 'Cancelar', flat: true, noCaps: true },
-    ok: { label: 'Borrar evento', color: 'negative', noCaps: true, unelevated: true },
+    ok: { label: 'Borrar evento', color: 'dg-error', noCaps: true, unelevated: true },
   }).onOk(async () => {
     guardando.value = true
     try {
@@ -1154,10 +1154,6 @@ const confirmarBorrado = (ev) => {
   gap: 8px;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 /* El formulario de evento aparece y se va con un fundido corto, sin saltar. */
 .bitacora-form-enter-active,

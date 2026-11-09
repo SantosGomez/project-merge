@@ -106,7 +106,7 @@
 
         <q-btn
           type="submit"
-          class="cambio-form__submit control-touch"
+          class="cambio-form__submit control-touch boton-presionable"
           color="primary"
           no-caps
           unelevated
@@ -117,7 +117,7 @@
         />
 
         <q-btn
-          class="cambio-form__salir control-touch"
+          class="cambio-form__salir control-touch boton-presionable"
           flat
           no-caps
           color="primary"
@@ -327,12 +327,6 @@ const salir = async () => {
 .cambio-form__submit {
   margin-top: 4px;
   font-size: 1rem;
-  transition: transform 160ms ease-out;
-}
-
-/* Responde al presionarlo: confirma que se escuchó el clic. */
-.cambio-form__submit:active {
-  transform: scale(0.97);
 }
 
 .control-touch {
@@ -355,11 +349,6 @@ const salir = async () => {
 }
 
 /* Con movimiento reducido el botón no cambia de escala (las transiciones de los campos se apagan en app.scss). */
-@media (prefers-reduced-motion: reduce) {
-  .cambio-form__submit:active {
-    transform: none;
-  }
-}
 
 @media (min-width: 600px) {
   .cambio-page__card {

@@ -18,7 +18,7 @@ const FECHAS_OPCIONALES = [
   ['fecha_entrega', 'fecha de entrega'],
 ];
 
-const errorFecha = (nombre) => buildError('Fecha no válida', nombre, 'Use una fecha real con formato DD-MM-AAAA');
+const errorFecha = (nombre) => buildError('Fecha no válida', nombre, 'Usa una fecha real con formato DD-MM-AAAA');
 
 /**
  * Valida el cuerpo de un evento. Con `actual` (edición) solo se validan los campos
@@ -33,8 +33,8 @@ async function validarEvento(cuerpo, actual = null) {
 
   if (enviado('evento')) {
     const texto = typeof cuerpo.evento === 'string' ? cuerpo.evento.trim() : '';
-    if (texto === '') return { error: buildError('Falta un dato obligatorio', 'evento', 'Ingrese el evento') };
-    if (texto.length > 200) return { error: buildError('Texto demasiado largo', 'evento', 'Use máximo 200 caracteres') };
+    if (texto === '') return { error: buildError('Falta un dato obligatorio', 'evento', 'Escribe el evento') };
+    if (texto.length > 200) return { error: buildError('Texto demasiado largo', 'evento', 'Usa máximo 200 caracteres') };
     datos.evento = texto;
   } else {
     datos.evento = actual.evento;
@@ -43,7 +43,7 @@ async function validarEvento(cuerpo, actual = null) {
   if (enviado('fase_id')) {
     const faseId = cuerpo.fase_id;
     if (!Number.isInteger(faseId) || !(await AuditoriaEventoModel.faseExiste(faseId))) {
-      return { error: buildError('Fase no válida', 'fase', 'Seleccione una de las fases de la lista') };
+      return { error: buildError('Fase no válida', 'fase', 'Elige una de las fases de la lista') };
     }
     datos.fase_id = faseId;
   } else {
@@ -80,11 +80,11 @@ async function validarEvento(cuerpo, actual = null) {
     }
     const valor = cuerpo[campo];
     if (valor !== null && valor !== undefined && typeof valor !== 'string') {
-      return { error: buildError('Dato inválido', nombre, `Envíe ${nombre} como texto`) };
+      return { error: buildError('Dato inválido', nombre, `Envía ${nombre} como texto`) };
     }
     const texto = (valor ?? '').trim();
     if (texto.length > maximo) {
-      return { error: buildError('Texto demasiado largo', nombre, `Use máximo ${maximo} caracteres`) };
+      return { error: buildError('Texto demasiado largo', nombre, `Usa máximo ${maximo} caracteres`) };
     }
     datos[campo] = texto === '' ? null : texto;
   }
@@ -92,7 +92,7 @@ async function validarEvento(cuerpo, actual = null) {
   if (enviado('estado') && cuerpo.estado !== undefined) {
     if (!ESTADOS_EVENTO.includes(cuerpo.estado)) {
       return {
-        error: buildError('Estado no válido', 'estado', 'Seleccione Pendiente, Revision, En Proceso, Rechazado o Completado'),
+        error: buildError('Estado no válido', 'estado', 'Elige Pendiente, En revisión, En proceso, Rechazado o Completado'),
       };
     }
     datos.estado = cuerpo.estado;
@@ -142,7 +142,7 @@ async function auditoriaPermitida(req, res) {
   const id = Number(req.params.id);
   const auditoria = Number.isInteger(id) && id > 0 ? await AuditoriaModel.findById(id) : null;
   if (!auditoria) {
-    res.status(404).json(buildError('Auditoría no encontrada', 'auditoría', 'Actualice la lista e intente de nuevo'));
+    res.status(404).json(buildError('Auditoría no encontrada', 'auditoría', 'Actualiza la lista y vuelve a intentarlo'));
     return null;
   }
   if (req.user.rol !== 'administrador' && !(await AuditoriaModel.estaAsignado(id, req.user.id))) {
@@ -201,7 +201,7 @@ async function eventoDeLaRuta(req, res, auditoria) {
       ? await AuditoriaEventoModel.findById(auditoria.IdAuditoria, eventoId)
       : null;
   if (!evento) {
-    res.status(404).json(buildError('Evento no encontrado', 'bitácora', 'Actualice la bitácora e intente de nuevo'));
+    res.status(404).json(buildError('Evento no encontrado', 'bitácora', 'Actualiza la bitácora y vuelve a intentarlo'));
     return null;
   }
   return evento;

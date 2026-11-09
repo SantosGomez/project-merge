@@ -110,7 +110,7 @@ async function testMarcaBloqueaLaApi() {
 
   const casos = await peticion(servidor.puerto, 'GET', '/casos/mis-casos', null, token);
   assert.strictEqual(casos.statusCode, 403, 'no puede usar la app sin crear su contraseña');
-  assert.match(casos.body.mensaje, /Debe cambiar su contraseña/);
+  assert.match(casos.body.mensaje, /Debes cambiar tu contraseña/);
 
   const salida = await peticion(servidor.puerto, 'POST', '/auth/logout', null, token);
   assert.strictEqual(salida.statusCode, 200, 'puede cerrar sesión');

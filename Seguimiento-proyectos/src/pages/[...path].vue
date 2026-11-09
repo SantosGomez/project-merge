@@ -26,7 +26,7 @@
         :icon="destino.icono"
         :label="destino.etiqueta"
         :to="destino.ruta"
-        class="no-encontrada__accion control-touch"
+        class="no-encontrada__accion control-touch boton-presionable"
       >
         <q-tooltip>{{ destino.ayuda }}</q-tooltip>
       </q-btn>

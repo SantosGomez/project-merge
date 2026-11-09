@@ -32,14 +32,14 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
   const authHeader = req.headers && req.headers.authorization;
   if (!authHeader) {
     res.status(401).json(
-      buildError('No se proporcionó credenciales', 'cabecera Authorization', 'Inicie sesión y envíe el token en la cabecera Authorization')
+      buildError('No se proporcionó credenciales', 'cabecera Authorization', 'Inicia sesión otra vez')
     );
     return;
   }
 
   if (!authHeader.startsWith('Bearer ')) {
     res.status(401).json(
-      buildError('Formato de credenciales inválido', 'cabecera Authorization', 'Use el formato Bearer <token>')
+      buildError('Formato de credenciales inválido', 'cabecera Authorization', 'Inicia sesión otra vez')
     );
     return;
   }
@@ -53,13 +53,13 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
     if (resultado.error === 'expirado') {
       // Token expirado por su campo exp
       res.status(401).json(
-        buildError('Sesión caducada', 'token de acceso', 'Inicie sesión nuevamente')
+        buildError('Sesión caducada', 'token de acceso', 'Inicia sesión otra vez')
       );
       return;
     }
     // Valor fijo, inventado o mal formado: no es una credencial (criterio 30)
     res.status(401).json(
-      buildError('Token no válido', 'token de acceso', 'Inicie sesión nuevamente')
+      buildError('Token no válido', 'token de acceso', 'Inicia sesión otra vez')
     );
     return;
   }
@@ -74,13 +74,13 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
     sesion = await SessionModel.obtenerSesion(jti);
   } catch (err) {
     res.status(503).json(
-      buildError('Fallo interno al consultar la sesión', 'token de acceso', 'Inténtelo nuevamente en unos momentos')
+      buildError('Fallo interno al consultar la sesión', 'token de acceso', 'Vuelve a intentarlo en unos momentos')
     );
     return;
   }
   if (!sesion || sesion.revocado) {
     res.status(401).json(
-      buildError('Sesión caducada', 'token de acceso', 'Inicie sesión nuevamente')
+      buildError('Sesión caducada', 'token de acceso', 'Inicia sesión otra vez')
     );
     return;
   }
@@ -92,12 +92,12 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
       await SessionModel.revocar(jti);
     } catch (err) {
       res.status(503).json(
-        buildError('Fallo interno al cerrar la sesión inactiva', 'token de acceso', 'Inténtelo nuevamente en unos momentos')
+        buildError('Fallo interno al cerrar la sesión inactiva', 'token de acceso', 'Vuelve a intentarlo en unos momentos')
       );
       return;
     }
     res.status(401).json(
-      buildError('Sesión caducada por inactividad', 'última actividad', 'Inicie sesión nuevamente')
+      buildError('Sesión caducada por inactividad', 'última actividad', 'Inicia sesión otra vez')
     );
     return;
   }
@@ -107,7 +107,7 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
     await SessionModel.tocarActividad(jti, ahora);
   } catch (err) {
     res.status(503).json(
-      buildError('Fallo interno al renovar la sesión', 'token de acceso', 'Inténtelo nuevamente en unos momentos')
+      buildError('Fallo interno al renovar la sesión', 'token de acceso', 'Vuelve a intentarlo en unos momentos')
     );
     return;
   }
@@ -115,7 +115,7 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
   // 6. Con la contraseña que asignó el administrador solo se puede crear la propia o cerrar sesión
   if (sesion.debe_cambiar_contrasena && !permitirCambioPendiente) {
     res.status(403).json(
-      buildError('Debe cambiar su contraseña', 'contraseña asignada', 'Cree su propia contraseña para continuar')
+      buildError('Debes cambiar tu contraseña', 'contraseña asignada', 'Crea tu propia contraseña para continuar')
     );
     return;
   }

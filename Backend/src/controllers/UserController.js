@@ -32,10 +32,10 @@ async function createUser(req, res) {
   const nombreLimpio = (nombre ?? '').trim();
   const correoLimpio = (correo ?? '').trim().toLowerCase();
   if (!nombreLimpio) {
-    return res.status(400).json(buildError('Falta el nombre', 'nombre', 'Escriba el nombre de la persona'));
+    return res.status(400).json(buildError('Falta el nombre', 'nombre', 'Escribe el nombre de la persona'));
   }
   if (!correoLimpio) {
-    return res.status(400).json(buildError('Falta el correo', 'correo', 'Escriba el correo de la cuenta'));
+    return res.status(400).json(buildError('Falta el correo', 'correo', 'Escribe el correo de la cuenta'));
   }
   if (nombreLimpio.length > MAX_NOMBRE_Y_CORREO) {
     return res.status(400).json(
@@ -49,7 +49,7 @@ async function createUser(req, res) {
   }
   if (!esCorreoValido(correoLimpio)) {
     return res.status(400).json(
-      buildError('Correo no válido', 'correo', 'Escriba un correo como nombre@delgrow.mx')
+      buildError('Correo no válido', 'correo', 'Escribe un correo como nombre@delgrow.mx')
     );
   }
 
@@ -67,14 +67,14 @@ async function createUser(req, res) {
   // Validar que el rol sea uno de los permitidos (RF-30)
   if (!rol || !validateRol(rol)) {
     return res.status(400).json(
-      buildError('Rol no válido', 'rol', 'Use uno de los siguientes: administrador, contador o usuarios_de_sistema')
+      buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador o usuario de sistema')
     );
   }
 
   // 3. Verificar que no exista otra cuenta con ese correo, sin distinguir mayúsculas (RF-30, RF-45)
   if (await UserModel.findByCorreo(correoLimpio)) {
     return res.status(400).json(
-      buildError('El correo ya existe', 'correo', 'Use otro correo o restablezca la contraseña de esa cuenta')
+      buildError('El correo ya existe', 'correo', 'Usa otro correo o restablece la contraseña de esa cuenta')
     );
   }
 
@@ -103,7 +103,7 @@ async function resetPassword(req, res) {
     return res.status(400).json(buildError('Dato inválido', 'correo', 'debe enviarse como texto'));
   }
   if (campoCorreo.estado === 'faltante') {
-    return res.status(400).json(buildError('Falta el correo', 'correo', 'Escriba el correo de la cuenta'));
+    return res.status(400).json(buildError('Falta el correo', 'correo', 'Escribe el correo de la cuenta'));
   }
 
   // 1. La contraseña nueva sigue la misma regla que el alta (RF-44, RF-37)
@@ -123,7 +123,7 @@ async function resetPassword(req, res) {
   const cuenta = await UserModel.findByCorreo(correo);
   if (!cuenta) {
     return res.status(404).json(
-      buildError('No se encontró una cuenta con ese correo', 'correo', 'Verifique que el correo esté bien escrito')
+      buildError('No se encontró una cuenta con ese correo', 'correo', 'Revisa que el correo esté bien escrito')
     );
   }
 

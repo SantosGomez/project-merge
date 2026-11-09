@@ -8,7 +8,7 @@
     </p>
 
     <q-btn
-      class="aviso-sesion__button control-touch"
+      class="aviso-sesion__button control-touch boton-presionable"
       color="primary"
       no-caps
       icon="login"
@@ -59,8 +59,4 @@ const titleId = useId()
   outline-offset: 2px;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 </style>

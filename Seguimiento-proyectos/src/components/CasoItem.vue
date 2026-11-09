@@ -435,8 +435,4 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
   }
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 </style>

@@ -162,7 +162,7 @@
                     removable
                     dense
                     color="primary"
-                    text-color="white"
+                    text-color="dg-superficie"
                     class="counter-search__filtro"
                     :label="`Filtrando: ${ETIQUETAS_KPI[filtroKpi]}`"
                     remove-aria-label="Quitar el filtro de la lista"
@@ -269,7 +269,7 @@
               round
               icon="close"
               aria-label="Cerrar el detalle de casos"
-              class="control-touch"
+              class="control-touch boton-presionable"
             >
               <q-tooltip>Cierra el detalle y vuelve a la lista de contadores.</q-tooltip>
             </q-btn>
@@ -677,10 +677,6 @@ onMounted(async () => {
   line-height: 1.5;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-07). */
 .dashboard-page__directory-btn:focus-visible,

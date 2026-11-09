@@ -11,7 +11,7 @@
       <!-- Control de acción opcional sin slot, para pantallas que solo necesitan un botón. -->
       <div v-else-if="actionLabel" class="empty-state__action">
         <q-btn
-          class="empty-state__button control-touch"
+          class="empty-state__button control-touch boton-presionable"
           color="primary"
           no-caps
           :label="actionLabel"
@@ -83,10 +83,6 @@ const titleId = useId()
   margin-top: 16px;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-8). */
 .empty-state__button:focus-visible {

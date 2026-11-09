@@ -30,12 +30,12 @@ const LIMITE_RESPUESTA_MS = 2000;
 const MENSAJE_CUERPO_INVALIDO = buildError(
   'Cuerpo de la petición no válido',
   'cuerpo JSON',
-  'Envíe un cuerpo bien formado como JSON'
+  'Envía un cuerpo bien formado como JSON'
 ).mensaje;
 const MENSAJE_FALLO_INTERNO = buildError(
   'Fallo interno del servidor',
   'operación solicitada',
-  'Inténtelo nuevamente en unos momentos'
+  'Vuelve a intentarlo en unos momentos'
 ).mensaje;
 
 const queryOriginal = pool.query.bind(pool);

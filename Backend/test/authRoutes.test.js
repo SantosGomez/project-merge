@@ -114,7 +114,7 @@ async function testLoginSinCamposRechazaCon400() {
   assert.ok(
     respuesta1.body.mensaje.includes('Faltan credenciales') &&
       respuesta1.body.mensaje.includes('correo y/o contraseña') &&
-      respuesta1.body.mensaje.includes('Ingrese correo y contraseña'),
+      respuesta1.body.mensaje.includes('Escribe tu correo y tu contraseña'),
     'el mensaje de error debe tener las tres partes en español'
   );
 }
@@ -141,7 +141,7 @@ async function testCredencialesIncorrectasRechazanCon401() {
   assert.ok(
     respuesta1.body.mensaje.includes('Credenciales no válidas') &&
       respuesta1.body.mensaje.includes('correo o contraseña') &&
-      respuesta1.body.mensaje.includes('Verifique sus datos e intente nuevamente'),
+      respuesta1.body.mensaje.includes('Revisa tus datos y vuelve a intentarlo'),
     'el mensaje debe ser genérico y tener las tres partes en español'
   );
   // No debe revelar si el usuario existe

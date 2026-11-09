@@ -321,10 +321,6 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
   line-height: 1.5;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 .my-cases-page__register-btn:focus-visible {
   outline: 3px solid var(--dg-foco) !important;

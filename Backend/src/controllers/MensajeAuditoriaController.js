@@ -73,12 +73,12 @@ async function createMensaje(req, res) {
 
   const texto = typeof req.body?.texto === 'string' ? req.body.texto.trim() : '';
   if (texto === '') {
-    return res.status(400).json(buildError('Falta un dato obligatorio', 'mensaje', 'Escriba el mensaje antes de enviarlo'));
+    return res.status(400).json(buildError('Falta un dato obligatorio', 'mensaje', 'Escribe el mensaje antes de enviarlo'));
   }
   if (texto.length > MAXIMO_CARACTERES) {
     return res
       .status(400)
-      .json(buildError('Texto demasiado largo', 'mensaje', `Use máximo ${MAXIMO_CARACTERES} caracteres`));
+      .json(buildError('Texto demasiado largo', 'mensaje', `Usa máximo ${MAXIMO_CARACTERES} caracteres`));
   }
 
   const mensajeId = await MensajeAuditoriaModel.create(auditoria.IdAuditoria, texto, req.user.id);

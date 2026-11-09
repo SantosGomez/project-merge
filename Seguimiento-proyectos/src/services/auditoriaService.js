@@ -81,7 +81,7 @@ const cuerpoParaApi = (datos) => {
         ESTADOS_ERROR.DATOS_INVALIDOS,
         'La fecha no es válida',
         nombre,
-        'Use una fecha real con formato DD-MM-AAAA',
+        'Usa una fecha real con formato DD-MM-AAAA',
       )
     }
     cuerpo[campoApi] = fecha
@@ -154,7 +154,7 @@ const cuerpoDeEvento = (datos) => {
         ESTADOS_ERROR.DATOS_INVALIDOS,
         'La fecha no es válida',
         nombre,
-        'Use una fecha real con formato DD-MM-AAAA',
+        'Usa una fecha real con formato DD-MM-AAAA',
       )
     }
     cuerpo[campoApi] = fecha

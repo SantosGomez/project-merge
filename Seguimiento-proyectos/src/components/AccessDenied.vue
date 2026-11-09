@@ -12,7 +12,7 @@
       no-caps
       icon="home"
       label="Volver a mi pantalla principal"
-      class="access-denied__action control-touch"
+      class="access-denied__action control-touch boton-presionable"
       :to="{ name: homeRouteName }"
     >
       <q-tooltip>Vuelve a la pantalla principal de tu perfil.</q-tooltip>
@@ -89,10 +89,6 @@ const titleId = useId()
   line-height: 1.5;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 /* El botón de Quasar trae la clase `no-outline`; el foco se refuerza a propósito (RNF-8). */
 .access-denied__action:focus-visible {

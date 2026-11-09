@@ -61,7 +61,7 @@ function crearApp(opciones) {
         message: buildError(
           'Demasiados intentos fallidos',
           'inicio de sesión',
-          'Espere 15 minutos antes de volver a intentarlo'
+          'Espera 15 minutos antes de volver a intentarlo'
         ),
       })
     );
@@ -79,7 +79,7 @@ function crearApp(opciones) {
   // Middleware 404: ruta no encontrada
   app.use((req, res) => {
     res.status(404).json({
-      mensaje: 'Recurso no encontrado sobre el endpoint solicitado: verifique la URL y el método HTTP',
+      mensaje: 'Recurso no encontrado sobre el endpoint solicitado: revisa la dirección e inténtalo de nuevo',
     });
   });
 
@@ -90,11 +90,11 @@ function crearApp(opciones) {
     // express.json() marca el JSON mal formado con status 400 y type 'entity.parse.failed'
     if (err.status === 400 || err.type === 'entity.parse.failed') {
       return res.status(400).json(
-        buildError('Cuerpo de la petición no válido', 'cuerpo JSON', 'Envíe un cuerpo bien formado como JSON')
+        buildError('Cuerpo de la petición no válido', 'cuerpo JSON', 'Envía un cuerpo bien formado como JSON')
       );
     }
     return res.status(503).json(
-      buildError('Fallo interno del servidor', 'operación solicitada', 'Inténtelo nuevamente en unos momentos')
+      buildError('Fallo interno del servidor', 'operación solicitada', 'Vuelve a intentarlo en unos momentos')
     );
   });
 

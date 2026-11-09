@@ -124,7 +124,7 @@ function assertAvisoSesionCaducada(res) {
     'el aviso debe indicar sobre qué dato ocurrió'
   );
   assert.ok(
-    res.body.mensaje.includes('Inicie sesión nuevamente'),
+    res.body.mensaje.includes('Inicia sesión otra vez'),
     'el aviso debe indicar qué hacer a continuación'
   );
 }

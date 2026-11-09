@@ -22,7 +22,7 @@ async function login(req, res) {
 
   // «Mantener sesión iniciada» es opcional, pero si viene debe ser un booleano real
   if (mantenerSesion !== undefined && typeof mantenerSesion !== 'boolean') {
-    return res.status(400).json(buildError('Dato inválido', 'mantener sesión', 'Envíe mantener_sesion como true o false'));
+    return res.status(400).json(buildError('Dato inválido', 'mantener sesión', 'Envía mantener_sesion como true o false'));
   }
   const persistente = mantenerSesion === true;
 
@@ -35,7 +35,7 @@ async function login(req, res) {
   }
   if (!validacion.valido) {
     return res.status(400).json(
-      buildError('Faltan credenciales', 'correo y/o contraseña', 'Ingrese correo y contraseña')
+      buildError('Faltan credenciales', 'correo y/o contraseña', 'Escribe tu correo y tu contraseña')
     );
   }
 
@@ -47,7 +47,7 @@ async function login(req, res) {
     : await verificarContraHashFicticio(password);
   if (!cuenta || !contrasenaValida) {
     return res.status(401).json(
-      buildError('Credenciales no válidas', 'correo o contraseña', 'Verifique sus datos e intente nuevamente')
+      buildError('Credenciales no válidas', 'correo o contraseña', 'Revisa tus datos y vuelve a intentarlo')
     );
   }
 
@@ -65,7 +65,7 @@ async function login(req, res) {
     await SessionModel.registrarSesion(jwt.decode(token).jti, cuenta.id, ahora, persistente);
   } catch (err) {
     return res.status(503).json(
-      buildError('No se pudo registrar la sesión', 'inicio de sesión', 'Inténtelo nuevamente en unos momentos')
+      buildError('No se pudo registrar la sesión', 'inicio de sesión', 'Vuelve a intentarlo en unos momentos')
     );
   }
 
@@ -99,7 +99,7 @@ async function login(req, res) {
 async function cambiarContrasena(req, res) {
   if (!req.debeCambiarContrasena) {
     return res.status(403).json(
-      buildError('No hay un cambio de contraseña pendiente', 'contraseña', 'Pida al administrador que la restablezca')
+      buildError('No hay un cambio de contraseña pendiente', 'contraseña', 'Pide al administrador que la restablezca')
     );
   }
 
@@ -124,7 +124,7 @@ async function cambiarContrasena(req, res) {
       buildError(
         'La contraseña nueva es igual a la asignada',
         'contraseña',
-        'Escriba una contraseña distinta a la que le dio el administrador'
+        'Escribe una contraseña distinta a la que te dio el administrador'
       )
     );
   }
@@ -160,7 +160,7 @@ async function logout(req, res) {
         buildError(
           'No se pudo cerrar la sesión',
           'cierre de sesión',
-          'La sesión sigue abierta; inténtelo nuevamente en unos momentos'
+          'La sesión sigue abierta; vuelve a intentarlo en unos momentos'
         )
       );
     }

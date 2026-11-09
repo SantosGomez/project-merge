@@ -24,10 +24,10 @@ function testBuildErrorTresPartes() {
 
 // El mensaje está en español y no es ambiguo
 function testBuildErrorMensajeEnEspanolNoAmbiguo() {
-  const resultado = buildError('Credenciales no válidas', 'usuario o contraseña', 'Verifique sus datos e intente nuevamente');
+  const resultado = buildError('Credenciales no válidas', 'usuario o contraseña', 'Revisa tus datos y vuelve a intentarlo');
   assert.ok(resultado.mensaje.includes('Credenciales no válidas'), 'mensaje en español: qué ocurrió');
   assert.ok(resultado.mensaje.includes('usuario o contraseña'), 'mensaje en español: sobre qué');
-  assert.ok(resultado.mensaje.includes('Verifique sus datos e intente nuevamente'), 'mensaje en español: qué hacer');
+  assert.ok(resultado.mensaje.includes('Revisa tus datos y vuelve a intentarlo'), 'mensaje en español: qué hacer');
   // No debe contener texto en inglés ambiguo
   assert.ok(!/error|invalid|failed|unauthorized/i.test(resultado.mensaje), 'el mensaje no debe contener términos ambiguos en inglés');
 }

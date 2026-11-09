@@ -280,7 +280,7 @@ async function testRestablecerNoEncontradoDenegadoYPropio() {
   assert.strictEqual(inexistente.statusCode, 404, 'una cuenta inexistente debe responder 404');
   assert.strictEqual(
     inexistente.body.mensaje,
-    'No se encontró una cuenta con ese correo sobre correo: Verifique que el correo esté bien escrito',
+    'No se encontró una cuenta con ese correo sobre correo: Revisa que el correo esté bien escrito',
     'el aviso debe decir que no hay una cuenta con ese correo'
   );
 
@@ -316,7 +316,7 @@ async function testRestablecerConCorreoEnMayusculasYEspacios() {
 async function testRestablecerSinCorreoOConCorreoNoTextual() {
   const tokenAdmin = await loginAdmin();
   const cuenta = await crearUsuarioDePrueba('contador');
-  const falta = 'Falta el correo sobre correo: Escriba el correo de la cuenta';
+  const falta = 'Falta el correo sobre correo: Escribe el correo de la cuenta';
   const noTexto = 'Dato inválido sobre correo: debe enviarse como texto';
 
   const casos = [

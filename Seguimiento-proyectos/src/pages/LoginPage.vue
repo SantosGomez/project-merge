@@ -23,7 +23,7 @@
         <q-banner v-if="arranqueFallido" class="notice notice--invalid" role="alert">
           <p class="notice__text">{{ arranqueFallido.mensaje }}</p>
           <q-btn
-            class="notice__action control-touch"
+            class="notice__action control-touch boton-presionable"
             color="primary"
             no-caps
             unelevated
@@ -56,7 +56,7 @@
         <q-banner v-if="errorPerfil" class="notice notice--invalid" role="alert">
           <p class="notice__text">{{ errorPerfil }}</p>
           <q-btn
-            class="notice__action control-touch"
+            class="notice__action control-touch boton-presionable"
             color="primary"
             no-caps
             unelevated
@@ -78,7 +78,7 @@
         <q-banner v-if="errorConexion" class="notice notice--invalid" role="alert">
           <p class="notice__text">{{ errorConexion.mensaje }}</p>
           <q-btn
-            class="notice__action control-touch"
+            class="notice__action control-touch boton-presionable"
             color="primary"
             no-caps
             unelevated
@@ -184,7 +184,7 @@
 
           <q-btn
             type="submit"
-            class="login-form__submit control-touch"
+            class="login-form__submit control-touch boton-presionable"
             color="primary"
             no-caps
             unelevated
@@ -421,11 +421,6 @@ const submit = async () => {
 }
 
 /* Con movimiento reducido el botón no cambia de escala (las transiciones de los campos se apagan en app.scss). */
-@media (prefers-reduced-motion: reduce) {
-  .login-form__submit:active {
-    transform: none;
-  }
-}
 
 .login-page__lead {
   margin: 0 0 24px;
@@ -496,12 +491,6 @@ const submit = async () => {
   min-height: 48px;
   margin-top: 4px;
   font-size: 1rem;
-  transition: transform 160ms ease-out;
-}
-
-/* Responde al presionarlo: confirma que se escuchó el clic. */
-.login-form__submit:active {
-  transform: scale(0.97);
 }
 
 .control-touch {

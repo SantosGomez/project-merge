@@ -44,7 +44,6 @@
             <q-btn
               outline
               no-caps
-              dense
               color="primary"
               class="agenda-casos__accion control-touch boton-presionable"
               :icon="accionRapidaEstado(caso.estado).icono"

@@ -202,7 +202,12 @@ const enviar = async () => {
   } catch (error) {
     // Se devuelve el texto (si no se escribió otro) para reintentar sin reescribirlo.
     if (texto.value === '') texto.value = enviado
-    $q.notify({ type: 'negative', message: error.mensaje ?? 'No se pudo enviar el mensaje.' })
+    $q.notify({
+      type: 'negative',
+      message: error.mensaje ?? 'No se pudo enviar el mensaje.',
+      // «Reintentar» envía lo que está en el campo (el texto devuelto, o lo que se haya escrito).
+      actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: enviar }],
+    })
   } finally {
     enviando.value = false
   }

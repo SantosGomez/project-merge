@@ -599,10 +599,6 @@ const imprimir = () => window.print()
   margin: 0 4px 4px 0;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 @media (min-width: 1024px) {
   .ficha {

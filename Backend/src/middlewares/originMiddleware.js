@@ -28,7 +28,7 @@ function createOriginGuard(permitidos) {
       buildError(
         'Origen no permitido',
         'origen de la petición',
-        'Use la aplicación web de desarrollo autorizada para acceder al servicio'
+        'Usa la aplicación web autorizada para entrar al servicio'
       )
     );
   };

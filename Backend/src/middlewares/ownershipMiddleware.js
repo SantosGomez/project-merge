@@ -13,7 +13,7 @@ async function checkCaseOwnership(req, res, next) {
   // Si no hay usuario autenticado, rechazar
   if (!req.user) {
     res.status(403).json(
-      buildError('Acceso denegado', 'usuario autenticado', 'Inicie sesión para consultar casos')
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión para consultar casos')
     );
     return;
   }
@@ -25,7 +25,7 @@ async function checkCaseOwnership(req, res, next) {
   // Caso inexistente o id inválido
   if (!caso) {
     res.status(404).json(
-      buildError('No se encontró el caso', 'ID del caso', 'Verifique que el ID del caso sea correcto')
+      buildError('No se encontró el caso', 'ID del caso', 'Revisa que el caso exista y actualiza la lista')
     );
     return;
   }
@@ -33,7 +33,7 @@ async function checkCaseOwnership(req, res, next) {
   // El caso pertenece a otro contador
   if (caso.contador_id !== req.user.id) {
     res.status(403).json(
-      buildError('Acceso denegado', 'caso', 'No tiene permiso para acceder a este caso')
+      buildError('Acceso denegado', 'caso', 'No tienes permiso para abrir este caso')
     );
     return;
   }

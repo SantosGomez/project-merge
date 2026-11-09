@@ -213,13 +213,14 @@ describe('Detalles de las pantallas de acceso', () => {
     }
   })
 
+  // Revisión de UI, rebanada 9: usa la clase común `boton-presionable` (app.scss), que ya apaga la
+  // escala con movimiento reducido; ya no hay una copia propia del efecto en cada pantalla.
   it('el botón principal responde al presionarlo (sin moverse con movimiento reducido)', () => {
     for (const [fuente, clase] of [[login, 'login-form__submit'], [cambio, 'cambio-form__submit']]) {
-      assert.match(fuente, new RegExp(String.raw`\.${clase}\s*\{[^}]*transition:\s*transform 160ms ease-out`), `${clase}: transición`)
-      assert.match(fuente, new RegExp(String.raw`\.${clase}:active\s*\{[^}]*transform:\s*scale\(0\.97\)`), `${clase}: escala al presionar`)
-      const reducido = fuente.slice(fuente.indexOf('@media (prefers-reduced-motion: reduce)'))
-      assert.match(reducido, new RegExp(String.raw`\.${clase}:active\s*\{[^}]*transform:\s*none`), `${clase}: sin escala`)
+      assert.match(fuente, new RegExp(String.raw`class="${clase} control-touch boton-presionable"`), `${clase}: clase común`)
+      assert.doesNotMatch(fuente, new RegExp(String.raw`\.${clase}:active`), `${clase}: sin copia propia`)
     }
+    assert.match(appScss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.boton-presionable:active:not\(\.disabled\)\s*\{[^}]*transform:\s*none/)
   })
 
   it('el movimiento reducido apaga las transiciones reales de campos y selectores', () => {

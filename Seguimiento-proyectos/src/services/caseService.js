@@ -52,7 +52,7 @@ const errorDePrioridadInvalida = () =>
     ESTADOS_ERROR.DATOS_INVALIDOS,
     'La prioridad no es válida',
     'la prioridad del caso',
-    'Seleccione una prioridad válida: Alta, Media o Baja',
+    'Elige una prioridad válida: Alta, Media o Baja',
   )
 
 const errorDeEstadoInvalido = () =>
@@ -60,7 +60,7 @@ const errorDeEstadoInvalido = () =>
     ESTADOS_ERROR.DATOS_INVALIDOS,
     'El estado no es válido',
     'el estado del caso',
-    'Use uno de los siguientes: Pendiente, En proceso, Finalizado',
+    'Usa uno de estos: Pendiente, En proceso, Finalizado',
   )
 
 const errorDeFechaInvalida = () =>
@@ -68,7 +68,7 @@ const errorDeFechaInvalida = () =>
     ESTADOS_ERROR.DATOS_INVALIDOS,
     'La fecha de inicio no es válida',
     'la fecha de inicio del caso',
-    'Use una fecha real con formato DD-MM-AAAA',
+    'Usa una fecha real con formato DD-MM-AAAA',
   )
 
 const errorDeVencimientoInvalido = () =>
@@ -76,7 +76,7 @@ const errorDeVencimientoInvalido = () =>
     ESTADOS_ERROR.DATOS_INVALIDOS,
     'La fecha de vencimiento no es válida',
     'la fecha de vencimiento del caso',
-    'Use una fecha real con formato DD-MM-AAAA',
+    'Usa una fecha real con formato DD-MM-AAAA',
   )
 
 /**

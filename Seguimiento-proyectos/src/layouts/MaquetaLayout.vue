@@ -10,7 +10,7 @@
       @click="saltarAlContenido"
     />
 
-    <q-header v-if="$q.screen.lt.md" elevated class="bg-primary text-white">
+    <q-header v-if="$q.screen.lt.md" elevated class="bg-primary text-dg-texto-claro">
       <div class="layout-bar">
         <div class="layout-bar__row">
           <q-btn
@@ -289,9 +289,9 @@
     <!-- Fundido corto: nada aparece desde escala 0. Quasar pone el rol de diálogo; aquí solo el nombre. -->
     <q-dialog
       v-model="dialogoCierreAbierto"
-      transition-show="fade"
-      transition-hide="fade"
-      :transition-duration="150"
+      transition-show="dialogo-entra"
+      transition-hide="dialogo-sale"
+      :transition-duration="220"
       aria-labelledby="dialogo-cierre-titulo"
       @hide="alCerrarDialogo"
     >
@@ -307,7 +307,7 @@
             flat
             no-caps
             label="Cancelar"
-            class="control-touch"
+            class="control-touch boton-presionable"
             :disable="cerrandoSesion"
             @click="cancelarCierre"
           >
@@ -317,7 +317,7 @@
             color="primary"
             no-caps
             label="Cerrar sesión"
-            class="control-touch"
+            class="control-touch boton-presionable"
             :loading="cerrandoSesion"
             :disable="cerrandoSesion"
             @click="confirmarCierre"
@@ -648,10 +648,6 @@ onBeforeUnmount(() => {
   line-height: 1.2;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 .layout-bar__menu {
   min-width: 44px;

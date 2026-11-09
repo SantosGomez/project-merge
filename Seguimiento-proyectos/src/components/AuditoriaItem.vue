@@ -381,8 +381,4 @@ const textoFase = computed(() => {
   padding: 4px 12px 12px;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 </style>

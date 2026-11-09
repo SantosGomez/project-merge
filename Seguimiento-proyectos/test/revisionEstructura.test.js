@@ -122,10 +122,11 @@ describe('Diálogo de cerrar sesión', () => {
   const tarjeta = plantillaLayout.slice(plantillaLayout.indexOf('<q-card class="dialogo-cierre"'))
   const tarjetaApertura = tarjeta.slice(0, tarjeta.indexOf('>') + 1)
 
-  it('aparece con un fundido corto, no desde escala 0', () => {
-    assert.match(dialogo, /transition-show="fade"/)
-    assert.match(dialogo, /transition-hide="fade"/)
-    assert.match(dialogo, /:transition-duration="150"/)
+  // Revisión de UI, rebanada 9: la misma entrada y salida que todos los diálogos (desde 0.95, no desde 0).
+  it('aparece con la animación común de los diálogos, no desde escala 0', () => {
+    assert.match(dialogo, /transition-show="dialogo-entra"/)
+    assert.match(dialogo, /transition-hide="dialogo-sale"/)
+    assert.match(dialogo, /:transition-duration="220"/)
   })
 
   it('el nombre accesible va en el q-dialog y la tarjeta no repite el rol', () => {

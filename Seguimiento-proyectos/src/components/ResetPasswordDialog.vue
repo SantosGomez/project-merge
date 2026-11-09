@@ -329,7 +329,4 @@ const restablecer = async () => {
 
 /* .form-group, .form-label, .required-mark, .form-help y .error-banner viven en app.scss. */
 
-.control-touch {
-  min-height: 44px;
-}
 </style>

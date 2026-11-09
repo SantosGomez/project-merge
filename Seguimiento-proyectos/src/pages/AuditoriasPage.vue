@@ -585,10 +585,6 @@ const mensajeError = computed(() => errorCarga.value?.mensaje ?? 'las auditoría
   font-size: 0.95rem;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 
 /* Espacio al pie para que el botón flotante no tape la última tarjeta */
 @media (max-width: 599px) {

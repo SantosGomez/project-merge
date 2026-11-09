@@ -380,9 +380,9 @@
       <!-- Esc, un clic fuera o «Cancelar» con datos escritos: se pregunta antes de perderlos. -->
       <q-dialog
         v-model="confirmacionAbierta"
-        transition-show="fade"
-        transition-hide="fade"
-        :transition-duration="150"
+        transition-show="dialogo-entra"
+        transition-hide="dialogo-sale"
+        :transition-duration="220"
         aria-labelledby="descartar-auditoria-titulo"
       >
         <q-card class="confirmar-descartar">
@@ -780,10 +780,6 @@ const submit = async () => {
   font-weight: 600;
 }
 
-.control-touch {
-  min-width: 44px;
-  min-height: 44px;
-}
 .auditoria-form__seccion {
   display: grid;
   grid-column: 1 / -1;

@@ -379,3 +379,10 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
+
+/* Área táctil mínima de los controles (44 px). Global: un estilo scoped del padre no alcanza
+   a los botones de un componente hijo, y así no hay que copiarla en cada archivo. */
+.control-touch {
+  min-width: 44px;
+  min-height: 44px;
+}
