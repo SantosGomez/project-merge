@@ -101,10 +101,13 @@ const partes = computed(() => separarMensajeError(props.detail))
   margin: 12px 0 0;
 }
 
+/* Peso y alto de línea propios: el h2 de Quasar trae 300 y 60 px de alto de línea. */
 .error-state__title {
   margin: 0 0 12px;
   color: var(--dg-error-oscuro);
   font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .error-state__part {

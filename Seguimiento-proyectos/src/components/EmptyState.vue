@@ -62,10 +62,13 @@ const titleId = useId()
   text-align: center;
 }
 
+/* Peso y alto de línea propios: el h2 de Quasar trae 300 y 60 px de alto de línea. */
 .empty-state__title {
   margin: 0 0 8px;
   color: var(--dg-texto);
   font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .empty-state__message {

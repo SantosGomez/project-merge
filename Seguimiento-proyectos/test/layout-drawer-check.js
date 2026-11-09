@@ -513,8 +513,10 @@ describe('Drawer compacto — verificación estática', () => {
     )
 
     const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
-    assert.ok(drawerTag.includes('@mouseenter="cursorEnMenu = true"'), 'el cursor despliega')
-    assert.ok(drawerTag.includes('@mouseleave="cursorEnMenu = false"'), 'salir el cursor no toca el foco')
+    // Revisión de UI, rebanada 2: el cursor despliega tras una breve espera (ver revisionEstructura).
+    assert.ok(drawerTag.includes('@mouseenter="alEntrarCursor"'), 'el cursor despliega')
+    assert.ok(drawerTag.includes('@mouseleave="alSalirCursor"'), 'salir el cursor no toca el foco')
+    assert.doesNotMatch(declaracion('alSalirCursor'), /focoEnMenu/, 'salir el cursor no toca el foco')
     assert.ok(drawerTag.includes('@focusin="alEntrarFoco"'), 'el foco despliega')
     assert.ok(drawerTag.includes('@focusout="alSalirFoco"'), 'salir el foco no toca el cursor')
 

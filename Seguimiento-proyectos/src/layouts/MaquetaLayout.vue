@@ -14,9 +14,12 @@
       <div class="layout-bar">
         <div class="layout-bar__row">
           <q-btn
+            ref="botonMenu"
             flat
             icon="menu"
             aria-label="Abrir menú de navegación"
+            :aria-expanded="drawerOpen ? 'true' : 'false'"
+            aria-controls="menu-lateral"
             class="layout-bar__menu control-touch"
             @click="drawerOpen = !drawerOpen"
           />
@@ -32,6 +35,7 @@
     </q-header>
 
     <q-drawer
+      id="menu-lateral"
       v-model="drawerOpen"
       show-if-above
       :breakpoint="1023"
@@ -39,11 +43,13 @@
       :mini="menuCompacto"
       :mini-to-overlay="!menuFijado"
       :mini-width="96"
-      @mouseenter="cursorEnMenu = true"
-      @mouseleave="cursorEnMenu = false"
+      @mouseenter="alEntrarCursor"
+      @mouseleave="alSalirCursor"
       @focusin="alEntrarFoco"
       @focusout="alSalirFoco"
+      @keydown.esc="cerrarMenuMovil"
       class="bg-primary menu-lateral"
+      :class="{ 'menu-lateral--al-instante': !cursorEnMenu }"
       transition-show="slide-right"
       transition-hide="slide-left"
     >
@@ -59,6 +65,7 @@
           aria-label="Fijar menú abierto"
           :aria-pressed="menuFijado"
           :aria-disabled="!esEscritorio"
+          :tabindex="esEscritorio ? 0 : -1"
           @click="alternarMenuFijado"
         >
           <img
@@ -90,7 +97,7 @@
               active-class="q-item--nav-activo"
               :to="{ name: 'admin-dashboard' }"
               :aria-current="paginaActual('admin-dashboard')"
-              aria-label="Ir al dashboard del administrador"
+              aria-label="Ir al dashboard admin"
             >
               <q-item-section avatar>
                 <q-icon name="dashboard" />
@@ -279,13 +286,16 @@
       <router-view v-else />
     </q-page-container>
 
+    <!-- Fundido corto: nada aparece desde escala 0. Quasar pone el rol de diálogo; aquí solo el nombre. -->
     <q-dialog
       v-model="dialogoCierreAbierto"
-      transition-show="scale"
-      transition-hide="scale"
+      transition-show="fade"
+      transition-hide="fade"
+      :transition-duration="150"
+      aria-labelledby="dialogo-cierre-titulo"
       @hide="alCerrarDialogo"
     >
-      <q-card class="dialogo-cierre" role="dialog" aria-modal="true" aria-labelledby="dialogo-cierre-titulo">
+      <q-card class="dialogo-cierre">
         <q-card-section>
           <h2 id="dialogo-cierre-titulo" class="dialogo-cierre__titulo">¿Cerrar sesión?</h2>
           <p class="dialogo-cierre__texto">Tendrá que iniciar sesión de nuevo.</p>
@@ -293,6 +303,7 @@
 
         <q-card-actions align="right">
           <q-btn
+            autofocus
             flat
             no-caps
             label="Cancelar"
@@ -321,7 +332,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
@@ -351,6 +362,22 @@ const cursorEnMenu = ref(false)
 const focoEnMenu = ref(false)
 const menuCompacto = computed(() => !menuFijado.value && !cursorEnMenu.value && !focoEnMenu.value)
 
+// Pasar el cursor por el borde no es intención: el menú se despliega si el cursor se queda un momento.
+const ESPERA_CURSOR_MS = 150
+let esperaCursor = null
+
+const alEntrarCursor = () => {
+  clearTimeout(esperaCursor)
+  esperaCursor = setTimeout(() => {
+    cursorEnMenu.value = true
+  }, ESPERA_CURSOR_MS)
+}
+
+const alSalirCursor = () => {
+  clearTimeout(esperaCursor)
+  cursorEnMenu.value = false
+}
+
 const alEntrarFoco = (evento) => {
   // Solo el foco de teclado despliega: el que QDialog devuelve tras un clic no es visible.
   focoEnMenu.value = evento.target.matches(':focus-visible')
@@ -375,6 +402,27 @@ const alternarMenuFijado = () => {
   menuFijado.value = !menuFijado.value
   guardarMenuFijado(menuFijado.value)
 }
+
+// En el celular: al abrir el menú el foco entra a la primera opción; al cerrarlo vuelve al botón.
+const botonMenu = ref(null)
+
+/** Escape cierra el menú del celular también con el foco dentro (Quasar no lo hace). */
+const cerrarMenuMovil = () => {
+  if (esEscritorio.value || !drawerOpen.value) return
+  drawerOpen.value = false
+}
+watch(
+  () => drawerOpen.value,
+  async (abierto, antes) => {
+    if (esEscritorio.value) return
+    await nextTick()
+    if (abierto) {
+      document.querySelector('#menu-lateral .q-item--nav')?.focus()
+    } else if (antes && document.getElementById('menu-lateral')?.contains(document.activeElement)) {
+      botonMenu.value?.$el?.focus()
+    }
+  },
+)
 
 const dialogoCierreAbierto = ref(false)
 const cerrandoSesion = ref(false)
@@ -511,6 +559,21 @@ onBeforeUnmount(() => {
 .saltar-contenido:focus-visible {
   outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
+}
+
+/*
+ * El menú compacto anima su ancho solo cuando lo despliega el cursor; con el teclado cambia al
+ * instante (las acciones de teclado no se animan). La regla de Quasar lleva !important y se
+ * aplica al <aside class="q-drawer">, mientras que nuestras clases quedan en su contenido.
+ */
+:global(.q-body--layout-animate .q-drawer:has(> .menu-lateral--al-instante)) {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.q-body--layout-animate .q-drawer:has(> .menu-lateral)) {
+    transition: none !important;
+  }
 }
 
 /* El contenido recibe el foco del salto sin dibujar un anillo alrededor de toda la página. */
@@ -771,6 +834,8 @@ onBeforeUnmount(() => {
 .dialogo-cierre__titulo {
   margin: 0 0 8px;
   font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .dialogo-cierre__texto {
