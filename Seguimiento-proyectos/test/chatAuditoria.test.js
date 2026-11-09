@@ -45,8 +45,10 @@ describe('Panel de chat de la auditoría', () => {
     assert.match(plantilla, /:disable="!puedeEnviar"/)
   })
 
-  it('Enter envía y Mayús+Enter hace salto de línea', () => {
-    assert.match(plantilla, /@keydown\.enter\.exact\.prevent="enviar"/)
+  // Revisión de UI, rebanada 7: en el celular (sin Mayús) Enter hace salto de línea.
+  it('Enter envía y Mayús+Enter hace salto de línea (con teclado físico)', () => {
+    assert.match(plantilla, /@keydown\.enter\.exact="alPresionarEnter"/)
+    assert.match(script, /const enterEnvia = !\$q\.platform\.is\.mobile/)
   })
 
   it('tiene estados de carga, error y chat vacío', () => {
@@ -123,9 +125,9 @@ describe('Detalles de interacción del chat (revisión de diseño)', () => {
   })
 
   it('el botón «Enviar» responde al presionarlo', () => {
-    assert.match(plantilla, /class="chat-auditoria__enviar control-touch"/)
-    assert.match(estilos, /\.chat-auditoria__enviar\s*\{[^}]*transition:\s*transform 160ms ease-out/)
-    assert.match(estilos, /\.chat-auditoria__enviar:active\s*\{[^}]*transform:\s*scale\(0\.97\)/)
+    // Revisión de UI, rebanada 7: usa la clase común de app.scss en vez de su propia versión.
+    assert.match(plantilla, /class="chat-auditoria__enviar control-touch boton-presionable"/)
+    assert.doesNotMatch(estilos, /\.chat-auditoria__enviar:active/)
   })
 })
 

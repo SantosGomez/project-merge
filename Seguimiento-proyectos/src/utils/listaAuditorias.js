@@ -161,3 +161,7 @@ export const destinoVolverFicha = (rutaAnterior) => {
     destino: { name: 'auditorias' },
   }
 }
+
+/** Nombre corto de una fase: «Fase 3 · Observaciones» → «Observaciones». */
+export const nombreCorto = (nombre) =>
+  nombre.includes('·') ? nombre.slice(nombre.indexOf('·') + 1).trim() : nombre

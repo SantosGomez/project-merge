@@ -31,10 +31,11 @@ describe('Bitácora: historia como tabla', () => {
       'Folio',
       'Descripción',
       'Fecha límite',
-      'Entrega',
+      // Revisión de UI, rebanada 7: los mismos nombres que el formulario de eventos.
+      'Fecha de entrega',
       'Estado',
       '¿En tiempo?',
-      'Comentarios',
+      'Observaciones',
     ])
     assert.match(tabla, /entregaEnTiempo\(ev\)/)
   })

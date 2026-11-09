@@ -50,7 +50,7 @@
           :class="`auditorias-tabla__estado--${ESTADO_CLASE[props.row.estado] ?? 'pendiente'}`"
         >
           {{ etiquetaEstado(props.row.estado) }}
-          <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>
+          <q-tooltip>Estado de la auditoría; se cambia con «Editar».</q-tooltip>
         </q-chip>
       </q-td>
     </template>
@@ -90,6 +90,20 @@
 
     <template #body-cell-acciones="props">
       <q-td :props="props" class="auditorias-tabla__acciones">
+        <!-- .stop: sin él, el clic también abriría la ficha (row-click) -->
+        <q-btn
+          flat
+          round
+          dense
+          color="dg-acento"
+          icon="forum"
+          :aria-label="`Mensajes de ${props.row.cliente}`"
+          aria-haspopup="dialog"
+          class="control-touch boton-presionable"
+          @click.stop="emit('abrir-chat', props.row)"
+        >
+          <q-tooltip>Abre el chat con el administrador y los contadores de esta auditoría.</q-tooltip>
+        </q-btn>
         <q-btn
           flat
           round
@@ -138,7 +152,7 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['ver-detalle', 'editar'])
+const emit = defineEmits(['ver-detalle', 'editar', 'abrir-chat'])
 
 const TOTAL_FASES = 6
 

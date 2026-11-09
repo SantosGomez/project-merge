@@ -26,8 +26,8 @@
           <div class="ficha__titulo-fila">
             <h2 class="ficha__cliente">{{ auditoria.cliente }}</h2>
             <q-chip dense square class="ficha__chip" :class="`ficha__estado--${estadoClase}`">
-              {{ auditoria.estado }}
-              <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>
+              {{ etiquetaEstado(auditoria.estado) }}
+              <q-tooltip>Estado de la auditoría; se cambia con «Editar».</q-tooltip>
             </q-chip>
             <q-chip
               dense
@@ -36,7 +36,7 @@
               class="ficha__chip semaforo-etiqueta"
               :class="`semaforo--${semaforoClase}`"
             >
-              {{ auditoria.semaforo }}
+              {{ etiquetaSemaforo(auditoria.semaforo) }}
               <q-tooltip>{{ AYUDA_SEMAFORO[auditoria.semaforo] }}</q-tooltip>
             </q-chip>
             <q-btn
@@ -45,18 +45,19 @@
               color="primary"
               icon="edit"
               label="Editar"
-              class="ficha__editar control-touch"
+              class="ficha__editar control-touch boton-presionable"
               @click="dialogoEdicionAbierto = true"
             >
-              <q-tooltip>Cambia los datos generales o el estatus de la auditoría.</q-tooltip>
+              <q-tooltip>Cambia los datos generales o el estado de la auditoría.</q-tooltip>
             </q-btn>
+            <!-- En celular el chat se abre con el botón flotante: aquí no se repite. -->
             <q-btn
               flat
               no-caps
               color="dg-acento"
               icon="forum"
               label="Mensajes"
-              class="control-touch"
+              class="control-touch gt-xs boton-presionable"
               @click="chatAbierto = true"
             >
               <q-tooltip>Abre el chat con el administrador y los contadores de esta auditoría.</q-tooltip>
@@ -67,7 +68,7 @@
               color="dg-acento"
               icon="print"
               label="Imprimir ficha"
-              class="control-touch"
+              class="control-touch boton-presionable"
               @click="imprimir"
             >
               <q-tooltip
@@ -88,7 +89,7 @@
           >
             <q-icon name="event" size="20px" aria-hidden="true" />
             <span v-if="auditoria.proximoVencimiento">
-              <strong>Próximo:</strong> {{ auditoria.queVence }} · vence
+              <strong>Próximo:</strong> {{ auditoria.queVence }} ·
               {{ auditoria.proximoVencimiento }} ({{ textoDiasPlazo(auditoria.diasParaVencer) }})
             </span>
             <span v-else>Sin plazos pendientes en la bitácora</span>
@@ -140,13 +141,12 @@
                 <dt>Vencimiento (plazo de la autoridad)</dt>
                 <dd>
                   {{ auditoria.fechaVencimiento }}
-                  <span v-if="diasAutoridad !== null" class="ficha__tenue">
-                    ·
-                    {{
-                      diasAutoridad >= 0
-                        ? `le quedan ${diasAutoridad} días`
-                        : `venció hace ${-diasAutoridad} días`
-                    }}
+                  <!-- Una auditoría completada ya no corre contra el plazo -->
+                  <span
+                    v-if="diasAutoridad !== null && auditoria.estado !== 'Completado'"
+                    class="ficha__tenue"
+                  >
+                    · {{ textoDiasPlazo(diasAutoridad) }}
                   </span>
                 </dd>
               </div>
@@ -179,7 +179,12 @@
 
         <q-card flat bordered class="ficha__seccion ficha__bitacora">
           <q-card-section>
-            <BitacoraAuditoria :auditoria-id="auditoria.id" :fases="fases" @cambio="refrescar" />
+            <BitacoraAuditoria
+              ref="bitacora"
+              :auditoria-id="auditoria.id"
+              :fases="fases"
+              @cambio="refrescar"
+            />
           </q-card-section>
         </q-card>
       </div>
@@ -200,6 +205,7 @@
           fab
           color="primary"
           icon="forum"
+          class="boton-presionable"
           aria-label="Abrir mensajes de la auditoría"
           aria-haspopup="dialog"
           @click="chatAbierto = true"
@@ -212,7 +218,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
@@ -223,9 +229,16 @@ import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarFases, obtenerAuditoria } from '../services/auditoriaService.js'
 import { listCounters } from '../services/counterService.js'
+import { eventos } from '../services/eventosService.js'
 import { useSessionStore } from '../stores/session.js'
-import { destinoVolverFicha, plazoDeEvento } from '../utils/listaAuditorias.js'
-import { AYUDA_SEMAFORO, claseSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
+import { destinoVolverFicha, nombreCorto, plazoDeEvento } from '../utils/listaAuditorias.js'
+import {
+  AYUDA_SEMAFORO,
+  claseSemaforo,
+  etiquetaEstado,
+  etiquetaSemaforo,
+  textoDiasPlazo,
+} from '../utils/semaforoAuditoria.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -272,10 +285,6 @@ const estadoDeFase = (id) => {
   return 'pendiente'
 }
 
-// «Fase 3 · Observaciones» → «Observaciones».
-const nombreCorto = (nombre) =>
-  nombre.includes('·') ? nombre.slice(nombre.indexOf('·') + 1).trim() : nombre
-
 // Días que le quedan a la autoridad para su fecha de vencimiento (mismo cálculo que los plazos).
 const diasAutoridad = computed(() =>
   auditoria.value
@@ -312,14 +321,46 @@ watch(
 const refrescar = async () => {
   try {
     auditoria.value = await obtenerAuditoria(route.params.id)
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error.mensaje ?? 'No se pudo actualizar la ficha.' })
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'El evento se guardó, pero el semáforo y el próximo plazo no se actualizaron. Recarga la página.',
+    })
   }
 }
 
+/*
+ * En vivo y al volver a la ventana: la ficha y su bitácora se vuelven a pedir sin loader, para
+ * que los días y lo que cambió otra persona no se queden viejos. Si falla, se queda lo que se ve.
+ */
+const bitacora = ref(null)
+const refrescarEnSilencio = async () => {
+  if (cargando.value || errorCarga.value || !auditoria.value) return
+  try {
+    auditoria.value = await obtenerAuditoria(route.params.id)
+  } catch {
+    return
+  }
+  bitacora.value?.refrescar()
+}
+const dejarDeEscuchar = [
+  eventos.escuchar('auditoria-actualizada', ({ auditoriaId }) => {
+    if (String(auditoriaId) === String(route.params.id)) refrescarEnSilencio()
+  }),
+  eventos.escuchar('reconectado', refrescarEnSilencio),
+]
+const alVolver = () => {
+  if (document.visibilityState === 'visible') refrescarEnSilencio()
+}
+document.addEventListener('visibilitychange', alVolver)
+onBeforeUnmount(() => {
+  dejarDeEscuchar.forEach((dejar) => dejar())
+  document.removeEventListener('visibilitychange', alVolver)
+})
+
 const alGuardar = (guardada) => {
   auditoria.value = guardada
-  $q.notify({ type: 'positive', message: 'Cambios guardados.' })
+  $q.notify({ type: 'positive', message: 'Cambios de la auditoría guardados.' })
 }
 
 // El diálogo del navegador permite imprimir o guardar como PDF.
@@ -332,6 +373,13 @@ const imprimir = () => window.print()
   flex-direction: column;
   gap: 12px;
   padding: 16px;
+}
+
+/* En celular, espacio para que el botón flotante de mensajes no tape la última acción. */
+@media (max-width: 599px) {
+  .ficha {
+    padding-bottom: 88px;
+  }
 }
 
 .ficha__cuerpo {

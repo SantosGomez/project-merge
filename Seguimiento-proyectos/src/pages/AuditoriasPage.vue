@@ -155,6 +155,7 @@
           :auditorias="auditoriasFiltradas"
           @ver-detalle="verFicha"
           @editar="abrirEdicion"
+          @abrir-chat="(fila) => (chatAbierto = fila)"
         />
 
         <div v-else class="auditorias-page__lista">

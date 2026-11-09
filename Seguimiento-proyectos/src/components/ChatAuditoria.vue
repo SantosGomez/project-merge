@@ -34,7 +34,7 @@
           <ErrorState v-else-if="errorCarga" :detail="errorCarga" @retry="cargar" />
 
           <div v-else-if="mensajes.length === 0" class="chat-auditoria__vacio">
-            <q-icon name="chat_bubble_outline" size="32px" color="grey-7" aria-hidden="true" />
+            <q-icon name="chat_bubble_outline" size="32px" color="dg-texto-tenue" aria-hidden="true" />
             <p>Todavía no hay mensajes. Escribe el primero para el equipo de esta auditoría.</p>
           </div>
 
@@ -69,10 +69,10 @@
             maxlength="1000"
             counter
             label="Escribe un mensaje"
-            hint="Enter envía · Mayús+Enter hace un salto de línea"
+            :hint="enterEnvia ? 'Enter envía · Mayús+Enter hace un salto de línea' : undefined"
             :disable="cargando || Boolean(errorCarga)"
             class="chat-auditoria__campo col input-moderno"
-            @keydown.enter.exact.prevent="enviar"
+            @keydown.enter.exact="alPresionarEnter"
           />
           <q-btn
             type="submit"
@@ -83,7 +83,7 @@
             label="Enviar"
             :loading="enviando"
             :disable="!puedeEnviar"
-            class="chat-auditoria__enviar control-touch"
+            class="chat-auditoria__enviar control-touch boton-presionable"
           >
             <q-tooltip>Envía el mensaje a todos los participantes de la auditoría.</q-tooltip>
           </q-btn>
@@ -125,6 +125,14 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const $q = useQuasar()
+
+// En el celular no hay Mayús+Enter: Enter hace un salto de línea y se envía con el botón.
+const enterEnvia = !$q.platform.is.mobile
+const alPresionarEnter = (evento) => {
+  if (!enterEnvia) return
+  evento.preventDefault()
+  enviar()
+}
 const session = useSessionStore()
 
 const mensajes = ref([])
@@ -205,7 +213,8 @@ watch(
   (abierto) => {
     // Con el panel abierto no tiene caso el aviso emergente de esta misma auditoría.
     auditoriaConChatAbierto.value = abierto ? props.auditoriaId : null
-    if (abierto) cargar()
+    // Al reabrir con mensajes ya cargados se actualiza en silencio, sin volver a mostrar el cargador.
+    if (abierto) cargar({ silencioso: mensajes.value.length > 0 })
   },
   { immediate: true },
 )
@@ -309,23 +318,10 @@ onBeforeUnmount(() => {
   }
 }
 
-/* El botón confirma la pulsación con una leve reducción. */
-.chat-auditoria__enviar {
-  transition: transform 160ms ease-out;
-}
-
-.chat-auditoria__enviar:active {
-  transform: scale(0.97);
-}
-
 /* Con movimiento reducido no hay desplazamiento: solo el desvanecido ayuda a notarlo. */
 @media (prefers-reduced-motion: reduce) {
   .chat-auditoria__mensaje--entrando {
     animation-name: chat-aparecer;
-  }
-
-  .chat-auditoria__enviar:active {
-    transform: none;
   }
 }
 
