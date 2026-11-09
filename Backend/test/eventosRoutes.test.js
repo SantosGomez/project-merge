@@ -415,6 +415,70 @@ async function testContadoresAsignadosSeEnteranDeCambiosEnAuditorias() {
   for (const conexion of conexiones) conexion.cerrar();
 }
 
+async function testParticipantesRecibenMensajesDelChat() {
+  const admin = await abrirEventos(await pedirPase(tokenAdmin));
+  const asignado = await abrirEventos(await pedirPase(tokenContador));
+  const otro = await abrirEventos(await pedirPase(tokenOtro));
+  const conexiones = [admin, asignado, otro];
+  for (const conexion of conexiones) await conexion.esperar('conectado');
+
+  const alta = await peticion(
+    servidor.puerto,
+    'POST',
+    '/auditorias',
+    {
+      cliente: 'zz_test Auditoría con chat en vivo',
+      no_expediente: 'ZZ-VIVO-CHAT',
+      dependencia: 'SAT – ADAF',
+      tipo_auditoria: 'Revisión de gabinete',
+      periodo_inicio: '01-01-2023',
+      periodo_final: '31-12-2023',
+      fecha_inicio: '15-02-2026',
+      fecha_vencimiento: '15-02-2027',
+      contadores: [contador.id],
+    },
+    tokenAdmin
+  );
+  assert.strictEqual(alta.statusCode, 201);
+  const auditoriaId = alta.body.auditoria.id;
+
+  const enviado = await peticion(
+    servidor.puerto,
+    'POST',
+    `/auditorias/${auditoriaId}/mensajes`,
+    { texto: 'Ya subí los contratos.' },
+    tokenContador
+  );
+  assert.strictEqual(enviado.statusCode, 201);
+
+  // Llega a todos los que pueden ver el chat (también a las otras pestañas de quien escribe)
+  for (const conexion of [admin, asignado]) {
+    const aviso = await conexion.esperar('mensaje-auditoria');
+    assert.ok(aviso, 'recibe el mensaje en vivo');
+    assert.deepStrictEqual(aviso.datos, {
+      auditoriaId,
+      cliente: 'zz_test Auditoría con chat en vivo',
+      mensaje: enviado.body.nuevo_mensaje,
+    });
+  }
+  assert.strictEqual(await otro.esperar('mensaje-auditoria', 200), null, 'un contador no asignado no lo recibe');
+  assert.strictEqual(await asignado.esperar('aviso-nuevo', 200), null, 'quien escribe no recibe aviso en su campana');
+
+  // Si escribe el administrador, la campana del contador asignado se actualiza en vivo
+  const delAdmin = await peticion(
+    servidor.puerto,
+    'POST',
+    `/auditorias/${auditoriaId}/mensajes`,
+    { texto: 'Revisa el acta.' },
+    tokenAdmin
+  );
+  assert.strictEqual(delAdmin.statusCode, 201);
+  assert.deepStrictEqual((await asignado.esperar('aviso-nuevo'))?.datos, { auditoriaId });
+  assert.strictEqual(await admin.esperar('aviso-nuevo', 200), null, 'el administrador no tiene campana del chat');
+
+  for (const conexion of conexiones) conexion.cerrar();
+}
+
 describe('tiempo real con Server-Sent Events', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -443,6 +507,7 @@ describe('tiempo real con Server-Sent Events', () => {
   test('el contador recibe el aviso cuando el administrador cambia la prioridad', testContadorRecibeAvisoCuandoElAdministradorCambiaLaPrioridad);
   test('el administrador se entera al instante de cambios en auditorías y su bitácora', testAdministradorSeEnteraDeCambiosEnAuditorias);
   test('los contadores asignados se enteran al instante de cambios en sus auditorías', testContadoresAsignadosSeEnteranDeCambiosEnAuditorias);
+  test('los participantes de una auditoría reciben al instante los mensajes del chat', testParticipantesRecibenMensajesDelChat);
   test('cerrar sesión cierra la conexión de esa sesión', testCerrarSesionCierraLaConexion);
   test('hay latidos y una sesión revocada cierra la conexión', testLatidoYSesionRevocadaPorOtroLado);
 });

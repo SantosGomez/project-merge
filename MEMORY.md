@@ -17,9 +17,15 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas. Todo lo de abajo ya es
 - Colores del semáforo centralizados en `.semaforo--<clase>` (`app.scss`) y `utils/semaforoAuditoria.js`.
 - Rediseño UI de inputs y selects (completado, 2026-11-05): Rebanadas 0 a 6 listas (`app.scss`, `CaseFormDialog.vue`, `CasoItem.vue`, `MyCasesPage.vue`, `AdminDashboardPage.vue`, `AuditoriasPage.vue`, `AuditoriaFormDialog.vue`, `BitacoraAuditoria.vue`, `CountersDirectoryPage.vue`, `NewUserDialog.vue`, `ResetPasswordDialog.vue`, `LoginPage.vue`, `CambiarContrasenaPage.vue`). Selectores compactos en línea (`caso-item__estado`, `paginacion__por-pagina`) preservan su ancho en móvil.
 
+## Chat por auditoría (en `main` desde 2026-11-05, aprobado por el contador jefe)
+
+- Hilo por auditoría (admin + contadores asignados, mismos permisos que la bitácora): tabla `auditoria_mensajes` (en `seed.js`, se crea sola al arrancar), `MensajeAuditoriaModel`/`MensajeAuditoriaController`, `GET`/`POST /auditorias/:id/mensajes` (máx. 1000). Panel `components/ChatAuditoria.vue` (`q-dialog` a la derecha, `q-chat-message`, Enter envía), botón «Mensajes» en `AuditoriaItem` y la ficha (FAB en celular). Tiempo real por SSE `mensaje-auditoria` `{ auditoriaId, cliente, mensaje }`.
+- Avisos: solo a los contadores asignados (nunca a quien escribe ni al admin): notificación en la campana + emergente con «Ver mensajes» → ficha `?chat=1` (`utils/avisosChat.js`, `MaquetaLayout.vue`). Sin emergente si ese chat está abierto.
+- `session.id` es texto: comparar con `Number(session.id)`. Ideas pendientes: no leídos, botón en `AuditoriasTabla`, editar/borrar, adjuntos.
+
 ## Revisión de UI con skills (rama `revision-ui`, desde `main`, 2026-11-05)
 
-- Ramas: `main` = Docker/producción; `experimento` = chat por auditoría (sin unir); `revision-ui` = revisión de todo el frontend con las skills `impeccable` y `emil-design-eng`.
+- Ramas: `main` = Docker/producción; `experimento` = chat por auditoría (unido a `main` el 2026-11-05, commit 70b311f; `main` se trajo a `revision-ui` el 2026-11-09); `revision-ui` = revisión de todo el frontend con las skills `impeccable` y `emil-design-eng`.
 - Rebanada 0 lista: `PRODUCT.md` (entrevista: contadores en escritorio en oficina; éxito = que no se venzan plazos y ver la carga del equipo; WCAG AA) y `DESIGN.md` (modo scan; North Star «El expediente ordenado», componentes modernos y suaves, sombras suaves en azul marino ≤12 %). Encabezados en inglés porque la herramienta los lee por nombre. Sin sidecar `.impeccable/design.json` (solo sirve al panel «live»).
 - Herramienta: `sh .agents/skills/impeccable/scripts/impeccable context` (binario en `~/.impeccable/bin`); tras editar UI, `impeccable detect --json <archivos>`.
 - **Rebanada 1 (Acceso) completa** (commits 0f851d6, ea66e08, 28b4b49; test `test/revisionAcceso.test.js`): 404 con ruta comodín; AccessDenied con la sesión real; 429 → `DEMASIADOS_INTENTOS`; textos de acceso en tú (`utils/mensajesInicioSesion.js`); tooltips (dg-texto, 13/14 px) y `$positive`/`$negative` de la paleta en toda la app; ojo de 44 px; `prefers-reduced-motion` global en `app.scss`; fuentes Matter y Monument en el repo (Avant Garde, `icons` y `backgrounds` del usuario quedan sin commit, no se usan). Los `side-tab` de los avisos de estado del login son falsos positivos. Sin decidir: nombre de la PWA en el manifiesto y logo PNG de 1600×600.
@@ -30,7 +36,8 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas. Todo lo de abajo ya es
 ## Pendientes
 
 - Boceto de auditorías: campo Importancia, aviso al Socio Director, días inhábiles SAT, campos RFC/Unidad/Socio/Multa (no existen en las tablas: proponer cambio de esquema antes).
-- 5 fallos de layout del frontend que ya existían; `authRoutes` «correo en mayúsculas» falla a veces (carrera entre archivos de prueba).
+- `authRoutes` «correo en mayúsculas» falla a veces (carrera entre archivos de prueba).
+- `verificarPruebas.js` da FALLA porque `auditoria*`, `eventosRoutes` e `importarCuentas` no están en `MINIMOS` y `userModel` tiene 5 de 9 (ya pasaba antes del chat).
 
 ## Backend (lo esencial)
 

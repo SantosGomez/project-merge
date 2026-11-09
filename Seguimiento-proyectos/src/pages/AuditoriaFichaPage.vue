@@ -54,6 +54,17 @@
               flat
               no-caps
               color="dg-acento"
+              icon="forum"
+              label="Mensajes"
+              class="control-touch"
+              @click="chatAbierto = true"
+            >
+              <q-tooltip>Abre el chat con el administrador y los contadores de esta auditoría.</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              no-caps
+              color="dg-acento"
               icon="print"
               label="Imprimir ficha"
               class="control-touch"
@@ -180,6 +191,22 @@
         :es-admin="session.esAdministrador"
         @guardada="alGuardar"
       />
+
+      <ChatAuditoria v-model="chatAbierto" :auditoria-id="auditoria.id" :cliente="auditoria.cliente" />
+
+      <!-- En el celular el chat queda a la mano del pulgar; el panel se abre desde ese mismo lado -->
+      <q-page-sticky class="lt-sm" position="bottom-right" :offset="[16, 16]">
+        <q-btn
+          fab
+          color="primary"
+          icon="forum"
+          aria-label="Abrir mensajes de la auditoría"
+          aria-haspopup="dialog"
+          @click="chatAbierto = true"
+        >
+          <q-tooltip anchor="center left" self="center right">Abre el chat de esta auditoría.</q-tooltip>
+        </q-btn>
+      </q-page-sticky>
     </template>
   </q-page>
 </template>
@@ -191,6 +218,7 @@ import { useQuasar } from 'quasar'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import BitacoraAuditoria from '../components/BitacoraAuditoria.vue'
+import ChatAuditoria from '../components/ChatAuditoria.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarFases, obtenerAuditoria } from '../services/auditoriaService.js'
@@ -223,6 +251,16 @@ const contadores = ref([])
 const cargando = ref(true)
 const errorCarga = ref(null)
 const dialogoEdicionAbierto = ref(false)
+const chatAbierto = ref(false)
+
+// Desde el aviso «Ver mensajes» se llega con ?chat=1: la ficha abre el chat directamente.
+watch(
+  () => route.query.chat,
+  (chat) => {
+    if (chat) chatAbierto.value = true
+  },
+  { immediate: true },
+)
 
 const estadoClase = computed(() => ESTADO_CLASE[auditoria.value?.estado] ?? 'pendiente')
 const semaforoClase = computed(() => claseSemaforo(auditoria.value?.semaforo))

@@ -135,6 +135,8 @@ async function limpiarDatosDePrueba() {
     await query(`DELETE FROM casos WHERE contador_id IN (${marcas})`, idsUsuarios);
     // Auditorías registradas por ellos (sus asignaciones y bitácora se borran en cascada)
     // y asignaciones suyas en auditorías de otros.
+    // Mensajes de chat que escribieron en auditorías de otros.
+    await query(`DELETE FROM auditoria_mensajes WHERE IdUsuario IN (${marcas})`, idsUsuarios);
     await query(`DELETE FROM auditorias WHERE CreadoPor IN (${marcas})`, idsUsuarios);
     await query(`DELETE FROM auditoria_dtl WHERE Contador_id IN (${marcas})`, idsUsuarios);
     await query(`DELETE FROM aud_conta WHERE IdContador IN (${marcas})`, idsUsuarios);

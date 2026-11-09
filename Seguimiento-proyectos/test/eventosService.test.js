@@ -135,6 +135,18 @@ test('el aviso «auditoria-actualizada» también llega a quien lo escucha', asy
   assert.deepEqual(recibidos, [{ auditoriaId: 4 }])
 })
 
+test('el aviso «mensaje-auditoria» del chat también llega a quien lo escucha', async () => {
+  const { servicio, abiertas } = montar()
+  const recibidos = []
+  servicio.escuchar('mensaje-auditoria', (datos) => recibidos.push(datos))
+
+  servicio.conectar()
+  await esperarTareas()
+  abiertas[0].disparar('mensaje-auditoria', { auditoriaId: 4, mensaje: { id: 9 } })
+
+  assert.deepEqual(recibidos, [{ auditoriaId: 4, mensaje: { id: 9 } }])
+})
+
 // --- reconexión ----------------------------------------------------------------
 
 test('si la conexión se cae, se reconecta con un pase nuevo esperando cada vez más (máximo 60 s)', async () => {
