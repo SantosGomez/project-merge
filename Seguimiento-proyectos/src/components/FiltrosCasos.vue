@@ -10,7 +10,7 @@
         :color="filtros.estado === opcion.valor ? 'primary' : 'dg-texto-tenue'"
         :text-color="filtros.estado === opcion.valor ? 'white' : 'dg-texto'"
         :aria-pressed="filtros.estado === opcion.valor ? 'true' : 'false'"
-        class="filtros-casos__chip"
+        class="filtros-casos__chip boton-presionable"
         @click="cambiar({ estado: opcion.valor })"
       >
         {{ opcion.etiqueta }}
@@ -78,7 +78,7 @@
         color="primary"
         icon="filter_alt_off"
         label="Limpiar filtros"
-        class="filtros-casos__limpiar control-touch"
+        class="filtros-casos__limpiar control-touch boton-presionable"
         @click="filtros = { ...FILTROS_INICIALES }"
       >
         <q-tooltip>Vuelve a mostrar los casos abiertos, sin otros filtros.</q-tooltip>

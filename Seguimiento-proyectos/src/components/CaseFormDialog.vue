@@ -2,6 +2,9 @@
   <q-dialog
     v-model="dialogoAbierto"
     :persistent="cases.guardando || hayDatosSinGuardar"
+    transition-show="dialogo-entra"
+    transition-hide="dialogo-sale"
+    :transition-duration="220"
     aria-labelledby="registro-caso-titulo"
     @show="enfocarCliente"
     @shake="pedirDescartar"
@@ -65,6 +68,7 @@
               popup-content-class="menu-seleccion-custom"
               transition-show="jump-down"
               transition-hide="jump-up"
+              :transition-duration="180"
               class="selector-moderno"
               emit-value
               map-options
@@ -129,7 +133,12 @@
                   aria-label="Abrir calendario de la fecha de inicio"
                 >
                   <q-tooltip>Elegir la fecha de inicio en el calendario.</q-tooltip>
-                  <q-popup-proxy cover :breakpoint="700" transition-show="scale" transition-hide="scale">
+                  <q-popup-proxy
+                    :breakpoint="700"
+                    transition-show="jump-down"
+                    transition-hide="jump-up"
+                    :transition-duration="180"
+                  >
                     <q-date
                       v-model="fechaInicio"
                       mask="DD-MM-YYYY"
@@ -175,7 +184,12 @@
                   aria-label="Abrir calendario de la fecha de vencimiento"
                 >
                   <q-tooltip>Elegir la fecha de vencimiento en el calendario.</q-tooltip>
-                  <q-popup-proxy cover :breakpoint="700" transition-show="scale" transition-hide="scale">
+                  <q-popup-proxy
+                    :breakpoint="700"
+                    transition-show="jump-down"
+                    transition-hide="jump-up"
+                    :transition-duration="180"
+                  >
                     <q-date
                       v-model="fechaVencimiento"
                       mask="DD-MM-YYYY"
@@ -223,6 +237,7 @@
                 popup-content-class="menu-seleccion-custom"
                 transition-show="jump-down"
                 transition-hide="jump-up"
+                :transition-duration="180"
                 class="selector-moderno"
                 emit-value
                 map-options
@@ -353,6 +368,7 @@
               popup-content-class="menu-seleccion-custom"
               transition-show="jump-down"
               transition-hide="jump-up"
+              :transition-duration="180"
               class="selector-moderno"
               emit-value
               map-options
@@ -410,7 +426,7 @@
             flat
             no-caps
             label="Cancelar"
-            class="control-touch"
+            class="control-touch boton-presionable"
             :disable="cases.guardando"
             @click="cerrar"
           >
@@ -423,7 +439,7 @@
             :icon="modoEdicion ? 'save' : 'add_circle'"
             no-caps
             unelevated
-            class="control-touch"
+            class="control-touch boton-presionable"
             :loading="cases.guardando"
             :disable="cases.guardando || (modoEdicion && !hayCambios)"
           >
@@ -446,10 +462,10 @@
             <p class="confirmar-descartar__texto">Lo que escribiste en este formulario se perderá.</p>
           </q-card-section>
           <q-card-actions align="right">
-            <q-btn v-close-popup autofocus flat no-caps label="Seguir editando" class="control-touch">
+            <q-btn v-close-popup autofocus flat no-caps label="Seguir editando" class="control-touch boton-presionable">
               <q-tooltip>Vuelve al formulario con todo lo que escribiste.</q-tooltip>
             </q-btn>
-            <q-btn color="dg-error" unelevated no-caps label="Descartar" class="control-touch" @click="descartar">
+            <q-btn color="dg-error" unelevated no-caps label="Descartar" class="control-touch boton-presionable" @click="descartar">
               <q-tooltip>Cierra el formulario y pierde lo que escribiste.</q-tooltip>
             </q-btn>
           </q-card-actions>

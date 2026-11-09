@@ -5,7 +5,7 @@
         Aquí están los casos que registraste y los que te asignó el administrador. Cambia el estado desde la lista; para el resto de los datos usa «Editar».
       </p>
       <q-btn
-        class="my-cases-page__register-btn control-touch"
+        class="my-cases-page__register-btn control-touch boton-presionable"
         color="primary"
         no-caps
         unelevated
@@ -52,7 +52,7 @@
               color="primary"
               icon="filter_alt_off"
               label="Limpiar filtros"
-              class="sin-resultados__limpiar control-touch"
+              class="sin-resultados__limpiar control-touch boton-presionable"
               @click="limpiarFiltros"
             >
               <q-tooltip>Vuelve a mostrar los casos abiertos, sin otros filtros.</q-tooltip>
@@ -62,15 +62,22 @@
 
         <!-- Las filas van directo en la lista: así se pintan los separadores y todas existen en la página. -->
         <q-list v-else bordered separator class="case-list" aria-label="Tus casos">
-          <CasoItem
-            v-for="item in filas"
-            :key="item.id"
-            :caso="item"
-            :deshabilitado="guardandoId === item.id"
-            @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
-            @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
-            @editar="abrirEdicion(item.id)"
-          />
+          <!-- Solo se anima la salida de una fila que pasa a Finalizado; al filtrar no se anima nada. -->
+          <TransitionGroup
+            name="caso-salida"
+            :css="animarSalida"
+            :move-class="animarSalida ? 'caso-salida-move' : 'caso-sin-movimiento'"
+          >
+            <CasoItem
+              v-for="item in filas"
+              :key="item.id"
+              :caso="item"
+              :deshabilitado="guardandoId === item.id"
+              @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
+              @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
+              @editar="abrirEdicion(item.id)"
+            />
+          </TransitionGroup>
         </q-list>
 
         <div v-if="paginacion.totalPaginas > 0" class="paginacion">
@@ -85,6 +92,7 @@
             popup-content-class="menu-seleccion-custom"
             transition-show="jump-down"
             transition-hide="jump-up"
+            :transition-duration="180"
             label="Por página"
             class="paginacion__por-pagina selector-moderno"
           >
@@ -209,6 +217,9 @@ const dialogoRegistroAbierto = ref(false)
 const casoEnEdicion = ref(null)
 // Fila que se está guardando: solo esa se deshabilita mientras tanto.
 const guardandoId = ref(null)
+// Se activa solo al finalizar un caso, para que esa fila salga con un fundido (no al filtrar).
+const animarSalida = ref(false)
+const DURACION_SALIDA_MS = 150
 
 const mensajeError = computed(() => cases.error?.mensaje ?? 'la lista de tus casos.')
 
@@ -228,9 +239,12 @@ const guardarCambio = async (caseId, cambios) => {
   if (cases.guardando) return
   const cliente = clienteDe(caseId)
   guardandoId.value = caseId
+  if (cambios.estado === 'finalizado') animarSalida.value = true
 
   const resultado = await cases.actualizarCaso(caseId, cambios)
   guardandoId.value = null
+  // Se apaga cuando la fila ya salió, para que el siguiente filtro no se anime.
+  if (animarSalida.value) setTimeout(() => (animarSalida.value = false), DURACION_SALIDA_MS + 50)
 
   if (resultado.ok) {
     $q.notify({ type: 'positive', message: avisoDeExito(cliente, cambios) })
@@ -324,10 +338,41 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 }
 
 .case-list {
+  position: relative;
   overflow: hidden;
   border-color: var(--dg-borde);
   border-radius: 10px;
   background: var(--dg-superficie);
+}
+
+/*
+ * Salida de la fila que pasa a Finalizado: se desvanece y se corre un poco en 150 ms; las de abajo
+ * suben con la misma curva. La fila sale del flujo (absolute) para que las demás puedan moverse.
+ */
+.caso-salida-leave-active {
+  position: absolute;
+  width: 100%;
+  transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1), transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.caso-salida-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.caso-salida-move {
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caso-salida-leave-active,
+  .caso-salida-move {
+    transition: opacity 150ms linear;
+  }
+
+  .caso-salida-leave-to {
+    transform: none;
+  }
 }
 
 .sin-resultados {

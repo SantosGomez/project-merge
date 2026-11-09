@@ -19,7 +19,7 @@
             : `Marcar como importante el caso de ${caso.client}`
         "
         :disable="deshabilitado"
-        class="control-touch"
+        class="control-touch caso-item__estrella-boton"
         @click="emit('alternar-importante')"
       >
         <q-tooltip>{{
@@ -77,6 +77,7 @@
         popup-content-class="menu-seleccion-custom"
         transition-show="jump-down"
         transition-hide="jump-up"
+        :transition-duration="180"
         :model-value="caso.priority"
         :options="opcionesPrioridad"
         option-label="label"
@@ -134,6 +135,7 @@
         popup-content-class="menu-seleccion-custom"
         transition-show="jump-down"
         transition-hide="jump-up"
+        :transition-duration="180"
         :model-value="caso.status"
         :options="opcionesEstado"
         option-label="label"
@@ -186,7 +188,7 @@
         aria-haspopup="dialog"
         :aria-label="`Editar el caso de ${caso.client}`"
         :disable="deshabilitado"
-        class="control-touch"
+        class="control-touch boton-presionable"
         @click="emit('editar')"
       >
         <q-tooltip>Abre el formulario para cambiar la información del caso, incluida la prioridad.</q-tooltip>
@@ -283,6 +285,23 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 .caso-item__estrella {
   min-width: 44px;
   padding-right: 4px;
+}
+
+/* La estrella se encoge un poco más que un botón normal al presionarla: confirma el cambio de marca. */
+.caso-item__estrella-boton {
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.caso-item__estrella-boton:active:not(.disabled) {
+  transform: scale(0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caso-item__estrella-boton,
+  .caso-item__estrella-boton:active:not(.disabled) {
+    transition: none;
+    transform: none;
+  }
 }
 
 .caso-item__datos {

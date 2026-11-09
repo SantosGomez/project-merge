@@ -160,7 +160,11 @@ describe('Grupo C: paleta y accesibilidad de la lista', () => {
 
   it('las filas son hijas directas de la lista (se ven los separadores y Ctrl+F las encuentra)', () => {
     assert.doesNotMatch(pagina, /q-intersection/)
-    assert.match(plantillaDe(pagina), /<q-list[^>]*separator[^>]*>\s*<CasoItem\s+v-for="item in filas"/)
+    // TransitionGroup sin `tag` no agrega envoltorio: las filas siguen siendo hijas directas.
+    assert.match(
+      plantillaDe(pagina),
+      /<q-list[^>]*separator[^>]*>\s*(?:<!--[\s\S]*?-->\s*)?<TransitionGroup\s+name="caso-salida"\s+:css="animarSalida"\s+:move-class="animarSalida \? 'caso-salida-move' : 'caso-sin-movimiento'"\s*>\s*<CasoItem\s+v-for="item in filas"/,
+    )
   })
 
   it('los chips de estado tienen un área táctil de 44 px', () => {
@@ -179,5 +183,62 @@ describe('Grupo C: paleta y accesibilidad de la lista', () => {
     assert.match(plantilla, /v-else-if="proximo"[^>]*class="caso-item__alerta caso-item__alerta--pronto"/)
     assert.match(scriptDe(casoItem), /const proximo = computed\(\(\) => Boolean\(props\.caso\.proximo\) && !props\.soloLectura\)/)
     assert.match(scriptDe(pagina), /proximo: esCasoProximoAVencer\(caso, hoy\.value\)/)
+  })
+})
+
+const appScss = leer('../src/css/app.scss')
+
+describe('Grupo D: movimiento (rápido, con salida más corta que la entrada)', () => {
+  it('la fila que pasa a Finalizado sale en 150 ms; al filtrar no se anima nada', () => {
+    const script = scriptDe(pagina)
+    assert.match(script, /const animarSalida = ref\(false\)/)
+    assert.match(script, /if \(cambios\.estado === 'finalizado'\) animarSalida\.value = true/)
+    const estilos = estilosDe(pagina)
+    assert.match(reglaDe(estilos, String.raw`\.caso-salida-leave-active`) ?? '', /transition:\s*opacity 150ms/)
+    assert.match(reglaDe(estilos, String.raw`\.caso-salida-leave-active`) ?? '', /position:\s*absolute/)
+    assert.match(estilos, /\.caso-salida-move\s*\{[^}]*transition:\s*transform 150ms/)
+    assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.caso-salida-move/)
+  })
+
+  it('los botones responden al presionar con una escala sutil', () => {
+    assert.match(appScss, /\.boton-presionable\s*\{[^}]*transition:\s*transform 120ms/)
+    assert.match(appScss, /\.boton-presionable:active:not\(\.disabled\)\s*\{[^}]*transform:\s*scale\(0\.97\)/)
+    assert.match(plantillaDe(pagina), /class="my-cases-page__register-btn control-touch boton-presionable"/)
+    assert.match(plantillaDe(casoItem), /label="Editar"[\s\S]*?class="control-touch boton-presionable"/)
+    assert.match(estilosDe(casoItem), /\.caso-item__estrella-boton:active:not\(\.disabled\)\s*\{[^}]*scale\(0\.9\)/)
+    for (const etiqueta of ['Seguir editando', 'Descartar']) {
+      assert.match(plantillaDe(formulario), new RegExp(String.raw`label="${etiqueta}"[^>]*class="control-touch boton-presionable"`))
+    }
+  })
+
+  it('los menús de los selectores duran 180 ms', () => {
+    for (const [nombre, fuente] of [['CasoItem', casoItem], ['MyCasesPage', pagina], ['CaseFormDialog', formulario]]) {
+      const selects = plantillaDe(fuente).split('<q-select').slice(1).map((s) => s.slice(0, s.indexOf('>')))
+      assert.ok(selects.length > 0, `${nombre} tiene selectores`)
+      for (const s of selects) assert.match(s, /:transition-duration="180"/, `${nombre}: menú en 180 ms`)
+    }
+  })
+
+  it('el diálogo entra en 220 ms desde 0.95 y sale en 150 ms', () => {
+    assert.match(plantillaDe(formulario), /transition-show="dialogo-entra"\s+transition-hide="dialogo-sale"\s+:transition-duration="220"/)
+    assert.match(appScss, /\.q-transition--dialogo-entra-enter-active\s*\{[^}]*220ms/)
+    assert.match(appScss, /\.q-transition--dialogo-entra-enter-from\s*\{[^}]*scale\(0\.95\)/)
+    assert.match(appScss, /\.q-transition--dialogo-sale-leave-active\s*\{[^}]*150ms/)
+  })
+
+  it('el calendario nace de su icono (jump-down en 180 ms), sin cubrir el campo', () => {
+    const proxies = plantillaDe(formulario).split('<q-popup-proxy').slice(1).map((s) => s.slice(0, s.indexOf('>')))
+    assert.equal(proxies.length, 2)
+    for (const p of proxies) {
+      assert.doesNotMatch(p, /\bcover\b|"scale"/)
+      assert.match(p, /transition-show="jump-down"/)
+      assert.match(p, /:transition-duration="180"/)
+    }
+  })
+
+  it('campos y opciones con curva de salida rápida; el hover de las opciones solo con ratón y desde la paleta', () => {
+    assert.match(appScss, /\$curva-salida:\s*cubic-bezier\(0\.23, 1, 0\.32, 1\)/)
+    assert.doesNotMatch(appScss, /0\.2s ease|0\.25s ease|0\.15s ease|#f1f5f9/)
+    assert.match(appScss, /@media \(hover: hover\) and \(pointer: fine\)\s*\{\s*\.item-opcion-custom:hover\s*\{\s*background:\s*var\(--dg-fondo-hover\)/)
   })
 })

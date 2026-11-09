@@ -191,12 +191,15 @@ body {
  * sombra tenue, hover con elevación suave y foco con anillo.
  * Úsalo con class="input-moderno" en q-input o class="selector-moderno" en q-select.
  */
+// Curva de salida rápida: arranca veloz y frena suave; se siente más ágil que `ease`.
+$curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
+
 .input-moderno .q-field__control,
 .selector-moderno .q-field__control {
   border-radius: 10px !important;
   border-color: var(--dg-borde) !important;
   box-shadow: 0 1px 2px rgba(16, 42, 67, 0.04);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: box-shadow 160ms $curva-salida, border-color 160ms $curva-salida;
 }
 
 .input-moderno:hover .q-field__control,
@@ -215,7 +218,7 @@ body {
 
 /* Icono del chevron del q-select: rotación al abrir */
 .selector-moderno .q-select__dropdown-icon {
-  transition: transform 0.25s ease;
+  transition: transform 160ms $curva-salida;
 }
 
 .selector-moderno.q-field--focused .q-select__dropdown-icon {
@@ -274,11 +277,14 @@ body {
   padding: 8px 12px;
   margin: 2px 0;
   min-height: 40px;
-  transition: background 0.15s ease;
+  transition: background 150ms $curva-salida;
 }
 
-.item-opcion-custom:hover {
-  background: #f1f5f9;
+/* Solo con ratón: en pantallas táctiles el hover se queda pegado tras tocar. */
+@media (hover: hover) and (pointer: fine) {
+  .item-opcion-custom:hover {
+    background: var(--dg-fondo-hover);
+  }
 }
 
 /* Opción actualmente seleccionada */
@@ -313,4 +319,53 @@ body {
   border-radius: 50%;
   background: var(--dot-color, var(--dg-texto-tenue));
   flex-shrink: 0;
+}
+
+/*
+ * ── Movimiento ────────────────────────────────────────────────────────────────
+ * Respuesta al presionar: el botón se encoge apenas, así la interfaz se siente atenta.
+ * Úsalo con class="boton-presionable" en q-btn.
+ */
+.boton-presionable {
+  transition: transform 120ms $curva-salida;
+}
+
+.boton-presionable:active:not(.disabled) {
+  transform: scale(0.97);
+}
+
+/*
+ * Diálogos: entran en 220 ms desde 0.95 (nunca desde 0) y salen más rápido, en 150 ms.
+ * Uso: transition-show="dialogo-entra" transition-hide="dialogo-sale" :transition-duration="220".
+ */
+.q-transition--dialogo-entra-enter-active {
+  transition: opacity 220ms $curva-salida, transform 220ms $curva-salida;
+}
+
+.q-transition--dialogo-entra-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.q-transition--dialogo-sale-leave-active {
+  transition: opacity 150ms $curva-salida, transform 150ms $curva-salida;
+}
+
+.q-transition--dialogo-sale-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+/* Con movimiento reducido no hay escalas: los diálogos solo aparecen y desaparecen con fundido. */
+@media (prefers-reduced-motion: reduce) {
+  .boton-presionable,
+  .boton-presionable:active:not(.disabled) {
+    transition: none;
+    transform: none;
+  }
+
+  .q-transition--dialogo-entra-enter-from,
+  .q-transition--dialogo-sale-leave-to {
+    transform: none;
+  }
 }
