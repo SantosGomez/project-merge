@@ -1,6 +1,15 @@
 <template>
-  <q-dialog v-model="dialogoAbierto" :persistent="guardando" aria-labelledby="restablecer-titulo">
-    <q-card class="restablecer">
+  <q-dialog
+    v-model="dialogoAbierto"
+    :persistent="guardando || hayDatosSinGuardar"
+    transition-show="dialogo-entra"
+    transition-hide="dialogo-sale"
+    :transition-duration="220"
+    aria-labelledby="restablecer-titulo"
+    @show="enfocarPrimerCampo"
+    @shake="pedirDescartar"
+  >
+    <q-card ref="tarjeta" class="restablecer">
       <q-form
         class="restablecer__form"
         novalidate
@@ -11,6 +20,10 @@
           <h2 id="restablecer-titulo" class="restablecer__title">Restablecer contraseña</h2>
           <p class="restablecer__help">
             La cuenta tendrá esta contraseña nueva y se cerrarán todas sus sesiones abiertas.
+          </p>
+          <p v-if="esCuentaPropia" class="restablecer__propia" role="note">
+            Es tu propia cuenta: al guardar se cerrará tu sesión y tendrás que entrar con la
+            contraseña nueva.
           </p>
         </q-card-section>
 
@@ -28,12 +41,12 @@
 
           <div class="form-group">
             <label for="restablecer-password" class="form-label"
-              >Contraseña nueva <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Contraseña nueva <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-input
               for="restablecer-password"
               v-model="password"
-              type="password"
+              :type="verPassword ? 'text' : 'password'"
               placeholder="Al menos 8 caracteres"
               autocomplete="new-password"
               outlined
@@ -46,12 +59,37 @@
               @update:model-value="errores.password = null"
             >
               <template #prepend>
-                <q-icon name="lock_reset" />
+                <q-icon name="lock_reset" aria-hidden="true" />
               </template>
-              <q-tooltip>Contraseña nueva de la cuenta; compártela con la persona por un medio seguro.</q-tooltip>
+              <template #append>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  :icon="verPassword ? 'visibility_off' : 'visibility'"
+                  :aria-label="verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                  :aria-pressed="verPassword ? 'true' : 'false'"
+                  class="control-touch"
+                  @click="verPassword = !verPassword"
+                >
+                  <q-tooltip>{{ verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña' }}</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="verPassword && password"
+                  flat
+                  round
+                  dense
+                  icon="content_copy"
+                  aria-label="Copiar contraseña"
+                  class="control-touch"
+                  @click="copiarPassword"
+                >
+                  <q-tooltip>Copia la contraseña para compartirla.</q-tooltip>
+                </q-btn>
+              </template>
             </q-input>
             <p id="restablecer-password-ayuda" class="form-help">
-              Al menos 8 caracteres. La persona creará su propia contraseña al entrar.
+              Al menos 8 caracteres. Es temporal: al iniciar sesión, la persona tendrá que cambiarla por la suya. Compártela por un medio seguro.
             </p>
           </div>
 
@@ -64,9 +102,9 @@
             no-caps
             label="Cancelar"
             color="primary"
-            class="control-touch"
+            class="control-touch boton-presionable"
             :disable="guardando"
-            @click="dialogoAbierto = false"
+            @click="cerrar"
           >
             <q-tooltip>Cierra sin cambiar la contraseña.</q-tooltip>
           </q-btn>
@@ -77,7 +115,7 @@
             icon="lock_reset"
             no-caps
             unelevated
-            class="control-touch"
+            class="control-touch boton-presionable"
             :loading="guardando"
             :disable="guardando"
           >
@@ -90,7 +128,8 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { copyToClipboard, useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
 import { restablecerContrasena } from '../services/userService.js'
@@ -105,7 +144,7 @@ const props = defineProps({
   cuenta: { type: Object, default: null },
 })
 
-const emit = defineEmits(['restablecida'])
+const emit = defineEmits(['restablecida', 'cuenta-inexistente'])
 
 const router = useRouter()
 const session = useSessionStore()
@@ -115,14 +154,63 @@ const errores = reactive({ password: null })
 const errorGeneral = ref('')
 const guardando = ref(false)
 
+const hayDatosSinGuardar = computed(() => password.value.trim() !== '')
+const esCuentaPropia = computed(() => props.cuenta && String(props.cuenta.id) === String(session.id))
+
+const $q = useQuasar()
+const tarjeta = ref(null)
+const verPassword = ref(false)
+
+const DIALOGO = { transitionShow: 'dialogo-entra', transitionHide: 'dialogo-sale', transitionDuration: 220 }
+
+// Esc, clic fuera o «Cancelar» con datos escritos: se pregunta antes de perderlos.
+const pedirDescartar = () => {
+  if (guardando.value) return
+  $q.dialog({
+    ...DIALOGO,
+    title: '¿Descartar los cambios?',
+    message: 'Lo que escribiste en este formulario se perderá.',
+    cancel: { label: 'Seguir editando', flat: true, noCaps: true },
+    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true },
+  }).onOk(() => {
+    dialogoAbierto.value = false
+  })
+}
+
+const cerrar = () => {
+  if (guardando.value) return
+  if (hayDatosSinGuardar.value) pedirDescartar()
+  else dialogoAbierto.value = false
+}
+
+const enfocarPrimerCampo = () => {
+  nextTick(() => document.getElementById('restablecer-password')?.focus())
+}
+
+/** Lleva la vista y el foco al primer campo con error (en celular puede estar fuera de la pantalla). */
+const enfocarPrimerError = () =>
+  nextTick(() => {
+    const campo = tarjeta.value?.$el?.querySelector('.q-field--error')
+    if (!campo) return
+    campo.scrollIntoView({ block: 'center' })
+    campo.querySelector('input, textarea, [tabindex="0"]')?.focus({ preventScroll: true })
+  })
+
+const copiarPassword = () =>
+  copyToClipboard(password.value)
+    .then(() => $q.notify({ type: 'positive', message: 'Contraseña copiada.' }))
+    .catch(() => $q.notify({ type: 'negative', message: 'No se pudo copiar; selecciónala y cópiala a mano.' }))
+
 // Cada apertura empieza sin contraseña ni errores de la vez anterior.
 watch(dialogoAbierto, (abierto) => {
   if (abierto) {
     password.value = ''
     errores.password = null
     errorGeneral.value = ''
+    verPassword.value = false
   } else {
     password.value = ''
+    verPassword.value = false
   }
 })
 
@@ -136,11 +224,14 @@ const restablecer = async () => {
   const validacion = validarRestablecimiento(props.cuenta.correo, password.value)
   const codigo = validacion.errores.password
   errores.password = codigo ? MENSAJES_VALIDACION[codigo] : null
-  if (validacion.errores.password) return
+  if (validacion.errores.password) {
+    enfocarPrimerError()
+    return
+  }
 
   guardando.value = true
   try {
-    const { mensaje, cuentaPropia } = await restablecerContrasena({
+    const { cuentaPropia } = await restablecerContrasena({
       correo: props.cuenta.correo,
       password: password.value,
     })
@@ -151,10 +242,16 @@ const restablecer = async () => {
       return
     }
     dialogoAbierto.value = false
-    emit('restablecida', mensaje)
+    emit('restablecida', props.cuenta.nombre)
   } catch (error) {
     // El 404 es una cuenta que ya no existe (se borró después de cargar el directorio).
-    errorGeneral.value = error?.mensaje ?? 'No se pudo restablecer la contraseña. Intenta de nuevo.'
+    if (error?.codigoHttp === 404) {
+      errorGeneral.value =
+        'Esta cuenta ya no existe; puede que otra persona la haya borrado. Cierra este formulario; el directorio ya se actualizó.'
+      emit('cuenta-inexistente')
+    } else {
+      errorGeneral.value = error?.mensaje ?? 'No se pudo restablecer la contraseña. Intenta de nuevo.'
+    }
   } finally {
     guardando.value = false
   }
@@ -174,6 +271,15 @@ const restablecer = async () => {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+}
+
+.restablecer__propia {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
+  font-size: 0.9rem;
 }
 
 .restablecer__title {

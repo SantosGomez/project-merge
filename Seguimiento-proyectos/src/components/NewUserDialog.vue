@@ -1,6 +1,15 @@
 <template>
-  <q-dialog v-model="dialogoAbierto" :persistent="guardando" aria-labelledby="nuevo-usuario-titulo">
-    <q-card class="nuevo-usuario">
+  <q-dialog
+    v-model="dialogoAbierto"
+    :persistent="guardando || hayDatosSinGuardar"
+    transition-show="dialogo-entra"
+    transition-hide="dialogo-sale"
+    :transition-duration="220"
+    aria-labelledby="nuevo-usuario-titulo"
+    @show="enfocarPrimerCampo"
+    @shake="pedirDescartar"
+  >
+    <q-card ref="tarjeta" class="nuevo-usuario">
       <q-form
         class="nuevo-usuario__form"
         novalidate
@@ -18,7 +27,7 @@
         <q-card-section class="nuevo-usuario__body">
           <div class="form-group">
             <label for="nuevo-nombre" class="form-label"
-              >Nombre <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Nombre <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-input
               for="nuevo-nombre"
@@ -37,7 +46,7 @@
               @update:model-value="alEditar('nombre')"
             >
               <template #prepend>
-                <q-icon name="person" />
+                <q-icon name="person" aria-hidden="true" />
               </template>
               <q-tooltip>Nombre que se verá en el menú y en el directorio; sin títulos como Lic. o Ing.</q-tooltip>
             </q-input>
@@ -46,7 +55,7 @@
 
           <div class="form-group">
             <label for="nuevo-correo" class="form-label"
-              >Correo <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Correo <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-input
               for="nuevo-correo"
@@ -65,7 +74,7 @@
               @update:model-value="alEditar('correo')"
             >
               <template #prepend>
-                <q-icon name="email" />
+                <q-icon name="email" aria-hidden="true" />
               </template>
               <q-tooltip>Correo con el que la persona iniciará sesión; no puede repetir uno existente.</q-tooltip>
             </q-input>
@@ -74,12 +83,12 @@
 
           <div class="form-group">
             <label for="nuevo-password" class="form-label"
-              >Contraseña <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Contraseña <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-input
               for="nuevo-password"
               v-model="password"
-              type="password"
+              :type="verPassword ? 'text' : 'password'"
               placeholder="Al menos 8 caracteres"
               autocomplete="new-password"
               outlined
@@ -92,18 +101,43 @@
               @update:model-value="alEditar('password')"
             >
               <template #prepend>
-                <q-icon name="lock" />
+                <q-icon name="lock" aria-hidden="true" />
               </template>
-              <q-tooltip>Contraseña inicial de la cuenta; compártela con la persona por un medio seguro.</q-tooltip>
+              <template #append>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  :icon="verPassword ? 'visibility_off' : 'visibility'"
+                  :aria-label="verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                  :aria-pressed="verPassword ? 'true' : 'false'"
+                  class="control-touch"
+                  @click="verPassword = !verPassword"
+                >
+                  <q-tooltip>{{ verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña' }}</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="verPassword && password"
+                  flat
+                  round
+                  dense
+                  icon="content_copy"
+                  aria-label="Copiar contraseña"
+                  class="control-touch"
+                  @click="copiarPassword"
+                >
+                  <q-tooltip>Copia la contraseña para compartirla.</q-tooltip>
+                </q-btn>
+              </template>
             </q-input>
             <p id="nuevo-password-ayuda" class="form-help">
-              Al menos 8 caracteres. La persona creará su propia contraseña al entrar.
+              Al menos 8 caracteres. Es temporal: al iniciar sesión, la persona tendrá que cambiarla por la suya. Compártela por un medio seguro.
             </p>
           </div>
 
           <div class="form-group">
             <label for="nuevo-rol" class="form-label"
-              >Rol <span aria-label="obligatorio" class="required-mark">*</span></label
+              >Rol <span aria-hidden="true" class="required-mark">*</span></label
             >
             <q-select
               for="nuevo-rol"
@@ -117,6 +151,7 @@
               popup-content-class="menu-seleccion-custom"
               transition-show="jump-down"
               transition-hide="jump-up"
+              :transition-duration="180"
               class="selector-moderno"
               emit-value
               map-options
@@ -127,7 +162,7 @@
               @update:model-value="alEditar('rol')"
             >
               <template #prepend>
-                <q-icon name="badge" />
+                <q-icon name="badge" aria-hidden="true" />
               </template>
               <template #option="{ itemProps, opt, selected }">
                 <q-item
@@ -159,9 +194,9 @@
             no-caps
             label="Cancelar"
             color="primary"
-            class="control-touch"
+            class="control-touch boton-presionable"
             :disable="guardando"
-            @click="dialogoAbierto = false"
+            @click="cerrar"
           >
             <q-tooltip>Cierra sin crear la cuenta.</q-tooltip>
           </q-btn>
@@ -172,7 +207,7 @@
             icon="person_add"
             no-caps
             unelevated
-            class="control-touch"
+            class="control-touch boton-presionable"
             :loading="guardando"
             :disable="guardando"
           >
@@ -185,7 +220,8 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { copyToClipboard, useQuasar } from 'quasar'
 
 import { crearUsuario } from '../services/userService.js'
 import { MENSAJES_VALIDACION, PROFILES } from '../utils/constants.js'
@@ -209,6 +245,54 @@ const errores = reactive({ nombre: null, correo: null, password: null, rol: null
 const errorGeneral = ref('')
 const guardando = ref(false)
 
+const hayDatosSinGuardar = computed(
+  () => [nombre.value, correo.value, password.value].some((v) => v.trim() !== '') || rol.value !== null,
+)
+
+const $q = useQuasar()
+const tarjeta = ref(null)
+const verPassword = ref(false)
+
+const DIALOGO = { transitionShow: 'dialogo-entra', transitionHide: 'dialogo-sale', transitionDuration: 220 }
+
+// Esc, clic fuera o «Cancelar» con datos escritos: se pregunta antes de perderlos.
+const pedirDescartar = () => {
+  if (guardando.value) return
+  $q.dialog({
+    ...DIALOGO,
+    title: '¿Descartar los cambios?',
+    message: 'Lo que escribiste en este formulario se perderá.',
+    cancel: { label: 'Seguir editando', flat: true, noCaps: true },
+    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true },
+  }).onOk(() => {
+    dialogoAbierto.value = false
+  })
+}
+
+const cerrar = () => {
+  if (guardando.value) return
+  if (hayDatosSinGuardar.value) pedirDescartar()
+  else dialogoAbierto.value = false
+}
+
+const enfocarPrimerCampo = () => {
+  nextTick(() => document.getElementById('nuevo-nombre')?.focus())
+}
+
+/** Lleva la vista y el foco al primer campo con error (en celular puede estar fuera de la pantalla). */
+const enfocarPrimerError = () =>
+  nextTick(() => {
+    const campo = tarjeta.value?.$el?.querySelector('.q-field--error')
+    if (!campo) return
+    campo.scrollIntoView({ block: 'center' })
+    campo.querySelector('input, textarea, [tabindex="0"]')?.focus({ preventScroll: true })
+  })
+
+const copiarPassword = () =>
+  copyToClipboard(password.value)
+    .then(() => $q.notify({ type: 'positive', message: 'Contraseña copiada.' }))
+    .catch(() => $q.notify({ type: 'negative', message: 'No se pudo copiar; selecciónala y cópiala a mano.' }))
+
 // Cada apertura empieza con el formulario vacío y sin errores de la vez anterior.
 watch(dialogoAbierto, (abierto) => {
   if (abierto) {
@@ -218,8 +302,10 @@ watch(dialogoAbierto, (abierto) => {
     rol.value = null
     for (const campo of Object.keys(errores)) errores[campo] = null
     errorGeneral.value = ''
+    verPassword.value = false
   } else {
     password.value = ''
+    verPassword.value = false
   }
 })
 
@@ -237,22 +323,26 @@ const darDeAlta = async () => {
     const codigo = validacion.errores[campo]
     errores[campo] = codigo ? MENSAJES_VALIDACION[codigo] : null
   }
-  if (!validacion.valido) return
+  if (!validacion.valido) {
+    enfocarPrimerError()
+    return
+  }
 
   guardando.value = true
   try {
-    const mensaje = await crearUsuario({
+    await crearUsuario({
       nombre: nombre.value,
       correo: correo.value,
       password: password.value,
       rol: rol.value,
     })
     dialogoAbierto.value = false
-    emit('creado', mensaje)
+    emit('creado', nombre.value.trim())
   } catch (error) {
-    // Con las validaciones previas, el único 400 posible es el correo repetido.
-    if (error?.codigoHttp === 400) {
-      errores.correo = error.mensaje
+    // Solo el correo repetido va bajo «Correo»; cualquier otro error, al aviso general.
+    if (error?.codigoHttp === 400 && /ya existe/i.test(error?.mensaje ?? '')) {
+      errores.correo = 'Ese correo ya tiene una cuenta. Usa otro o restablece la contraseña de esa cuenta.'
+      enfocarPrimerError()
     } else {
       errorGeneral.value = error?.mensaje ?? 'No se pudo dar de alta la cuenta. Intenta de nuevo.'
     }

@@ -11,15 +11,15 @@
             label="Nuevo usuario"
             no-caps
             unelevated
-            class="control-touch"
+            class="control-touch boton-presionable"
             @click="abrirNuevoUsuario"
           >
             <q-tooltip>Abre el formulario para crear una cuenta nueva.</q-tooltip>
           </q-btn>
         </div>
         <p v-if="session.esAdministrador" class="directory-panel__help">
-          Todas las cuentas del equipo, con su rol y la fecha de su último acceso. En los contadores,
-          «Ver casos» abre el detalle de sus casos. No hay conteos ni casos aquí.
+          Todas las cuentas del equipo, con su rol y la fecha de su último acceso. Para ver los casos
+          importantes de un contador, pulsa «Ver casos importantes» en su fila.
         </p>
         <p v-else class="directory-panel__help">
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. «Nuevo usuario»
@@ -33,13 +33,15 @@
         v-model="dialogoRestablecerAbierto"
         :cuenta="cuentaRestablecer"
         @restablecida="alRestablecer"
+        @cuenta-inexistente="refrescar"
       />
 
       <div class="directory-panel__body">
-        <ScreenLoader
-          v-if="screenStateName === SCREEN_STATES.loading"
-          text="Cargando el directorio de usuarios…"
-        />
+        <!-- Esqueleto con la forma de la tabla; el texto se anuncia a los lectores de pantalla. -->
+        <div v-if="screenStateName === SCREEN_STATES.loading" class="directory-carga" role="status">
+          <q-skeleton v-for="n in 4" :key="n" type="rect" height="48px" class="directory-carga__fila" />
+          <p class="directory-carga__texto">Cargando el directorio de usuarios…</p>
+        </div>
 
         <ErrorState
           v-else-if="screenStateName === SCREEN_STATES.error"
@@ -65,7 +67,7 @@
           :grid="$q.screen.lt.sm"
           v-model:pagination="paginacion"
           :rows-per-page-options="[10, 25, 50, 0]"
-          no-data-label="Ningún usuario coincide con los filtros."
+          no-data-label="Ninguna cuenta coincide con la búsqueda o el rol elegidos. Prueba con otro texto o pulsa «Limpiar filtros»."
         >
           <template #top>
             <div class="directory-filtros">
@@ -95,11 +97,12 @@
                 popup-content-class="menu-seleccion-custom"
                 transition-show="jump-down"
                 transition-hide="jump-up"
+                :transition-duration="180"
                 emit-value
                 map-options
               >
                 <template #prepend>
-                  <q-icon name="badge" />
+                  <q-icon name="badge" aria-hidden="true" />
                 </template>
                 <template #option="{ itemProps, opt, selected }">
                   <q-item
@@ -118,12 +121,12 @@
               </q-select>
               <div class="directory-filtros__resumen">
                 <p class="directory-filtros__conteo" role="status">
-                  Mostrando {{ filasFiltradas.length }} de {{ filas.length }} cuentas
+                  Mostrando {{ filasFiltradas.length }} de {{ filas.length }}
+                  {{ filas.length === 1 ? 'cuenta' : 'cuentas' }}
                 </p>
                 <q-btn
                   v-if="hayFiltros"
                   flat
-                  dense
                   no-caps
                   color="primary"
                   icon="filter_alt_off"
@@ -142,25 +145,25 @@
               <q-btn
                 v-if="props.row.puedeVerCasos && session.esAdministrador"
                 flat
-                dense
                 no-caps
                 color="primary"
                 icon="folder_open"
-                label="Ver casos"
-                :aria-label="`Ver los casos de ${props.row.nombre}`"
+                label="Ver casos importantes"
+                :aria-label="`Ver casos importantes de ${props.row.nombre}`"
+                class="control-touch boton-presionable"
                 @click="selectCounter(props.row.id)"
               >
-                <q-tooltip>Abre el detalle de casos de este contador.</q-tooltip>
+                <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
               </q-btn>
               <q-btn
                 v-if="session.esUsuarioSistema"
                 flat
-                dense
                 no-caps
                 color="primary"
                 icon="lock_reset"
                 label="Restablecer contraseña"
-                :aria-label="`Restablecer la contraseña de ${props.row.nombre}`"
+                :aria-label="`Restablecer contraseña de ${props.row.nombre}`"
+                class="control-touch boton-presionable"
                 @click="abrirRestablecer(props.row)"
               >
                 <q-tooltip>Asigna una contraseña nueva a esta cuenta.</q-tooltip>
@@ -179,7 +182,7 @@
                   </p>
                   <p class="directory-card__line">
                     <span class="directory-card__label">Último acceso:</span>
-                    {{ props.row.ultimoAcceso }}
+                    {{ props.row.ultimoAccesoTexto }}
                   </p>
                 </q-card-section>
                 <q-card-actions v-if="tieneAccionesTarjeta(props.row)">
@@ -189,11 +192,12 @@
                     no-caps
                     color="primary"
                     icon="folder_open"
-                    label="Ver casos"
-                    :aria-label="`Ver los casos de ${props.row.nombre}`"
+                    label="Ver casos importantes"
+                    :aria-label="`Ver casos importantes de ${props.row.nombre}`"
+                    class="control-touch boton-presionable"
                     @click="selectCounter(props.row.id)"
                   >
-                    <q-tooltip>Abre el detalle de casos de este contador.</q-tooltip>
+                    <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
                   </q-btn>
                   <q-btn
                     v-if="session.esUsuarioSistema"
@@ -202,7 +206,8 @@
                     color="primary"
                     icon="lock_reset"
                     label="Restablecer contraseña"
-                    :aria-label="`Restablecer la contraseña de ${props.row.nombre}`"
+                    :aria-label="`Restablecer contraseña de ${props.row.nombre}`"
+                    class="control-touch boton-presionable"
                     @click="abrirRestablecer(props.row)"
                   >
                     <q-tooltip>Asigna una contraseña nueva a esta cuenta.</q-tooltip>
@@ -218,7 +223,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
@@ -226,19 +231,17 @@ import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import NewUserDialog from '../components/NewUserDialog.vue'
 import ResetPasswordDialog from '../components/ResetPasswordDialog.vue'
-import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarUsuarios } from '../services/userService.js'
 import { useCountersStore } from '../stores/counters.js'
 import { useSessionStore } from '../stores/session.js'
-import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
 import { PROFILES } from '../utils/constants.js'
 import { compararUltimoAcceso, usuarioAFila } from '../utils/filasVista.js'
+import { formatearRol } from '../utils/formateadores.js'
 import { filtrarUsuarios } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const router = useRouter()
 const $q = useQuasar()
-const maqueta = useMaquetaStore()
 const contadoresStore = useCountersStore()
 const session = useSessionStore()
 
@@ -261,20 +264,24 @@ const columnas = [
     align: 'left',
     sortable: true,
     sort: compararUltimoAcceso,
+    // Se ordena con el valor crudo y se muestra legible.
+    format: (_valor, fila) => fila.ultimoAccesoTexto,
   },
   { name: 'acciones', label: 'Acciones', field: 'id', align: 'left' },
 ]
 
-const paginacion = ref({ rowsPerPage: 12 })
+const paginacion = ref({ rowsPerPage: 10 })
 
 // q-select no muestra como elegida una opción con valor null: «Todos» usa su propio valor.
 const TODOS_LOS_ROLES = 'todos'
 
 const OPCIONES_ROL = [
   { label: 'Todos los roles', value: TODOS_LOS_ROLES },
-  { label: 'Administrador', value: PROFILES.administrador },
-  { label: 'Contador', value: PROFILES.contador },
-  { label: 'Usuario de sistema', value: PROFILES.sistema },
+  // Mismas etiquetas que el resto de la app (y que el alta de usuario).
+  ...[PROFILES.administrador, PROFILES.contador, PROFILES.sistema].map((valor) => ({
+    label: formatearRol(valor),
+    value: valor,
+  })),
 ]
 
 const filtros = ref({ texto: '', rol: TODOS_LOS_ROLES })
@@ -328,8 +335,6 @@ const selectCounter = (counterId) => {
   if (cargando.value || error.value) return
   // RF-17: se deja el contador elegido en el store para que P-2 lo muestre seleccionado.
   contadoresStore.contadorSeleccionadoId = counterId
-  // Compatibilidad con la maqueta 001: se mantiene la selección sincronizada.
-  maqueta.selectCounter(counterId)
   router.push({ name: 'admin-dashboard' })
 }
 
@@ -351,25 +356,52 @@ const abrirRestablecer = (fila) => {
   dialogoRestablecerAbierto.value = true
 }
 
-const alRestablecer = (mensaje) => {
-  $q.notify({ type: 'positive', message: mensaje })
+const alRestablecer = (nombre) => {
+  $q.notify({ type: 'positive', message: `Contraseña de ${nombre} restablecida; sus sesiones abiertas se cerraron.` })
 }
 
 // En celular la tarjeta solo lleva barra de acciones si tiene algún botón que mostrar.
 const tieneAccionesTarjeta = (fila) =>
   (fila.puedeVerCasos && session.esAdministrador) || session.esUsuarioSistema
 
-// La cuenta nueva aparece en la tabla al recargar el directorio.
-const alCrearUsuario = (mensaje) => {
-  $q.notify({ type: 'positive', message: mensaje })
-  cargar()
+/*
+ * Recarga sin cargador: la tabla no parpadea. Si falla tras crear una cuenta, se conserva la
+ * lista y se ofrece reintentar; al volver a la ventana, un fallo se ignora en silencio.
+ */
+const refrescar = async ({ avisarFallo = false } = {}) => {
+  if (cargando.value || error.value) return
+  try {
+    usuarios.value = await listarUsuarios()
+  } catch {
+    if (avisarFallo) {
+      $q.notify({
+        type: 'negative',
+        message: 'La cuenta se creó, pero no se pudo actualizar el directorio.',
+        actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: () => refrescar({ avisarFallo: true }) }],
+      })
+    }
+  }
+}
+
+// La cuenta nueva aparece en la tabla al refrescar el directorio.
+const alCrearUsuario = (nombre) => {
+  $q.notify({
+    type: 'positive',
+    message: `Cuenta de ${nombre} creada. Comparte la contraseña temporal por un medio seguro.`,
+  })
+  refrescar({ avisarFallo: true })
+}
+
+// Al volver a la ventana se refresca, para que «Último acceso» no quede viejo.
+const alVolver = () => {
+  if (document.visibilityState === 'visible') refrescar()
 }
 
 onMounted(() => {
-  // Compatibilidad con el flujo anterior (carga inicial de la pantalla en la maqueta).
-  maqueta.startScreenLoad(SCREEN_IDS.directory)
   cargar()
+  document.addEventListener('visibilitychange', alVolver)
 })
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolver))
 </script>
 
 <style scoped>
@@ -382,9 +414,9 @@ onMounted(() => {
   flex-direction: column;
   min-width: 0;
   padding: 12px;
-  border: 1px solid #dbe4ee;
+  border: 1px solid var(--dg-borde);
   border-radius: 12px;
-  background: #f7f9fc;
+  background: var(--dg-fondo-panel);
 }
 
 .directory-panel__head {
@@ -411,14 +443,14 @@ onMounted(() => {
 
 .directory-panel__title {
   margin: 0 0 6px;
-  color: #102a43;
+  color: var(--dg-texto);
   font-size: 1.15rem;
   line-height: 1.25;
 }
 
 .directory-panel__help {
   margin: 0;
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
   line-height: 1.45;
 }
@@ -488,17 +520,17 @@ onMounted(() => {
 }
 
 .directory-card__name {
-  color: #102a43;
+  color: var(--dg-texto);
   font-weight: 600;
 }
 
 .directory-card__line {
-  color: #334e68;
+  color: var(--dg-texto-secundario);
   font-size: 0.9rem;
 }
 
 .directory-card__label {
-  color: #486581;
+  color: var(--dg-texto-tenue);
   font-weight: 600;
 }
 
@@ -506,5 +538,21 @@ onMounted(() => {
   .directory-page {
     padding: 20px 24px;
   }
+}
+
+.directory-carga {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.directory-carga__fila {
+  border-radius: 8px;
+}
+
+.directory-carga__texto {
+  margin: 0;
+  color: var(--dg-texto-tenue);
+  font-size: 0.95rem;
 }
 </style>

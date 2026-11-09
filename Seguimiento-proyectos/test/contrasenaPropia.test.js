@@ -105,7 +105,8 @@ describe('Aviso al administrador en el alta y el restablecimiento', () => {
     it(`${dialogo} avisa que la persona creará su propia contraseña al entrar`, () => {
       assert.match(
         leer(`../src/components/${dialogo}`),
-        /Al menos 8 caracteres\. La persona creará su propia contraseña al entrar\./,
+        // Revisión de UI, rebanada 8: una sola ayuda que dice que es temporal y que se cambia al entrar.
+        /Al menos 8 caracteres\. Es temporal: al iniciar sesión, la persona tendrá que cambiarla por la suya\./,
       )
     })
   }

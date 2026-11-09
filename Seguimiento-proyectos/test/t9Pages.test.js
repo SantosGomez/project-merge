@@ -60,16 +60,18 @@ describe('Directorio de usuarios (rebanada 1) — revisión estática de P-3 (RF
     assert.match(directorySource, /v-if="[\w.]*puedeVerCasos && session\.esAdministrador"/, 'solo contadores y solo para el administrador')
     assert.match(directorySource, /@click="selectCounter\([\w.]*id\)"/)
     assert.match(directorySource, /Ver casos/)
-    assert.match(directorySource, /maqueta\.selectCounter\(counterId\)/)
+    // Revisión de UI, rebanada 8: sin la selección duplicada de la maqueta.
+    assert.doesNotMatch(directorySource, /maqueta\./)
     assert.match(directorySource, /router\.push\(\{ name: 'admin-dashboard' \}\)/)
   })
 
   it('tiene estados de carga, vacío y error con reintento (RF-35 a RF-37)', () => {
-    assert.match(directorySource, /ScreenLoader/)
+    // Revisión de UI, rebanada 8: carga con esqueleto anunciado y sin la carga simulada de la maqueta.
+    assert.match(directorySource, /role="status"[\s\S]*?<q-skeleton/)
     assert.match(directorySource, /ErrorState/)
     assert.match(directorySource, /EmptyState/)
     assert.match(directorySource, /@retry="retry"/)
-    assert.match(directorySource, /startScreenLoad\(SCREEN_IDS\.directory\)/)
+    assert.doesNotMatch(directorySource, /startScreenLoad/)
   })
 
   it('los nombres y correos largos se muestran completos y se parten en varias líneas (RNF-9, RNF-10)', () => {

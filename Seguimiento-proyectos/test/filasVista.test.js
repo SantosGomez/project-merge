@@ -146,6 +146,7 @@ test('usuarioAFila arma la fila con nombre, correo, rol legible y último acceso
     rol: 'Administrador',
     rolClave: 'administrador',
     ultimoAcceso: '2026-10-26 09:05:00',
+    ultimoAccesoTexto: '26-10-2026 09:05',
     puedeVerCasos: false,
   })
 })

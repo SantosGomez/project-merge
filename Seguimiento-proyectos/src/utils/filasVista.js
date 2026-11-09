@@ -63,8 +63,23 @@ export const usuarioAFila = (usuario) => {
     /** Rol tal como lo guarda el backend; lo usa el filtro por rol. */
     rolClave: usuario.rol ?? null,
     ultimoAcceso: usuario.ultimo_acceso_en ?? 'Nunca',
+    /** Lo que se muestra: DD-MM-AAAA HH:mm; `ultimoAcceso` se queda crudo para ordenar. */
+    ultimoAccesoTexto: textoUltimoAcceso(usuario.ultimo_acceso_en),
     puedeVerCasos: usuario.rol === PROFILES.contador,
   }
+}
+
+/**
+ * Último acceso para leer: «2026-11-09 10:22:33» → «09-11-2026 10:22»; sin acceso, «Aún no ha entrado».
+ * Se arma con texto (sin `new Date`), así no hay saltos de zona horaria.
+ * @param {string|null} valor - `ultimo_acceso_en` del backend (hora local).
+ * @returns {string}
+ */
+export const textoUltimoAcceso = (valor) => {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(valor ?? '')
+  if (!partes) return valor ? String(valor) : 'Aún no ha entrado'
+  const [, anio, mes, dia, hora, minuto] = partes
+  return `${dia}-${mes}-${anio} ${hora}:${minuto}`
 }
 
 /**

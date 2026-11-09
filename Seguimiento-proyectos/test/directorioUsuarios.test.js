@@ -30,16 +30,18 @@ describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', (
     const enviar = dialogo.slice(dialogo.indexOf('const darDeAlta = async'), dialogo.indexOf('</script>'))
     assert.match(enviar, /validarAltaUsuario\(nombre\.value, correo\.value, password\.value, rol\.value\)/)
     assert.ok(
-      enviar.indexOf('if (!validacion.valido) return') < enviar.indexOf('crearUsuario('),
+      enviar.indexOf('if (!validacion.valido) {') < enviar.indexOf('crearUsuario('),
       'con errores no se envía',
     )
-    assert.match(enviar, /error\?\.codigoHttp === 400[\s\S]*?errores\.correo = error\.mensaje/, 'el 400 va bajo Correo')
+    // Revisión de UI, rebanada 8: solo el correo repetido va bajo Correo, con su texto en tú.
+    assert.match(enviar, /error\?\.codigoHttp === 400 && \/ya existe\/i[\s\S]*?errores\.correo = 'Ese correo ya tiene una cuenta/, 'el correo repetido va bajo Correo')
   })
 
   it('no se cierra mientras guarda; al crear se cierra y avisa a la pantalla', () => {
-    assert.match(dialogo, /<q-dialog v-model="dialogoAbierto" :persistent="guardando"/)
+    // Revisión de UI, rebanada 8: también es persistente con datos escritos (pregunta antes de descartar).
+    assert.match(dialogo, /<q-dialog\s+v-model="dialogoAbierto"\s+:persistent="guardando \|\| hayDatosSinGuardar"/)
     const enviar = dialogo.slice(dialogo.indexOf('const darDeAlta = async'), dialogo.indexOf('</script>'))
-    assert.match(enviar, /dialogoAbierto\.value = false\s*\n\s*emit\('creado', mensaje\)/, 'cierra y emite')
+    assert.match(enviar, /dialogoAbierto\.value = false\s*\n\s*emit\('creado', nombre\.value\.trim\(\)\)/, 'cierra y emite')
   })
 
   it('el diálogo tiene nombre accesible y botón Cancelar', () => {
@@ -63,8 +65,9 @@ describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', (
   it('al crear la cuenta el directorio avisa y recarga la tabla', () => {
     assert.match(pagina, /@creado="alCrearUsuario"/)
     const alCrear = pagina.slice(pagina.indexOf('const alCrearUsuario'), pagina.indexOf('\nconst ', pagina.indexOf('const alCrearUsuario') + 1))
-    assert.match(alCrear, /\$q\.notify\(\{ type: 'positive', message: mensaje \}\)/)
-    assert.match(alCrear, /cargar\(\)/)
+    // Revisión de UI, rebanada 8: el aviso nombra la cuenta y la tabla se refresca sin cargador.
+    assert.match(alCrear, /Cuenta de \$\{nombre\} creada/)
+    assert.match(alCrear, /refrescar\(\{ avisarFallo: true \}\)/)
   })
 })
 
@@ -93,8 +96,8 @@ describe('Directorio de usuarios (rebanada 4: «Restablecer contraseña» por fi
   })
 
   it('no se cierra mientras guarda; al terminar se cierra y avisa a la pantalla', () => {
-    assert.match(dialogo, /<q-dialog v-model="dialogoAbierto" :persistent="guardando"/)
-    assert.match(enviar, /dialogoAbierto\.value = false\s*\n\s*emit\('restablecida', mensaje\)/)
+    assert.match(dialogo, /<q-dialog\s+v-model="dialogoAbierto"\s+:persistent="guardando \|\| hayDatosSinGuardar"/)
+    assert.match(enviar, /dialogoAbierto\.value = false\s*\n\s*emit\('restablecida', props\.cuenta\.nombre\)/)
     assert.match(dialogo, /label="Cancelar"/)
     assert.match(dialogo, /aria-labelledby="restablecer-titulo"/)
   })
@@ -190,20 +193,21 @@ describe('Directorio de usuarios: filtros de búsqueda y rol', () => {
 
   it('tiene lista de rol con «Todos los roles» y los tres roles', () => {
     assert.match(plantilla, /<q-select[^>]*v-model="filtros\.rol"[^>]*:options="OPCIONES_ROL"/)
-    for (const texto of ['Todos los roles', 'Administrador', 'Contador', 'Usuario de sistema']) {
-      assert.ok(pagina.includes(`label: '${texto}'`), texto)
-    }
+    // Revisión de UI, rebanada 8: los tres roles usan formatearRol, como el alta de usuario.
+    assert.ok(pagina.includes("label: 'Todos los roles'"))
+    assert.match(pagina, /\[PROFILES\.administrador, PROFILES\.contador, PROFILES\.sistema\]\.map\(/)
+    assert.match(pagina, /label: formatearRol\(valor\)/)
   })
 
   it('la tabla muestra las filas filtradas y avisa cuando nada coincide', () => {
     assert.match(pagina, /const filasFiltradas = computed\(\(\) =>\s*filtrarUsuarios\(filas\.value, \{/)
     assert.match(pagina, /rol: filtros\.value\.rol === TODOS_LOS_ROLES \? null : filtros\.value\.rol/)
     assert.match(plantilla, /:rows="filasFiltradas"/)
-    assert.match(plantilla, /no-data-label="Ningún usuario coincide con los filtros\."/)
+    assert.match(plantilla, /no-data-label="Ninguna cuenta coincide con la búsqueda o el rol elegidos\./)
   })
 
   it('muestra cuántas cuentas se ven y «Limpiar filtros» solo con filtros activos', () => {
-    assert.match(plantilla, /Mostrando \{\{ filasFiltradas\.length \}\} de \{\{ filas\.length \}\} cuentas/)
+    assert.match(plantilla, /Mostrando \{\{ filasFiltradas\.length \}\} de \{\{ filas\.length \}\}\s*\{\{ filas\.length === 1 \? 'cuenta' : 'cuentas' \}\}/)
     assert.match(plantilla, /<q-btn[^>]*v-if="hayFiltros"[^>]*label="Limpiar filtros"/)
   })
 
