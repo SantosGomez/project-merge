@@ -161,6 +161,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarCasos();
   await migrarSesiones();
   await migrarAuditorias();
+  await migrarContadorAuxiliar();
 
   if (!cuentasDemo) return;
 
@@ -384,6 +385,24 @@ async function migrarAuditorias() {
   for (const [id, fase, descripcion] of FASES_AUDITORIA) {
     await query('INSERT IGNORE INTO fases_aud (IdFase, Fase, Descripcion) VALUES (?, ?, ?)', [id, fase, descripcion]);
   }
+}
+
+/**
+ * Tabla de unión contador ↔ auxiliares (muchos a muchos entre contadores).
+ * Un contador puede tener varios auxiliares; cada auxiliar también es contador.
+ * Idempotente: se puede correr varias veces sin fallar.
+ */
+async function migrarContadorAuxiliar() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS contador_auxiliar (
+      contador_id INT NOT NULL,
+      auxiliar_id INT NOT NULL,
+      asignado_en DATETIME NOT NULL,
+      PRIMARY KEY (contador_id, auxiliar_id),
+      CONSTRAINT fk_ca_contador FOREIGN KEY (contador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      CONSTRAINT fk_ca_auxiliar FOREIGN KEY (auxiliar_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
 }
 
 module.exports = { seedDatabase, debeSembrarCuentasDemo };

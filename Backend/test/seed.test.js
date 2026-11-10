@@ -324,6 +324,57 @@ function testCreateTableDeCasosConImportanteYEnProcesoEn() {
   assert.match(tabla, /\ben_proceso_en DATETIME NULL/);
 }
 
+// ---------- Rebanada auxiliar: tabla contador_auxiliar ----------
+async function columnaDeContadorAuxiliar(nombre) {
+  const [columna] = await query('SHOW COLUMNS FROM contador_auxiliar WHERE Field = ?', [nombre]);
+  return columna && { campo: columna.Field, tipo: columna.Type, nulo: columna.Null, defecto: columna.Default, extra: columna.Extra };
+}
+
+async function testMigracionCreaTablaContadorAuxiliar() {
+  await seedDatabase({ cuentasDemo: false });
+  const tablas = await query("SHOW TABLES LIKE 'contador_auxiliar'");
+  assert.strictEqual(tablas.length, 1, 'la tabla contador_auxiliar debe existir');
+
+  const columnas = (await query('SHOW COLUMNS FROM contador_auxiliar')).map((c) => c.Field);
+  assert.ok(columnas.includes('contador_id'), 'tiene contador_id');
+  assert.ok(columnas.includes('auxiliar_id'), 'tiene auxiliar_id');
+  assert.ok(columnas.includes('asignado_en'), 'tiene asignado_en');
+
+  const pk = await query("SHOW INDEX FROM contador_auxiliar WHERE Key_name = 'PRIMARY'");
+  assert.ok(pk.length > 0, 'tiene clave primaria compuesta');
+}
+
+async function testMigracionContadorAuxiliarTieneClavesForaneas() {
+  await seedDatabase({ cuentasDemo: false });
+  const fks = await query(
+    "SELECT COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE " +
+    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contador_auxiliar' AND REFERENCED_TABLE_NAME IS NOT NULL"
+  );
+  const tablasRef = fks.map((f) => f.REFERENCED_TABLE_NAME);
+  assert.ok(tablasRef.includes('usuarios'), 'ambas claves foráneas apuntan a usuarios');
+}
+
+async function testMigracionContadorAuxiliarSePuedeRepetir() {
+  await seedDatabase({ cuentasDemo: false });
+  await seedDatabase({ cuentasDemo: false }); // segunda vez: no debe fallar
+  const tablas = await query("SHOW TABLES LIKE 'contador_auxiliar'");
+  assert.strictEqual(tablas.length, 1, 'la tabla sigue existiendo tras repetir el seed');
+}
+
+// Verificación estática del CREATE TABLE en seed.js.
+function testCreateTableDeContadorAuxiliar() {
+  const fuente = readFileSync(join(__dirname, '../src/utils/seed.js'), 'utf8');
+  const inicio = fuente.indexOf('CREATE TABLE IF NOT EXISTS contador_auxiliar');
+  const tabla = fuente.slice(inicio, fuente.indexOf(') ENGINE=InnoDB', inicio));
+
+  assert.match(tabla, /\bcontador_id INT NOT NULL/);
+  assert.match(tabla, /\bauxiliar_id INT NOT NULL/);
+  assert.match(tabla, /\basignado_en DATETIME NOT NULL/);
+  assert.match(tabla, /\bPRIMARY KEY \(contador_id, auxiliar_id\)/);
+  assert.match(tabla, /FOREIGN KEY \(contador_id\) REFERENCES usuarios\(id\)/);
+  assert.match(tabla, /FOREIGN KEY \(auxiliar_id\) REFERENCES usuarios\(id\)/);
+}
+
 describe('seed de datos maestros', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -353,4 +404,8 @@ describe('seed de datos maestros', () => {
   test('la migración de fechas se puede repetir y deja las columnas obligatorias', testMigracionDeFechasSePuedeRepetirYDejaColumnasObligatorias);
   test('la migración deja importante (0 por defecto) y en_proceso_en (vacía, sin ON UPDATE)', testMigracionDejaImportanteYEnProcesoEn);
   test('una base nueva crea la tabla casos con importante y en_proceso_en', testCreateTableDeCasosConImportanteYEnProcesoEn);
+  test('la migración crea la tabla contador_auxiliar', testMigracionCreaTablaContadorAuxiliar);
+  test('la tabla contador_auxiliar tiene claves foráneas a usuarios', testMigracionContadorAuxiliarTieneClavesForaneas);
+  test('la migración de contador_auxiliar se puede repetir', testMigracionContadorAuxiliarSePuedeRepetir);
+  test('una base nueva crea la tabla contador_auxiliar con sus columnas y PK', testCreateTableDeContadorAuxiliar);
 });
