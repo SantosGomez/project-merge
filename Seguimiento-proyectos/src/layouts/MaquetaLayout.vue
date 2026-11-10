@@ -191,7 +191,26 @@
               <q-tooltip>Ir a mis casos</q-tooltip>
             </q-item>
 
-            
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'contador-auxiliares' }"
+              :aria-current="paginaActual('contador-auxiliares')"
+              aria-label="Ir a mis auxiliares"
+            >
+              <q-item-section avatar>
+                <q-icon name="person_add" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Mis auxiliares</q-item-label>
+                <q-item-label caption>Contadores que te apoyan</q-item-label>
+              </q-item-section>
+              <q-tooltip>Gestiona tus auxiliares: quiénes pueden ayudarte con tus casos.</q-tooltip>
+            </q-item>
+
+
             <q-item
               clickable
               v-ripple

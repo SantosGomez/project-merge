@@ -14,6 +14,7 @@ import ContadorDashboardPage from '../pages/ContadorDashboardPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
+import ContadorAuxiliaresPage from '../pages/ContadorAuxiliaresPage.vue'
 import PaginaNoEncontrada from '../pages/[...path].vue'
 import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
@@ -119,6 +120,16 @@ const routes = [
           perfil: PROFILES.contador,
           screenId: SCREEN_IDS.myCases,
           titulo: 'Mis casos',
+        },
+      },
+      {
+        path: 'contador/auxiliares',
+        name: 'contador-auxiliares',
+        component: ContadorAuxiliaresPage,
+        meta: {
+          requiereSesion: true,
+          perfil: PROFILES.contador,
+          titulo: 'Mis auxiliares',
         },
       },
       {
