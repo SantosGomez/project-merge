@@ -9,14 +9,23 @@
 import { defineStore } from 'pinia'
 
 import { ESTADOS_ERROR, crearErrorFrontend } from '../services/api.js'
+import {
+  listarAuxiliares as listarAuxiliaresServicio,
+  asignarAuxiliar as asignarAuxiliarServicio,
+  quitarAuxiliar as quitarAuxiliarServicio,
+  listarContadoresQueMeTienenComoAuxiliar as listarContadoresServicio,
+  listarDisponibles as listarDisponiblesServicio,
+  crearCasoComoAuxiliar as crearCasoComoAuxiliarServicio,
+} from '../services/auxiliarService.js'
 import { QUE_HACER } from '../utils/mensajes.js'
 
 const servicioPorDefecto = {
-  listarAuxiliares: undefined,
-  asignarAuxiliar: undefined,
-  quitarAuxiliar: undefined,
-  listarContadoresQueMeTienenComoAuxiliar: undefined,
-  crearCasoComoAuxiliar: undefined,
+  listarAuxiliares: listarAuxiliaresServicio,
+  asignarAuxiliar: asignarAuxiliarServicio,
+  quitarAuxiliar: quitarAuxiliarServicio,
+  listarContadoresQueMeTienenComoAuxiliar: listarContadoresServicio,
+  listarDisponibles: listarDisponiblesServicio,
+  crearCasoComoAuxiliar: crearCasoComoAuxiliarServicio,
 }
 
 // Si el servicio entrega un error normalizado se conserva; si no, se construye
@@ -47,17 +56,25 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
 
   // Versión interna para descartar respuestas o errores tardíos.
   let version = 0
+  // Versión independiente para la lista de contadores disponibles: se carga en paralelo.
+  let versionDisponibles = 0
 
   return defineStore('auxiliares', {
     state: () => ({
       /** Auxiliares del contador autenticado, ya traducidos. */
       auxiliares: [],
+      /** Contadores que puede asignar como auxiliares (sin uno mismo ni los ya asignados). */
+      disponibles: [],
       /** Carga de la lista de auxiliares. */
       cargando: false,
+      /** Carga de la lista de contadores disponibles. */
+      cargandoDisponibles: false,
       /** Asignación o quita en curso. */
       guardando: false,
       /** Error de la última lectura, o null. */
       error: null,
+      /** Error al leer los contadores disponibles, o null. */
+      errorDisponibles: null,
     }),
 
     getters: {
@@ -100,6 +117,38 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
       },
 
       /**
+       * Carga los contadores que el contador autenticado puede asignar como auxiliares.
+       * @param {number} contadorId - Id del contador.
+       * @returns {Promise<{ ok: boolean, contadores?: Array, error?: Object }>}
+       */
+      async cargarDisponibles(contadorId) {
+        const versionActual = ++versionDisponibles
+
+        this.cargandoDisponibles = true
+        this.errorDisponibles = null
+
+        try {
+          const disponibles = await servicio.listarDisponibles(contadorId)
+
+          if (versionActual !== versionDisponibles) {
+            return { ok: false, descartado: true }
+          }
+
+          this.disponibles = disponibles
+          this.cargandoDisponibles = false
+          return { ok: true, contadores: disponibles }
+        } catch (error) {
+          if (versionActual !== versionDisponibles) {
+            return { ok: false, descartado: true }
+          }
+
+          this.errorDisponibles = normalizarError(error, 'la carga de los contadores disponibles')
+          this.cargandoDisponibles = false
+          return { ok: false, error: this.errorDisponibles }
+        }
+      },
+
+      /**
        * Asigna un auxiliar al contador.
        * @param {number} contadorId - Id del contador.
        * @param {number} auxiliarId - Id del auxiliar.
@@ -117,8 +166,11 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
             return { ok: false, descartado: true }
           }
 
-          // Recarga la lista para que quede al día
-          await this.cargarAuxiliares(contadorId)
+          // Recarga las dos listas para que queden al día
+          await Promise.all([
+            this.cargarAuxiliares(contadorId),
+            this.cargarDisponibles(contadorId),
+          ])
 
           this.guardando = false
           return { ok: true }
@@ -153,8 +205,11 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
             return { ok: false, descartado: true }
           }
 
-          // Recarga la lista para que quede al día
-          await this.cargarAuxiliares(contadorId)
+          // Recarga las dos listas para que queden al día
+          await Promise.all([
+            this.cargarAuxiliares(contadorId),
+            this.cargarDisponibles(contadorId),
+          ])
 
           this.guardando = false
           return { ok: true }
@@ -206,18 +261,26 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
         }
       },
 
-      /** Reintenta la carga de la lista de auxiliares del último contador consultado. */
+      /** Reintenta la carga de las listas del último contador consultado. */
       async reintentar() {
-        return this.cargarAuxiliares(this._ultimoContadorId ?? 0)
+        const contadorId = this._ultimoContadorId ?? 0
+        return Promise.all([
+          this.cargarAuxiliares(contadorId),
+          this.cargarDisponibles(contadorId),
+        ])
       },
 
       /** Limpia todo al cerrar sesión: no quedan datos de otro perfil (RNF-05). */
       reiniciar() {
         version += 1
+        versionDisponibles += 1
         this.auxiliares = []
+        this.disponibles = []
         this.cargando = false
+        this.cargandoDisponibles = false
         this.guardando = false
         this.error = null
+        this.errorDisponibles = null
       },
     },
   })

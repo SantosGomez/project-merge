@@ -219,6 +219,28 @@ async function updateCase(req, res) {
   const { cliente, estado, prioridad, fecha_inicio: fechaRecibida, fecha_vencimiento: vencimientoRecibido } = req.body;
   const casoActual = req.caso;
 
+  // RF-AX-12: el auxiliar solo cambia el estado; el resto de los datos es del contador dueño.
+  if (Number(req.user.id) !== Number(casoActual.contador_id)) {
+    const camposDelDuenio = [
+      'cliente',
+      'prioridad',
+      'fecha_inicio',
+      'fecha_vencimiento',
+      'descripcion',
+      'observaciones',
+      'importante',
+    ];
+    if (camposDelDuenio.some((campo) => req.body[campo] !== undefined)) {
+      return res.status(403).json(
+        buildError(
+          'Acceso denegado',
+          'datos del caso',
+          'Como auxiliar solo puedes cambiar el estado del caso'
+        )
+      );
+    }
+  }
+
   const { importante } = req.body;
   const editables = [
     cliente,
@@ -327,7 +349,12 @@ async function updateCase(req, res) {
   const caso = await CaseModel.findById(casoActual.id);
 
   // Si quien edita no es el dueño del caso, es un auxiliar: avisar al contador dueño
-  if (req.user.id !== casoActual.contador_id) {
+  // solo cuando de verdad cambió el estado (es el único campo que puede tocar).
+  if (
+    Number(req.user.id) !== Number(casoActual.contador_id) &&
+    estado !== undefined &&
+    estado !== casoActual.estado
+  ) {
     const quienEdito = await UserModel.findById(req.user.id);
     const mensaje = `${quienEdito.nombre} cambió el estado del caso «${casoActual.cliente}».`;
     await NotificacionModel.crear({

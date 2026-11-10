@@ -27,7 +27,7 @@
           debounce="200"
           placeholder="Buscar un contador para asignar como auxiliar"
           aria-label="Buscar contador para auxiliar"
-          class="input-moderno"
+          class="input-moderno auxiliares-page__campo"
           @update:model-value="buscarAuxiliaresDisponibles"
         >
           <template #prepend><q-icon name="person_search" aria-hidden="true" /></template>
@@ -39,6 +39,8 @@
           :options="opcionesAuxiliares"
           option-label="label"
           option-value="value"
+          emit-value
+          map-options
           dense
           outlined
           options-dense
@@ -46,14 +48,15 @@
           popup-content-class="menu-seleccion-custom"
           transition-show="jump-down"
           transition-hide="jump-up"
-          class="selector-moderno"
+          :transition-duration="180"
+          class="selector-moderno auxiliares-page__campo"
           :disable="guardando || opcionesAuxiliares.length === 0"
           @update:model-value="asignarAuxiliar"
         >
           <template #prepend><q-icon name="add_circle" /></template>
           <template #no-option>
             <q-item-section class="text-italic">
-              No hay contadores disponibles para asignar.
+              {{ textoNoDisponibles }}
             </q-item-section>
           </template>
           <q-tooltip>Selecciona un contador para que te ayude con tus casos.</q-tooltip>
@@ -110,7 +113,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 
 import EmptyState from '../components/EmptyState.vue'
@@ -124,7 +127,6 @@ const auxiliares = useAuxiliaresStore()
 const session = useSessionStore()
 const $q = useQuasar()
 
-const contadorId = computed(() => session.id)
 const textoBusqueda = ref('')
 const auxiliarSeleccionado = ref(null)
 const opcionesAuxiliares = ref([])
@@ -137,6 +139,11 @@ const screenStateName = computed(() => {
 
 const mensajeError = computed(() => auxiliares.error?.mensaje ?? 'tus auxiliares.')
 const guardando = computed(() => auxiliares.guardando)
+const textoNoDisponibles = computed(() =>
+  auxiliares.errorDisponibles
+    ? 'No se pudieron cargar los contadores. Revisa tu conexión y vuelve a intentarlo.'
+    : 'No hay contadores disponibles para asignar.'
+)
 
 const inicialesDe = (nombre) => {
   return nombre
@@ -153,21 +160,11 @@ const buscarAuxiliaresDisponibles = () => {
     opcionesAuxiliares.value = []
     return
   }
-  // Los contadores disponibles son todos menos el autenticado y los ya asignados.
-  const asignados = new Set(auxiliares.auxiliares.map((a) => a.id))
-  const idPropio = session.id
-  opcionesAuxiliares.value = (
-    contadoresDisponibles.value.filter(
-      (c) => c.id !== idPropio && !asignados.has(c.id) && c.nombre.toLowerCase().includes(buscado)
-    )
-  )
+  // Los disponibles ya vienen sin el contador propio ni los asignados; aquí solo se filtra por nombre.
+  opcionesAuxiliares.value = auxiliares.disponibles
+    .filter((c) => c.nombre.toLowerCase().includes(buscado))
+    .map((c) => ({ label: c.nombre, value: c.id }))
 }
-
-const contadoresDisponibles = computed(() => {
-  // Por ahora devolvemos una lista vacía; el backend aún no tiene endpoint
-  // para listar todos los contadores. Se llena al buscar si existe ese endpoint.
-  return []
-})
 
 const asignarAuxiliar = async (auxiliarId) => {
   if (!auxiliarId || guardando.value) return
@@ -195,7 +192,9 @@ const quitarAuxiliar = async (auxiliarId) => {
   if (guardando.value) return
   const idPropio = Number(session.id)
   const resultado = await auxiliares.quitarAuxiliar(idPropio, auxiliarId)
-  if (!resultado.ok) {
+  if (resultado.ok) {
+    buscarAuxiliaresDisponibles()
+  } else {
     $q.notify({
       type: 'negative',
       message: 'No se pudo quitar el auxiliar.',
@@ -211,7 +210,10 @@ const retry = () => {
 
 onMounted(async () => {
   const idPropio = Number(session.id)
-  await auxiliares.cargarAuxiliares(idPropio)
+  await Promise.all([
+    auxiliares.cargarAuxiliares(idPropio),
+    auxiliares.cargarDisponibles(idPropio),
+  ])
 })
 </script>
 
@@ -261,9 +263,9 @@ onMounted(async () => {
   background: var(--dg-fondo-suave);
 }
 
-.auxiliares-page__asignar q-input,
-.auxiliares-page__asignar q-select {
+.auxiliares-page__campo {
   min-width: 240px;
+  flex: 1 1 240px;
 }
 
 .auxiliares-page__lista {

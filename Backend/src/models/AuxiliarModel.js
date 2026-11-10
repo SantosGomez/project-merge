@@ -111,9 +111,27 @@ async function listarContadoresQueMeTienenComoAuxiliar(auxiliarId) {
   return filas;
 }
 
+/**
+ * Devuelve los contadores que un contador puede asignar como auxiliares:
+ * todos los contadores menos él mismo y los que ya tiene asignados.
+ * @param {number} contadorId - Id del contador que quiere asignar auxiliares.
+ * @returns {Promise<Array<{id: number, nombre: string}>>}
+ */
+async function listarDisponiblesParaAuxiliar(contadorId) {
+  const filas = await query(
+    "SELECT u.id, u.nombre FROM usuarios u " +
+    "WHERE u.rol = 'contador' AND u.id <> ? " +
+    'AND NOT EXISTS (SELECT 1 FROM contador_auxiliar ca WHERE ca.contador_id = ? AND ca.auxiliar_id = u.id) ' +
+    'ORDER BY u.nombre',
+    [contadorId, contadorId]
+  );
+  return filas;
+}
+
 module.exports = {
   asignarAuxiliar,
   quitarAuxiliar,
   listarAuxiliares,
   listarContadoresQueMeTienenComoAuxiliar,
+  listarDisponiblesParaAuxiliar,
 };

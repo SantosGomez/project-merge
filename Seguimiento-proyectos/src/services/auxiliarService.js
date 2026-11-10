@@ -65,6 +65,17 @@ export const crearAuxiliarService = (opciones = {}) => {
   }
 
   /**
+   * GET /contadores/:id/auxiliares-disponibles: contadores que se pueden asignar como auxiliares
+   * (sin el propio contador ni los ya asignados).
+   * @param {number} contadorId - Id del contador.
+   * @returns {Promise<Array<{id: number, nombre: string}>>}
+   */
+  const listarDisponibles = async (contadorId) => {
+    const { data } = await api.get(`/contadores/${contadorId}/auxiliares-disponibles`)
+    return leerLista(data, 'contadores', 'los contadores disponibles para asignar')
+  }
+
+  /**
    * POST /casos/para-auxiliar: el auxiliar crea un caso a nombre de su contador.
    * @param {number} contadorId - Id del contador dueño del caso.
    * @param {Object} datos - Datos del caso { cliente, prioridad, fecha_inicio, fecha_vencimiento, descripcion, observaciones }.
@@ -80,6 +91,7 @@ export const crearAuxiliarService = (opciones = {}) => {
     asignarAuxiliar,
     quitarAuxiliar,
     listarContadoresQueMeTienenComoAuxiliar,
+    listarDisponibles,
     crearCasoComoAuxiliar,
   }
 }
@@ -91,4 +103,5 @@ export const listarAuxiliares = servicioPorDefecto.listarAuxiliares
 export const asignarAuxiliar = servicioPorDefecto.asignarAuxiliar
 export const quitarAuxiliar = servicioPorDefecto.quitarAuxiliar
 export const listarContadoresQueMeTienenComoAuxiliar = servicioPorDefecto.listarContadoresQueMeTienenComoAuxiliar
+export const listarDisponibles = servicioPorDefecto.listarDisponibles
 export const crearCasoComoAuxiliar = servicioPorDefecto.crearCasoComoAuxiliar

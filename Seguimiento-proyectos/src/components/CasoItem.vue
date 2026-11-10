@@ -7,7 +7,7 @@
       'caso-item--solo-lectura': soloLectura,
     }"
   >
-    <q-item-section v-if="!soloLectura" avatar class="caso-item__estrella">
+    <q-item-section v-if="!soloLectura && !esCasoDeOtroContador" avatar class="caso-item__estrella">
       <q-btn
         flat
         round
@@ -183,9 +183,10 @@
             </q-item-section>
           </q-item>
         </template>
-        <q-tooltip>Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.</q-tooltip>
+        <q-tooltip>{{ ayudaEstado }}</q-tooltip>
       </q-select>
       <q-btn
+        v-if="!esCasoDeOtroContador"
         outline
         no-caps
         color="primary"
@@ -215,6 +216,7 @@ import { PRIORITIES, PRIORITY_LABELS, STATUSES, STATUS_LABELS } from '../utils/c
  * En `solo-lectura` (dashboard del administrador) el estado se muestra como texto y no se muestran
  * la estrella, «Importante», «Vencido» ni «En proceso desde»; con `puede-cambiar-prioridad`
  * aparece un selector de prioridad (el administrador la cambia y se avisa al contador).
+ * En los casos de otro contador (auxiliar) solo queda el selector de estado: ni estrella ni «Editar».
  */
 const props = defineProps({
   /** Fila de `casoAFila` más `vencido` (boolean). */
@@ -244,16 +246,32 @@ const props = defineProps({
   },
 })
 
+/* Un auxiliar ve los casos de su contador, pero solo puede cambiar el estado. */
+const esCasoDeOtroContador = computed(
+  () =>
+    props.contadorAutenticadoId !== null &&
+    props.caso.counterId !== undefined &&
+    String(props.caso.counterId) !== String(props.contadorAutenticadoId)
+)
+
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
 const proximo = computed(() => Boolean(props.caso.proximo) && !props.soloLectura)
 
-// El vencimiento lo pone el contador; nunca se calcula a partir de la prioridad.
+// El vencimiento lo pone el contador dueño; nunca se calcula a partir de la prioridad.
 const ayudaVence = computed(() => {
   if (vencido.value) return 'La fecha de vencimiento ya pasó y el caso no está finalizado.'
+  if (esCasoDeOtroContador.value) return 'Fecha límite que puso el contador dueño del caso.'
   return props.soloLectura
     ? 'Fecha límite que puso el contador al registrar el caso.'
     : 'Fecha límite para terminar el caso. La pones tú y puedes cambiarla con «Editar».'
 })
+
+// El auxiliar solo cambia el estado; el dueño puede cambiar todo desde «Editar».
+const ayudaEstado = computed(() =>
+  esCasoDeOtroContador.value
+    ? 'Solo puedes cambiar el estado. Los demás datos los edita el contador dueño.'
+    : 'Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.'
+)
 
 /* El verde de Finalizado aplica al contador y a la vista de consulta del administrador. */
 const esFinalizado = computed(() => props.caso.status === 'finalizado')

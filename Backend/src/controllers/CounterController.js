@@ -103,13 +103,13 @@ async function getCasesByCounter(req, res) {
 }
 
 /**
- * Devuelve los propios casos del contador autenticado.
- * RF-15, RF-24.
+ * Devuelve los casos del contador autenticado y de sus auxiliares (casos en conjunto).
+ * RF-15, RF-24, RF-AX-07.
  * @param {Object} req - Petición Express (req.user con id del contador autenticado).
  * @param {Object} res - Respuesta Express.
  */
 async function getMyCases(req, res) {
-  const casos = await CaseModel.findByCounter(req.user.id);
+  const casos = await CaseModel.findByCounterYAuxiliares(req.user.id);
   if (casos.length === 0) {
     return res.status(200).json({
       mensaje: 'Aún no tienes casos registrados',

@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
-const { requireAdmin } = require('../middlewares/roleMiddleware');
+const { requireAdmin, requireContador } = require('../middlewares/roleMiddleware');
 const { listCounters, teamSummary, countCasesByStatus, getCasesByCounter } = require('../controllers/CounterController');
+const {
+  listarAuxiliares,
+  asignarAuxiliar,
+  quitarAuxiliar,
+  listarContadoresQueMeTienenComoAuxiliar,
+  listarDisponiblesParaAuxiliar,
+} = require('../controllers/AuxiliarController');
 const { asignarCaso } = require('../controllers/CaseController');
 const { asyncHandler } = require('../utils/asyncHandler');
 
@@ -11,6 +18,33 @@ router.get('/', authenticateToken, requireAdmin, asyncHandler(listCounters));
 
 // GET /contadores/resumen — Resumen de casos del equipo y por contador para los KPIs (solo administrador)
 router.get('/resumen', authenticateToken, requireAdmin, asyncHandler(teamSummary));
+
+// Auxiliares: solo el contador dueño ve y cambia los suyos (RF-AX-01 a RF-AX-06)
+router.get('/:id/auxiliares', authenticateToken, requireContador, asyncHandler(listarAuxiliares));
+router.get(
+  '/:id/auxiliares-disponibles',
+  authenticateToken,
+  requireContador,
+  asyncHandler(listarDisponiblesParaAuxiliar)
+);
+router.get(
+  '/:id/contadores-que-me-tienen-como-auxiliar',
+  authenticateToken,
+  requireContador,
+  asyncHandler(listarContadoresQueMeTienenComoAuxiliar)
+);
+router.post(
+  '/:id/auxiliares/:auxiliarId',
+  authenticateToken,
+  requireContador,
+  asyncHandler(asignarAuxiliar)
+);
+router.delete(
+  '/:id/auxiliares/:auxiliarId',
+  authenticateToken,
+  requireContador,
+  asyncHandler(quitarAuxiliar)
+);
 
 // GET /contadores/:id/conteos — Conteo de casos por estado de un contador (solo administrador) (RF-13, RF-16)
 router.get('/:id/conteos', authenticateToken, requireAdmin, asyncHandler(countCasesByStatus));

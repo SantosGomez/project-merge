@@ -515,7 +515,7 @@ const props = defineProps({
     default: null,
   },
   /** Id del contador dueño cuando el registro lo hace un auxiliar; null en registro normal. */
-  contadorId: {
+  contadorDuenioId: {
     type: Number,
     default: null,
   },
@@ -523,13 +523,11 @@ const props = defineProps({
 
 const emit = defineEmits(['registrado', 'guardado'])
 
-const casos = useCasesStore()
 const auxiliares = useAuxiliaresStore()
-const session = useSessionStore()
 
 const modoEdicion = computed(() => props.caso !== null)
 const modoAsignacion = computed(() => !modoEdicion.value && props.contadores !== null)
-const modoAuxiliar = computed(() => !modoEdicion.value && props.contadorId !== null)
+const modoAuxiliar = computed(() => !modoEdicion.value && props.contadorDuenioId !== null)
 
 const TEXTOS_REGISTRO = {
   titulo: 'Registrar caso',
@@ -843,7 +841,7 @@ const submitCase = async () => {
     fecha_vencimiento: fechaVencimiento.value.trim(),
   }
   const resultado = modoAuxiliar.value
-    ? await auxiliares.crearCasoComoAuxiliar(props.contadorId, datosDelCaso)
+    ? await auxiliares.crearCasoComoAuxiliar(props.contadorDuenioId, datosDelCaso)
     : modoAsignacion.value
       ? await cases.asignarCaso(contadorId.value, [
           datosDelCaso.cliente,

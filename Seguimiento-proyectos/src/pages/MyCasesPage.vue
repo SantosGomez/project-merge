@@ -2,7 +2,7 @@
   <q-page class="my-cases-page">
     <div class="my-cases-page__head">
       <p class="my-cases-page__lead">
-        Aquí están los casos que registraste y los que te asignó el administrador. Cambia el estado desde la lista; para el resto de los datos usa «Editar».
+        Aquí están los casos que registraste, los que te asignó el administrador y los de los contadores a los que apoyas. Cambia el estado desde la lista; en tus propios casos, usa «Editar» para el resto de los datos.
       </p>
       <q-btn
         class="my-cases-page__register-btn control-touch boton-presionable"
@@ -24,6 +24,8 @@
         :options="contadoresQueMeTienenComoAuxiliar.map((c) => ({ label: c.nombre, value: c.id }))"
         option-label="label"
         option-value="value"
+        emit-value
+        map-options
         dense
         outlined
         options-dense
@@ -31,10 +33,9 @@
         popup-content-class="menu-seleccion-custom"
         transition-show="jump-down"
         transition-hide="jump-up"
-        class="selector-moderno"
+        class="selector-moderno my-cases-page__registrar-para"
         :disable="cases.guardando"
         label="Registrar caso para"
-        class="my-cases-page__registrar-para"
       >
         <template #prepend><q-icon name="person_add" /></template>
         <q-tooltip>Registra el caso a nombre de este contador (tú eres su auxiliar).</q-tooltip>
@@ -153,7 +154,7 @@
     <CaseFormDialog
       v-model="dialogoRegistroAbierto"
       :caso="casoEnEdicion"
-      :contador-id="contadorSeleccionadoParaRegistro"
+      :contador-duenio-id="contadorSeleccionadoParaRegistro"
       @registrado="alRegistrar"
       @guardado="alGuardarEdicion"
     />
