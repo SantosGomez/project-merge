@@ -198,7 +198,7 @@ async function testLeerYGuardarCasosFallan() {
   const token = await iniciarSesion(servidor.puerto, contador.correo, contador.password);
 
   const lectura = await conFalloDeBd(
-    (sql) => sql.startsWith('SELECT * FROM casos'),
+    (sql) => typeof sql === 'string' && sql.includes('FROM casos'),
     () => peticion(servidor.puerto, 'GET', '/casos/mis-casos', undefined, token)
   );
   assert.strictEqual(lectura.statusCode, 503, 'un fallo al leer los casos debe responder 503');

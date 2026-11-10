@@ -51,6 +51,7 @@ test('casoAFila traduce los campos internos a los que espera CaseRow (RF-13)', (
     status: 'en_proceso',
     priority: 'alta',
     counterId: 3,
+    contadorNombre: '',
     startDate: '',
     dueDate: '',
     description: '',

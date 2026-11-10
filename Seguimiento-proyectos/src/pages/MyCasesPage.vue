@@ -73,6 +73,7 @@
               :key="item.id"
               :caso="item"
               :deshabilitado="guardandoId === item.id"
+              :contador-autenticado-id="contadorAutenticadoId"
               @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
               @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
               @editar="abrirEdicion(item.id)"
@@ -149,6 +150,7 @@ import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
+import { useSessionStore } from '../stores/session.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { casoAFila } from '../utils/filasVista.js'
 import {
@@ -164,8 +166,13 @@ import {
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const cases = useCasesStore()
+const session = useSessionStore()
 const $q = useQuasar()
 const route = useRoute()
+
+// Id del contador autenticado (texto en la sesión, número en el caso). Se usa para mostrar «de …»
+// cuando el caso es de un auxiliar.
+const contadorAutenticadoId = computed(() => (session.id ? Number(session.id) : null))
 
 // «Mi resumen» abre esta pantalla ya filtrada (?filtro=vencidos, ?filtro=pendiente…).
 const filtros = ref(filtrosDesdeConsulta(route.query.filtro))

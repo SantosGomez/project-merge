@@ -28,6 +28,29 @@ async function findByCounter(contadorId, { soloImportantes = false } = {}) {
 }
 
 /**
+ * Devuelve los casos de un contador y de sus auxiliares (casos en conjunto).
+ * RF-AX-07.
+ * @param {number} contadorId - ID del contador.
+ * @param {{ soloImportantes?: boolean }} [opciones] - contar solo los casos marcados como importantes.
+ * @returns {Promise<Array>} Lista de casos del contador y de sus auxiliares, sin duplicados.
+ */
+async function findByCounterYAuxiliares(contadorId, { soloImportantes = false } = {}) {
+  const filtroImportante = soloImportantes ? ' AND c.importante = 1' : '';
+  const rows = await query(
+    `SELECT c.*, u.nombre AS nombre_contador
+     FROM casos c
+     JOIN usuarios u ON u.id = c.contador_id
+     WHERE c.contador_id = ?
+        OR c.contador_id IN (
+          SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?
+        )${filtroImportante}
+     ORDER BY c.id DESC`,
+    [contadorId, contadorId]
+  );
+  return rows;
+}
+
+/**
  * Devuelve el conteo de casos por estado para un contador, incluyendo ceros.
  * RF-13.
  * @param {number} contadorId - ID del contador.
@@ -199,4 +222,4 @@ async function updatePatch(id, campos = {}, ejecutar = query) {
   await ejecutar(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
-module.exports = { findById, findByCounter, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
+module.exports = { findById, findByCounter, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };

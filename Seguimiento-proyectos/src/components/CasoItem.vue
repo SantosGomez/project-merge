@@ -36,6 +36,10 @@
           Importante
           <q-tooltip>Caso marcado como importante: requiere seguimiento especial.</q-tooltip>
         </span>
+        <span v-if="caso.contadorNombre && String(caso.counterId) !== String(contadorAutenticadoId)" class="caso-item__contador-dueño">
+          de {{ caso.contadorNombre }}
+          <q-tooltip>Este caso lo registró otro contador y tú eres su auxiliar.</q-tooltip>
+        </span>
         <!-- Con el selector de prioridad (admin) la etiqueta sobraría: el selector ya la muestra. -->
         <PriorityTag v-if="!puedeCambiarPrioridad" :priority="caso.priority" />
         <!-- Lo urgente se ve primero: etiqueta a nivel de fila, con texto (el color no es el único aviso). -->
@@ -233,6 +237,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /** Id del contador autenticado (texto). Se usa para mostrar «de …» cuando el caso es de un auxiliar. */
+  contadorAutenticadoId: {
+    type: [String, Number],
+    default: null,
+  },
 })
 
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
@@ -333,6 +342,17 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
   color: var(--dg-importante-texto);
   font-size: 0.75rem;
   font-weight: 700;
+  cursor: help;
+}
+
+/* «de …» indica que el caso pertenece a un auxiliar del contador. */
+.caso-item__contador-dueño {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--dg-fondo-suave);
+  color: var(--dg-texto-tenue);
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: help;
 }
 

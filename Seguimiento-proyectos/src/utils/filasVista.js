@@ -113,6 +113,7 @@ export const casoAFila = (caso) => {
     status: caso.estado ?? '',
     priority: caso.prioridad ?? '',
     counterId: caso.contador_id ?? null,
+    contadorNombre: caso.nombre_contador ?? '',
     startDate: fechaParaFormulario(caso.fecha_inicio),
     dueDate: fechaParaFormulario(caso.fecha_vencimiento),
     description: caso.descripcion ?? '',
