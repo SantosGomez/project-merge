@@ -6,7 +6,7 @@ Principios innegociables. Todo cambio debe cumplirlos.
 
 2. **Los datos del usuario son sagrados**: localStorage con compatibilidad hacia atrás y fechas siempre en hora local. Nunca se pierde una sesión.
 
-3. **Idioma**: código en inglés; interfaz y documentación en español.
+3. **Idioma**: la sintaxis y las APIs de los lenguajes y librerías quedan en inglés; los nombres propios del proyecto (variables, funciones, archivos), los comentarios, la documentación y los textos de la interfaz van en español.
 
 4. **Seguridad de contraseñas**: Todo hash de contraseña debe utilizar Argon2id como estándar obligatorio antes de cualquier almacenamiento en base de datos.
 

@@ -84,6 +84,16 @@ npm run build
     node --test
     ```
 
+## Puertas de verificación
+
+Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas puertas en cada carpeta que toca la rebanada. Ninguna rebanada se da por hecha con una puerta en rojo.
+
+- Frontend (`Seguimiento-proyectos/`): `npm run lint:check`, `npm run build`, `node --test` y comprobación en navegador real si toca interfaz (incluida la vista móvil).
+- Backend (`Backend/`): `node --test` y `node soporte-pruebas/verificarPruebas.js`. Requiere MariaDB en marcha (XAMPP, puerto 3306); si no responde, parar y avisar.
+- Datos de prueba: las cuentas y registros de prueba usan el prefijo `zz_test_`; al terminar deben quedar 0 filas `zz_test_%`.
+- Navegador: `backend-experimento-3011` + `frontend-experimento-9012` de `.claude/launch.json`; cerrar los servidores que se abran.
+- El reviewer solo corre las puertas de pruebas y lectura; nunca modifica archivos.
+
 ## Convenciones
 
 - Textos de la interfaz en español.
