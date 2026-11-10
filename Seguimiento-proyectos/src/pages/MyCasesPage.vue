@@ -17,6 +17,28 @@
       >
         <q-tooltip>Abre el formulario para registrar un caso nuevo.</q-tooltip>
       </q-btn>
+      <q-select
+        :transition-duration="180"
+        v-if="contadoresQueMeTienenComoAuxiliar.length > 0"
+        v-model="contadorSeleccionadoParaRegistro"
+        :options="contadoresQueMeTienenComoAuxiliar.map((c) => ({ label: c.nombre, value: c.id }))"
+        option-label="label"
+        option-value="value"
+        dense
+        outlined
+        options-dense
+        dropdown-icon="expand_more"
+        popup-content-class="menu-seleccion-custom"
+        transition-show="jump-down"
+        transition-hide="jump-up"
+        class="selector-moderno"
+        :disable="cases.guardando"
+        label="Registrar caso para"
+        class="my-cases-page__registrar-para"
+      >
+        <template #prepend><q-icon name="person_add" /></template>
+        <q-tooltip>Registra el caso a nombre de este contador (tú eres su auxiliar).</q-tooltip>
+      </q-select>
     </div>
 
     <ScreenLoader v-if="screenStateName === SCREEN_STATES.loading" text="Cargando tus casos…" />
@@ -131,6 +153,7 @@
     <CaseFormDialog
       v-model="dialogoRegistroAbierto"
       :caso="casoEnEdicion"
+      :contador-id="contadorSeleccionadoParaRegistro"
       @registrado="alRegistrar"
       @guardado="alGuardarEdicion"
     />
@@ -150,6 +173,7 @@ import FiltrosCasos from '../components/FiltrosCasos.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
+import { useAuxiliaresStore } from '../stores/auxiliares.js'
 import { useSessionStore } from '../stores/session.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { casoAFila } from '../utils/filasVista.js'
@@ -167,12 +191,17 @@ import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const cases = useCasesStore()
 const session = useSessionStore()
+const auxiliaresStore = useAuxiliaresStore()
 const $q = useQuasar()
 const route = useRoute()
 
 // Id del contador autenticado (texto en la sesión, número en el caso). Se usa para mostrar «de …»
 // cuando el caso es de un auxiliar.
 const contadorAutenticadoId = computed(() => (session.id ? Number(session.id) : null))
+
+// Contadores para los que el contador autenticado es auxiliar; se usa para registrar casos en su nombre.
+const contadoresQueMeTienenComoAuxiliar = ref([])
+const contadorSeleccionadoParaRegistro = ref(null)
 
 // «Mi resumen» abre esta pantalla ya filtrada (?filtro=vencidos, ?filtro=pendiente…).
 const filtros = ref(filtrosDesdeConsulta(route.query.filtro))
@@ -288,13 +317,23 @@ const alRegistrar = async () => {
   if (cases.error) {
     await cases.reintentar()
   }
+
+  // Después de registrar, se limpia el selector para no crear el siguiente caso
+  // para el mismo auxiliar por error.
+  contadorSeleccionadoParaRegistro.value = null
 }
 
 const retry = () => cases.reintentar()
 
-onMounted(() => {
+onMounted(async () => {
   cases.cargarCasos()
   document.addEventListener('visibilitychange', actualizarHoy)
+
+  const idPropio = Number(session.id)
+  const resultado = await auxiliaresStore.listarContadoresQueMeTienenComoAuxiliar(idPropio)
+  if (resultado.ok) {
+    contadoresQueMeTienenComoAuxiliar.value = resultado.auxiliares ?? []
+  }
 })
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', actualizarHoy))
 
@@ -427,5 +466,9 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
   .my-cases-page {
     padding: 20px 24px;
   }
+}
+
+.my-cases-page__registrar-para {
+  min-width: 240px;
 }
 </style>

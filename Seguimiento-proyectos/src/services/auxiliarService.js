@@ -64,7 +64,24 @@ export const crearAuxiliarService = (opciones = {}) => {
     return leerLista(data, 'contadores', 'los contadores que te tienen como auxiliar')
   }
 
-  return { listarAuxiliares, asignarAuxiliar, quitarAuxiliar, listarContadoresQueMeTienenComoAuxiliar }
+  /**
+   * POST /casos/para-auxiliar: el auxiliar crea un caso a nombre de su contador.
+   * @param {number} contadorId - Id del contador dueño del caso.
+   * @param {Object} datos - Datos del caso { cliente, prioridad, fecha_inicio, fecha_vencimiento, descripcion, observaciones }.
+   * @returns {Promise<{mensaje: string, caso: Object}>}
+   */
+  const crearCasoComoAuxiliar = async (contadorId, datos) => {
+    const { data } = await api.post('/casos/para-auxiliar', { contador_id: contadorId, ...datos })
+    return { mensaje: data.mensaje, caso: data.caso }
+  }
+
+  return {
+    listarAuxiliares,
+    asignarAuxiliar,
+    quitarAuxiliar,
+    listarContadoresQueMeTienenComoAuxiliar,
+    crearCasoComoAuxiliar,
+  }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -74,3 +91,4 @@ export const listarAuxiliares = servicioPorDefecto.listarAuxiliares
 export const asignarAuxiliar = servicioPorDefecto.asignarAuxiliar
 export const quitarAuxiliar = servicioPorDefecto.quitarAuxiliar
 export const listarContadoresQueMeTienenComoAuxiliar = servicioPorDefecto.listarContadoresQueMeTienenComoAuxiliar
+export const crearCasoComoAuxiliar = servicioPorDefecto.crearCasoComoAuxiliar

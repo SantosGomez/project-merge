@@ -493,6 +493,7 @@ import {
   validarTextoOpcional,
 } from '../utils/validators.js'
 import { useCasesStore } from '../stores/cases.js'
+import { useAuxiliaresStore } from '../stores/auxiliares.js'
 import { useSessionStore } from '../stores/session.js'
 
 /*
@@ -513,12 +514,22 @@ const props = defineProps({
     type: Array,
     default: null,
   },
+  /** Id del contador dueño cuando el registro lo hace un auxiliar; null en registro normal. */
+  contadorId: {
+    type: Number,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['registrado', 'guardado'])
 
+const casos = useCasesStore()
+const auxiliares = useAuxiliaresStore()
+const session = useSessionStore()
+
 const modoEdicion = computed(() => props.caso !== null)
 const modoAsignacion = computed(() => !modoEdicion.value && props.contadores !== null)
+const modoAuxiliar = computed(() => !modoEdicion.value && props.contadorId !== null)
 
 const TEXTOS_REGISTRO = {
   titulo: 'Registrar caso',
@@ -556,8 +567,21 @@ const TEXTOS_ASIGNACION = {
   errorDetalle: 'la asignación del caso.',
 }
 
+const TEXTOS_AUXILIAR = {
+  ...TEXTOS_REGISTRO,
+  titulo: 'Registrar caso para otro contador',
+  formulario: 'Formulario de registro de caso para auxiliar',
+  ayuda: 'Completa los campos obligatorios. El caso se creará a nombre del contador seleccionado y él recibirá un aviso.',
+  boton: 'Registrar caso para el contador',
+  tooltipBoton: 'Guarda el caso a nombre del contador seleccionado con estado Pendiente y le envía un aviso.',
+  tooltipCancelar: 'Cierra el formulario sin registrar el caso.',
+  errorGuardado: 'No se pudo registrar el caso',
+  errorDetalle: 'el registro del caso.',
+}
+
 const textos = computed(() => {
   if (modoEdicion.value) return TEXTOS_EDICION
+  if (modoAuxiliar.value) return TEXTOS_AUXILIAR
   return modoAsignacion.value ? TEXTOS_ASIGNACION : TEXTOS_REGISTRO
 })
 
@@ -809,18 +833,36 @@ const submitCase = async () => {
     return
   }
 
-  const datosDelCaso = [
-    clienteLimpio,
-    prioridadBackend,
-    fechaLimpia || undefined,
-    descripcion.value || undefined,
-    observaciones.value || undefined,
-    importante.value,
-    fechaVencimiento.value.trim(),
-  ]
-  const resultado = modoAsignacion.value
-    ? await cases.asignarCaso(contadorId.value, ...datosDelCaso)
-    : await cases.crearCaso(...datosDelCaso)
+  const datosDelCaso = {
+    cliente: clienteLimpio,
+    prioridad: prioridadBackend,
+    fecha_inicio: fechaLimpia || undefined,
+    descripcion: descripcion.value || undefined,
+    observaciones: observaciones.value || undefined,
+    importante: importante.value,
+    fecha_vencimiento: fechaVencimiento.value.trim(),
+  }
+  const resultado = modoAuxiliar.value
+    ? await auxiliares.crearCasoComoAuxiliar(props.contadorId, datosDelCaso)
+    : modoAsignacion.value
+      ? await cases.asignarCaso(contadorId.value, [
+          datosDelCaso.cliente,
+          datosDelCaso.prioridad,
+          datosDelCaso.fecha_inicio,
+          datosDelCaso.descripcion,
+          datosDelCaso.observaciones,
+          datosDelCaso.importante,
+          datosDelCaso.fecha_vencimiento,
+        ])
+      : await cases.crearCaso(
+          datosDelCaso.cliente,
+          datosDelCaso.prioridad,
+          datosDelCaso.fecha_inicio,
+          datosDelCaso.descripcion,
+          datosDelCaso.observaciones,
+          datosDelCaso.importante,
+          datosDelCaso.fecha_vencimiento,
+        )
 
   if (!resultado.ok) {
     errorGuardado.value = resultado.error ?? null

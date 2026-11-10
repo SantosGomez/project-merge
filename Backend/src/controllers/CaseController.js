@@ -1,6 +1,7 @@
 const CaseModel = require('../models/CaseModel');
 const NotificacionModel = require('../models/NotificacionModel');
 const UserModel = require('../models/UserModel');
+const AuxiliarModel = require('../models/AuxiliarModel');
 const { conTransaccion } = require('../config/db');
 const {
   validarCampoTexto,
@@ -434,4 +435,53 @@ async function asignarCaso(req, res) {
   });
 }
 
-module.exports = { createCase, updateCase, cambiarPrioridadComoAdmin, asignarCaso };
+/**
+ * El auxiliar registra un caso a nombre de su contador y le avisa;
+ * el caso y el aviso se guardan juntos. El auxiliar debe estar asignado
+ * al contador destino (RF-AX-13).
+ * @param {Object} req - Petición Express con cuerpo { contador_id, cliente, prioridad, ... }.
+ * @param {Object} res - Respuesta Express.
+ */
+async function crearCasoComoAuxiliar(req, res) {
+  const contadorId = parseCounterId(req.body.contador_id);
+  const contador = contadorId ? await UserModel.findCounterById(contadorId) : null;
+  if (!contador) {
+    return res.status(404).json(
+      buildError('No se encontró el contador', 'contador solicitado', 'Revisa que el contador exista y actualiza la lista')
+    );
+  }
+
+  // Solo el auxiliar de este contador puede crear casos en su nombre
+  const auxiliares = await AuxiliarModel.listarAuxiliares(contadorId);
+  const esAuxiliar = auxiliares.some((a) => a.id === req.user.id);
+  if (!esAuxiliar) {
+    return res.status(403).json(
+      buildError('Acceso denegado', 'caso', 'No eres auxiliar de este contador')
+    );
+  }
+
+  const { error, datos } = validarNuevoCaso(req.body);
+  if (error) {
+    return res.status(400).json(error);
+  }
+
+  const auxiliar = await UserModel.findById(req.user.id);
+  const mensaje = `${auxiliar.nombre} creó el caso «${datos.cliente}» para ti.`;
+
+  const casoId = await conTransaccion(async (ejecutar) => {
+    const id = await CaseModel.create({ ...datos, contador_id: contador.id }, ejecutar);
+    await NotificacionModel.crear({ usuarioId: contador.id, casoId: id, mensaje }, ejecutar);
+    return id;
+  });
+  // Tiempo real: la campanita del contador y los administradores se enteran al instante
+  eventos.enviarAUsuario(contador.id, 'aviso-nuevo', { casoId });
+  eventos.enviarARol('administrador', 'caso-actualizado', { casoId, contadorId: contador.id });
+
+  const caso = await CaseModel.findById(casoId);
+  return res.status(201).json({
+    mensaje: 'Caso creado correctamente',
+    caso: conFechasLocales(caso),
+  });
+}
+
+module.exports = { createCase, updateCase, cambiarPrioridadComoAdmin, asignarCaso, crearCasoComoAuxiliar };

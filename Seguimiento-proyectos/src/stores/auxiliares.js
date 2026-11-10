@@ -16,6 +16,7 @@ const servicioPorDefecto = {
   asignarAuxiliar: undefined,
   quitarAuxiliar: undefined,
   listarContadoresQueMeTienenComoAuxiliar: undefined,
+  crearCasoComoAuxiliar: undefined,
 }
 
 // Si el servicio entrega un error normalizado se conserva; si no, se construye
@@ -163,6 +164,41 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
           }
 
           return { ok: false, error: normalizarErrorDeGuardado(error, 'la quita del auxiliar') }
+        } finally {
+          if (versionActual === version) {
+            this.guardando = false
+          }
+        }
+      },
+
+      /**
+       * Crea un caso a nombre de un contador del que el autenticado es auxiliar.
+       * @param {number} contadorId - Id del contador dueño del caso.
+       * @param {Object} datos - Datos del caso { cliente, prioridad, fecha_inicio, fecha_vencimiento, descripcion, observaciones }.
+       * @returns {Promise<{ ok: boolean, caso?: Object, error?: Object }>}
+       */
+      async crearCasoComoAuxiliar(contadorId, datos) {
+        const versionActual = ++version
+
+        this.guardando = true
+        this.error = null
+
+        try {
+          const resultado = await servicio.crearCasoComoAuxiliar(contadorId, datos)
+
+          if (versionActual !== version) {
+            return { ok: false, descartado: true }
+          }
+
+          this.guardando = false
+          return { ok: true, caso: resultado.caso }
+        } catch (error) {
+          if (versionActual !== version) {
+            return { ok: false, descartado: true }
+          }
+
+          this.error = normalizarErrorDeGuardado(error, 'la creación del caso')
+          return { ok: false, error: this.error }
         } finally {
           if (versionActual === version) {
             this.guardando = false
