@@ -67,7 +67,7 @@ async function createUser(req, res) {
   // Validar que el rol sea uno de los permitidos (RF-30)
   if (!rol || !validateRol(rol)) {
     return res.status(400).json(
-      buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador o usuario de sistema')
+      buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador, auxiliar o usuario de sistema')
     );
   }
 

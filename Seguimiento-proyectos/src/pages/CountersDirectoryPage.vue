@@ -278,7 +278,7 @@ const TODOS_LOS_ROLES = 'todos'
 const OPCIONES_ROL = [
   { label: 'Todos los roles', value: TODOS_LOS_ROLES },
   // Mismas etiquetas que el resto de la app (y que el alta de usuario).
-  ...[PROFILES.administrador, PROFILES.contador, PROFILES.sistema].map((valor) => ({
+  ...[PROFILES.administrador, PROFILES.contador, PROFILES.auxiliar, PROFILES.sistema].map((valor) => ({
     label: formatearRol(valor),
     value: valor,
   })),

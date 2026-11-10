@@ -209,3 +209,13 @@ describe('Grupo E: tras registrar para otro contador, el caso se ve sin recargar
     )
   })
 })
+
+// 2026-11-10: la plantilla leía el store como si fuera la lista (`auxiliares.length`), así que
+// los asignados nunca se mostraban aunque se guardaran.
+describe('Grupo F: «Mis auxiliares» muestra a los asignados', () => {
+  it('la lista recorre auxiliares.auxiliares, no el store', () => {
+    assert.match(plantilla, /<q-list v-if="auxiliares\.auxiliares\.length > 0"/)
+    assert.match(plantilla, /v-for="auxiliar in auxiliares\.auxiliares"/)
+    assert.doesNotMatch(plantilla, /v-if="auxiliares\.length/)
+  })
+})

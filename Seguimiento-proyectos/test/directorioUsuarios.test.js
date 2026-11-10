@@ -191,11 +191,11 @@ describe('Directorio de usuarios: filtros de búsqueda y rol', () => {
     assert.match(buscador, /<q-tooltip>/)
   })
 
-  it('tiene lista de rol con «Todos los roles» y los tres roles', () => {
+  it('tiene lista de rol con «Todos los roles» y los cuatro roles', () => {
     assert.match(plantilla, /<q-select[^>]*v-model="filtros\.rol"[^>]*:options="OPCIONES_ROL"/)
     // Revisión de UI, rebanada 8: los tres roles usan formatearRol, como el alta de usuario.
     assert.ok(pagina.includes("label: 'Todos los roles'"))
-    assert.match(pagina, /\[PROFILES\.administrador, PROFILES\.contador, PROFILES\.sistema\]\.map\(/)
+    assert.match(pagina, /\[PROFILES\.administrador, PROFILES\.contador, PROFILES\.auxiliar, PROFILES\.sistema\]\.map\(/)
     assert.match(pagina, /label: formatearRol\(valor\)/)
   })
 

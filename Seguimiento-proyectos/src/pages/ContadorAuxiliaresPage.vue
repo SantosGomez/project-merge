@@ -3,7 +3,7 @@
     <div class="auxiliares-page__head">
       <h1 class="auxiliares-page__title">Mis auxiliares</h1>
       <p class="auxiliares-page__lead">
-        Aquí están los contadores que te apoyan con tus casos. Pueden cambiar el estado
+        Aquí están los auxiliares que te apoyan con tus casos. Pueden cambiar el estado
         de tus casos y tú recibirás un aviso cada vez que lo hagan.
       </p>
     </div>
@@ -25,13 +25,13 @@
           outlined
           clearable
           debounce="200"
-          placeholder="Buscar un contador para asignar como auxiliar"
-          aria-label="Buscar contador para auxiliar"
+          placeholder="Buscar un auxiliar para asignarlo"
+          aria-label="Buscar un auxiliar para asignarlo"
           class="input-moderno auxiliares-page__campo"
           @update:model-value="buscarAuxiliaresDisponibles"
         >
           <template #prepend><q-icon name="person_search" aria-hidden="true" /></template>
-          <q-tooltip>Busca un contador por nombre para asignarlo como tu auxiliar.</q-tooltip>
+          <q-tooltip>Busca por nombre una cuenta con rol de auxiliar para que te apoye.</q-tooltip>
         </q-input>
 
         <q-select
@@ -59,7 +59,7 @@
               {{ textoNoDisponibles }}
             </q-item-section>
           </template>
-          <q-tooltip>Selecciona un contador para que te ayude con tus casos.</q-tooltip>
+          <q-tooltip>Selecciona al auxiliar que te ayudará con tus casos.</q-tooltip>
         </q-select>
       </section>
 
@@ -69,9 +69,9 @@
           Tus auxiliares actuales
         </q-item-label>
 
-        <q-list v-if="auxiliares.length > 0" bordered separator class="auxiliares-page__q-list" aria-label="Tus auxiliares">
+        <q-list v-if="auxiliares.auxiliares.length > 0" bordered separator class="auxiliares-page__q-list" aria-label="Tus auxiliares">
           <q-item
-            v-for="auxiliar in auxiliares"
+            v-for="auxiliar in auxiliares.auxiliares"
             :key="auxiliar.id"
             clickable
             v-ripple
@@ -94,7 +94,7 @@
                 :disable="guardando"
                 @click="quitarAuxiliar(auxiliar.id)"
               >
-                <q-tooltip>Deja de contar con este contador como tu auxiliar.</q-tooltip>
+                <q-tooltip>Deja de contar con esta persona como tu auxiliar.</q-tooltip>
               </q-btn>
             </q-item-section>
           </q-item>
@@ -103,8 +103,8 @@
         <EmptyState
           v-else
           title="Todavía no tienes auxiliares"
-          message="Busca un contador arriba y asígnalo como tu auxiliar para que te ayude con tus casos."
-          action-label="Buscar contador"
+          message="Busca un auxiliar arriba y asígnalo para que te ayude con tus casos."
+          action-label="Buscar auxiliar"
           @action="textoBusqueda = ''"
         />
       </section>
@@ -141,8 +141,8 @@ const mensajeError = computed(() => auxiliares.error?.mensaje ?? 'tus auxiliares
 const guardando = computed(() => auxiliares.guardando)
 const textoNoDisponibles = computed(() =>
   auxiliares.errorDisponibles
-    ? 'No se pudieron cargar los contadores. Revisa tu conexión y vuelve a intentarlo.'
-    : 'No hay contadores disponibles para asignar.'
+    ? 'No se pudieron cargar los auxiliares disponibles. Revisa tu conexión y vuelve a intentarlo.'
+    : 'No hay auxiliares disponibles. El administrador da de alta las cuentas con rol de auxiliar.'
 )
 
 const inicialesDe = (nombre) => {
@@ -160,7 +160,7 @@ const buscarAuxiliaresDisponibles = () => {
     opcionesAuxiliares.value = []
     return
   }
-  // Los disponibles ya vienen sin el contador propio ni los asignados; aquí solo se filtra por nombre.
+  // Los disponibles ya vienen solo con cuentas de rol auxiliar sin asignar; aquí solo se filtra por nombre.
   opcionesAuxiliares.value = auxiliares.disponibles
     .filter((c) => c.nombre.toLowerCase().includes(buscado))
     .map((c) => ({ label: c.nombre, value: c.id }))

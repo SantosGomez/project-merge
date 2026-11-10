@@ -50,7 +50,7 @@ describe('Rebanada 8: Admin ve equipos y campana con enlace', () => {
     await prepararBaseDeDatos();
     admin = await crearUsuarioDePrueba('administrador');
     dueno = await crearUsuarioDePrueba('contador');
-    auxiliar = await crearUsuarioDePrueba('contador');
+    auxiliar = await crearUsuarioDePrueba('auxiliar');
     await asignarAuxiliar(dueno.id, auxiliar.id);
     servidor = await iniciarServidor();
     tokenAdmin = await iniciarSesion(servidor.puerto, admin.correo, admin.password);

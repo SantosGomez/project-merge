@@ -154,7 +154,7 @@ describe('el auxiliar crea un caso para su contador', () => {
   before(async () => {
     await prepararBaseDeDatos();
     contadorDueño = await crearUsuarioDePrueba('contador');
-    contadorAuxiliar = await crearUsuarioDePrueba('contador');
+    contadorAuxiliar = await crearUsuarioDePrueba('auxiliar');
     servidor = await iniciarServidor();
   });
 

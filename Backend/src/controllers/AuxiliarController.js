@@ -37,9 +37,9 @@ const RESPUESTAS_POR_CODIGO = {
     400,
     buildError('La cuenta no es un contador', 'contador solicitado', 'Usa una cuenta con rol de contador'),
   ],
-  AUXILIAR_NO_ES_CONTADOR: [
+  AUXILIAR_NO_ES_AUXILIAR: [
     400,
-    buildError('La cuenta no es un contador', 'auxiliar solicitado', 'Elige a otro contador como auxiliar'),
+    buildError('La cuenta no es un auxiliar', 'auxiliar solicitado', 'Elige una cuenta con rol de auxiliar'),
   ],
   YA_ASIGNADO: [
     409,

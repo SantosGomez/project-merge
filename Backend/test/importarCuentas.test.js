@@ -61,6 +61,7 @@ async function testCorrerDosVecesNoDuplicaNiCambiaContrasenas() {
 
 async function testFilasInvalidasSeReportanSinDetenerLasDemas() {
   const valida = correoDePrueba('valida');
+  const auxiliar = correoDePrueba('auxiliar');
   // Si la validación fallara, esta fila se crearía: se registra para que la limpieza la borre.
   registrarUsuarioCreado('sin-arroba.delgrow.mx');
   const resultado = await importarCuentas([
@@ -70,15 +71,20 @@ async function testFilasInvalidasSeReportanSinDetenerLasDemas() {
     { nombre: 'CLAVE CORTA', correo: correoDePrueba('corta'), rol: 'contador', password: 'Ana1234' },
     { nombre: '  ', correo: correoDePrueba('sin_nombre'), rol: 'contador', password: 'Valida1234' },
     { nombre: 'PERLA AURORA TORRES MAZARIEGOS', correo: valida, rol: 'contador', password: 'Perla1234' },
+    { nombre: 'AUXILIAR DE PRUEBA', correo: auxiliar, rol: 'auxiliar', password: 'Auxiliar1234' },
   ]);
 
-  assert.deepStrictEqual(resultado.creadas, [valida], 'la fila válida se crea aunque haya errores antes');
+  assert.deepStrictEqual(
+    resultado.creadas,
+    [valida, auxiliar],
+    'las filas válidas (también la del auxiliar) se crean aunque haya errores antes'
+  );
   assert.deepStrictEqual(
     resultado.conError.map((error) => [error.fila, error.motivo]),
     [
       [1, 'falta el correo'],
       [2, 'el correo no es válido'],
-      [3, 'el rol no es administrador, contador ni usuarios_de_sistema'],
+      [3, 'el rol no es administrador, contador, auxiliar ni usuarios_de_sistema'],
       [4, 'la contraseña tiene menos de 8 caracteres'],
       [5, 'falta el nombre'],
     ],

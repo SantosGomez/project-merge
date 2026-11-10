@@ -43,6 +43,7 @@ test('constants.js reúne los valores únicos del dominio', () => {
   assert.deepEqual(PROFILES, {
     administrador: 'administrador',
     contador: 'contador',
+    auxiliar: 'auxiliar',
     sistema: 'usuarios_de_sistema',
   })
   assert.equal(MAX_CLIENT_LENGTH, 80)

@@ -24,7 +24,7 @@ async function crearTablasSiNoExisten() {
       nombre VARCHAR(150) NOT NULL,
       correo VARCHAR(150) NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
-      rol ENUM('administrador', 'contador', 'usuarios_de_sistema') NOT NULL,
+      rol ENUM('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar') NOT NULL,
       creado_en DATETIME NOT NULL,
       actualizado_en DATETIME NULL,
       ultimo_acceso_en DATETIME NULL,
@@ -118,6 +118,12 @@ async function migrarUsuarios() {
   await query('UPDATE usuarios SET actualizado_en = creado_en WHERE actualizado_en IS NULL');
 
   await query('CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_correo ON usuarios (correo)');
+
+  // Rol auxiliar (2026-11-10): en minúscula como los demás; también corrige un 'Auxiliar'
+  // agregado a mano (la comparación de ENUM no distingue mayúsculas y conserva los datos).
+  await query(
+    "ALTER TABLE usuarios MODIFY rol ENUM('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar') NOT NULL"
+  );
 }
 
 /**

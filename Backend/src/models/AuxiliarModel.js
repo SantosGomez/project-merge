@@ -2,8 +2,8 @@ const { query } = require('../config/db');
 const UserModel = require('./UserModel');
 
 /**
- * Valida que un id corresponda a una cuenta existente con rol contador.
- * Devuelve el objeto { id, nombre, rol } o null si no existe o no es contador.
+ * Busca una cuenta por id.
+ * Devuelve el objeto { id, nombre, rol } o null si no existe.
  * @param {number} id - Id de usuario.
  * @returns {Promise<Object|null>}
  */
@@ -13,22 +13,24 @@ async function findUsuarioPorId(id) {
 }
 
 /**
- * Valida que el id corresponda a un contador existente.
- * Lanza Error con código CONTADOR_NO_EXISTE si no existe o no es contador.
+ * Valida que el id corresponda a una cuenta existente con el rol esperado.
+ * Lanza Error con código CONTADOR_NO_EXISTE / AUXILIAR_NO_EXISTE si no existe, y
+ * CONTADOR_NO_ES_CONTADOR / AUXILIAR_NO_ES_AUXILIAR si tiene otro rol.
  * @param {number} id - Id de usuario.
- * @param {string} tipo - 'contador' o 'auxiliar' para el mensaje.
- * @returns {Promise<Object>} El contador { id, nombre }.
+ * @param {'contador'|'auxiliar'} rolEsperado - Rol que debe tener la cuenta.
+ * @returns {Promise<Object>} La cuenta { id, nombre }.
  */
-async function validarContadorExistente(id, tipo) {
+async function validarCuentaConRol(id, rolEsperado) {
+  const prefijo = rolEsperado.toUpperCase();
   const usuario = await findUsuarioPorId(id);
   if (!usuario) {
-    const error = new Error('contador no encontrado');
-    error.codigo = `${tipo.toUpperCase()}_NO_EXISTE`;
+    const error = new Error(`${rolEsperado} no encontrado`);
+    error.codigo = `${prefijo}_NO_EXISTE`;
     throw error;
   }
-  if (usuario.rol !== 'contador') {
-    const error = new Error(`${tipo} no es un contador válido`);
-    error.codigo = `${tipo.toUpperCase()}_NO_ES_CONTADOR`;
+  if (usuario.rol !== rolEsperado) {
+    const error = new Error(`la cuenta no es un ${rolEsperado}`);
+    error.codigo = `${prefijo}_NO_ES_${prefijo}`;
     throw error;
   }
   return { id: usuario.id, nombre: usuario.nombre };
@@ -36,10 +38,10 @@ async function validarContadorExistente(id, tipo) {
 
 /**
  * Asigna un auxiliar a un contador.
- * Ambos deben ser contadores existentes, no pueden ser el mismo usuario,
- * y la relación no debe existir ya.
+ * El dueño debe ser un contador y el auxiliar una cuenta con rol auxiliar (2026-11-10),
+ * no pueden ser el mismo usuario y la relación no debe existir ya.
  * @param {number} contadorId - Id del contador que tiene auxiliares.
- * @param {number} auxiliarId - Id del contador auxiliar.
+ * @param {number} auxiliarId - Id de la cuenta auxiliar.
  * @returns {Promise<void>}
  */
 async function asignarAuxiliar(contadorId, auxiliarId) {
@@ -49,8 +51,8 @@ async function asignarAuxiliar(contadorId, auxiliarId) {
     throw error;
   }
 
-  await validarContadorExistente(contadorId, 'contador');
-  await validarContadorExistente(auxiliarId, 'auxiliar');
+  await validarCuentaConRol(contadorId, 'contador');
+  await validarCuentaConRol(auxiliarId, 'auxiliar');
 
   const existente = await query(
     'SELECT 1 FROM contador_auxiliar WHERE contador_id = ? AND auxiliar_id = ?',
@@ -112,18 +114,18 @@ async function listarContadoresQueMeTienenComoAuxiliar(auxiliarId) {
 }
 
 /**
- * Devuelve los contadores que un contador puede asignar como auxiliares:
- * todos los contadores menos él mismo y los que ya tiene asignados.
+ * Devuelve las cuentas que un contador puede asignar como auxiliares:
+ * las de rol auxiliar que todavía no tiene asignadas.
  * @param {number} contadorId - Id del contador que quiere asignar auxiliares.
  * @returns {Promise<Array<{id: number, nombre: string}>>}
  */
 async function listarDisponiblesParaAuxiliar(contadorId) {
   const filas = await query(
     "SELECT u.id, u.nombre FROM usuarios u " +
-    "WHERE u.rol = 'contador' AND u.id <> ? " +
+    "WHERE u.rol = 'auxiliar' " +
     'AND NOT EXISTS (SELECT 1 FROM contador_auxiliar ca WHERE ca.contador_id = ? AND ca.auxiliar_id = u.id) ' +
     'ORDER BY u.nombre',
-    [contadorId, contadorId]
+    [contadorId]
   );
   return filas;
 }

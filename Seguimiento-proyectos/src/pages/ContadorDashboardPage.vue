@@ -60,7 +60,7 @@
         <q-tab name="casos" icon="assignment" label="Casos">
           <q-tooltip>Resumen de tus casos por estado.</q-tooltip>
         </q-tab>
-        <q-tab name="auditorias" icon="fact_check" label="Auditorías">
+        <q-tab v-if="session.esContador" name="auditorias" icon="fact_check" label="Auditorías">
           <q-tooltip>Indicadores y avance por fase de tus auditorías.</q-tooltip>
         </q-tab>
       </q-tabs>
@@ -98,7 +98,7 @@
           />
         </q-tab-panel>
 
-        <q-tab-panel name="auditorias" class="dashboard-page__panel">
+        <q-tab-panel v-if="session.esContador" name="auditorias" class="dashboard-page__panel">
           <TableroAuditorias propias />
         </q-tab-panel>
       </q-tab-panels>
@@ -142,9 +142,10 @@ const route = useRoute()
 const router = useRouter()
 
 // Pestaña en la URL (?tab=auditorias): al volver de una ficha se regresa a la misma pestaña.
-const PESTANAS = ['casos', 'auditorias']
+// El auxiliar no tiene auditorías: solo ve la pestaña de casos.
+const pestanas = computed(() => (session.esContador ? ['casos', 'auditorias'] : ['casos']))
 const pestana = computed({
-  get: () => (PESTANAS.includes(route.query.tab) ? route.query.tab : 'casos'),
+  get: () => (pestanas.value.includes(route.query.tab) ? route.query.tab : 'casos'),
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
 })
 

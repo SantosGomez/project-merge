@@ -28,10 +28,14 @@ export const PRIORITY_COLORS = {
   baja: 'green',
 }
 
-/** Perfiles de la app; el usuario de sistema solo da de alta cuentas (historia 9a). */
+/**
+ * Perfiles de la app; el usuario de sistema solo da de alta cuentas (historia 9a).
+ * El auxiliar trabaja casos como un contador y apoya a uno; no gestiona auxiliares ni auditorías.
+ */
 export const PROFILES = {
   administrador: 'administrador',
   contador: 'contador',
+  auxiliar: 'auxiliar',
   sistema: 'usuarios_de_sistema',
 }
 
@@ -74,5 +78,6 @@ export const MENSAJES_VALIDACION = Object.freeze({
 export const RUTA_PRINCIPAL_POR_ROL = Object.freeze({
   [PROFILES.administrador]: '/admin/dashboard',
   [PROFILES.contador]: '/contador/casos',
+  [PROFILES.auxiliar]: '/contador/casos',
   [PROFILES.sistema]: '/admin/directorio',
 })

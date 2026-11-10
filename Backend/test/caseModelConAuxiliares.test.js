@@ -20,7 +20,7 @@ const {
 
 async function testFindByCounterYAuxiliaresDevuelveCasosPropiosYDeAuxiliares() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   // Asignar auxiliar al contador
   const { asignarAuxiliar } = require('../src/models/AuxiliarModel');
@@ -52,7 +52,7 @@ async function testFindByCounterYAuxiliaresContadorSinAuxiliaresDevuelveSoloProp
 
 async function testFindByCounterYAuxiliaresNoDuplicaCasos() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   const { asignarAuxiliar } = require('../src/models/AuxiliarModel');
   await asignarAuxiliar(contador.id, auxiliar.id);
@@ -69,7 +69,7 @@ async function testFindByCounterYAuxiliaresNoDuplicaCasos() {
 
 async function testFindByCounterYAuxiliaresIncluyeContadorDueñoEnCadaCaso() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   const { asignarAuxiliar } = require('../src/models/AuxiliarModel');
   await asignarAuxiliar(contador.id, auxiliar.id);
@@ -94,7 +94,7 @@ async function testFindByCounterYAuxiliaresIncluyeContadorDueñoEnCadaCaso() {
 
 async function testFindByCounterYAuxiliaresIncluyeNombreDelContadorDueño() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   const { asignarAuxiliar } = require('../src/models/AuxiliarModel');
   await asignarAuxiliar(contador.id, auxiliar.id);

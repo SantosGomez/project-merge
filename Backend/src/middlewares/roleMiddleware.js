@@ -100,4 +100,30 @@ async function requireContador(req, res, next) {
   next();
 }
 
-module.exports = { requireAdmin, requireAdminOrSistema, requireAdminOrContador, requireContador };
+/**
+ * Middleware para el trabajo con casos: permite a contadores y auxiliares.
+ * El auxiliar trabaja casos como un contador (propios y los de su contador, ahí solo el estado),
+ * pero no gestiona auxiliares ni entra a auditorías (esas rutas siguen con requireContador).
+ * @param {Object} req - Objeto de petición (debe contener req.user con rol).
+ * @param {Object} res - Objeto de respuesta.
+ * @param {Function} next - Función siguiente del middleware.
+ */
+async function requireContadorOAuxiliar(req, res, next) {
+  if (!req.user) {
+    res.status(403).json(
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión con una cuenta de contador o auxiliar')
+    );
+    return;
+  }
+
+  if (!['contador', 'auxiliar'].includes(req.user.rol)) {
+    res.status(403).json(
+      buildError('Rol insuficiente', 'usuario autenticado', 'Se requiere rol de contador o auxiliar para trabajar casos')
+    );
+    return;
+  }
+
+  next();
+}
+
+module.exports = { requireAdmin, requireAdminOrSistema, requireAdminOrContador, requireContador, requireContadorOAuxiliar };

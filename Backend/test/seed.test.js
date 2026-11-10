@@ -375,6 +375,31 @@ function testCreateTableDeContadorAuxiliar() {
   assert.match(tabla, /FOREIGN KEY \(auxiliar_id\) REFERENCES usuarios\(id\)/);
 }
 
+// Rol auxiliar (2026-11-10): en minúscula como los demás; corrige el 'Auxiliar' puesto a mano.
+const ENUM_ROL = "enum('administrador','contador','usuarios_de_sistema','auxiliar')";
+
+async function testMigracionAgregaElRolAuxiliar() {
+  await seedDatabase({ cuentasDemo: false });
+  const [columna] = await query("SHOW COLUMNS FROM usuarios LIKE 'rol'");
+  assert.strictEqual(columna.Type, ENUM_ROL);
+
+  await seedDatabase({ cuentasDemo: false }); // se puede repetir
+  const [otraVez] = await query("SHOW COLUMNS FROM usuarios LIKE 'rol'");
+  assert.strictEqual(otraVez.Type, ENUM_ROL);
+}
+
+async function testSeGuardaUnUsuarioConRolAuxiliar() {
+  await seedDatabase({ cuentasDemo: false });
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
+  const [fila] = await query('SELECT rol FROM usuarios WHERE id = ?', [auxiliar.id]);
+  assert.strictEqual(fila.rol, 'auxiliar');
+}
+
+function testCreateTableDeUsuariosIncluyeAuxiliar() {
+  const fuente = readFileSync(join(__dirname, '../src/utils/seed.js'), 'utf8');
+  assert.match(fuente, /rol ENUM\('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar'\) NOT NULL/);
+}
+
 describe('seed de datos maestros', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -408,4 +433,7 @@ describe('seed de datos maestros', () => {
   test('la tabla contador_auxiliar tiene claves foráneas a usuarios', testMigracionContadorAuxiliarTieneClavesForaneas);
   test('la migración de contador_auxiliar se puede repetir', testMigracionContadorAuxiliarSePuedeRepetir);
   test('una base nueva crea la tabla contador_auxiliar con sus columnas y PK', testCreateTableDeContadorAuxiliar);
+  test('la migración deja el rol auxiliar en minúscula y se puede repetir', testMigracionAgregaElRolAuxiliar);
+  test('se guarda un usuario con rol auxiliar', testSeGuardaUnUsuarioConRolAuxiliar);
+  test('una base nueva crea usuarios con el rol auxiliar', testCreateTableDeUsuariosIncluyeAuxiliar);
 });

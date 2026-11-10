@@ -38,6 +38,7 @@ const ESTADOS = new Map([
 const ROLES = new Map([
   ['administrador', 'Administrador'],
   ['contador', 'Contador'],
+  ['auxiliar', 'Auxiliar'],
   ['usuarios_de_sistema', 'Usuario de sistema'],
 ])
 

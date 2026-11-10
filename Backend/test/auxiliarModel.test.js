@@ -38,7 +38,7 @@ async function testLaTablaContadorAuxiliarExisteDespuesDelSeed() {
 
 async function testSePuedeAsignarUnAuxiliar() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   await asignarAuxiliar(contador.id, auxiliar.id);
 
@@ -61,7 +61,7 @@ async function testNoSePermiteAutoAsignacion() {
 
 async function testNoSePuedeDuplicarLaRelacion() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   await asignarAuxiliar(contador.id, auxiliar.id);
   await assert.rejects(
@@ -73,7 +73,7 @@ async function testNoSePuedeDuplicarLaRelacion() {
 
 async function testSePuedeQuitarUnAuxiliar() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   await asignarAuxiliar(contador.id, auxiliar.id);
   await quitarAuxiliar(contador.id, auxiliar.id);
@@ -87,8 +87,8 @@ async function testSePuedeQuitarUnAuxiliar() {
 
 async function testListarAuxiliaresDevuelveIdsYNombres() {
   const contador = await crearUsuarioDePrueba('contador');
-  const auxiliar1 = await crearUsuarioDePrueba('contador');
-  const auxiliar2 = await crearUsuarioDePrueba('contador');
+  const auxiliar1 = await crearUsuarioDePrueba('auxiliar');
+  const auxiliar2 = await crearUsuarioDePrueba('auxiliar');
 
   await asignarAuxiliar(contador.id, auxiliar1.id);
   await asignarAuxiliar(contador.id, auxiliar2.id);
@@ -104,7 +104,7 @@ async function testListarAuxiliaresDevuelveIdsYNombres() {
 async function testListarContadoresQueMeTienenComoAuxiliar() {
   const contador1 = await crearUsuarioDePrueba('contador');
   const contador2 = await crearUsuarioDePrueba('contador');
-  const auxiliar = await crearUsuarioDePrueba('contador');
+  const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   await asignarAuxiliar(contador1.id, auxiliar.id);
   await asignarAuxiliar(contador2.id, auxiliar.id);
@@ -119,15 +119,19 @@ async function testListarContadoresQueMeTienenComoAuxiliar() {
   assert.deepStrictEqual(ids, [contador1.id, contador2.id].sort());
 }
 
+// Desde 2026-11-10 solo una cuenta con rol auxiliar se asigna como auxiliar.
 async function testNoSePuedeAsignarAuxiliarQueNoEsContador() {
   const contador = await crearUsuarioDePrueba('contador');
-  const noContador = await crearUsuarioDePrueba('usuarios_de_sistema');
+  const deSistema = await crearUsuarioDePrueba('usuarios_de_sistema');
+  const otroContador = await crearUsuarioDePrueba('contador');
 
-  await assert.rejects(
-    () => asignarAuxiliar(contador.id, noContador.id),
-    /no es un contador válido|solo se permiten contadores/i,
-    'asignar un usuario_de_sistema como auxiliar debe fallar'
-  );
+  for (const cuenta of [deSistema, otroContador]) {
+    await assert.rejects(
+      () => asignarAuxiliar(contador.id, cuenta.id),
+      (error) => error.codigo === 'AUXILIAR_NO_ES_AUXILIAR',
+      'solo una cuenta con rol auxiliar puede ser auxiliar'
+    );
+  }
 }
 
 async function testNoSePuedeAsignarAuxiliarQueNoExiste() {
@@ -135,7 +139,7 @@ async function testNoSePuedeAsignarAuxiliarQueNoExiste() {
 
   await assert.rejects(
     () => asignarAuxiliar(contador.id, 99999999),
-    /no se encontró el contador|contador no encontrado|usuario no existe/i,
+    (error) => error.codigo === 'AUXILIAR_NO_EXISTE',
     'asignar un id inexistente debe fallar'
   );
 }
@@ -157,6 +161,6 @@ describe('modelo de auxiliares (contador_auxiliar)', () => {
   test('se puede quitar un auxiliar', testSePuedeQuitarUnAuxiliar);
   test('listar auxiliares devuelve ids y nombres', testListarAuxiliaresDevuelveIdsYNombres);
   test('listar contadores que me tienen como auxiliar', testListarContadoresQueMeTienenComoAuxiliar);
-  test('no se puede asignar un auxiliar que no es contador', testNoSePuedeAsignarAuxiliarQueNoEsContador);
+  test('no se puede asignar como auxiliar una cuenta sin rol auxiliar', testNoSePuedeAsignarAuxiliarQueNoEsContador);
   test('no se puede asignar un auxiliar que no existe', testNoSePuedeAsignarAuxiliarQueNoExiste);
 });

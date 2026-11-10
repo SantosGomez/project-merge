@@ -117,7 +117,7 @@ const routes = [
         component: MyCasesPage,
         meta: {
           requiereSesion: true,
-          perfil: PROFILES.contador,
+          perfil: [PROFILES.contador, PROFILES.auxiliar],
           screenId: SCREEN_IDS.myCases,
           titulo: 'Mis casos',
         },
@@ -138,7 +138,7 @@ const routes = [
         component: ContadorDashboardPage,
         meta: {
           requiereSesion: true,
-          perfil: PROFILES.contador,
+          perfil: [PROFILES.contador, PROFILES.auxiliar],
           titulo: 'Mi resumen',
         },
       },

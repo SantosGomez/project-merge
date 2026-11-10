@@ -50,8 +50,8 @@ describe('rutas de auxiliares del contador', () => {
   before(async () => {
     await prepararBaseDeDatos();
     dueno = await crearUsuarioDePrueba('contador');
-    auxiliarUno = await crearUsuarioDePrueba('contador');
-    auxiliarDos = await crearUsuarioDePrueba('contador');
+    auxiliarUno = await crearUsuarioDePrueba('auxiliar');
+    auxiliarDos = await crearUsuarioDePrueba('auxiliar');
     otroContador = await crearUsuarioDePrueba('contador');
     servidor = await iniciarServidor();
     tokenDueno = await iniciarSesion(servidor.puerto, dueno.correo, dueno.password);
@@ -111,7 +111,7 @@ describe('rutas de auxiliares del contador', () => {
     assert.match(respuesta.body.mensaje, /asignarte a ti mismo/i);
   });
 
-  test('no se puede asignar a alguien que no es contador', async () => {
+  test('no se puede asignar a alguien que no tiene rol auxiliar', async () => {
     const administrador = await crearUsuarioDePrueba('administrador');
     const tokenAdmin = await iniciarSesion(servidor.puerto, administrador.correo, administrador.password);
 
@@ -119,9 +119,9 @@ describe('rutas de auxiliares del contador', () => {
     const comoAdmin = await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenAdmin);
     assert.strictEqual(comoAdmin.statusCode, 403, 'un administrador no gestiona auxiliares');
 
-    // Y un id que no es contador se rechaza con 400.
+    // Y una cuenta sin rol auxiliar (aquí, un administrador) se rechaza con 400.
     const respuesta = await post(`/contadores/${dueno.id}/auxiliares/${administrador.id}`, tokenDueno);
-    assert.strictEqual(respuesta.statusCode, 400, 'un usuario que no es contador no puede ser auxiliar');
+    assert.strictEqual(respuesta.statusCode, 400, 'una cuenta sin rol auxiliar no puede ser auxiliar');
   });
 
   test('quitar un auxiliar lo saca de la lista', async () => {

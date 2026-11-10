@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
-const { requireAdmin, requireContador } = require('../middlewares/roleMiddleware');
+const { requireAdmin, requireContador, requireContadorOAuxiliar } = require('../middlewares/roleMiddleware');
 const { listCounters, teamSummary, countCasesByStatus, getCasesByCounter } = require('../controllers/CounterController');
 const {
   listarAuxiliares,
@@ -27,10 +27,11 @@ router.get(
   requireContador,
   asyncHandler(listarDisponiblesParaAuxiliar)
 );
+// El auxiliar consulta a qué contadores apoya (selector «Registrar caso para»)
 router.get(
   '/:id/contadores-que-me-tienen-como-auxiliar',
   authenticateToken,
-  requireContador,
+  requireContadorOAuxiliar,
   asyncHandler(listarContadoresQueMeTienenComoAuxiliar)
 );
 router.post(

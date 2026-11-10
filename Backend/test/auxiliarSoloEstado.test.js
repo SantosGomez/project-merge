@@ -47,7 +47,7 @@ describe('el auxiliar solo cambia el estado', () => {
   before(async () => {
     await prepararBaseDeDatos();
     dueno = await crearUsuarioDePrueba('contador');
-    auxiliar = await crearUsuarioDePrueba('contador');
+    auxiliar = await crearUsuarioDePrueba('auxiliar');
     await asignarAuxiliar(dueno.id, auxiliar.id);
     servidor = await iniciarServidor();
     tokenDueno = await iniciarSesion(servidor.puerto, dueno.correo, dueno.password);

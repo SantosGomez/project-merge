@@ -43,7 +43,7 @@ describe('«Mis casos» en equipo: dueño y auxiliar', () => {
     await prepararBaseDeDatos();
     admin = await crearUsuarioDePrueba('administrador');
     dueno = await crearUsuarioDePrueba('contador');
-    auxiliar = await crearUsuarioDePrueba('contador');
+    auxiliar = await crearUsuarioDePrueba('auxiliar');
     ajeno = await crearUsuarioDePrueba('contador');
     await asignarAuxiliar(dueno.id, auxiliar.id);
     servidor = await iniciarServidor();

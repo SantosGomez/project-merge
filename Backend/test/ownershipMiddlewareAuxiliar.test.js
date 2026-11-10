@@ -96,7 +96,7 @@ describe('middleware de propiedad con auxiliares', () => {
   before(async () => {
     await prepararBaseDeDatos();
     contadorDueño = await crearUsuarioDePrueba('contador');
-    contadorAuxiliar = await crearUsuarioDePrueba('contador');
+    contadorAuxiliar = await crearUsuarioDePrueba('auxiliar');
     contadorAjeno = await crearUsuarioDePrueba('contador');
 
     casoDelDueño = await crearCasoDePrueba(contadorDueño.id, { cliente: 'zz_test_caso_del_dueño' });

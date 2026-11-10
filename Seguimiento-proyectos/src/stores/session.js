@@ -179,6 +179,9 @@ export const crearSessionStore = (dependencias = {}) => {
       pantallaPrincipal: (state) => PANTALLA_PRINCIPAL[state.rol] ?? null,
       esAdministrador: (state) => state.rol === 'administrador',
       esContador: (state) => state.rol === 'contador',
+      esAuxiliar: (state) => state.rol === 'auxiliar',
+      /** Contador o auxiliar: tiene «Mis casos», «Mi resumen» y la campana de avisos. */
+      trabajaCasos: (state) => ['contador', 'auxiliar'].includes(state.rol),
       esUsuarioSistema: (state) => state.rol === 'usuarios_de_sistema',
       /** Nombre que se muestra en el menú; null si la sesión guardada no lo trae. */
       nombreVisible: (state) => state.nombre,

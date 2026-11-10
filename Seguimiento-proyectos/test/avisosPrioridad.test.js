@@ -68,8 +68,8 @@ describe('Campanita de avisos del contador', () => {
     assert.match(campana, /onBeforeUnmount\(\(\) => \{\s*clearInterval\(intervalo\)/)
   })
 
-  it('el layout la muestra solo al contador, en el encabezado del celular y en el de escritorio', () => {
+  it('el layout la muestra a contador y auxiliar, en el encabezado del celular y en el de escritorio', () => {
     assert.match(layout, /import CampanaAvisos from '\.\.\/components\/CampanaAvisos\.vue'/)
-    assert.equal((plantillaDe(layout).match(/<CampanaAvisos v-if="session\.esContador"/g) ?? []).length, 2)
+    assert.equal((plantillaDe(layout).match(/<CampanaAvisos v-if="session\.trabajaCasos"/g) ?? []).length, 2)
   })
 })

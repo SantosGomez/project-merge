@@ -29,7 +29,7 @@
             <q-tooltip>{{ pageTitle }}</q-tooltip>
           </h1>
 
-          <CampanaAvisos v-if="session.esContador" clara />
+          <CampanaAvisos v-if="session.trabajaCasos" clara />
         </div>
       </div>
     </q-header>
@@ -148,8 +148,8 @@
             </q-item>
           </template>
 
-          <template v-if="session.esContador">
-            
+          <template v-if="session.trabajaCasos">
+
             <q-item-label header>Mi trabajo</q-item-label>
             
             <q-item
@@ -191,7 +191,9 @@
               <q-tooltip>Ir a mis casos</q-tooltip>
             </q-item>
 
+            <!-- Solo el contador gestiona auxiliares y entra a auditorías; el auxiliar, no. -->
             <q-item
+              v-if="session.esContador"
               clickable
               v-ripple
               class="q-item--nav"
@@ -205,13 +207,14 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label>Mis auxiliares</q-item-label>
-                <q-item-label caption>Contadores que te apoyan</q-item-label>
+                <q-item-label caption>Auxiliares que te apoyan</q-item-label>
               </q-item-section>
               <q-tooltip>Gestiona tus auxiliares: quiénes pueden ayudarte con tus casos.</q-tooltip>
             </q-item>
 
 
             <q-item
+              v-if="session.esContador"
               clickable
               v-ripple
               class="q-item--nav"
@@ -293,7 +296,7 @@
     <q-page-container id="contenido-principal" tabindex="-1" class="contenedor-paginas">
       <header v-if="$q.screen.gt.sm" class="page-header">
         <h1 class="page-header__title">{{ pageTitle }}</h1>
-        <CampanaAvisos v-if="session.esContador" class="page-header__campana" />
+        <CampanaAvisos v-if="session.trabajaCasos" class="page-header__campana" />
       </header>
 
       <q-page v-if="session.sesionCaducada" class="access-page">

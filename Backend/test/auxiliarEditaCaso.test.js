@@ -95,7 +95,7 @@ describe('el auxiliar edita casos de su contador', () => {
   before(async () => {
     await prepararBaseDeDatos();
     contadorDueño = await crearUsuarioDePrueba('contador');
-    contadorAuxiliar = await crearUsuarioDePrueba('contador');
+    contadorAuxiliar = await crearUsuarioDePrueba('auxiliar');
     casoDelDueño = await crearCasoDePrueba(contadorDueño.id, {
       cliente: 'zz_test caso del dueño',
       estado: 'Pendiente',

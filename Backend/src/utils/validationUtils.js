@@ -1,6 +1,6 @@
 const ESTADOS_VALIDOS = ['Pendiente', 'En proceso', 'Finalizado'];
 const PRIORIDADES_VALIDAS = ['Alta', 'Media', 'Baja'];
-const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema'];
+const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar'];
 const LONGITUD_MAX_CLIENTE = 80;
 
 /**
@@ -128,7 +128,7 @@ function validatePriority(prioridad) {
 }
 
 /**
- * Valida que un rol sea uno de los permitidos: administrador, contador, usuarios_de_sistema.
+ * Valida que un rol sea uno de los permitidos: administrador, contador, usuarios_de_sistema, auxiliar.
  * RF-30.
  * @param {string} rol - Rol de usuario a validar.
  * @returns {boolean} true si es válido, false en caso contrario.

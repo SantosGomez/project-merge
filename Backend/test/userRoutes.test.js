@@ -53,6 +53,18 @@ function altaPorApi(cuerpo, token) {
   return peticion(servidor.puerto, 'POST', '/usuarios', cuerpo, token);
 }
 
+// ---------- Rol auxiliar (2026-11-10): el admin da de alta un auxiliar ----------
+async function testAltaDeUnAuxiliar() {
+  const token = await loginAdmin();
+  const correo = correoDePrueba('auxiliar');
+
+  const respuesta = await altaPorApi({ nombre: 'Auxiliar de prueba', correo, password: 'NuevoPass1234', rol: 'auxiliar' }, token);
+
+  assert.strictEqual(respuesta.statusCode, 201, JSON.stringify(respuesta.body));
+  const [fila] = await query('SELECT rol FROM usuarios WHERE correo = ?', [correo]);
+  assert.strictEqual(fila.rol, 'auxiliar');
+}
+
 // ---------- RF-28: admin da de alta una cuenta con nombre y correo ----------
 async function testAltaUsuarioComoAdmin() {
   const token = await loginAdmin();
@@ -508,6 +520,7 @@ describe('rutas de usuarios', () => {
   test('el administrador lista las cuentas con solo id, nombre, correo, rol y último acceso local', testListarUsuariosComoAdmin);
   test('el directorio de cuentas lo ven administrador y usuario de sistema, no el contador ni quien no inició sesión', testListarUsuariosPermisos);
   test('el administrador da de alta una cuenta con nombre y correo', testAltaUsuarioComoAdmin);
+  test('el administrador da de alta un auxiliar', testAltaDeUnAuxiliar);
   test('el contador no puede dar de alta usuarios', testAltaUsuarioComoContadorEsDenegado);
   test('los datos inválidos de alta responden 400', testAltaUsuarioDatosInvalidos);
   test('el alta con un correo que solo difiere en mayúsculas responde 400', testAltaDuplicadaConOtraCapitalizacionRechaza);

@@ -113,9 +113,9 @@ describe('Drawer sidebar — verificación estática', () => {
     )
     assert.ok(!bloqueAdmin.includes("name: 'contador-casos'"), 'el administrador no ve Mis casos')
 
-    const inicioContador = src.indexOf('<template v-if="session.esContador">')
+    const inicioContador = src.indexOf('<template v-if="session.trabajaCasos">')
     const finContador = src.indexOf('</template>', inicioContador)
-    assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.esContador">')
+    assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.trabajaCasos">')
     assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
 
     const bloqueContador = src.slice(inicioContador, finContador)
@@ -136,16 +136,19 @@ describe('Drawer sidebar — verificación estática', () => {
       !/q-item[^>]*v-if="session\.esAdministrador"/.test(src),
       'el v-if del administrador debe estar solo en el <template>',
     )
-    assert.ok(
-      !/q-item[^>]*v-if="session\.esContador"/.test(src),
-      'el v-if del contador debe estar solo en el <template>',
+    // Rol auxiliar (2026-11-10): dentro de «Mi trabajo» solo «Mis auxiliares» y «Auditorías»
+    // son exclusivos del contador; el resto lo ven contador y auxiliar.
+    assert.deepEqual(
+      [...src.matchAll(/<q-item\s+v-if="session\.esContador"[\s\S]*?name: '([\w-]+)'/g)].map((m) => m[1]),
+      ['contador-auxiliares', 'auditorias'],
+      'solo Mis auxiliares y Auditorías llevan v-if del contador',
     )
   })
 
   it('el contador ve solo la sección «Mi trabajo» con la opción Mis casos y no las opciones del administrador', () => {
-    const inicioContador = src.indexOf('<template v-if="session.esContador">')
+    const inicioContador = src.indexOf('<template v-if="session.trabajaCasos">')
     const finContador = src.indexOf('</template>', inicioContador)
-    assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.esContador">')
+    assert.ok(inicioContador >= 0, 'falta el bloque <template v-if="session.trabajaCasos">')
     assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
 
     const bloqueContador = src.slice(inicioContador, finContador)
@@ -175,9 +178,12 @@ describe('Drawer sidebar — verificación estática', () => {
       )
     }
 
-    assert.ok(
-      !/q-item[^>]*v-if="session\.esContador"/.test(src),
-      'el v-if del contador debe estar solo en el <template>',
+    // Rol auxiliar (2026-11-10): dentro de «Mi trabajo» solo «Mis auxiliares» y «Auditorías»
+    // son exclusivos del contador; el resto lo ven contador y auxiliar.
+    assert.deepEqual(
+      [...src.matchAll(/<q-item\s+v-if="session\.esContador"[\s\S]*?name: '([\w-]+)'/g)].map((m) => m[1]),
+      ['contador-auxiliares', 'auditorias'],
+      'solo Mis auxiliares y Auditorías llevan v-if del contador',
     )
     assert.ok(
       !/q-item[^>]*v-if="session\.esAdministrador"/.test(src),
@@ -369,7 +375,7 @@ describe('Drawer sidebar — verificación estática', () => {
       const inicio = src.indexOf(`<template v-if="${condicion}">`)
       return src.slice(inicio, src.indexOf('</template>', inicio))
     }
-    assert.ok(bloqueDe('session.esContador').includes("name: 'contador-dashboard'"), 'falta Mi resumen')
+    assert.ok(bloqueDe('session.trabajaCasos').includes("name: 'contador-dashboard'"), 'falta Mi resumen')
     assert.ok(
       !bloqueDe('session.esAdministrador').includes("name: 'contador-dashboard'"),
       'el administrador no ve Mi resumen',
@@ -377,8 +383,8 @@ describe('Drawer sidebar — verificación estática', () => {
     const router = read('../src/router/index.js')
     assert.match(
       router,
-      /path: 'contador\/dashboard',\s*name: 'contador-dashboard',\s*component: ContadorDashboardPage,\s*meta: \{\s*requiereSesion: true,\s*perfil: PROFILES\.contador,/,
-      'la ruta de Mi resumen es solo del contador',
+      /path: 'contador\/dashboard',\s*name: 'contador-dashboard',\s*component: ContadorDashboardPage,\s*meta: \{\s*requiereSesion: true,\s*perfil: \[PROFILES\.contador, PROFILES\.auxiliar\],/,
+      'la ruta de Mi resumen es del contador y del auxiliar',
     )
   })
 
