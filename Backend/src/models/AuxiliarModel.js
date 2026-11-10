@@ -130,7 +130,37 @@ async function listarDisponiblesParaAuxiliar(contadorId) {
   return filas;
 }
 
+/**
+ * Deja al auxiliar vinculado exactamente con esos contadores (lo usa el despacho).
+ * Valida todo antes de tocar la tabla; solo inserta lo nuevo y borra lo que se quitó.
+ * @param {number} auxiliarId - Id de la cuenta auxiliar.
+ * @param {Array<number>} contadoresIds - Ids de los contadores que apoyará.
+ * @returns {Promise<Array<number>>} Ids de los contadores recién vinculados (para avisarles).
+ */
+async function reemplazarContadoresDeAuxiliar(auxiliarId, contadoresIds) {
+  await validarCuentaConRol(auxiliarId, 'auxiliar');
+  for (const contadorId of contadoresIds) {
+    await validarCuentaConRol(contadorId, 'contador');
+  }
+
+  const actuales = (await listarContadoresQueMeTienenComoAuxiliar(auxiliarId)).map((c) => c.id);
+  const nuevos = contadoresIds.filter((id) => !actuales.includes(id));
+  const quitados = actuales.filter((id) => !contadoresIds.includes(id));
+
+  for (const contadorId of quitados) {
+    await quitarAuxiliar(contadorId, auxiliarId);
+  }
+  for (const contadorId of nuevos) {
+    await query(
+      'INSERT INTO contador_auxiliar (contador_id, auxiliar_id, asignado_en) VALUES (?, ?, NOW())',
+      [contadorId, auxiliarId]
+    );
+  }
+  return nuevos;
+}
+
 module.exports = {
+  reemplazarContadoresDeAuxiliar,
   asignarAuxiliar,
   quitarAuxiliar,
   listarAuxiliares,

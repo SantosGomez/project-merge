@@ -22,7 +22,8 @@ describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', (
 
   it('el diálogo pide los campos de la tabla usuarios, en orden', () => {
     const etiquetas = [...dialogo.matchAll(/class="form-label"\s*>([^<]+)</g)].map((m) => m[1].trim())
-    assert.deepEqual(etiquetas, ['Nombre', 'Correo', 'Contraseña', 'Rol'])
+    // «Contadores que apoya» solo aparece con el rol auxiliar (tabla contador_auxiliar).
+    assert.deepEqual(etiquetas, ['Nombre', 'Correo', 'Contraseña', 'Rol', 'Contadores que apoya (opcional)'])
     assert.match(dialogo, /v-model="correo"[\s\S]*?type="email"/, 'el correo abre el teclado de correo')
   })
 
@@ -59,7 +60,7 @@ describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', (
     assert.match(boton, /@click="abrirNuevoUsuario"/)
     // Los avisos son notificaciones de Quasar que se van solas: ya no hay aviso fijo que ocultar.
     assert.doesNotMatch(pagina, /mensajeExito/, 'sin el aviso fijo anterior')
-    assert.match(pagina, /<NewUserDialog v-if="session\.esUsuarioSistema" v-model="dialogoNuevoAbierto"/)
+    assert.match(pagina, /<NewUserDialog\s+v-if="session\.esUsuarioSistema"\s+v-model="dialogoNuevoAbierto"/)
   })
 
   it('al crear la cuenta el directorio avisa y recarga la tabla', () => {

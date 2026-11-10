@@ -148,6 +148,17 @@ function esCorreoValido(correo) {
 }
 
 /**
+ * Convierte una lista de identificadores en enteros positivos sin repetir.
+ * @param {*} valor - Lista recibida en el cuerpo de la petición.
+ * @returns {Array<number>|null} Los ids, o null si no es una lista o algún id no es válido.
+ */
+function parseListaDeIds(valor) {
+  if (!Array.isArray(valor)) return null;
+  const ids = valor.map(parseCounterId);
+  return ids.includes(null) ? null : [...new Set(ids)];
+}
+
+/**
  * Convierte un identificador de contador en un entero positivo.
  * RF-35.
  * Solo acepta valores formados exclusivamente por dígitos ('12' -> 12);
@@ -183,4 +194,5 @@ module.exports = {
   validateRol,
   esCorreoValido,
   parseCounterId,
+  parseListaDeIds,
 };

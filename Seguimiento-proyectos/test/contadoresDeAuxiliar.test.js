@@ -1,0 +1,63 @@
+// Rama experimento (2026-11-10): el despacho vincula al auxiliar con sus contadores al darlo de
+// alta y después desde el directorio («Contadores que apoya»).
+
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+
+import { crearUserService } from '../src/services/userService.js'
+
+const leer = (relativa) => readFileSync(fileURLToPath(new URL(relativa, import.meta.url)), 'utf8')
+
+describe('servicio: contadores de un auxiliar', () => {
+  it('el alta de un auxiliar envía los contadores elegidos; la de otro rol, no', async () => {
+    const cuerpos = []
+    const servicio = crearUserService({ api: { post: async (_r, cuerpo) => (cuerpos.push(cuerpo), { data: { mensaje: 'ok' } }) } })
+    const base = { nombre: 'Ana', correo: 'ana@delgrow.mx', password: 'Segura1234' }
+
+    await servicio.crearUsuario({ ...base, rol: 'auxiliar', contadores: [3, 7] })
+    await servicio.crearUsuario({ ...base, rol: 'contador', contadores: [3] })
+
+    assert.deepEqual(cuerpos[0].contadores, [3, 7])
+    assert.equal('contadores' in cuerpos[1], false)
+  })
+
+  it('lee y guarda los contadores de un auxiliar', async () => {
+    const llamadas = []
+    const servicio = crearUserService({
+      api: {
+        get: async (ruta) => (llamadas.push(['GET', ruta]), { data: { contadores: [{ id: 3, nombre: 'Tres' }] } }),
+        put: async (ruta, cuerpo) => (llamadas.push(['PUT', ruta, cuerpo]), { data: { contadores: [] } }),
+      },
+    })
+
+    assert.deepEqual(await servicio.listarContadoresDeAuxiliar(9), [{ id: 3, nombre: 'Tres' }])
+    await servicio.guardarContadoresDeAuxiliar(9, [3])
+    assert.deepEqual(llamadas, [['GET', '/usuarios/9/contadores'], ['PUT', '/usuarios/9/contadores', { contadores: [3] }]])
+  })
+})
+
+describe('pantallas: alta y directorio', () => {
+  const alta = leer('../src/components/NewUserDialog.vue')
+  const directorio = leer('../src/pages/CountersDirectoryPage.vue')
+  const dialogo = leer('../src/components/ContadoresDeAuxiliarDialog.vue')
+
+  it('el alta muestra «Contadores que apoya» solo con el rol auxiliar', () => {
+    assert.match(alta, /v-if="rol === 'auxiliar'"[\s\S]*?>Contadores que apoya \(opcional\)<\/label>/)
+    assert.match(alta, /contadores: rol\.value === 'auxiliar' \? contadoresElegidos\.value : undefined/)
+  })
+
+  it('el directorio ofrece «Contadores que apoya» en las filas de auxiliares y pasa los contadores', () => {
+    assert.equal((directorio.match(/v-if="props\.row\.rolClave === 'auxiliar'"/g) ?? []).length, 2, 'tabla y tarjeta')
+    assert.match(directorio, /<ContadoresDeAuxiliarDialog/)
+    assert.match(directorio, /<NewUserDialog[^>]*:contadores="contadores"/)
+    assert.match(directorio, /<ContadoresDeAuxiliarDialog[^>]*:contadores="contadores"/)
+  })
+
+  it('el diálogo carga lo actual y guarda con el servicio', () => {
+    assert.match(dialogo, /listarContadoresDeAuxiliar\(/)
+    assert.match(dialogo, /guardarContadoresDeAuxiliar\(/)
+    assert.match(dialogo, /transition-show="dialogo-entra"/)
+  })
+})

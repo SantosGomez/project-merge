@@ -27,7 +27,13 @@
         </p>
       </div>
 
-      <NewUserDialog v-if="session.esUsuarioSistema" v-model="dialogoNuevoAbierto" @creado="alCrearUsuario" />
+      <NewUserDialog
+        v-if="session.esUsuarioSistema"
+        v-model="dialogoNuevoAbierto"
+        :contadores="contadores"
+        @creado="alCrearUsuario"
+      />
+      <ContadoresDeAuxiliarDialog v-model="dialogoContadoresAbierto" :cuenta="cuentaAuxiliar" :contadores="contadores" />
       <ResetPasswordDialog
         v-if="session.esUsuarioSistema"
         v-model="dialogoRestablecerAbierto"
@@ -156,6 +162,19 @@
                 <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
               </q-btn>
               <q-btn
+                v-if="props.row.rolClave === 'auxiliar'"
+                flat
+                no-caps
+                color="primary"
+                icon="groups"
+                label="Contadores que apoya"
+                :aria-label="`Contadores que apoya ${props.row.nombre}`"
+                class="control-touch boton-presionable"
+                @click="abrirContadores(props.row)"
+              >
+                <q-tooltip>Elige a qué contadores apoya este auxiliar.</q-tooltip>
+              </q-btn>
+              <q-btn
                 v-if="session.esUsuarioSistema"
                 flat
                 no-caps
@@ -200,6 +219,19 @@
                     <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
                   </q-btn>
                   <q-btn
+                    v-if="props.row.rolClave === 'auxiliar'"
+                    flat
+                    no-caps
+                    color="primary"
+                    icon="groups"
+                    label="Contadores que apoya"
+                    :aria-label="`Contadores que apoya ${props.row.nombre}`"
+                    class="control-touch boton-presionable"
+                    @click="abrirContadores(props.row)"
+                  >
+                    <q-tooltip>Elige a qué contadores apoya este auxiliar.</q-tooltip>
+                  </q-btn>
+                  <q-btn
                     v-if="session.esUsuarioSistema"
                     flat
                     no-caps
@@ -229,6 +261,7 @@ import { useRouter } from 'vue-router'
 
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import ContadoresDeAuxiliarDialog from '../components/ContadoresDeAuxiliarDialog.vue'
 import NewUserDialog from '../components/NewUserDialog.vue'
 import ResetPasswordDialog from '../components/ResetPasswordDialog.vue'
 import { listarUsuarios } from '../services/userService.js'
@@ -360,9 +393,22 @@ const alRestablecer = (nombre) => {
   $q.notify({ type: 'positive', message: `Contraseña de ${nombre} restablecida; sus sesiones abiertas se cerraron.` })
 }
 
+// Contadores del directorio: opciones para vincular a un auxiliar (alta y «Contadores que apoya»).
+const contadores = computed(() =>
+  usuarios.value.filter((u) => u.rol === PROFILES.contador).map((u) => ({ id: u.id, nombre: u.nombre })),
+)
+
+const dialogoContadoresAbierto = ref(false)
+const cuentaAuxiliar = ref(null)
+
+const abrirContadores = (fila) => {
+  cuentaAuxiliar.value = fila
+  dialogoContadoresAbierto.value = true
+}
+
 // En celular la tarjeta solo lleva barra de acciones si tiene algún botón que mostrar.
 const tieneAccionesTarjeta = (fila) =>
-  (fila.puedeVerCasos && session.esAdministrador) || session.esUsuarioSistema
+  (fila.puedeVerCasos && session.esAdministrador) || session.esUsuarioSistema || fila.rolClave === 'auxiliar'
 
 /*
  * Recarga sin cargador: la tabla no parpadea. Si falla tras crear una cuenta, se conserva la

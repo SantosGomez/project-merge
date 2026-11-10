@@ -1,6 +1,8 @@
-const { esCorreoValido, validarCampoTexto, validateRol } = require('../utils/validationUtils');
+const { esCorreoValido, validarCampoTexto, validateRol, parseListaDeIds } = require('../utils/validationUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
+const AuxiliarModel = require('../models/AuxiliarModel');
+const { avisarNuevosVinculos, ERROR_LISTA_CONTADORES } = require('./AuxiliarController');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 const { formatLocalDate } = require('../utils/dateUtils');
@@ -78,10 +80,24 @@ async function createUser(req, res) {
     );
   }
 
+  // Un auxiliar puede quedar vinculado con sus contadores en el mismo paso; se valida antes de crear
+  const contadoresIds = rol === 'auxiliar' && req.body.contadores !== undefined ? parseListaDeIds(req.body.contadores) : [];
+  if (!contadoresIds) return res.status(400).json(ERROR_LISTA_CONTADORES);
+  for (const contadorId of contadoresIds) {
+    if (!(await UserModel.findCounterById(contadorId))) {
+      return res.status(400).json(
+        buildError('La cuenta no es un contador', 'contadores', 'Elige solo cuentas con rol de contador')
+      );
+    }
+  }
+
   // 4. Hashear contraseña con Argon2id (RNF-1) y crear la cuenta (RF-28);
   //    la contraseña la eligió el administrador, así que la persona creará la suya al entrar
   const passwordHash = await hashPassword(password);
-  await UserModel.create({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol, debeCambiarContrasena: true });
+  const id = await UserModel.create({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol, debeCambiarContrasena: true });
+  if (contadoresIds.length > 0) {
+    await avisarNuevosVinculos(id, await AuxiliarModel.reemplazarContadoresDeAuxiliar(id, contadoresIds));
+  }
 
   // 5. Responder 201 con mensaje de alta exitosa (RF-28)
   return res.status(201).json({ mensaje: 'Usuario dado de alta correctamente' });

@@ -186,6 +186,34 @@
             </p>
           </div>
 
+          <div v-if="rol === 'auxiliar'" class="form-group">
+            <label for="nuevo-contadores" class="form-label">Contadores que apoya (opcional)</label>
+            <q-select
+              for="nuevo-contadores"
+              v-model="contadoresElegidos"
+              :options="opcionesContador"
+              :placeholder="contadoresElegidos.length === 0 ? 'Elige uno o varios' : ''"
+              multiple
+              use-chips
+              emit-value
+              map-options
+              outlined
+              dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              class="selector-moderno"
+              :disable="guardando"
+              aria-describedby="nuevo-contadores-ayuda"
+            >
+              <template #prepend><q-icon name="groups" aria-hidden="true" /></template>
+              <q-tooltip>Elige a quiénes apoyará; también puedes hacerlo después desde el directorio.</q-tooltip>
+            </q-select>
+            <p id="nuevo-contadores-ayuda" class="form-help">
+              El auxiliar verá los casos de estos contadores y podrá cambiar su estado. Se les avisará.
+            </p>
+          </div>
+
           <p v-if="errorGeneral" class="error-banner" role="alert">{{ errorGeneral }}</p>
         </q-card-section>
 
@@ -231,7 +259,15 @@ import { validarAltaUsuario } from '../utils/validators.js'
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
+const props = defineProps({
+  /** Contadores del directorio `{ id, nombre }`, para vincular a un auxiliar al crearlo. */
+  contadores: { type: Array, default: () => [] },
+})
+
 const emit = defineEmits(['creado'])
+
+const opcionesContador = computed(() => props.contadores.map((c) => ({ label: c.nombre, value: c.id })))
+const contadoresElegidos = ref([])
 
 const opcionesRol = Object.values(PROFILES).map((valor) => ({
   label: formatearRol(valor),
@@ -301,6 +337,7 @@ watch(dialogoAbierto, (abierto) => {
     correo.value = ''
     password.value = ''
     rol.value = null
+    contadoresElegidos.value = []
     for (const campo of Object.keys(errores)) errores[campo] = null
     errorGeneral.value = ''
     verPassword.value = false
@@ -336,6 +373,7 @@ const darDeAlta = async () => {
       correo: correo.value,
       password: password.value,
       rol: rol.value,
+      contadores: rol.value === 'auxiliar' ? contadoresElegidos.value : undefined,
     })
     dialogoAbierto.value = false
     emit('creado', nombre.value.trim())

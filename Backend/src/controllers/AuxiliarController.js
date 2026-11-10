@@ -1,6 +1,9 @@
 const AuxiliarModel = require('../models/AuxiliarModel');
+const NotificacionModel = require('../models/NotificacionModel');
+const UserModel = require('../models/UserModel');
 const { buildError } = require('../utils/errorUtils');
-const { parseCounterId } = require('../utils/validationUtils');
+const { eventos } = require('../utils/eventos');
+const { parseCounterId, parseListaDeIds } = require('../utils/validationUtils');
 
 /**
  * Controladores de las rutas de auxiliares: un contador gestiona a otros contadores
@@ -171,7 +174,72 @@ async function listarDisponiblesParaAuxiliar(req, res) {
   return res.status(200).json({ contadores });
 }
 
+const ERROR_LISTA_CONTADORES = buildError(
+  'Lista de contadores no válida',
+  'contadores',
+  'Envía una lista con los ids de los contadores, por ejemplo [3, 7]'
+);
+
+/**
+ * Avisa a cada contador recién vinculado y al auxiliar (campana y tiempo real).
+ * @param {number} auxiliarId - Id de la cuenta auxiliar.
+ * @param {Array<number>} nuevos - Ids de los contadores recién vinculados.
+ */
+async function avisarNuevosVinculos(auxiliarId, nuevos) {
+  if (nuevos.length === 0) return;
+  const auxiliar = await UserModel.findById(auxiliarId);
+  const contadores = await AuxiliarModel.listarContadoresQueMeTienenComoAuxiliar(auxiliarId);
+  for (const contador of contadores.filter((c) => nuevos.includes(c.id))) {
+    await NotificacionModel.crear({ usuarioId: contador.id, casoId: null, mensaje: `${auxiliar.nombre} ahora es tu auxiliar.` });
+    await NotificacionModel.crear({ usuarioId: auxiliarId, casoId: null, mensaje: `Ahora apoyas a ${contador.nombre} con sus casos.` });
+    eventos.enviarAUsuario(contador.id, 'aviso-nuevo', {});
+  }
+  eventos.enviarAUsuario(auxiliarId, 'aviso-nuevo', {});
+}
+
+/**
+ * GET /usuarios/:id/contadores — contadores que apoya un auxiliar (administrador o sistema).
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function listarContadoresDeAuxiliar(req, res) {
+  const auxiliarId = parseCounterId(req.params.id);
+  if (!auxiliarId) return res.status(404).json(ERROR_AUXILIAR_NO_VALIDO);
+
+  const contadores = await AuxiliarModel.listarContadoresQueMeTienenComoAuxiliar(auxiliarId);
+  return res.status(200).json({ contadores });
+}
+
+/**
+ * PUT /usuarios/:id/contadores — deja al auxiliar vinculado con esos contadores
+ * (administrador o sistema). Cuerpo: { contadores: [ids] }.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function reemplazarContadoresDeAuxiliar(req, res) {
+  const auxiliarId = parseCounterId(req.params.id);
+  if (!auxiliarId) return res.status(404).json(ERROR_AUXILIAR_NO_VALIDO);
+
+  const contadoresIds = parseListaDeIds(req.body.contadores);
+  if (!contadoresIds) return res.status(400).json(ERROR_LISTA_CONTADORES);
+
+  let nuevos;
+  try {
+    nuevos = await AuxiliarModel.reemplazarContadoresDeAuxiliar(auxiliarId, contadoresIds);
+  } catch (error) {
+    return responderErrorDelModelo(res, error);
+  }
+  await avisarNuevosVinculos(auxiliarId, nuevos);
+
+  const contadores = await AuxiliarModel.listarContadoresQueMeTienenComoAuxiliar(auxiliarId);
+  return res.status(200).json({ mensaje: 'Contadores del auxiliar actualizados', contadores });
+}
+
 module.exports = {
+  listarContadoresDeAuxiliar,
+  reemplazarContadoresDeAuxiliar,
+  avisarNuevosVinculos,
+  ERROR_LISTA_CONTADORES,
   listarAuxiliares,
   asignarAuxiliar,
   quitarAuxiliar,

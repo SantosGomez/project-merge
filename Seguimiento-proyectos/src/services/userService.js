@@ -19,17 +19,41 @@ export const crearUserService = (opciones = {}) => {
    * POST /usuarios: da de alta una cuenta con nombre y correo (RF-28 a RF-30).
    * Todo se envía sin espacios extremos y el correo en minúsculas, como en el login: si no,
    * una contraseña con espacios quedaría guardada así y la cuenta no podría entrar.
-   * @param {{ nombre: string, correo: string, password: string, rol: string }} cuenta
+   * Un auxiliar puede ir ya vinculado con sus contadores (`contadores`: ids).
+   * @param {{ nombre: string, correo: string, password: string, rol: string, contadores?: Array<number> }} cuenta
    * @returns {Promise<string>} mensaje de alta del backend.
    */
-  const crearUsuario = async ({ nombre, correo, password, rol }) => {
+  const crearUsuario = async ({ nombre, correo, password, rol, contadores }) => {
     const { data } = await api.post('/usuarios', {
       nombre: nombre.trim(),
       correo: correo.trim().toLowerCase(),
       password: password.trim(),
       rol,
+      ...(rol === 'auxiliar' && contadores ? { contadores } : {}),
     })
     return data.mensaje
+  }
+
+  /**
+   * GET /usuarios/:id/contadores: contadores que apoya un auxiliar.
+   * @param {number} auxiliarId
+   * @returns {Promise<Array<{ id: number, nombre: string }>>}
+   */
+  const listarContadoresDeAuxiliar = async (auxiliarId) => {
+    const { data } = await api.get(`/usuarios/${auxiliarId}/contadores`)
+    if (!Array.isArray(data?.contadores)) {
+      throw crearErrorInesperado('los contadores del auxiliar')
+    }
+    return data.contadores
+  }
+
+  /**
+   * PUT /usuarios/:id/contadores: deja al auxiliar vinculado exactamente con esos contadores.
+   * @param {number} auxiliarId
+   * @param {Array<number>} contadores - ids.
+   */
+  const guardarContadoresDeAuxiliar = async (auxiliarId, contadores) => {
+    await api.put(`/usuarios/${auxiliarId}/contadores`, { contadores })
   }
 
   /**
@@ -59,7 +83,7 @@ export const crearUserService = (opciones = {}) => {
     return data.usuarios
   }
 
-  return { crearUsuario, restablecerContrasena, listarUsuarios }
+  return { crearUsuario, restablecerContrasena, listarUsuarios, listarContadoresDeAuxiliar, guardarContadoresDeAuxiliar }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -68,3 +92,5 @@ const servicioPorDefecto = crearUserService()
 export const crearUsuario = servicioPorDefecto.crearUsuario
 export const restablecerContrasena = servicioPorDefecto.restablecerContrasena
 export const listarUsuarios = servicioPorDefecto.listarUsuarios
+export const listarContadoresDeAuxiliar = servicioPorDefecto.listarContadoresDeAuxiliar
+export const guardarContadoresDeAuxiliar = servicioPorDefecto.guardarContadoresDeAuxiliar
