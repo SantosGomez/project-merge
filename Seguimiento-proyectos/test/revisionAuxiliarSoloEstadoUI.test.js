@@ -13,21 +13,24 @@ const leer = (relativa) => readFileSync(fileURLToPath(new URL(relativa, import.m
 const casoItem = leer('../src/components/CasoItem.vue')
 const plantilla = casoItem.split('<script')[0]
 
+// 2026-11-10: el permiso lo decide el backend (`solo_estado` → `soloEstado`): el auxiliar solo
+// cambia el estado de los casos del dueño; el dueño edita completos los de su auxiliar.
 describe('CasoItem: edición limitada para el auxiliar', () => {
-  it('distingue los casos que pertenecen a otro contador', () => {
-    assert.match(casoItem, /const esCasoDeOtroContador = computed\(/)
-    assert.match(casoItem, /String\(props\.caso\.counterId\) !== String\(props\.contadorAutenticadoId\)/)
+  it('limita la edición según el dato soloEstado del backend, no por ser de otro contador', () => {
+    assert.match(casoItem, /const soloCambiaEstado = computed\(\(\) => props\.caso\.soloEstado === true\)/)
   })
 
-  it('no muestra la estrella de Importante en casos ajenos', () => {
-    assert.match(
-      plantilla,
-      /<q-item-section v-if="!soloLectura && !esCasoDeOtroContador"/
-    )
+  it('no muestra la estrella de Importante cuando solo se cambia el estado', () => {
+    assert.match(plantilla, /<q-item-section v-if="!soloLectura && !soloCambiaEstado"/)
   })
 
-  it('no muestra el botón Editar en casos ajenos', () => {
-    assert.match(plantilla, /v-if="!esCasoDeOtroContador"[\s\S]*?label="Editar"/)
+  it('no muestra el botón Editar cuando solo se cambia el estado', () => {
+    assert.match(plantilla, /v-if="!soloCambiaEstado"[\s\S]*?label="Editar"/)
+  })
+
+  it('el tooltip de «de …» distingue el caso de tu auxiliar del caso del contador al que apoyas', () => {
+    assert.match(casoItem, /Este caso es de tu auxiliar: puedes editarlo completo\./)
+    assert.match(casoItem, /Este caso es del contador al que apoyas: solo puedes cambiar su estado\./)
   })
 
   it('mantiene el selector de estado y explica el límite', () => {

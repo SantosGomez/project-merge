@@ -27,7 +27,9 @@
         <q-item
           v-for="aviso in avisos"
           :key="aviso.id"
-          :class="{ 'campana-avisos__item--nuevo': !aviso.leida, 'campana-avisos__item--clickeable': aviso.casoId }"
+          :clickable="Boolean(destinoDeAviso(aviso, session.rol))"
+          v-close-popup="Boolean(destinoDeAviso(aviso, session.rol))"
+          :class="{ 'campana-avisos__item--nuevo': !aviso.leida }"
           @click="irAlCaso(aviso)"
         >
           <q-item-section avatar>
@@ -37,6 +39,9 @@
             <q-item-label class="campana-avisos__mensaje">{{ aviso.mensaje }}</q-item-label>
             <q-item-label caption class="campana-avisos__fecha">
               {{ aviso.fecha }}<span v-if="!aviso.leida"> · Nuevo</span>
+            </q-item-label>
+            <q-item-label v-if="destinoDeAviso(aviso, session.rol)" caption class="campana-avisos__enlace">
+              Toca para ver el caso
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -52,11 +57,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { eventos } from '../services/eventosService.js'
 import { getNotificaciones, marcarLeidas } from '../services/notificacionService.js'
 import { useSessionStore } from '../stores/session.js'
+import { destinoDeAviso } from '../utils/avisos.js'
 
 /*
  * Campanita del contador: muestra cuántos avisos no ha leído (p. ej. el administrador cambió
  * la prioridad de un caso) y la lista al tocarla. Al abrirla, los avisos se marcan como leídos.
- * Al tocar un aviso con casoId, navega a la pantalla correspondiente.
+ * Al tocar un aviso de un caso, el contador va a «Mis casos» con ese caso a la vista y resaltado.
  * Se actualiza al instante cuando el servidor avisa (tiempo real), al cambiar de pantalla
  * y, como respaldo, cada 5 minutos.
  */
@@ -96,14 +102,10 @@ const alAbrir = async () => {
   }
 }
 
-/** Navega a la pantalla del caso o auditoría según el aviso. */
+/** Lleva al caso del aviso; los avisos sin caso no navegan. */
 const irAlCaso = (aviso) => {
-  if (!aviso.casoId) return
-
-  const esContador = session.rol === 'contador'
-  const destino = esContador ? { name: 'contador-casos' } : { name: 'admin-dashboard' }
-  // Pasamos el casoId como query para que la pantalla pueda resaltarlo si quiere
-  router.push({ ...destino, query: { ...route.query, casoId: aviso.casoId } })
+  const destino = destinoDeAviso(aviso, session.rol)
+  if (destino) router.push(destino)
 }
 
 let intervalo = null
@@ -157,19 +159,9 @@ watch(() => route.fullPath, cargar)
   background: var(--dg-fondo-hover);
 }
 
-/* Cursor pointer y hover solo en items con enlace */
-.campana-avisos__item--clickeable {
-  cursor: pointer;
-}
-
-.campana-avisos__item--clickeable:hover {
-  background: var(--dg-fondo-hover);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .campana-avisos__item--clickeable:hover {
-    background: inherit;
-  }
+.campana-avisos__enlace {
+  color: var(--dg-acento);
+  font-weight: 500;
 }
 
 .campana-avisos__fecha {

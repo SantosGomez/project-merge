@@ -2,7 +2,7 @@
   <q-page class="my-cases-page">
     <div class="my-cases-page__head">
       <p class="my-cases-page__lead">
-        Aquí están los casos que registraste, los que te asignó el administrador y los de los contadores a los que apoyas. Cambia el estado desde la lista; en tus propios casos, usa «Editar» para el resto de los datos.
+        Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; en tus casos y en los de tus auxiliares, usa «Editar» para el resto de los datos.
       </p>
       <q-btn
         class="my-cases-page__register-btn control-touch boton-presionable"
@@ -93,7 +93,10 @@
           >
             <CasoItem
               v-for="item in filas"
+              :id="`caso-${item.id}`"
               :key="item.id"
+              tabindex="-1"
+              :class="{ 'caso-resaltado': String(item.id) === casoResaltadoId }"
               :caso="item"
               :deshabilitado="guardandoId === item.id"
               :contador-autenticado-id="contadorAutenticadoId"
@@ -162,9 +165,9 @@
 </template>
 
 <script setup>
-import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
+import { computed, nextTick, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CasoItem from '../components/CasoItem.vue'
@@ -187,6 +190,7 @@ import {
   filtrosDesdeConsulta,
   hoyLocal,
   paginar,
+  ubicarCaso,
 } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
@@ -195,6 +199,7 @@ const session = useSessionStore()
 const auxiliaresStore = useAuxiliaresStore()
 const $q = useQuasar()
 const route = useRoute()
+const router = useRouter()
 
 // Id del contador autenticado (texto en la sesión, número en el caso). Se usa para mostrar «de …»
 // cuando el caso es de un auxiliar.
@@ -317,6 +322,9 @@ const alRegistrar = async () => {
   // Si la lista no había cargado, se recarga para que el caso nuevo quede visible.
   if (cases.error) {
     await cases.reintentar()
+  } else if (contadorSeleccionadoParaRegistro.value !== null) {
+    // El caso para el contador al que apoyas se guardó en otro store: se relee la lista.
+    await cases.refrescarEnSilencio()
   }
 
   // Después de registrar, se limpia el selector para no crear el siguiente caso
@@ -326,6 +334,49 @@ const alRegistrar = async () => {
 
 const retry = () => cases.reintentar()
 
+/*
+ * Aviso de la campana (?casoId=): cuando la lista termina de cargar, ajusta filtro y página para
+ * que el caso quede a la vista, lleva la pantalla hasta él y lo resalta unos segundos.
+ * La marca se quita de la dirección para no repetirlo en cada recarga de la lista.
+ */
+const casoResaltadoId = ref(null)
+let temporizadorResaltado = null
+
+const irAlCasoDelAviso = async () => {
+  const casoId = route.query.casoId
+  if (!casoId || cases.cargando || cases.error) return
+
+  const consultaSinCaso = { ...route.query }
+  delete consultaSinCaso.casoId
+  router.replace({ query: consultaSinCaso })
+
+  const ubicacion = ubicarCaso(cases.casos, casoId, filtros.value, hoy.value, porPagina.value)
+  if (!ubicacion) {
+    $q.notify({ type: 'warning', message: 'Ese caso ya no está en tu lista.' })
+    return
+  }
+
+  filtros.value = ubicacion.filtros
+  // El cambio de filtros regresa a la página 1: la página se fija después de ese ajuste.
+  await nextTick()
+  pagina.value = ubicacion.pagina
+  casoResaltadoId.value = String(casoId)
+  await nextTick()
+
+  const fila = document.getElementById(`caso-${casoId}`)
+  const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  fila?.scrollIntoView({ block: 'center', behavior: sinMovimiento ? 'auto' : 'smooth' })
+  fila?.focus({ preventScroll: true })
+
+  clearTimeout(temporizadorResaltado)
+  temporizadorResaltado = setTimeout(() => {
+    casoResaltadoId.value = null
+  }, 4000)
+}
+
+watch([() => route.query.casoId, () => cases.cargando], irAlCasoDelAviso)
+onBeforeUnmount(() => clearTimeout(temporizadorResaltado))
+
 onMounted(async () => {
   cases.cargarCasos()
   document.addEventListener('visibilitychange', actualizarHoy)
@@ -333,7 +384,7 @@ onMounted(async () => {
   const idPropio = Number(session.id)
   const resultado = await auxiliaresStore.listarContadoresQueMeTienenComoAuxiliar(idPropio)
   if (resultado.ok) {
-    contadoresQueMeTienenComoAuxiliar.value = resultado.auxiliares ?? []
+    contadoresQueMeTienenComoAuxiliar.value = resultado.contadores ?? []
   }
 })
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', actualizarHoy))
@@ -386,6 +437,16 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
   border-color: var(--dg-borde);
   border-radius: 10px;
   background: var(--dg-superficie);
+}
+
+/* Caso al que llevó un aviso de la campana: marco de acento unos segundos. */
+.caso-resaltado {
+  box-shadow: inset 0 0 0 2px var(--dg-acento);
+  transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.caso-resaltado:focus {
+  outline: none;
 }
 
 /*

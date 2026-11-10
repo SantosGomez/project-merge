@@ -5,7 +5,8 @@ const { parseCounterId } = require('../utils/validationUtils');
 
 /**
  * Middleware que verifica que el caso exista y que el contador autenticado
- * pueda editarlo: es el dueño del caso o es auxiliar de quien lo es.
+ * pueda editarlo. Deja `req.soloEstado`: false si el caso es suyo o de uno de sus
+ * auxiliares (edición completa); true si es auxiliar del dueño (solo el estado).
  * RF-10, RF-11, RF-16, RF-AX-10 a RF-AX-12.
  * @param {Object} req - Objeto de petición (req.user con id, req.params.id con ID del caso).
  * @param {Object} res - Objeto de respuesta.
@@ -32,18 +33,23 @@ async function checkCaseOwnership(req, res, next) {
     return;
   }
 
-  // El caso pertenece al contador autenticado
-  if (caso.contador_id === req.user.id) {
+  const usuarioId = Number(req.user.id);
+  const duenioId = Number(caso.contador_id);
+
+  // El caso es del contador autenticado o de uno de sus auxiliares: edición completa
+  const misAuxiliares = await AuxiliarModel.listarAuxiliares(usuarioId);
+  if (duenioId === usuarioId || misAuxiliares.some((a) => Number(a.id) === duenioId)) {
     req.caso = caso;
+    req.soloEstado = false;
     next();
     return;
   }
 
-  // El contador autenticado es auxiliar del contador dueño del caso
-  const auxiliares = await AuxiliarModel.listarAuxiliares(caso.contador_id);
-  const esAuxiliar = auxiliares.some((a) => a.id === req.user.id);
-  if (esAuxiliar) {
+  // El contador autenticado es auxiliar del dueño del caso: solo cambia el estado
+  const auxiliaresDelDuenio = await AuxiliarModel.listarAuxiliares(duenioId);
+  if (auxiliaresDelDuenio.some((a) => Number(a.id) === usuarioId)) {
     req.caso = caso;
+    req.soloEstado = true;
     next();
     return;
   }

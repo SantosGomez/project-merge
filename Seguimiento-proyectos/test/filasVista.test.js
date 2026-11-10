@@ -52,12 +52,23 @@ test('casoAFila traduce los campos internos a los que espera CaseRow (RF-13)', (
     priority: 'alta',
     counterId: 3,
     contadorNombre: '',
+    soloEstado: false,
     startDate: '',
     dueDate: '',
     description: '',
     important: false,
     inProgressSince: '',
   })
+})
+
+test('casoAFila indica si en el caso solo se puede cambiar el estado (casos en equipo)', () => {
+  const delDuenio = casoAFila({ id: 1, cliente: 'A', estado: 'pendiente', prioridad: 'baja', solo_estado: true })
+  const delAuxiliar = casoAFila({ id: 2, cliente: 'B', estado: 'pendiente', prioridad: 'baja', solo_estado: false })
+  const sinDato = casoAFila({ id: 3, cliente: 'C', estado: 'pendiente', prioridad: 'baja' })
+
+  assert.equal(delDuenio.soloEstado, true, 'el auxiliar solo cambia el estado del caso del dueño')
+  assert.equal(delAuxiliar.soloEstado, false, 'el dueño edita completo el caso de su auxiliar')
+  assert.equal(sinDato.soloEstado, false, 'sin el dato (admin, casos propios) la edición no se limita')
 })
 
 test('casoAFila muestra inicio y vencimiento en DD-MM-AAAA y la descripción', () => {

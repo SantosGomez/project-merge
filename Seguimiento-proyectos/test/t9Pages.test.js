@@ -170,7 +170,8 @@ describe('Mis casos — registro en diálogo (P-5)', () => {
     assert.match(myCasesSource, /@click="abrirRegistro"/)
     assert.match(myCasesSource, /@action="abrirRegistro"/)
     assert.doesNotMatch(myCasesSource, /name: 'contador-registro'/)
-    assert.doesNotMatch(myCasesSource, /useRouter|router\.push/, 'ya no navega a otra pantalla')
+    // router.replace solo quita ?casoId (enlace de la campana); registrar no navega.
+    assert.doesNotMatch(myCasesSource, /router\.push/, 'ya no navega a otra pantalla')
   })
 
   it('al registrar muestra el aviso y recarga la lista si estaba en error', () => {
@@ -445,7 +446,7 @@ describe('Editar caso — fila con fechas y botón «Editar»', () => {
     assert.match(detalle, /<CasoItem[^>]*solo-lectura/)
     assert.doesNotMatch(admin, /abrirEdicion|guardarCambio/)
     // En solo lectura no hay estrella, selector de estado ni «Editar».
-    assert.match(casoItemSource, /<q-item-section v-if="!soloLectura && !esCasoDeOtroContador" avatar/)
+    assert.match(casoItemSource, /<q-item-section v-if="!soloLectura && !soloCambiaEstado" avatar/)
     assert.match(casoItemSource, /<q-item-section v-else side class="caso-item__acciones">\s*<q-select/)
   })
 })

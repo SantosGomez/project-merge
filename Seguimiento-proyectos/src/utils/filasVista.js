@@ -100,7 +100,7 @@ export const compararUltimoAcceso = (a, b) => {
  * fechas de inicio y vencimiento (DD-MM-AAAA), descripción, si es importante y desde cuándo está en proceso.
  * @param {Object} caso - caso interno del servicio.
  * @returns {{ id: number|string|null, client: string, status: string, priority: string, counterId: number|string|null,
- *   startDate: string, dueDate: string, description: string, important: boolean, inProgressSince: string }|null}
+ *   contadorNombre: string, soloEstado: boolean, startDate: string, dueDate: string, description: string, important: boolean, inProgressSince: string }|null}
  */
 export const casoAFila = (caso) => {
   if (caso === null || typeof caso !== 'object') {
@@ -114,6 +114,8 @@ export const casoAFila = (caso) => {
     priority: caso.prioridad ?? '',
     counterId: caso.contador_id ?? null,
     contadorNombre: caso.nombre_contador ?? '',
+    // Lo decide el backend: true solo en casos de un contador al que se apoya como auxiliar
+    soloEstado: caso.solo_estado === true,
     startDate: fechaParaFormulario(caso.fecha_inicio),
     dueDate: fechaParaFormulario(caso.fecha_vencimiento),
     description: caso.descripcion ?? '',

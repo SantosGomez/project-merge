@@ -9,7 +9,6 @@ const {
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { asignarAuxiliar } = require('../src/models/AuxiliarModel');
 const { query } = require('../src/config/db');
-const CaseModel = require('../src/models/CaseModel');
 
 let servidor;
 let admin;
@@ -57,7 +56,6 @@ describe('Rebanada 8: Admin ve equipos y campana con enlace', () => {
     tokenAdmin = await iniciarSesion(servidor.puerto, admin.correo, admin.password);
     tokenDueno = await iniciarSesion(servidor.puerto, dueno.correo, dueno.password);
     tokenAuxiliar = await iniciarSesion(servidor.puerto, auxiliar.correo, auxiliar.password);
-    console.log('SETUP: dueno.id=', dueno.id, 'auxiliar.id=', auxiliar.id, 'admin.id=', admin.id);
   });
 
   after(async () => {
@@ -70,35 +68,25 @@ describe('Rebanada 8: Admin ve equipos y campana con enlace', () => {
     await query('DELETE FROM casos WHERE contador_id IN (?, ?)', [dueno.id, auxiliar.id]);
   });
 
-  // ---------- Admin ve casos de auxiliares ----------
-  test('el admin ve los casos del contador Y de su auxiliar', async () => {
+  // ---------- Admin: cada caso se ve solo bajo su dueño ----------
+  test('el admin ve en el detalle del contador sus casos, también los que creó su auxiliar a su nombre', async () => {
     // Caso propio del dueño
     await crearCaso(dueno.id, { cliente: 'zz_test caso dueno' });
-    // Caso del auxiliar (guardado con contador_id = dueno.id por rebanada 6)
-    await crearCaso(dueno.id, { cliente: 'zz_test caso auxiliar' });
+    // Caso que el auxiliar creó para el dueño (se guarda con contador_id = dueno.id, rebanada 6)
+    await crearCaso(dueno.id, { cliente: 'zz_test caso creado por el auxiliar' });
+    // Caso propio del auxiliar: va en el detalle del auxiliar, no en el del dueño
+    await crearCaso(auxiliar.id, { cliente: 'zz_test caso propio del auxiliar' });
 
     const respuesta = await casosDelContadorParaAdmin(dueno.id, tokenAdmin);
     assert.strictEqual(respuesta.statusCode, 200);
-    assert.ok(Array.isArray(respuesta.body.casos));
 
-    // Debe venir nombre_contador en cada fila
     const clientes = respuesta.body.casos.map((c) => c.cliente).sort();
-    assert.deepStrictEqual(clientes, ['zz_test caso auxiliar', 'zz_test caso dueno']);
-
-    // Cada caso trae nombre_contador (el dueño)
-    for (const caso of respuesta.body.casos) {
-      assert.ok(caso.nombre_contador, `caso ${caso.cliente} debe traer nombre_contador`);
-      assert.strictEqual(caso.nombre_contador, dueno.nombre);
-    }
+    assert.deepStrictEqual(clientes, ['zz_test caso creado por el auxiliar', 'zz_test caso dueno']);
   });
 
-  test('el admin ve solo los casos importantes del contador y auxiliares', async () => {
+  test('el admin ve solo los casos importantes del contador', async () => {
     await crearCaso(dueno.id, { cliente: 'zz_test caso importante', importante: 1 });
     await crearCaso(dueno.id, { cliente: 'zz_test caso normal', importante: 0 });
-
-    // Debug: ver qué devuelve el modelo directamente
-    const casosModelo = await CaseModel.findByCounterParaAdmin(dueno.id, { soloImportantes: true });
-    console.log('DEBUG modelo dueno.id=', dueno.id, ':', JSON.stringify(casosModelo.map(c => ({cliente: c.cliente, importante: c.importante}))));
 
     // Con ?importantes=true (lo que usa el dashboard)
     const respuesta = await peticion(
@@ -108,7 +96,6 @@ describe('Rebanada 8: Admin ve equipos y campana con enlace', () => {
       undefined,
       tokenAdmin
     );
-    console.log('DEBUG respuesta dueno.id=', dueno.id, ':', JSON.stringify(respuesta.body.casos.map(c => ({cliente: c.cliente, importante: c.importante}))));
     assert.strictEqual(respuesta.statusCode, 200);
     assert.strictEqual(respuesta.body.casos.length, 1);
     assert.strictEqual(respuesta.body.casos[0].cliente, 'zz_test caso importante');

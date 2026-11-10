@@ -28,48 +28,32 @@ async function findByCounter(contadorId, { soloImportantes = false } = {}) {
 }
 
 /**
- * Devuelve los casos de un contador y de sus auxiliares (casos en conjunto).
+ * Devuelve los casos del equipo de un contador (casos en conjunto): los suyos, los de sus
+ * auxiliares y los de los contadores a los que apoya como auxiliar, sin duplicados.
+ * `solo_estado` es true en los casos de un contador al que apoya: ahí solo cambia el estado.
+ * En los propios y en los de sus auxiliares la edición es completa.
  * RF-AX-07.
  * @param {number} contadorId - ID del contador.
- * @param {{ soloImportantes?: boolean }} [opciones] - contar solo los casos marcados como importantes.
- * @returns {Promise<Array>} Lista de casos del contador y de sus auxiliares, sin duplicados.
+ * @param {{ soloImportantes?: boolean }} [opciones] - solo los casos marcados como importantes.
+ * @returns {Promise<Array>} Casos con nombre_contador (dueño) y solo_estado (boolean).
  */
 async function findByCounterYAuxiliares(contadorId, { soloImportantes = false } = {}) {
   const filtroImportante = soloImportantes ? ' AND c.importante = 1' : '';
   const rows = await query(
-    `SELECT c.*, u.nombre AS nombre_contador
+    `SELECT c.*, u.nombre AS nombre_contador,
+       NOT (c.contador_id = ? OR c.contador_id IN (
+         SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?
+       )) AS solo_estado
      FROM casos c
      JOIN usuarios u ON u.id = c.contador_id
-     WHERE (c.contador_id = ? OR c.contador_id IN (
-       SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?
-     ))${filtroImportante}
+     WHERE (c.contador_id = ?
+       OR c.contador_id IN (SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?)
+       OR c.contador_id IN (SELECT contador_id FROM contador_auxiliar WHERE auxiliar_id = ?)
+     )${filtroImportante}
      ORDER BY c.id DESC`,
-    [contadorId, contadorId]
+    [contadorId, contadorId, contadorId, contadorId, contadorId]
   );
-  return rows;
-}
-
-/**
- * Devuelve los casos de un contador y de sus auxiliares (para vista de administrador).
- * Incluye nombre_contador y soporta filtro de importantes.
- * RF-14, RF-16, RF-AX-07.
- * @param {number} contadorId - ID del contador.
- * @param {{ soloImportantes?: boolean }} [opciones] - solo los casos marcados como importantes.
- * @returns {Promise<Array>} Lista de casos del contador y de sus auxiliares, con nombre_contador.
- */
-async function findByCounterParaAdmin(contadorId, { soloImportantes = false } = {}) {
-  const filtroImportante = soloImportantes ? ' AND c.importante = 1' : '';
-  const rows = await query(
-    `SELECT c.*, u.nombre AS nombre_contador
-     FROM casos c
-     JOIN usuarios u ON u.id = c.contador_id
-     WHERE (c.contador_id = ? OR c.contador_id IN (
-       SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?
-     ))${filtroImportante}
-     ORDER BY c.id DESC`,
-    [contadorId, contadorId]
-  );
-  return rows;
+  return rows.map((fila) => ({ ...fila, solo_estado: Boolean(Number(fila.solo_estado)) }));
 }
 
 /**
@@ -244,4 +228,4 @@ async function updatePatch(id, campos = {}, ejecutar = query) {
   await ejecutar(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
-module.exports = { findById, findByCounter, findByCounterYAuxiliares, findByCounterParaAdmin, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
+module.exports = { findById, findByCounter, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };

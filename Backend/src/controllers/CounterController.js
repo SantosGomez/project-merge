@@ -92,7 +92,8 @@ async function getCasesByCounter(req, res) {
     );
   }
 
-  const casos = await CaseModel.findByCounterParaAdmin(idNumerico, { soloImportantes: pideSoloImportantes(req) });
+  // Solo los casos del contador: los de sus auxiliares se ven en el detalle de cada auxiliar
+  const casos = await CaseModel.findByCounter(idNumerico, { soloImportantes: pideSoloImportantes(req) });
   if (casos.length === 0) {
     return res.status(200).json({
       mensaje: 'El contador no tiene casos registrados',
@@ -103,7 +104,8 @@ async function getCasesByCounter(req, res) {
 }
 
 /**
- * Devuelve los casos del contador autenticado y de sus auxiliares (casos en conjunto).
+ * Devuelve los casos del equipo del contador autenticado: los suyos, los de sus auxiliares
+ * y los de los contadores a los que apoya (casos en conjunto, con `solo_estado`).
  * RF-15, RF-24, RF-AX-07.
  * @param {Object} req - Petición Express (req.user con id del contador autenticado).
  * @param {Object} res - Respuesta Express.

@@ -220,7 +220,10 @@ async function updateCase(req, res) {
   const casoActual = req.caso;
 
   // RF-AX-12: el auxiliar solo cambia el estado; el resto de los datos es del contador dueño.
-  if (Number(req.user.id) !== Number(casoActual.contador_id)) {
+  // checkCaseOwnership decide el permiso (el dueño de un auxiliar edita completo sus casos).
+  const soloEstado =
+    req.soloEstado !== undefined ? req.soloEstado : Number(req.user.id) !== Number(casoActual.contador_id);
+  if (soloEstado) {
     const camposDelDuenio = [
       'cliente',
       'prioridad',
@@ -348,8 +351,8 @@ async function updateCase(req, res) {
 
   const caso = await CaseModel.findById(casoActual.id);
 
-  // Si quien edita no es el dueño del caso, es un auxiliar: avisar al contador dueño
-  // solo cuando de verdad cambió el estado (es el único campo que puede tocar).
+  // Si quien edita no es el dueño del caso (su auxiliar o el contador de su auxiliar),
+  // avisar al dueño solo cuando de verdad cambió el estado.
   if (
     Number(req.user.id) !== Number(casoActual.contador_id) &&
     estado !== undefined &&

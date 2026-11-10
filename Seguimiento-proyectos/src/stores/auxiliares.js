@@ -117,6 +117,21 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
       },
 
       /**
+       * Contadores para los que el usuario es auxiliar (selector «Registrar caso para» de «Mis casos»).
+       * No guarda estado: la lista es de esa pantalla. Un fallo no lanza; devuelve el error.
+       * @param {number} auxiliarId - Id del contador autenticado.
+       * @returns {Promise<{ ok: boolean, contadores?: Array<{id: number, nombre: string}>, error?: Object }>}
+       */
+      async listarContadoresQueMeTienenComoAuxiliar(auxiliarId) {
+        try {
+          const contadores = await servicio.listarContadoresQueMeTienenComoAuxiliar(auxiliarId)
+          return { ok: true, contadores }
+        } catch (error) {
+          return { ok: false, error: normalizarError(error, 'los contadores a los que apoyas') }
+        }
+      },
+
+      /**
        * Carga los contadores que el contador autenticado puede asignar como auxiliares.
        * @param {number} contadorId - Id del contador.
        * @returns {Promise<{ ok: boolean, contadores?: Array, error?: Object }>}

@@ -211,6 +211,35 @@ export const paginar = (lista, pagina, porPagina) => {
   }
 }
 
+/**
+ * Filtros y página con los que un caso queda a la vista (enlace de un aviso de la campana).
+ * Si los filtros actuales lo muestran se conservan; si lo ocultan (p. ej. ya está Finalizado)
+ * se muestran todos los estados sin otros filtros.
+ * @param {Array<Object>} casos - casos internos del store.
+ * @param {number|string} casoId - id del caso buscado.
+ * @param {Object} filtros - filtros actuales.
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @param {number} porPagina - elementos por página.
+ * @returns {{ filtros: Object, pagina: number }|null} null si el caso no está en la lista.
+ */
+export const ubicarCaso = (casos, casoId, filtros, hoy, porPagina) => {
+  if (casoId === null || casoId === undefined || !casos.some((caso) => String(caso.id) === String(casoId))) {
+    return null
+  }
+
+  const posicionCon = (filtrosUsados) =>
+    filtrarCasos(casos, filtrosUsados, hoy).findIndex((caso) => String(caso.id) === String(casoId))
+
+  let filtrosFinales = filtros
+  let posicion = posicionCon(filtros)
+  if (posicion === -1) {
+    filtrosFinales = { ...FILTROS_INICIALES, estado: 'todos' }
+    posicion = posicionCon(filtrosFinales)
+  }
+
+  return { filtros: filtrosFinales, pagina: Math.floor(posicion / porPagina) + 1 }
+}
+
 // Texto comparable: sin acentos, en minúsculas y sin espacios en los extremos.
 const normalizar = (texto) =>
   String(texto ?? '')

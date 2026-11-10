@@ -161,3 +161,51 @@ describe('Grupo C: página de gestión de auxiliares', () => {
     assert.match(bloque, /map-options/)
   })
 })
+
+// 2026-11-10: «Mis casos» llamaba a esta acción, pero nunca existió en el store; el selector
+// «Registrar caso para» del auxiliar no cargaba (TypeError en la consola).
+describe('Grupo D: contadores a los que apoya el auxiliar («Registrar caso para»)', () => {
+  it('el store pide al servicio los contadores que tienen al usuario como auxiliar', async () => {
+    let idEnviado = null
+    const store = montarStore({
+      listarContadoresQueMeTienenComoAuxiliar: async (id) => {
+        idEnviado = id
+        return [{ id: 7, nombre: 'Contadora Dueña' }]
+      },
+    })
+
+    const resultado = await store.listarContadoresQueMeTienenComoAuxiliar(5)
+
+    assert.strictEqual(idEnviado, 5)
+    assert.deepStrictEqual(resultado, { ok: true, contadores: [{ id: 7, nombre: 'Contadora Dueña' }] })
+  })
+
+  it('si falla, no lanza: devuelve un error de tres partes', async () => {
+    const store = montarStore({
+      listarContadoresQueMeTienenComoAuxiliar: async () => {
+        throw new Error('caída')
+      },
+    })
+
+    const resultado = await store.listarContadoresQueMeTienenComoAuxiliar(5)
+
+    assert.strictEqual(resultado.ok, false)
+    assert.match(resultado.error.mensaje, /\S/)
+  })
+
+  it('«Mis casos» usa la lista de contadores que devuelve el store', () => {
+    assert.match(misCasos, /auxiliaresStore\.listarContadoresQueMeTienenComoAuxiliar\(/)
+    assert.match(misCasos, /contadoresQueMeTienenComoAuxiliar\.value = resultado\.contadores/)
+  })
+})
+
+describe('Grupo E: tras registrar para otro contador, el caso se ve sin recargar', () => {
+  it('alRegistrar refresca la lista cuando el caso fue para el contador al que apoyas', () => {
+    const cuerpo = misCasos.slice(misCasos.indexOf('const alRegistrar'), misCasos.indexOf('const retry'))
+    assert.match(cuerpo, /if \(contadorSeleccionadoParaRegistro\.value !== null\)[\s\S]*?cases\.refrescarEnSilencio\(\)/)
+    assert.ok(
+      cuerpo.indexOf('refrescarEnSilencio') < cuerpo.indexOf('contadorSeleccionadoParaRegistro.value = null'),
+      'refresca antes de limpiar el selector',
+    )
+  })
+})

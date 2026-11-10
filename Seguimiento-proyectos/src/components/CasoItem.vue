@@ -7,7 +7,7 @@
       'caso-item--solo-lectura': soloLectura,
     }"
   >
-    <q-item-section v-if="!soloLectura && !esCasoDeOtroContador" avatar class="caso-item__estrella">
+    <q-item-section v-if="!soloLectura && !soloCambiaEstado" avatar class="caso-item__estrella">
       <q-btn
         flat
         round
@@ -36,9 +36,9 @@
           Importante
           <q-tooltip>Caso marcado como importante: requiere seguimiento especial.</q-tooltip>
         </span>
-        <span v-if="caso.contadorNombre && String(caso.counterId) !== String(contadorAutenticadoId)" class="caso-item__contador-dueño">
+        <span v-if="esCasoDeOtroContador" class="caso-item__contador-dueño">
           de {{ caso.contadorNombre }}
-          <q-tooltip>Este caso lo registró otro contador y tú eres su auxiliar.</q-tooltip>
+          <q-tooltip>{{ ayudaDuenio }}</q-tooltip>
         </span>
         <!-- Con el selector de prioridad (admin) la etiqueta sobraría: el selector ya la muestra. -->
         <PriorityTag v-if="!puedeCambiarPrioridad" :priority="caso.priority" />
@@ -186,7 +186,7 @@
         <q-tooltip>{{ ayudaEstado }}</q-tooltip>
       </q-select>
       <q-btn
-        v-if="!esCasoDeOtroContador"
+        v-if="!soloCambiaEstado"
         outline
         no-caps
         color="primary"
@@ -216,7 +216,8 @@ import { PRIORITIES, PRIORITY_LABELS, STATUSES, STATUS_LABELS } from '../utils/c
  * En `solo-lectura` (dashboard del administrador) el estado se muestra como texto y no se muestran
  * la estrella, «Importante», «Vencido» ni «En proceso desde»; con `puede-cambiar-prioridad`
  * aparece un selector de prioridad (el administrador la cambia y se avisa al contador).
- * En los casos de otro contador (auxiliar) solo queda el selector de estado: ni estrella ni «Editar».
+ * En los casos del contador al que apoyas (`caso.soloEstado`) solo queda el selector de estado:
+ * ni estrella ni «Editar». En los de tus auxiliares la edición es completa.
  */
 const props = defineProps({
   /** Fila de `casoAFila` más `vencido` (boolean). */
@@ -246,12 +247,25 @@ const props = defineProps({
   },
 })
 
-/* Un auxiliar ve los casos de su contador, pero solo puede cambiar el estado. */
+/* Caso de otro integrante del equipo: de un auxiliar tuyo o de un contador al que apoyas. */
 const esCasoDeOtroContador = computed(
   () =>
+    Boolean(props.caso.contadorNombre) &&
     props.contadorAutenticadoId !== null &&
     props.caso.counterId !== undefined &&
     String(props.caso.counterId) !== String(props.contadorAutenticadoId)
+)
+
+/*
+ * Lo decide el backend (`solo_estado`): en los casos del contador al que apoyas solo cambias
+ * el estado; en los de tus auxiliares la edición es completa (estrella y «Editar»).
+ */
+const soloCambiaEstado = computed(() => props.caso.soloEstado === true)
+
+const ayudaDuenio = computed(() =>
+  soloCambiaEstado.value
+    ? 'Este caso es del contador al que apoyas: solo puedes cambiar su estado.'
+    : 'Este caso es de tu auxiliar: puedes editarlo completo.'
 )
 
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
@@ -260,7 +274,7 @@ const proximo = computed(() => Boolean(props.caso.proximo) && !props.soloLectura
 // El vencimiento lo pone el contador dueño; nunca se calcula a partir de la prioridad.
 const ayudaVence = computed(() => {
   if (vencido.value) return 'La fecha de vencimiento ya pasó y el caso no está finalizado.'
-  if (esCasoDeOtroContador.value) return 'Fecha límite que puso el contador dueño del caso.'
+  if (soloCambiaEstado.value) return 'Fecha límite que puso el contador dueño del caso.'
   return props.soloLectura
     ? 'Fecha límite que puso el contador al registrar el caso.'
     : 'Fecha límite para terminar el caso. La pones tú y puedes cambiarla con «Editar».'
@@ -268,7 +282,7 @@ const ayudaVence = computed(() => {
 
 // El auxiliar solo cambia el estado; el dueño puede cambiar todo desde «Editar».
 const ayudaEstado = computed(() =>
-  esCasoDeOtroContador.value
+  soloCambiaEstado.value
     ? 'Solo puedes cambiar el estado. Los demás datos los edita el contador dueño.'
     : 'Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.'
 )
