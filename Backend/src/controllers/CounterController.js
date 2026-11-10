@@ -92,7 +92,7 @@ async function getCasesByCounter(req, res) {
     );
   }
 
-  const casos = await CaseModel.findByCounter(idNumerico, { soloImportantes: pideSoloImportantes(req) });
+  const casos = await CaseModel.findByCounterParaAdmin(idNumerico, { soloImportantes: pideSoloImportantes(req) });
   if (casos.length === 0) {
     return res.status(200).json({
       mensaje: 'El contador no tiene casos registrados',

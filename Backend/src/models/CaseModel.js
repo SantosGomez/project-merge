@@ -40,10 +40,32 @@ async function findByCounterYAuxiliares(contadorId, { soloImportantes = false } 
     `SELECT c.*, u.nombre AS nombre_contador
      FROM casos c
      JOIN usuarios u ON u.id = c.contador_id
-     WHERE c.contador_id = ?
-        OR c.contador_id IN (
-          SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?
-        )${filtroImportante}
+     WHERE (c.contador_id = ? OR c.contador_id IN (
+       SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?
+     ))${filtroImportante}
+     ORDER BY c.id DESC`,
+    [contadorId, contadorId]
+  );
+  return rows;
+}
+
+/**
+ * Devuelve los casos de un contador y de sus auxiliares (para vista de administrador).
+ * Incluye nombre_contador y soporta filtro de importantes.
+ * RF-14, RF-16, RF-AX-07.
+ * @param {number} contadorId - ID del contador.
+ * @param {{ soloImportantes?: boolean }} [opciones] - solo los casos marcados como importantes.
+ * @returns {Promise<Array>} Lista de casos del contador y de sus auxiliares, con nombre_contador.
+ */
+async function findByCounterParaAdmin(contadorId, { soloImportantes = false } = {}) {
+  const filtroImportante = soloImportantes ? ' AND c.importante = 1' : '';
+  const rows = await query(
+    `SELECT c.*, u.nombre AS nombre_contador
+     FROM casos c
+     JOIN usuarios u ON u.id = c.contador_id
+     WHERE (c.contador_id = ? OR c.contador_id IN (
+       SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?
+     ))${filtroImportante}
      ORDER BY c.id DESC`,
     [contadorId, contadorId]
   );
@@ -222,4 +244,4 @@ async function updatePatch(id, campos = {}, ejecutar = query) {
   await ejecutar(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
-module.exports = { findById, findByCounter, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
+module.exports = { findById, findByCounter, findByCounterYAuxiliares, findByCounterParaAdmin, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
