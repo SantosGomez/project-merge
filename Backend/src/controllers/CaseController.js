@@ -324,6 +324,19 @@ async function updateCase(req, res) {
   });
 
   const caso = await CaseModel.findById(casoActual.id);
+
+  // Si quien edita no es el dueño del caso, es un auxiliar: avisar al contador dueño
+  if (req.user.id !== casoActual.contador_id) {
+    const quienEdito = await UserModel.findById(req.user.id);
+    const mensaje = `${quienEdito.nombre} cambió el estado del caso «${casoActual.cliente}».`;
+    await NotificacionModel.crear({
+      usuarioId: casoActual.contador_id,
+      casoId: casoActual.id,
+      mensaje,
+    });
+    eventos.enviarAUsuario(casoActual.contador_id, 'aviso-nuevo', { casoId: casoActual.id });
+  }
+
   eventos.enviarARol('administrador', 'caso-actualizado', { casoId: casoActual.id, contadorId: casoActual.contador_id });
 
   return res.status(200).json({

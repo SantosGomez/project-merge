@@ -1,10 +1,12 @@
 const CaseModel = require('../models/CaseModel');
+const AuxiliarModel = require('../models/AuxiliarModel');
 const { buildError } = require('../utils/errorUtils');
 const { parseCounterId } = require('../utils/validationUtils');
 
 /**
- * Middleware que verifica que el caso exista y pertenezca al contador autenticado.
- * RF-10, RF-11, RF-16.
+ * Middleware que verifica que el caso exista y que el contador autenticado
+ * pueda editarlo: es el dueño del caso o es auxiliar de quien lo es.
+ * RF-10, RF-11, RF-16, RF-AX-10 a RF-AX-12.
  * @param {Object} req - Objeto de petición (req.user con id, req.params.id con ID del caso).
  * @param {Object} res - Objeto de respuesta.
  * @param {Function} next - Función siguiente del middleware.
@@ -30,17 +32,27 @@ async function checkCaseOwnership(req, res, next) {
     return;
   }
 
-  // El caso pertenece a otro contador
-  if (caso.contador_id !== req.user.id) {
-    res.status(403).json(
-      buildError('Acceso denegado', 'caso', 'No tienes permiso para abrir este caso')
-    );
+  // El caso pertenece al contador autenticado
+  if (caso.contador_id === req.user.id) {
+    req.caso = caso;
+    next();
     return;
   }
 
-  // El controlador usa este caso sin volver a consultarlo
-  req.caso = caso;
-  next();
+  // El contador autenticado es auxiliar del contador dueño del caso
+  const auxiliares = await AuxiliarModel.listarAuxiliares(caso.contador_id);
+  const esAuxiliar = auxiliares.some((a) => a.id === req.user.id);
+  if (esAuxiliar) {
+    req.caso = caso;
+    next();
+    return;
+  }
+
+  // El caso pertenece a otro contador y el autenticado no es su auxiliar
+  res.status(403).json(
+    buildError('Acceso denegado', 'caso', 'No tienes permiso para abrir este caso')
+  );
+  return;
 }
 
 module.exports = { checkCaseOwnership };
