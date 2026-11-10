@@ -23,9 +23,10 @@ describe('Grupo A: página de gestión de auxiliares', () => {
     assert.match(pagina, /Mis auxiliares/)
   })
 
-  it('tiene un buscador para encontrar contadores a asignar como auxiliares', () => {
-    assert.match(pagina, /buscar/i)
-    assert.match(pagina, /q-input|q-select/)
+  // Rediseño 2026-11-10: «Agregar auxiliar» abre un diálogo con la lista y un filtro opcional.
+  it('tiene un botón para agregar auxiliares desde una lista', () => {
+    assert.match(pagina, /label="Agregar auxiliar"/)
+    assert.match(pagina, /<AgregarAuxiliaresDialog/)
   })
 
   it('muestra la lista de auxiliares actuales del contador', () => {

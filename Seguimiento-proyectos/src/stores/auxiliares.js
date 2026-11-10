@@ -203,6 +203,33 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
       },
 
       /**
+       * Asigna varios auxiliares de una vez (diálogo «Agregar auxiliares»).
+       * Si uno falla, los demás se asignan igual; al final recarga las listas una sola vez.
+       * @param {number} contadorId - Id del contador.
+       * @param {Array<number>} auxiliaresIds - Ids de los auxiliares marcados.
+       * @returns {Promise<{ ok: boolean, asignados: number, fallidos: Array<{ id: number, error: Object }> }>}
+       */
+      async asignarVarios(contadorId, auxiliaresIds) {
+        this.guardando = true
+        const fallidos = []
+
+        try {
+          for (const auxiliarId of auxiliaresIds) {
+            try {
+              await servicio.asignarAuxiliar(contadorId, auxiliarId)
+            } catch (error) {
+              fallidos.push({ id: auxiliarId, error: normalizarErrorDeGuardado(error, 'la asignación del auxiliar') })
+            }
+          }
+
+          await Promise.all([this.cargarAuxiliares(contadorId), this.cargarDisponibles(contadorId)])
+          return { ok: fallidos.length === 0, asignados: auxiliaresIds.length - fallidos.length, fallidos }
+        } finally {
+          this.guardando = false
+        }
+      },
+
+      /**
        * Quita un auxiliar del contador.
        * @param {number} contadorId - Id del contador.
        * @param {number} auxiliarId - Id del auxiliar.

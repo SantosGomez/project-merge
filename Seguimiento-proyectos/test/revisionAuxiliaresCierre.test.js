@@ -134,25 +134,26 @@ describe('Grupo C: página de gestión de auxiliares', () => {
     assert.doesNotMatch(pagina, /return \[\]/)
   })
 
-  it('carga los contadores disponibles desde el store', () => {
-    assert.match(pagina, /cargarDisponibles/)
-    assert.match(pagina, /auxiliares\.disponibles/)
+  // Desde el rediseño (2026-11-10) los disponibles se eligen en AgregarAuxiliaresDialog.vue.
+  const dialogoAgregar = leer('../src/components/AgregarAuxiliaresDialog.vue')
+
+  it('carga los auxiliares disponibles desde el store', () => {
+    assert.match(dialogoAgregar, /cargarDisponibles/)
+    assert.match(dialogoAgregar, /auxiliares\.disponibles/)
   })
 
-  it('entrega el id del contador, no la opción completa', () => {
-    assert.match(plantilla, /emit-value/)
-    assert.match(plantilla, /map-options/)
+  it('entrega el id del auxiliar, no la opción completa', () => {
+    assert.match(dialogoAgregar, /<q-checkbox v-model="seleccionados" :val="auxiliar\.id"/)
   })
 
   it('compara los ids como números', () => {
-    assert.match(pagina, /const idPropio = Number\(session\.id\)/)
+    assert.match(dialogoAgregar, /Number\(session\.id\)/)
+    assert.match(pagina, /Number\(session\.id\)/)
   })
 
   it('usa clases propias para los campos, no etiquetas de Quasar', () => {
-    assert.match(plantilla, /class="input-moderno auxiliares-page__campo"/)
-    assert.match(plantilla, /class="selector-moderno auxiliares-page__campo"/)
-    assert.match(estilos, /\.auxiliares-page__campo\s*\{/)
-    assert.doesNotMatch(estilos, /\.auxiliares-page__asignar q-(input|select)/)
+    assert.match(dialogoAgregar, /class="input-moderno"/)
+    assert.doesNotMatch(estilos, /\.auxiliares-page__\w+ q-(input|select)/)
   })
 
   it('el selector «Registrar caso para» de Mis casos también entrega el id', () => {
@@ -214,8 +215,82 @@ describe('Grupo E: tras registrar para otro contador, el caso se ve sin recargar
 // los asignados nunca se mostraban aunque se guardaran.
 describe('Grupo F: «Mis auxiliares» muestra a los asignados', () => {
   it('la lista recorre auxiliares.auxiliares, no el store', () => {
-    assert.match(plantilla, /<q-list v-if="auxiliares\.auxiliares\.length > 0"/)
+    assert.match(plantilla, /<q-list\s+v-if="auxiliares\.auxiliares\.length > 0"/)
     assert.match(plantilla, /v-for="auxiliar in auxiliares\.auxiliares"/)
     assert.doesNotMatch(plantilla, /v-if="auxiliares\.length/)
+  })
+})
+
+// 2026-11-10: rediseño de la vinculación (decisión del usuario): botón «Agregar auxiliar» que abre
+// un diálogo con todos los disponibles (filtro opcional, se marcan uno o varios) y confirmación al quitar.
+describe('Grupo G: asignar varios auxiliares desde el diálogo', () => {
+  it('asigna cada uno y recarga las listas una sola vez', async () => {
+    const asignados = []
+    let recargas = 0
+    const store = montarStore({
+      asignarAuxiliar: async (contadorId, auxiliarId) => asignados.push([contadorId, auxiliarId]),
+      listarAuxiliares: async () => {
+        recargas += 1
+        return [{ id: 7, nombre: 'Siete' }, { id: 8, nombre: 'Ocho' }]
+      },
+      listarDisponibles: async () => [],
+    })
+
+    const resultado = await store.asignarVarios(3, [7, 8])
+
+    assert.deepStrictEqual(asignados, [[3, 7], [3, 8]])
+    assert.strictEqual(recargas, 1, 'una sola recarga al final')
+    assert.deepStrictEqual(resultado, { ok: true, asignados: 2, fallidos: [] })
+    assert.deepStrictEqual(store.auxiliares.map((a) => a.id), [7, 8])
+    assert.strictEqual(store.guardando, false)
+  })
+
+  it('si uno falla, los demás se asignan y se informa cuál falló', async () => {
+    const store = montarStore({
+      asignarAuxiliar: async (_contadorId, auxiliarId) => {
+        if (auxiliarId === 8) throw { mensaje: 'Qué ocurrió: La cuenta no es un auxiliar.' }
+      },
+      listarAuxiliares: async () => [{ id: 7, nombre: 'Siete' }],
+      listarDisponibles: async () => [],
+    })
+
+    const resultado = await store.asignarVarios(3, [7, 8])
+
+    assert.strictEqual(resultado.ok, false)
+    assert.strictEqual(resultado.asignados, 1)
+    assert.deepStrictEqual(resultado.fallidos.map((f) => f.id), [8])
+    assert.match(resultado.fallidos[0].error.mensaje, /no es un auxiliar/)
+    assert.strictEqual(store.guardando, false)
+  })
+})
+
+describe('Grupo H: «Mis auxiliares» rediseñada', () => {
+  const dialogo = leer('../src/components/AgregarAuxiliaresDialog.vue')
+  const plantillaDialogo = dialogo.split('<script')[0]
+
+  it('la pantalla abre el diálogo con «Agregar auxiliar» y ya no tiene el buscador de dos pasos', () => {
+    assert.match(plantilla, /label="Agregar auxiliar"[\s\S]*?@click="dialogoAgregarAbierto = true"/)
+    assert.match(plantilla, /<AgregarAuxiliaresDialog[\s\S]*?v-model="dialogoAgregarAbierto"/)
+    assert.match(plantilla, /action-label="Agregar auxiliar"[\s\S]*?@action="dialogoAgregarAbierto = true"/)
+    assert.doesNotMatch(plantilla, /Buscar un auxiliar para asignarlo/)
+  })
+
+  it('las filas de la lista no fingen ser clicables y quitar pide confirmación', () => {
+    assert.doesNotMatch(plantilla, /class="q-item--nav auxiliar-item"/)
+    assert.match(pagina, /\$q\.dialog\(\{[\s\S]*?title: '¿Quitar auxiliar\?'[\s\S]*?\.onOk\(/)
+  })
+
+  it('el diálogo lista a todos los disponibles con casilla, filtro opcional y «Asignar (n)»', () => {
+    assert.match(plantillaDialogo, /transition-show="dialogo-entra"/)
+    assert.match(plantillaDialogo, /<q-checkbox/)
+    assert.match(plantillaDialogo, /placeholder="Filtrar por nombre"/)
+    assert.match(plantillaDialogo, /:label="`Asignar \(\$\{seleccionados\.length\}\)`"/)
+    assert.match(plantillaDialogo, /:disable="seleccionados\.length === 0 \|\| guardando"/)
+  })
+
+  it('el diálogo muestra el error de carga de disponibles con «Reintentar» y explica quién da de alta', () => {
+    assert.match(plantillaDialogo, /auxiliares\.errorDisponibles/)
+    assert.match(plantillaDialogo, /label="Reintentar"/)
+    assert.match(dialogo, /usuario de sistema/)
   })
 })
