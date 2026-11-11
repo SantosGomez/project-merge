@@ -54,10 +54,12 @@ describe('El menú lateral es la navegación principal', () => {
     const opciones = [...plantillaLayout.matchAll(/:to="\{ name: '([\w-]+)' \}"/g)]
     assert.ok(opciones.length >= 7, 'opciones del menú')
     for (const [, nombre] of opciones) {
-      assert.ok(
-        plantillaLayout.includes(`:aria-current="paginaActual('${nombre}')"`),
-        `${nombre}: marca la página actual`,
-      )
+      // «Auditorías» también es la página actual en la ficha de una auditoría (enAuditorias).
+      const marca =
+        nombre === 'auditorias'
+          ? `:aria-current="enAuditorias ? 'page' : undefined"`
+          : `:aria-current="paginaActual('${nombre}')"`
+      assert.ok(plantillaLayout.includes(marca), `${nombre}: marca la página actual`)
     }
     assert.match(layout, /const paginaActual = \(nombre\) => \(route\.name === nombre \? 'page' : undefined\)/)
   })

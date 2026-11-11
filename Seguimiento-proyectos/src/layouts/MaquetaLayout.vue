@@ -7,10 +7,16 @@
       color="primary"
       label="Saltar al contenido"
       class="saltar-contenido"
+      :inert="fondoBloqueado"
       @click="saltarAlContenido"
     />
 
-    <q-header v-if="$q.screen.lt.md" elevated class="bg-primary text-dg-texto-claro">
+    <q-header
+      v-if="$q.screen.lt.md"
+      elevated
+      class="bg-primary text-dg-texto-claro"
+      :inert="fondoBloqueado"
+    >
       <div class="layout-bar">
         <div class="layout-bar__row">
           <q-btn
@@ -104,7 +110,6 @@
                 <q-item-label>Resumen del equipo</q-item-label>
                 <q-item-label caption>Ver conteos y casos</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir al resumen del equipo: conteos y casos de cada contador</q-tooltip>
             </q-item>
 
             <q-item
@@ -123,7 +128,6 @@
                 <q-item-label>Directorio</q-item-label>
                 <q-item-label caption>Ver cuentas y elegir contador</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir al directorio de usuarios</q-tooltip>
             </q-item>
 
             <q-item
@@ -132,7 +136,8 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'auditorias' }"
-              :aria-current="paginaActual('auditorias')"
+              :active="enAuditorias"
+              :aria-current="enAuditorias ? 'page' : undefined"
               aria-label="Ir a auditorías"
             >
               <q-item-section avatar>
@@ -142,7 +147,6 @@
                 <q-item-label>Auditorías</q-item-label>
                 <q-item-label caption>Registrar y dar seguimiento</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir a auditorías</q-tooltip>
             </q-item>
           </template>
 
@@ -166,7 +170,6 @@
                 <q-item-label>Mi resumen</q-item-label>
                 <q-item-label caption>Gráficas de casos y auditorías</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir a mi resumen con las gráficas de tus casos y auditorías</q-tooltip>
             </q-item>
 
 
@@ -186,7 +189,6 @@
                 <q-item-label>Mis casos</q-item-label>
                 <q-item-label caption>Registrar, revisar y editar</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir a mis casos</q-tooltip>
             </q-item>
 
             <!-- Solo el contador gestiona auxiliares y entra a auditorías; el auxiliar, no. -->
@@ -207,7 +209,6 @@
                 <q-item-label>Mis auxiliares</q-item-label>
                 <q-item-label caption>Auxiliares que te apoyan</q-item-label>
               </q-item-section>
-              <q-tooltip>Gestiona tus auxiliares: quiénes pueden ayudarte con tus casos.</q-tooltip>
             </q-item>
 
 
@@ -218,7 +219,8 @@
               class="q-item--nav"
               active-class="q-item--nav-activo"
               :to="{ name: 'auditorias' }"
-              :aria-current="paginaActual('auditorias')"
+              :active="enAuditorias"
+              :aria-current="enAuditorias ? 'page' : undefined"
               aria-label="Ir a auditorías"
             >
               <q-item-section avatar>
@@ -228,7 +230,6 @@
                 <q-item-label>Auditorías</q-item-label>
                 <q-item-label caption>Registrar y dar seguimiento</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir a auditorías</q-tooltip>
             </q-item>
           </template>
 
@@ -251,7 +252,6 @@
                 <q-item-label>Directorio</q-item-label>
                 <q-item-label caption>Crear cuentas y cambiar contraseñas</q-item-label>
               </q-item-section>
-              <q-tooltip>Ir al directorio de usuarios</q-tooltip>
             </q-item>
           </template>
         </q-list>
@@ -285,7 +285,6 @@
             <q-item-section>
               <q-item-label>Cerrar sesión</q-item-label>
             </q-item-section>
-            <q-tooltip>Cierra la sesión actual y vuelve a la pantalla de inicio de sesión.</q-tooltip>
           </q-item>
         </div>
       </div>
@@ -296,6 +295,7 @@
       tabindex="-1"
       class="contenedor-paginas"
       :class="{ 'contenedor-paginas--acompana-menu': acompanarMenu }"
+      :inert="fondoBloqueado"
     >
       <header v-if="$q.screen.gt.sm" class="page-header">
         <h1 class="page-header__title">{{ pageTitle }}</h1>
@@ -441,6 +441,9 @@ const alternarMenuFijado = () => {
 // En el celular: al abrir el menú el foco entra a la primera opción; al cerrarlo vuelve al botón.
 const botonMenu = ref(null)
 
+// Con el menú del celular abierto, la barra y el contenido quedan inertes: el foco no sale del menú.
+const fondoBloqueado = computed(() => !esEscritorio.value && drawerOpen.value)
+
 /** Escape cierra el menú del celular también con el foco dentro (Quasar no lo hace). */
 const cerrarMenuMovil = () => {
   if (esEscritorio.value || !drawerOpen.value) return
@@ -466,6 +469,11 @@ const pageTitle = computed(() => route.meta.titulo ?? 'Pantalla')
 
 /** `aria-current` de cada opción del menú: el lector anuncia en qué pantalla estás. */
 const paginaActual = (nombre) => (route.name === nombre ? 'page' : undefined)
+
+/** La ficha de una auditoría es una ruta hermana: «Auditorías» sigue marcado como activo. */
+const enAuditorias = computed(() =>
+  ['auditorias', 'auditoria-ficha'].includes(route.name),
+)
 
 /** «Saltar al contenido»: lleva el foco al contenido de la página. */
 const saltarAlContenido = () => {
@@ -853,6 +861,12 @@ onBeforeUnmount(() => {
 
 .q-item--nav .q-item__label--caption {
   color: var(--dg-texto-claro-tenue);
+}
+
+/* Foco celeste en los ítems, como el logo; el anillo blanco global tapaba la franja del activo. */
+.q-item--nav:focus-visible {
+  outline: 2px solid var(--q-secondary) !important;
+  outline-offset: -2px;
 }
 
 .q-item--nav-activo {

@@ -317,7 +317,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.match(nav, /min-height:\s*0/, 'la lista puede encogerse y hacer scroll')
   })
 
-  it('el pie ofrece «Cerrar sesión» con su tooltip y abre la confirmación existente', () => {
+  it('el pie ofrece «Cerrar sesión» sin tooltip y abre la confirmación existente', () => {
     const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('</q-drawer>'))
     assert.ok(pie.includes('class="q-item--nav"'), 'la opción usa el estilo del menú')
     assert.match(
@@ -327,11 +327,9 @@ describe('Drawer sidebar — verificación estática', () => {
     )
     assert.match(pie, /<q-icon name="logout" \/>/, 'falta el icono de salir')
     assert.match(pie, /@click="abrirDialogoCierre"/, 'la opción abre la confirmación existente')
-    assert.match(
-      pie,
-      /<q-tooltip>Cierra la sesión actual y vuelve a la pantalla de inicio de sesión\.<\/q-tooltip>/,
-      'falta el tooltip de la opción',
-    )
+    // Los ítems del menú no llevan tooltip: la etiqueta ya lo dice (revisión del menú, 2026-11-11).
+    const opcionSalir = pie.slice(pie.indexOf('<q-item'), pie.indexOf('</q-item>'))
+    assert.doesNotMatch(opcionSalir, /<q-tooltip/, 'la opción no repite su etiqueta en un tooltip')
     assert.ok(
       pie.indexOf('Cerrar sesión') > pie.indexOf('drawer-usuario__rol'),
       'la opción va debajo del nombre y el rol',
@@ -468,10 +466,7 @@ describe('Drawer sidebar — verificación estática', () => {
     )
   })
 
-  it('tiene q-tooltip en cada ítem', () => {
-    const count = (src.match(/<q-tooltip>/g) || []).length
-    assert.ok(count >= 4, `se esperan al menos 4 q-tooltip, hay ${count}`)
-  })
+  // «q-tooltip en cada ítem» se retiró: los ítems ya no llevan tooltip (revisionMenuLateral.test.js).
 
   it('tiene botón de menú en cabecera, visible mientras se vea la barra', () => {
     assert.ok(src.includes('icon="menu"'), 'falta icon menu')
@@ -697,7 +692,7 @@ describe('Directorio de usuarios (rebanada 2: el usuario de sistema entra) — v
 
     assert.match(seccion, /:to="\{ name: 'admin-directorio' \}"/, 'lleva al directorio')
     assert.match(seccion, /<q-item-label>Directorio<\/q-item-label>/, 'nombre de la opción')
-    assert.match(seccion, /<q-tooltip>Ir al directorio de usuarios<\/q-tooltip>/, 'tooltip de la opción')
+    assert.doesNotMatch(seccion, /<q-tooltip/, 'sin tooltip: la etiqueta y el subtítulo dan el contexto')
     assert.match(seccion, /aria-label="Ir al directorio de usuarios"/, 'nombre accesible')
   })
 
