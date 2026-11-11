@@ -323,20 +323,32 @@ const abrirEdicion = (caseId) => {
 }
 
 // Abre la ficha de solo lectura con los datos completos del caso.
-const abrirDetalle = (caseId) => {
+const casoParaDetalle = (caseId) => {
   const caso = cases.casos.find((c) => String(c.id) === String(caseId)) ?? null
-  if (caso) {
-    // El POST /casos no devuelve el nombre del contador (sin join); si es el propio, se usa el de la sesión.
-    if (!caso.nombre_contador && session.nombreVisible && String(caso.contador_id) === String(session.id)) {
-      casoEnDetalle.value = { ...caso, nombre_contador: session.nombreVisible }
-    } else {
-      casoEnDetalle.value = caso
-    }
-  } else {
-    casoEnDetalle.value = null
+  // El POST /casos no devuelve el nombre del contador (sin join); si es el propio, se usa el de la sesión.
+  if (caso && !caso.nombre_contador && session.nombreVisible && String(caso.contador_id) === String(session.id)) {
+    return { ...caso, nombre_contador: session.nombreVisible }
   }
+  return caso
+}
+
+const abrirDetalle = (caseId) => {
+  casoEnDetalle.value = casoParaDetalle(caseId)
   detalleAbierto.value = casoEnDetalle.value !== null
 }
+
+/*
+ * Si el caso cambia mientras la ficha está abierta (aviso en tiempo real o recarga silenciosa),
+ * la ficha recibe la versión nueva y ella misma dice qué cambió. Si el caso ya no está en la
+ * lista, la ficha conserva lo último que mostró. Se vigila el caso tal como está en el store:
+ * su identidad solo cambia cuando llega una versión nueva.
+ */
+watch(
+  () => cases.casos.find((c) => String(c.id) === String(casoEnDetalle.value?.id)),
+  (nuevo) => {
+    if (detalleAbierto.value && nuevo) casoEnDetalle.value = casoParaDetalle(nuevo.id)
+  },
+)
 
 const alGuardarEdicion = () => {
   $q.notify({ type: 'positive', message: 'Cambios guardados.' })

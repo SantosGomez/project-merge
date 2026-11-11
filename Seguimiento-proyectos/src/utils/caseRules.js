@@ -111,7 +111,11 @@ export const cambiosDelCaso = (caso, formulario) => {
     ['estado', caso.estado, formulario.estado],
     ['prioridad', caso.prioridad, formulario.prioridad],
     ['fecha_inicio', fechaParaFormulario(caso.fecha_inicio), textoLimpio(formulario.fechaInicio)],
-    ['fecha_vencimiento', fechaParaFormulario(caso.fecha_vencimiento), textoLimpio(formulario.fechaVencimiento)],
+    [
+      'fecha_vencimiento',
+      fechaParaFormulario(caso.fecha_vencimiento),
+      textoLimpio(formulario.fechaVencimiento),
+    ],
     ['descripcion', textoLimpio(caso.descripcion), textoLimpio(formulario.descripcion)],
     ['observaciones', textoLimpio(caso.observaciones), textoLimpio(formulario.observaciones)],
   ]
@@ -127,4 +131,36 @@ export const cambiosDelCaso = (caso, formulario) => {
   }
 
   return cambios
+}
+
+// Campos que muestra la ficha «Ver», en su orden, y cómo se compara cada uno.
+const dia = (fecha) => (typeof fecha === 'string' ? fecha.slice(0, 10) : '')
+const texto = (valor) => (valor === null || valor === undefined ? '' : String(valor).trim())
+const COMPARADORES_FICHA = Object.freeze({
+  cliente: texto,
+  prioridad: texto,
+  estado: texto,
+  importante: Boolean,
+  contador_id: texto,
+  fecha_inicio: dia,
+  fecha_vencimiento: dia,
+  en_proceso_en: dia,
+  descripcion: texto,
+  observaciones: texto,
+})
+
+/**
+ * Campos de la ficha «Ver» que cambiaron entre dos versiones del mismo caso (por ejemplo,
+ * cuando otra persona lo actualiza mientras la ficha está abierta).
+ * Las fechas se comparan por día y los vacíos (null, '', undefined) cuentan como iguales.
+ * @param {Object|null} anterior - caso que se estaba mostrando.
+ * @param {Object|null} nuevo - caso recién recibido del store.
+ * @returns {Array<string>} claves cambiadas, en el orden de la ficha.
+ */
+export const camposActualizadosDelCaso = (anterior, nuevo) => {
+  if (!anterior || !nuevo) return []
+  return Object.keys(COMPARADORES_FICHA).filter(
+    (campo) =>
+      COMPARADORES_FICHA[campo](anterior[campo]) !== COMPARADORES_FICHA[campo](nuevo[campo]),
+  )
 }

@@ -5,7 +5,6 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  formatearEstado,
   formatearIniciales,
   formatearPrioridad,
   formatearRol,
@@ -36,29 +35,6 @@ test('formatearRol devuelve el nombre legible del rol', () => {
   assert.equal(formatearRol('usuarios_de_sistema'), 'Usuario de sistema')
   assert.equal(formatearRol(null), '')
   assert.equal(formatearRol('invitado'), '')
-})
-
-test('formatearEstado devuelve el texto en español de cada estado', () => {
-  const esperados = {
-    Pendiente: 'Pendiente',
-    'En proceso': 'En proceso',
-    Finalizado: 'Finalizado',
-  }
-
-  for (const [estado, texto] of Object.entries(esperados)) {
-    const etiqueta = formatearEstado(estado)
-
-    comprobarEtiqueta(etiqueta, `estado ${estado}`)
-    assert.equal(etiqueta.texto, texto, `el estado ${estado} se muestra con su texto (RF-13)`)
-  }
-})
-
-test('formatearEstado da un texto distinto a cada estado', () => {
-  const textos = ['Pendiente', 'En proceso', 'Finalizado'].map(
-    (estado) => formatearEstado(estado).texto,
-  )
-
-  assert.equal(new Set(textos).size, 3, 'los tres estados se distinguen por su texto (RNF-06)')
 })
 
 test('formatearPrioridad devuelve Alta en rojo, Media en ámbar y Baja en verde', () => {

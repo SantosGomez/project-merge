@@ -273,3 +273,84 @@ describe('Grupo E: correcciones de la revisión de la ficha', () => {
     )
   })
 })
+
+describe('Grupo F: la ficha se actualiza mientras está abierta', () => {
+  const base = {
+    id: 7,
+    cliente: 'Cliente',
+    estado: 'pendiente',
+    prioridad: 'media',
+    importante: false,
+    contador_id: 3,
+    fecha_inicio: '2026-11-01',
+    fecha_vencimiento: '2026-11-20',
+    en_proceso_en: null,
+    descripcion: null,
+    observaciones: '',
+  }
+
+  it('camposActualizadosDelCaso dice qué campos cambiaron, en el orden de la ficha', async () => {
+    const { camposActualizadosDelCaso } = await import('../src/utils/caseRules.js')
+    assert.deepEqual(camposActualizadosDelCaso(base, { ...base }), [], 'sin cambios')
+    assert.deepEqual(
+      camposActualizadosDelCaso(base, {
+        ...base,
+        estado: 'en_proceso',
+        en_proceso_en: '2026-11-11 10:00:00',
+        fecha_vencimiento: '2026-11-25',
+        observaciones: 'Nueva nota',
+      }),
+      ['estado', 'fecha_vencimiento', 'en_proceso_en', 'observaciones'],
+    )
+  })
+
+  it('no cuenta como cambio una hora distinta, un vacío equivalente ni 0/false', async () => {
+    const { camposActualizadosDelCaso } = await import('../src/utils/caseRules.js')
+    assert.deepEqual(
+      camposActualizadosDelCaso(base, {
+        ...base,
+        fecha_inicio: '2026-11-01 00:00:00',
+        descripcion: '',
+        observaciones: null,
+        importante: 0,
+        contador_id: '3',
+      }),
+      [],
+    )
+    assert.deepEqual(camposActualizadosDelCaso(null, base), [], 'sin caso anterior no hay cambios')
+  })
+
+  it('la página sigue al caso del store mientras la ficha está abierta', () => {
+    const script = scriptDe(myCases)
+    assert.match(
+      script,
+      /watch\(\s*\(\) => cases\.casos\.find\([^\n]*casoEnDetalle\.value\?\.id/,
+      'vigila el caso',
+    )
+    assert.match(script, /detalleAbierto\.value && nuevo/, 'solo con la ficha abierta')
+  })
+
+  it('la ficha avisa con texto qué cambió y lo anuncia a lectores de pantalla', () => {
+    const plantilla = plantillaDe(detalle)
+    const script = scriptDe(detalle)
+    assert.match(script, /camposActualizadosDelCaso\(anterior, nuevo\)/, 'compara el caso anterior')
+    assert.match(plantilla, /role="status"/, 'aviso anunciado')
+    assert.match(plantilla, /Este caso se actualizó mientras lo veías/, 'texto del aviso')
+    assert.match(plantilla, /detalle-campo--actualizado/, 'campo cambiado resaltado')
+  })
+})
+
+describe('Grupo G: «Importante» solo como chip', () => {
+  it('el chip va junto al cliente y no hay fila «Importante» con «No»', () => {
+    const plantilla = plantillaDe(detalle)
+    const cabecera = plantilla.slice(0, plantilla.indexOf('detalle-caso__body'))
+    assert.match(
+      cabecera,
+      /v-if="caso\.importante"[^>]*class="detalle-importante"/,
+      'chip en la cabecera',
+    )
+    const cuerpo = plantilla.slice(plantilla.indexOf('detalle-caso__body'))
+    assert.doesNotMatch(cuerpo, /Importante/, 'sin fila Importante en el cuerpo')
+    assert.doesNotMatch(cuerpo, />No</, 'sin valor «No»')
+  })
+})

@@ -13,19 +13,35 @@
             <q-icon name="visibility" size="18px" />
           </span>
           <div class="detalle-caso__head-texto">
-            <h2 id="detalle-caso-titulo" class="detalle-caso__title">{{ caso.cliente }}</h2>
+            <div class="detalle-caso__title-row">
+              <h2 id="detalle-caso-titulo" class="detalle-caso__title">{{ caso.cliente }}</h2>
+              <span v-if="caso.importante" class="detalle-importante">
+                <q-icon name="star" size="12px" aria-hidden="true" />
+                Importante
+                <q-tooltip>Caso marcado como importante: requiere seguimiento especial.</q-tooltip>
+              </span>
+            </div>
             <p class="detalle-caso__ayuda">{{ textoAyuda }}</p>
           </div>
         </div>
       </q-card-section>
 
       <q-card-section class="detalle-caso__body">
+        <!-- Otra persona cambió el caso con la ficha abierta: se dice qué cambió, no solo se pinta. -->
+        <p v-if="camposActualizados.length > 0" class="detalle-aviso-cambio" role="status">
+          <q-icon name="sync" size="16px" aria-hidden="true" />
+          <span>Este caso se actualizó mientras lo veías: {{ textoCamposActualizados }}.</span>
+        </p>
+
         <!-- Datos del caso y fechas en dos columnas -->
         <section class="detalle-seccion">
           <h3 class="detalle-seccion__titulo">Datos del caso</h3>
           <div class="detalle-seccion__columnas">
             <div class="detalle-columna">
-              <div class="detalle-campo">
+              <div
+                class="detalle-campo"
+                :class="{ 'detalle-campo--actualizado': cambio('prioridad') }"
+              >
                 <div class="detalle-label">
                   <q-icon name="flag" size="16px" aria-hidden="true" />
                   <span>Prioridad</span>
@@ -35,7 +51,10 @@
                 </div>
               </div>
 
-              <div class="detalle-campo">
+              <div
+                class="detalle-campo"
+                :class="{ 'detalle-campo--actualizado': cambio('estado') }"
+              >
                 <div class="detalle-label">
                   <q-icon name="tune" size="16px" aria-hidden="true" />
                   <span>Estado</span>
@@ -56,24 +75,10 @@
                 </div>
               </div>
 
-              <div class="detalle-campo">
-                <div class="detalle-label">
-                  <q-icon name="star" size="16px" aria-hidden="true" />
-                  <span>Importante</span>
-                </div>
-                <div class="detalle-value">
-                  <span v-if="caso.importante" class="detalle-importante">
-                    <q-icon name="star" size="12px" aria-hidden="true" />
-                    Importante
-                    <q-tooltip
-                      >Caso marcado como importante: requiere seguimiento especial.</q-tooltip
-                    >
-                  </span>
-                  <span v-else class="detalle-vacio">No</span>
-                </div>
-              </div>
-
-              <div class="detalle-campo">
+              <div
+                class="detalle-campo"
+                :class="{ 'detalle-campo--actualizado': cambio('contador_id') }"
+              >
                 <div class="detalle-label">
                   <q-icon name="person" size="16px" aria-hidden="true" />
                   <span>Contador asignado</span>
@@ -83,7 +88,10 @@
             </div>
 
             <div class="detalle-columna">
-              <div class="detalle-campo">
+              <div
+                class="detalle-campo"
+                :class="{ 'detalle-campo--actualizado': cambio('fecha_inicio') }"
+              >
                 <div class="detalle-label">
                   <q-icon name="event" size="16px" aria-hidden="true" />
                   <span>Fecha de inicio</span>
@@ -93,7 +101,10 @@
                 </div>
               </div>
 
-              <div class="detalle-campo">
+              <div
+                class="detalle-campo"
+                :class="{ 'detalle-campo--actualizado': cambio('fecha_vencimiento') }"
+              >
                 <div class="detalle-label">
                   <q-icon name="schedule" size="16px" aria-hidden="true" />
                   <span>Fecha de vencimiento</span>
@@ -112,7 +123,10 @@
                 </div>
               </div>
 
-              <div class="detalle-campo">
+              <div
+                class="detalle-campo"
+                :class="{ 'detalle-campo--actualizado': cambio('en_proceso_en') }"
+              >
                 <div class="detalle-label">
                   <q-icon name="play_circle_outline" size="16px" aria-hidden="true" />
                   <span>En proceso desde</span>
@@ -128,7 +142,10 @@
         <!-- Texto libre -->
         <section class="detalle-seccion">
           <h3 class="detalle-seccion__titulo">Descripción y observaciones</h3>
-          <div class="detalle-bloque">
+          <div
+            class="detalle-bloque"
+            :class="{ 'detalle-campo--actualizado': cambio('descripcion') }"
+          >
             <div class="detalle-label">
               <q-icon name="description" size="16px" aria-hidden="true" />
               <span>Descripción</span>
@@ -140,7 +157,10 @@
               {{ caso.descripcion || 'Sin descripción' }}
             </div>
           </div>
-          <div class="detalle-bloque">
+          <div
+            class="detalle-bloque"
+            :class="{ 'detalle-campo--actualizado': cambio('observaciones') }"
+          >
             <div class="detalle-label">
               <q-icon name="sticky_note_2" size="16px" aria-hidden="true" />
               <span>Observaciones</span>
@@ -165,10 +185,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { useSessionStore } from '../stores/session.js'
 import PriorityTag from './PriorityTag.vue'
+import { camposActualizadosDelCaso } from '../utils/caseRules.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { esCasoProximoAVencer, esCasoVencido, hoyLocal } from '../utils/filtrosCasos.js'
@@ -216,6 +237,44 @@ const nombreContador = computed(() => {
     return 'Tú'
   }
   return props.caso.nombre_contador || 'Sin asignar'
+})
+
+// Nombre visible de cada campo en el aviso de cambios.
+const ETIQUETAS_CAMPO = {
+  cliente: 'cliente',
+  prioridad: 'prioridad',
+  estado: 'estado',
+  importante: 'marca de importante',
+  contador_id: 'contador asignado',
+  fecha_inicio: 'fecha de inicio',
+  fecha_vencimiento: 'fecha de vencimiento',
+  en_proceso_en: 'en proceso desde',
+  descripcion: 'descripción',
+  observaciones: 'observaciones',
+}
+
+// Campos que cambiaron con la ficha abierta; se acumulan hasta cerrarla.
+const camposActualizados = ref([])
+const cambio = (campo) => camposActualizados.value.includes(campo)
+const textoCamposActualizados = computed(() =>
+  camposActualizados.value.map((campo) => ETIQUETAS_CAMPO[campo]).join(', '),
+)
+
+watch(
+  () => props.caso,
+  (nuevo, anterior) => {
+    // Otro caso (o la ficha cerrada) no es una actualización: se empieza de cero.
+    if (!dialogoAbierto.value || String(nuevo?.id) !== String(anterior?.id)) {
+      camposActualizados.value = []
+      return
+    }
+    const cambiados = camposActualizadosDelCaso(anterior, nuevo)
+    camposActualizados.value = [...new Set([...camposActualizados.value, ...cambiados])]
+  },
+)
+
+watch(dialogoAbierto, (abierto) => {
+  if (!abierto) camposActualizados.value = []
 })
 
 const cerrar = () => {
@@ -268,6 +327,14 @@ const cerrar = () => {
   font-size: 1.15rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+.detalle-caso__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
 }
 
 .detalle-caso__ayuda {
@@ -425,6 +492,37 @@ const cerrar = () => {
   scrollbar-width: thin;
   scrollbar-color: var(--dg-borde-fuerte) transparent;
   padding-right: 4px;
+}
+
+.detalle-aviso-cambio {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--dg-borde-fuerte);
+  border-radius: 8px;
+  background: var(--dg-fondo-seleccion);
+  color: var(--dg-texto);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.detalle-aviso-cambio .q-icon {
+  margin-top: 2px;
+  color: var(--dg-acento);
+}
+
+/* El campo que cambió se resalta; el aviso de arriba lo dice también con texto. */
+.detalle-campo--actualizado {
+  border-radius: 6px;
+  background: var(--dg-fondo-seleccion);
+  box-shadow: 0 0 0 4px var(--dg-fondo-seleccion);
+}
+
+.detalle-bloque.detalle-campo--actualizado {
+  border-color: var(--dg-acento);
+  box-shadow: none;
 }
 
 .detalle-vacio {

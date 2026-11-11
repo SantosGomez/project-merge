@@ -6,34 +6,6 @@
 import { PRIORITY_COLORS, PRIORITY_LABELS } from './constants.js'
 import { prioridadDeBackend } from './traduccionBackend.js'
 
-/** Texto, color de Quasar y ayuda contextual de cada estado del backend. */
-const ESTADOS = new Map([
-  [
-    'Pendiente',
-    {
-      texto: 'Pendiente',
-      color: 'orange',
-      tooltip: 'El caso todavía no se ha empezado: está esperando a que se atienda.',
-    },
-  ],
-  [
-    'En proceso',
-    {
-      texto: 'En proceso',
-      color: 'blue',
-      tooltip: 'El caso está siendo atendido y todavía no ha terminado.',
-    },
-  ],
-  [
-    'Finalizado',
-    {
-      texto: 'Finalizado',
-      color: 'green',
-      tooltip: 'El caso ya está terminado; no queda trabajo pendiente en él.',
-    },
-  ],
-])
-
 /** Nombre legible de cada rol con pantalla. */
 const ROLES = new Map([
   ['administrador', 'Administrador'],
@@ -48,12 +20,6 @@ const TOOLTIPS_PRIORIDAD = {
   media: 'Prioridad media: el caso es importante, pero puede esperar a los urgentes.',
   baja: 'Prioridad baja: el caso puede atenderse después de los urgentes e importantes.',
 }
-
-/**
- * Etiqueta de un estado del backend.
- * Un estado desconocido devuelve `null`: no se inventa una etiqueta.
- */
-export const formatearEstado = (estado) => ESTADOS.get(estado) ?? null
 
 /**
  * Dos primeras letras del nombre de usuario, en mayúsculas.
