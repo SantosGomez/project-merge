@@ -12,8 +12,8 @@
       <q-card-section>
         <h2 id="contadores-auxiliar-titulo" class="contadores-auxiliar__title">Contadores que apoya</h2>
         <p class="contadores-auxiliar__help">
-          {{ cuenta?.nombre }} verá los casos de estos contadores y podrá cambiar su estado. A los que
-          agregues se les avisará.
+          {{ cuenta?.nombre }} verá los casos de estos contadores y podrá cambiar su estado. Al guardar se avisa a {{ cuenta?.nombre }} y a cada contador que agregues o quites.
+          Cada contador también puede cambiar su equipo desde «Mis auxiliares».
         </p>
       </q-card-section>
 

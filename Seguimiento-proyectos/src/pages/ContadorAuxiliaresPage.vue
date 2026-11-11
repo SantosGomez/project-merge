@@ -4,7 +4,8 @@
       <h1 class="auxiliares-page__title">Mis auxiliares</h1>
       <p class="auxiliares-page__lead">
         Aquí están los auxiliares que te apoyan con tus casos. Pueden cambiar el estado
-        de tus casos y tú recibirás un aviso cada vez que lo hagan.
+        de tus casos y tú recibirás un aviso cada vez que lo hagan. Tú puedes agregar o quitar
+        auxiliares, y el despacho también puede hacerlo; si lo hace, te llegará un aviso.
       </p>
       <q-btn
         unelevated
@@ -140,7 +141,7 @@ const confirmarQuitar = (auxiliar) => {
   $q.dialog({
     ...DIALOGO,
     title: '¿Quitar auxiliar?',
-    message: `${auxiliar.nombre} dejará de ver tus casos y de poder cambiar su estado.`,
+    message: `${auxiliar.nombre} dejará de ver tus casos y de poder cambiar su estado. Se le avisará, y también a los administradores.`,
     cancel: { label: 'Cancelar', flat: true, noCaps: true },
     ok: { label: 'Quitar', color: 'dg-error', noCaps: true, unelevated: true },
   }).onOk(async () => {

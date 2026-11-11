@@ -210,7 +210,7 @@
               <q-tooltip>Elige a quiénes apoyará; también puedes hacerlo después desde el directorio.</q-tooltip>
             </q-select>
             <p id="nuevo-contadores-ayuda" class="form-help">
-              El auxiliar verá los casos de estos contadores y podrá cambiar su estado. Se les avisará.
+              El auxiliar verá los casos de estos contadores y podrá cambiar su estado. Se les avisará a ellos y al auxiliar.
             </p>
           </div>
 

@@ -13,7 +13,8 @@
         <h2 id="agregar-auxiliares-titulo" class="agregar-auxiliares__title">Agregar auxiliares</h2>
         <p class="agregar-auxiliares__help">
           Marca a quienes te ayudarán. Verán tus casos y podrán cambiar su estado; tú recibirás un
-          aviso cada vez que lo hagan.
+          aviso cada vez que lo hagan. A cada persona que asignes se le avisará, y también a los
+          administradores.
         </p>
       </q-card-section>
 
