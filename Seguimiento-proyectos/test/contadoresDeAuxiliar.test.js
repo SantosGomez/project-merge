@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 
-import { crearUserService } from '../src/services/userService.js'
+import { calcularCambiosDeContadores, crearUserService } from '../src/services/userService.js'
 
 const leer = (relativa) => readFileSync(fileURLToPath(new URL(relativa, import.meta.url)), 'utf8')
 
@@ -33,8 +33,21 @@ describe('servicio: contadores de un auxiliar', () => {
     })
 
     assert.deepEqual(await servicio.listarContadoresDeAuxiliar(9), [{ id: 3, nombre: 'Tres' }])
-    await servicio.guardarContadoresDeAuxiliar(9, [3])
-    assert.deepEqual(llamadas, [['GET', '/usuarios/9/contadores'], ['PUT', '/usuarios/9/contadores', { contadores: [3] }]])
+    await servicio.guardarContadoresDeAuxiliar(9, { agregar: [7], quitar: [3] })
+    assert.deepEqual(llamadas, [
+      ['GET', '/usuarios/9/contadores'],
+      ['PUT', '/usuarios/9/contadores', { agregar: [7], quitar: [3] }],
+    ])
+  })
+})
+
+describe('cambios del despacho en los contadores de un auxiliar', () => {
+  it('solo cuenta lo que el despacho marcó o desmarcó frente a lo que cargó', () => {
+    assert.deepEqual(calcularCambiosDeContadores([3, 7], [7, 9]), { agregar: [9], quitar: [3] })
+  })
+
+  it('sin tocar nada no hay cambios, aunque el orden sea otro', () => {
+    assert.deepEqual(calcularCambiosDeContadores([3, 7], [7, 3]), { agregar: [], quitar: [] })
   })
 })
 
@@ -59,5 +72,11 @@ describe('pantallas: alta y directorio', () => {
     assert.match(dialogo, /listarContadoresDeAuxiliar\(/)
     assert.match(dialogo, /guardarContadoresDeAuxiliar\(/)
     assert.match(dialogo, /transition-show="dialogo-entra"/)
+  })
+
+  it('el diálogo guarda la diferencia contra lo que cargó y no llama al servidor si no hay cambios', () => {
+    assert.match(dialogo, /calcularCambiosDeContadores\(cargados\.value, elegidos\.value\)/)
+    assert.match(dialogo, /if \(sinCambios\) \{\s*dialogoAbierto\.value = false\s*return/)
+    assert.match(dialogo, /guardarContadoresDeAuxiliar\(props\.cuenta\.id, cambios\)/)
   })
 })

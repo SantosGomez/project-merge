@@ -7,6 +7,18 @@
 import { api as apiPorDefecto, crearErrorInesperado } from './api.js'
 
 /**
+ * Compara los contadores que el diálogo cargó al abrir con los que quedaron elegidos y devuelve
+ * solo lo que el despacho cambió. Así no se pisa lo que un contador haya agregado mientras tanto.
+ * @param {Array<number>} cargados - ids vinculados cuando se abrió el diálogo.
+ * @param {Array<number>} elegidos - ids marcados al guardar.
+ * @returns {{ agregar: Array<number>, quitar: Array<number> }}
+ */
+export const calcularCambiosDeContadores = (cargados, elegidos) => ({
+  agregar: elegidos.filter((id) => !cargados.includes(id)),
+  quitar: cargados.filter((id) => !elegidos.includes(id)),
+})
+
+/**
  * Crea el servicio de usuarios con api inyectable.
  * @param {Object} [opciones] - inyección para pruebas.
  * @param {Object} [opciones.api] - instancia de axios (o api falsa).
@@ -48,12 +60,12 @@ export const crearUserService = (opciones = {}) => {
   }
 
   /**
-   * PUT /usuarios/:id/contadores: deja al auxiliar vinculado exactamente con esos contadores.
+   * PUT /usuarios/:id/contadores: agrega y quita solo esos contadores; los demás vínculos no se tocan.
    * @param {number} auxiliarId
-   * @param {Array<number>} contadores - ids.
+   * @param {{ agregar: Array<number>, quitar: Array<number> }} cambios - ids de contadores.
    */
-  const guardarContadoresDeAuxiliar = async (auxiliarId, contadores) => {
-    await api.put(`/usuarios/${auxiliarId}/contadores`, { contadores })
+  const guardarContadoresDeAuxiliar = async (auxiliarId, { agregar, quitar }) => {
+    await api.put(`/usuarios/${auxiliarId}/contadores`, { agregar, quitar })
   }
 
   /**

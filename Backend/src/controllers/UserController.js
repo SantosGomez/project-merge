@@ -96,7 +96,8 @@ async function createUser(req, res) {
   const passwordHash = await hashPassword(password);
   const id = await UserModel.create({ nombre: nombreLimpio, correo: correoLimpio, passwordHash, rol, debeCambiarContrasena: true });
   if (contadoresIds.length > 0) {
-    await avisarNuevosVinculos(id, await AuxiliarModel.reemplazarContadoresDeAuxiliar(id, contadoresIds));
+    const { agregados } = await AuxiliarModel.ajustarContadoresDeAuxiliar(id, { agregar: contadoresIds, quitar: [] });
+    await avisarNuevosVinculos(id, agregados);
   }
 
   // 5. Responder 201 con mensaje de alta exitosa (RF-28)

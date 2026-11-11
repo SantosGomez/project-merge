@@ -44,6 +44,14 @@ const RESPUESTAS_POR_CODIGO = {
     400,
     buildError('La cuenta no es un auxiliar', 'auxiliar solicitado', 'Elige una cuenta con rol de auxiliar'),
   ],
+  CAMBIO_CONTRADICTORIO: [
+    400,
+    buildError(
+      'Un contador no puede agregarse y quitarse a la vez',
+      'contadores',
+      'Deja cada contador en una sola lista: la de agregar o la de quitar'
+    ),
+  ],
   YA_ASIGNADO: [
     409,
     buildError('El auxiliar ya está asignado', 'auxiliar', 'Elige a otro contador o quita la asignación actual'),
@@ -180,6 +188,12 @@ const ERROR_LISTA_CONTADORES = buildError(
   'Envía una lista con los ids de los contadores, por ejemplo [3, 7]'
 );
 
+const ERROR_CAMBIOS_CONTADORES = buildError(
+  'Cambios de contadores no válidos',
+  'contadores',
+  'Envía los contadores que agregas y los que quitas, por ejemplo { "agregar": [3], "quitar": [7] }'
+);
+
 /**
  * Avisa a cada contador recién vinculado y al auxiliar (campana y tiempo real).
  * @param {number} auxiliarId - Id de la cuenta auxiliar.
@@ -211,8 +225,8 @@ async function listarContadoresDeAuxiliar(req, res) {
 }
 
 /**
- * PUT /usuarios/:id/contadores — deja al auxiliar vinculado con esos contadores
- * (administrador o sistema). Cuerpo: { contadores: [ids] }.
+ * PUT /usuarios/:id/contadores — aplica solo los cambios del despacho al equipo de un auxiliar
+ * (administrador o sistema). Cuerpo: { agregar: [ids], quitar: [ids] }; los demás vínculos no se tocan.
  * @param {Object} req - Petición Express.
  * @param {Object} res - Respuesta Express.
  */
@@ -220,16 +234,17 @@ async function reemplazarContadoresDeAuxiliar(req, res) {
   const auxiliarId = parseCounterId(req.params.id);
   if (!auxiliarId) return res.status(404).json(ERROR_AUXILIAR_NO_VALIDO);
 
-  const contadoresIds = parseListaDeIds(req.body.contadores);
-  if (!contadoresIds) return res.status(400).json(ERROR_LISTA_CONTADORES);
+  const agregar = parseListaDeIds(req.body.agregar);
+  const quitar = parseListaDeIds(req.body.quitar);
+  if (!agregar || !quitar) return res.status(400).json(ERROR_CAMBIOS_CONTADORES);
 
-  let nuevos;
+  let cambios;
   try {
-    nuevos = await AuxiliarModel.reemplazarContadoresDeAuxiliar(auxiliarId, contadoresIds);
+    cambios = await AuxiliarModel.ajustarContadoresDeAuxiliar(auxiliarId, { agregar, quitar });
   } catch (error) {
     return responderErrorDelModelo(res, error);
   }
-  await avisarNuevosVinculos(auxiliarId, nuevos);
+  await avisarNuevosVinculos(auxiliarId, cambios.agregados);
 
   const contadores = await AuxiliarModel.listarContadoresQueMeTienenComoAuxiliar(auxiliarId);
   return res.status(200).json({ mensaje: 'Contadores del auxiliar actualizados', contadores });

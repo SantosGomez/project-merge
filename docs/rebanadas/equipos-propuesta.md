@@ -21,7 +21,30 @@ Análisis de Fable 5.2 (2026-11-10, solo lectura), revisado por el orquestador. 
 - **B. Ambos ajustan, todo se avisa (recomendada).** El despacho ajusta cualquier equipo, cada contador el suyo, y a todos los afectados les llega aviso. Sin cambio de tabla.
 - **C. Como B, con candado:** el contador no puede quitar a los auxiliares que asignó el despacho. **Requiere aprobar** un campo nuevo `asignado_por INT NULL` (FK a `usuarios`, `ON DELETE SET NULL`) en `contador_auxiliar` y decidir qué hacer con las filas actuales (NULL).
 
-## Rebanadas para B
+## Decisión del usuario (2026-11-10): opción B
+
+1. Un contador sí puede quitar a un auxiliar que le asignó el despacho.
+2. Un contador sí puede tomar por su cuenta a cualquier auxiliar.
+3. Al quitar se avisa a los dos («Ya no apoyas a X» / «Y ya no es tu auxiliar»).
+4. El administrador sí recibe aviso cuando un contador cambia su equipo.
+5. Sistema y administrador tienen funciones distintas, pero para armar equipos pesan casi igual: las rutas siguen con `requireAdminOrSistema`. El aviso de la rebanada 04 llega solo a administradores.
+
+### Rebanadas ajustadas (orden de trabajo)
+
+| N.º | Rebanada | Riesgo | Archivo |
+|---|---|---|---|
+| 01 | El despacho guarda solo la diferencia (`{ agregar, quitar }` en transacción + prueba cruzada) | alto | `01-despacho-guarda-diferencia.md` |
+| 02 | Avisos al quitar, en las dos vías, y renombre de `reemplazarContadoresDeAuxiliar` en controlador y ruta | medio | — |
+| 03 | Avisos cuando el contador asigna | medio | — |
+| 04a | Se guarda un aviso para cada administrador cuando un contador cambia su equipo (backend) | medio | — |
+| 04b | El administrador ve la campana de avisos en el menú (hoy solo la ven contador y auxiliar) | medio | — |
+| 05 | Textos de ayuda que expliquen la regla | bajo | — |
+
+Decisiones para la 02 (usuario, 2026-11-10): textos «Ya no apoyas a {contador} con sus casos.» y «{auxiliar} ya no es tu auxiliar.»; si quita el propio contador se avisa solo al auxiliar, si quita el despacho se avisa a los dos. Para la 04: el aviso llega solo a administradores (no a usuarios de sistema) y sí se les pone campana.
+
+La 01 va primero porque deja el modelo devolviendo `{ agregados, quitados }`, que es la base de los avisos de la 02 a la 04; los textos van al final, cuando la regla ya esté completa.
+
+## Rebanadas para B (lista original)
 
 1. Avisos cuando el contador asigna, reutilizando `avisarNuevosVinculos`. `AuxiliarController.js`, `auxiliarRoutes.test.js`. Riesgo **medio**.
 2. Avisos al quitar, en las dos vías (`reemplazarContadoresDeAuxiliar` devuelve también los quitados). `AuxiliarModel.js`, `AuxiliarController.js`, `contadoresDeAuxiliar.test.js`. Riesgo **medio**.

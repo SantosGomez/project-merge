@@ -1,4 +1,4 @@
-const { query } = require('../config/db');
+const { query, conTransaccion } = require('../config/db');
 const UserModel = require('./UserModel');
 
 /**
@@ -131,36 +131,49 @@ async function listarDisponiblesParaAuxiliar(contadorId) {
 }
 
 /**
- * Deja al auxiliar vinculado exactamente con esos contadores (lo usa el despacho).
- * Valida todo antes de tocar la tabla; solo inserta lo nuevo y borra lo que se quitó.
+ * Aplica al equipo de un auxiliar solo los cambios que pide el despacho: agrega unos contadores
+ * y quita otros, sin tocar los demás vínculos (los que haya agregado cada contador por su cuenta).
+ * Valida todo antes de escribir y escribe en una transacción: o se guarda todo o nada.
+ * Repetir un cambio no falla: agregar a quien ya estaba o quitar a quien ya no estaba no hace nada.
  * @param {number} auxiliarId - Id de la cuenta auxiliar.
- * @param {Array<number>} contadoresIds - Ids de los contadores que apoyará.
- * @returns {Promise<Array<number>>} Ids de los contadores recién vinculados (para avisarles).
+ * @param {{ agregar: Array<number>, quitar: Array<number> }} cambios - Ids de contadores.
+ * @returns {Promise<{ agregados: Array<number>, quitados: Array<number> }>} Lo que de verdad cambió.
  */
-async function reemplazarContadoresDeAuxiliar(auxiliarId, contadoresIds) {
+async function ajustarContadoresDeAuxiliar(auxiliarId, { agregar, quitar }) {
+  if (agregar.some((id) => quitar.includes(id))) {
+    const error = new Error('un contador no puede agregarse y quitarse a la vez');
+    error.codigo = 'CAMBIO_CONTRADICTORIO';
+    throw error;
+  }
   await validarCuentaConRol(auxiliarId, 'auxiliar');
-  for (const contadorId of contadoresIds) {
+  for (const contadorId of agregar) {
     await validarCuentaConRol(contadorId, 'contador');
   }
 
-  const actuales = (await listarContadoresQueMeTienenComoAuxiliar(auxiliarId)).map((c) => c.id);
-  const nuevos = contadoresIds.filter((id) => !actuales.includes(id));
-  const quitados = actuales.filter((id) => !contadoresIds.includes(id));
-
-  for (const contadorId of quitados) {
-    await quitarAuxiliar(contadorId, auxiliarId);
-  }
-  for (const contadorId of nuevos) {
-    await query(
-      'INSERT INTO contador_auxiliar (contador_id, auxiliar_id, asignado_en) VALUES (?, ?, NOW())',
-      [contadorId, auxiliarId]
-    );
-  }
-  return nuevos;
+  return conTransaccion(async (ejecutar) => {
+    const agregados = [];
+    const quitados = [];
+    for (const contadorId of quitar) {
+      const resultado = await ejecutar(
+        'DELETE FROM contador_auxiliar WHERE contador_id = ? AND auxiliar_id = ?',
+        [contadorId, auxiliarId]
+      );
+      if (resultado.affectedRows > 0) quitados.push(contadorId);
+    }
+    for (const contadorId of agregar) {
+      // INSERT IGNORE: si el contador lo agregó por su cuenta un instante antes, no es un error.
+      const resultado = await ejecutar(
+        'INSERT IGNORE INTO contador_auxiliar (contador_id, auxiliar_id, asignado_en) VALUES (?, ?, NOW())',
+        [contadorId, auxiliarId]
+      );
+      if (resultado.affectedRows > 0) agregados.push(contadorId);
+    }
+    return { agregados, quitados };
+  });
 }
 
 module.exports = {
-  reemplazarContadoresDeAuxiliar,
+  ajustarContadoresDeAuxiliar,
   asignarAuxiliar,
   quitarAuxiliar,
   listarAuxiliares,

@@ -75,11 +75,15 @@
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 
-import { guardarContadoresDeAuxiliar, listarContadoresDeAuxiliar } from '../services/userService.js'
+import {
+  calcularCambiosDeContadores,
+  guardarContadoresDeAuxiliar,
+  listarContadoresDeAuxiliar,
+} from '../services/userService.js'
 
 /*
  * Directorio: el despacho fija a qué contadores apoya un auxiliar. Carga lo actual al abrir
- * y guarda la lista completa (el backend solo agrega lo nuevo y quita lo que se desmarcó).
+ * y guarda solo lo que se marcó o desmarcó, para no pisar lo que un contador agregó mientras tanto.
  */
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 const props = defineProps({
@@ -92,6 +96,8 @@ const props = defineProps({
 const $q = useQuasar()
 const opciones = computed(() => props.contadores.map((c) => ({ label: c.nombre, value: c.id })))
 const elegidos = ref([])
+/** Ids vinculados cuando se abrió el diálogo: contra ellos se calcula qué cambió. */
+const cargados = ref([])
 const cargando = ref(false)
 const guardando = ref(false)
 const error = ref('')
@@ -100,7 +106,8 @@ const cargar = async () => {
   cargando.value = true
   error.value = ''
   try {
-    elegidos.value = (await listarContadoresDeAuxiliar(props.cuenta.id)).map((c) => c.id)
+    cargados.value = (await listarContadoresDeAuxiliar(props.cuenta.id)).map((c) => c.id)
+    elegidos.value = [...cargados.value]
   } catch (fallo) {
     error.value = fallo?.mensaje ?? 'No se pudieron cargar los contadores de este auxiliar.'
   } finally {
@@ -109,9 +116,16 @@ const cargar = async () => {
 }
 
 const guardar = async () => {
+  const cambios = calcularCambiosDeContadores(cargados.value, elegidos.value)
+  const sinCambios = cambios.agregar.length === 0 && cambios.quitar.length === 0
+  if (sinCambios) {
+    dialogoAbierto.value = false
+    return
+  }
+
   guardando.value = true
   try {
-    await guardarContadoresDeAuxiliar(props.cuenta.id, elegidos.value)
+    await guardarContadoresDeAuxiliar(props.cuenta.id, cambios)
     dialogoAbierto.value = false
     $q.notify({ type: 'positive', message: `Contadores de ${props.cuenta.nombre} actualizados.` })
   } catch (fallo) {
