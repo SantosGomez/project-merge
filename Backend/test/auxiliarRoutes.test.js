@@ -209,4 +209,54 @@ describe('rutas de auxiliares del contador', () => {
     assert.strictEqual(await contarAvisos(auxiliarDos.id), avisosAuxiliarAntes, 'sin aviso al auxiliar');
     assert.strictEqual(await contarAvisos(dueno.id), avisosDuenoAntes, 'sin aviso al contador');
   });
+
+  test('al asignar un auxiliar se avisa a los dos, sin enlace a un caso', async () => {
+    const avisosAuxiliarAntes = await contarAvisos(auxiliarUno.id);
+    const avisosDuenoAntes = await contarAvisos(dueno.id);
+
+    const asignar = await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+    assert.strictEqual(asignar.statusCode, 201, 'el dueño puede asignar un auxiliar');
+
+    assert.strictEqual(await contarAvisos(auxiliarUno.id), avisosAuxiliarAntes + 1, 'el auxiliar recibe el aviso');
+    assert.strictEqual(await contarAvisos(dueno.id), avisosDuenoAntes + 1, 'el contador recibe el aviso');
+
+    assert.strictEqual(
+      await ultimoAvisoDe(auxiliarUno.id),
+      `Ahora apoyas a ${dueno.nombre} con sus casos.`,
+      'texto del aviso al auxiliar'
+    );
+    assert.strictEqual(
+      await ultimoAvisoDe(dueno.id),
+      `${auxiliarUno.nombre} ahora es tu auxiliar.`,
+      'texto del aviso al contador'
+    );
+
+    const [conCaso] = await query(
+      'SELECT COUNT(*) AS n FROM notificaciones WHERE usuario_id IN (?, ?) AND caso_id IS NOT NULL',
+      [dueno.id, auxiliarUno.id]
+    );
+    assert.strictEqual(Number(conCaso.n), 0, 'los avisos de equipo no llevan caso');
+  });
+
+  test('si la asignación se rechaza no se crea ningún aviso', async () => {
+    await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+    const administrador = await crearUsuarioDePrueba('administrador');
+
+    const ids = [dueno.id, auxiliarUno.id, otroContador.id, administrador.id];
+    const antes = await Promise.all(ids.map(contarAvisos));
+
+    const repetido = await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+    assert.strictEqual(repetido.statusCode, 409, 'ya asignado');
+    const aUnoMismo = await post(`/contadores/${dueno.id}/auxiliares/${dueno.id}`, tokenDueno);
+    assert.strictEqual(aUnoMismo.statusCode, 400, 'uno mismo');
+    const noAuxiliar = await post(`/contadores/${dueno.id}/auxiliares/${administrador.id}`, tokenDueno);
+    assert.strictEqual(noAuxiliar.statusCode, 400, 'la cuenta no es auxiliar');
+    const ajeno = await post(`/contadores/${dueno.id}/auxiliares/${auxiliarDos.id}`, tokenOtro);
+    assert.strictEqual(ajeno.statusCode, 403, 'equipo ajeno');
+    const inexistente = await post(`/contadores/${dueno.id}/auxiliares/0`, tokenDueno);
+    assert.strictEqual(inexistente.statusCode, 404, 'auxiliar inexistente');
+
+    const despues = await Promise.all(ids.map(contarAvisos));
+    assert.deepStrictEqual(despues, antes, 'ninguna cuenta recibe avisos');
+  });
 });

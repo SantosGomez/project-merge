@@ -1,9 +1,9 @@
 # 03 — Avisos cuando el contador asigna a un auxiliar
 
 - **Riesgo:** medio (lógica nueva en un controlador; sin cambios de permisos, tabla ni interfaz)
-- **Implementa:** opencode (`implementer`; si el modelo del agente da límite, `-m opencode/deepseek-v4.1-flash-free`; tras 2 fallos pasa a Claude)
-- **Revisa:** Claude (`reviewer`, Sonnet)
-- **Estado:** refinada — pendiente de aprobación del usuario. No se implementa hasta cerrar la 02 (toca el mismo controlador).
+- **Implementa:** Claude (`implementer`, Sonnet)
+- **Revisa:** Claude (`reviewer`, Sonnet, instancia nueva)
+- **Estado:** aprobada (implementada y revisada el 2026-11-11)
 
 ## Historia
 
@@ -36,13 +36,29 @@ Fuera de esta lista, el implementer para y pregunta.
 
 ## Reporte del implementer
 
-1. Rebanada completada:
-2. Archivos modificados:
-3. Prueba en rojo y por qué falló:
-4. Puertas (verde / rojo / no aplica):
-5. Decisiones no cubiertas:
-6. Para la memoria:
+Claude, agente `implementer` (Sonnet), 2026-11-11. Resumido por el orquestador.
+
+1. Rebanada completada: `POST /contadores/:id/auxiliares/:auxiliarId` (201) avisa a los dos con `avisarNuevosVinculos(auxiliarId, [contadorId])`, justo tras la asignación exitosa; los rechazos retornan antes y no crean avisos.
+2. Archivos modificados: `Backend/src/controllers/AuxiliarController.js` (una línea en `asignarAuxiliar`) y `Backend/test/auxiliarRoutes.test.js` (2 pruebas nuevas).
+3. Prueba en rojo: «al asignar un auxiliar se avisa a los dos, sin enlace a un caso» falló por el aserto (`el auxiliar recibe el aviso: 2 !== 3`). La prueba de los rechazos (409, 400 uno mismo, 400 no auxiliar, 403, 404) pasó desde el inicio: protege contra regresión.
+4. Puertas: `auxiliarRoutes.test.js` 12/12, `contadoresDeAuxiliar.test.js` 9/9, `rolAuxiliar.test.js` 10/10; `verificarPruebas.js` 389 pruebas, 0 fallidas (FALLA solo por `MINIMOS`, defecto previo). Frontend y navegador: no aplica. Filas `zz_test_`: 12 antes y después.
+5. Decisiones no cubiertas: ninguna.
+6. Para la memoria: asignar como contador avisa a los dos, igual que el despacho; quitar por el propio contador sigue avisando solo al auxiliar.
 
 ## Veredicto del reviewer (vuelta 1)
 
-VEREDICTO:
+Claude, agente `reviewer` (Sonnet, instancia nueva), 2026-11-11. Resumido por el orquestador.
+
+VEREDICTO: APROBADO
+
+- Los 3 criterios se cumplen; solo se tocaron los dos archivos autorizados; la vía del despacho y los avisos al quitar (02) no cambiaron.
+- Ejecutado: las tres pruebas de la rebanada en verde (12/12, 9/9, 10/10) y `verificarPruebas.js` con 389 pruebas, 0 fallidas. Sin residuos `zz_test_`.
+- Leído: la prueba exige +1 aviso por cuenta, el texto exacto de cada destinatario y `caso_id` nulo; la de rechazos compara los conteos de las cuatro cuentas implicadas.
+
+Opcional (no bloquea):
+
+1. El 404 se prueba con id `0`, que rechaza el controlador; la rama `AUXILIAR_NO_EXISTE` del modelo (id válido inexistente) no tiene prueba.
+2. Si falla la creación del aviso, no se responde el 201 aunque el vínculo ya esté guardado; es lo mismo que ya hacía la vía del despacho.
+3. El evento `aviso-nuevo` sigue sin prueba (igual que en la 02).
+
+Comprobación del orquestador: sin la línea del controlador la prueba nueva falla (11 pasan, 1 falla); con ella, 31/31 en los tres archivos.

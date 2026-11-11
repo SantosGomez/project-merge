@@ -125,6 +125,8 @@ async function asignarAuxiliar(req, res) {
     return responderErrorDelModelo(res, error);
   }
 
+  await avisarNuevosVinculos(auxiliarId, [contadorId]);
+
   const auxiliares = await AuxiliarModel.listarAuxiliares(contadorId);
   return res.status(201).json({
     mensaje: 'Auxiliar asignado correctamente',
