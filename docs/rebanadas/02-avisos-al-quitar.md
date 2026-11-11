@@ -3,7 +3,7 @@
 - **Riesgo:** medio (lógica nueva en controladores; sin cambios de permisos, tabla ni interfaz)
 - **Implementa:** opencode (`implementer`; si el modelo del agente da límite, `-m opencode/deepseek-v4.1-flash-free`; tras 2 fallos pasa a Claude)
 - **Revisa:** Claude (`reviewer`, Sonnet)
-- **Estado:** implementada por opencode (2026-11-10), puertas repetidas en verde por el orquestador; revisión independiente pendiente
+- **Estado:** aprobada (implementada por opencode el 2026-11-10; revisada por el reviewer de Sonnet el 2026-11-11)
 
 ## Historia
 
@@ -61,4 +61,16 @@ Fuera de esta lista, el implementer para y pregunta.
 
 ## Veredicto del reviewer (vuelta 1)
 
-VEREDICTO:
+Claude, agente `reviewer` (Sonnet), 2026-11-11, sobre el commit `36adbfe`. Resumido por el orquestador, que repitió las dos pruebas principales (19/19).
+
+VEREDICTO: APROBADO
+
+- Los 3 criterios se cumplen y solo se tocaron los 5 archivos autorizados de código y pruebas. No cambió ningún comportamiento previo.
+- Ejecutado (por archivo, en `Backend/`): `contadoresDeAuxiliar.test.js` 9/9, `auxiliarRoutes.test.js` 10/10, `auxiliarModel.test.js` 9/9, `rolAuxiliar.test.js` 10/10; `verificarPruebas.js` 387 pruebas, 0 fallidas (FALLA solo por `MINIMOS` desactualizados, defecto previo). Sin residuos `zz_test_` nuevos.
+- Solo leído: textos y destinatarios de los avisos en las dos vías, aviso solo con cambio real (`affectedRows > 0`) y renombre a `ajustarContadoresDeAuxiliar`. Que las pruebas fallan sin el comportamiento está razonado, no comprobado con mutación.
+
+Opcional (no bloquea):
+
+1. Ninguna prueba verifica el evento `aviso-nuevo`; solo se leyó que el código llama a `eventos.enviarAUsuario`.
+2. Las dos pruebas «no vinculado» pasan también con el código anterior: protegen contra regresión, no prueban lo nuevo.
+3. Actualizar `MINIMOS` de `verificarPruebas.js` en una rebanada aparte.
