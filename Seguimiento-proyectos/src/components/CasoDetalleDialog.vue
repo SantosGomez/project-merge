@@ -356,6 +356,10 @@ const cerrar = () => {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  border: 1px solid var(--dg-borde);
+  border-radius: 8px;
+  background: var(--dg-fondo-suave);
+  padding: 8px 10px;
 }
 
 .detalle-bloque + .detalle-bloque {
