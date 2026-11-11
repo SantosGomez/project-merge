@@ -70,6 +70,6 @@ describe('Campanita de avisos del contador', () => {
 
   it('el layout la muestra a contador y auxiliar, en el encabezado del celular y en el de escritorio', () => {
     assert.match(layout, /import CampanaAvisos from '\.\.\/components\/CampanaAvisos\.vue'/)
-    assert.equal((plantillaDe(layout).match(/<CampanaAvisos v-if="session\.trabajaCasos"/g) ?? []).length, 2)
+    assert.equal((plantillaDe(layout).match(/<CampanaAvisos v-if="session\.veCampana"/g) ?? []).length, 2)
   })
 })

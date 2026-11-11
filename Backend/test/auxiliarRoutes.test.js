@@ -259,4 +259,54 @@ describe('rutas de auxiliares del contador', () => {
     const despues = await Promise.all(ids.map(contarAvisos));
     assert.deepStrictEqual(despues, antes, 'ninguna cuenta recibe avisos');
   });
+
+  test('al asignar un auxiliar se avisa a cada administrador y nunca a los usuarios de sistema', async () => {
+    const administrador = await crearUsuarioDePrueba('administrador');
+    const sistema = await crearUsuarioDePrueba('usuarios_de_sistema');
+    const avisosAdminAntes = await contarAvisos(administrador.id);
+    const avisosSistemaAntes = await contarAvisos(sistema.id);
+
+    const asignar = await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+    assert.strictEqual(asignar.statusCode, 201);
+
+    assert.strictEqual(await contarAvisos(administrador.id), avisosAdminAntes + 1, 'el administrador recibe el aviso');
+    assert.strictEqual(
+      await ultimoAvisoDe(administrador.id),
+      `${dueno.nombre} agregó a ${auxiliarUno.nombre} a su equipo.`,
+      'texto del aviso al administrador'
+    );
+    const [conCaso] = await query(
+      'SELECT COUNT(*) AS n FROM notificaciones WHERE usuario_id = ? AND caso_id IS NOT NULL',
+      [administrador.id]
+    );
+    assert.strictEqual(Number(conCaso.n), 0, 'el aviso al administrador no lleva caso');
+    assert.strictEqual(await contarAvisos(sistema.id), avisosSistemaAntes, 'el usuario de sistema no recibe aviso');
+  });
+
+  test('al quitar un auxiliar se avisa a cada administrador; sin vínculo o con rechazo, a ninguno', async () => {
+    const administrador = await crearUsuarioDePrueba('administrador');
+    const sistema = await crearUsuarioDePrueba('usuarios_de_sistema');
+    await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+
+    const avisosAdminAntes = await contarAvisos(administrador.id);
+    const quitar = await del(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+    assert.strictEqual(quitar.statusCode, 200);
+    assert.strictEqual(await contarAvisos(administrador.id), avisosAdminAntes + 1, 'el administrador recibe el aviso');
+    assert.strictEqual(
+      await ultimoAvisoDe(administrador.id),
+      `${dueno.nombre} quitó a ${auxiliarUno.nombre} de su equipo.`,
+      'texto del aviso al administrador'
+    );
+
+    const antes = [await contarAvisos(administrador.id), await contarAvisos(sistema.id)];
+    const sinVinculo = await del(`/contadores/${dueno.id}/auxiliares/${auxiliarDos.id}`, tokenDueno);
+    assert.strictEqual(sinVinculo.statusCode, 200);
+    const ajeno = await del(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenOtro);
+    assert.strictEqual(ajeno.statusCode, 403);
+    const inexistente = await del(`/contadores/${dueno.id}/auxiliares/0`, tokenDueno);
+    assert.strictEqual(inexistente.statusCode, 404);
+    const despues = [await contarAvisos(administrador.id), await contarAvisos(sistema.id)];
+    assert.deepStrictEqual(despues, antes, 'sin vínculo o con rechazo no hay avisos para administradores');
+    assert.strictEqual(despues[1], 0, 'el usuario de sistema nunca recibe estos avisos');
+  });
 });

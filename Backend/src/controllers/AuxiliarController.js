@@ -126,6 +126,7 @@ async function asignarAuxiliar(req, res) {
   }
 
   await avisarNuevosVinculos(auxiliarId, [contadorId]);
+  await avisarAdministradores(contadorId, auxiliarId, 'agregó a', 'a su equipo');
 
   const auxiliares = await AuxiliarModel.listarAuxiliares(contadorId);
   return res.status(201).json({
@@ -153,6 +154,7 @@ async function quitarAuxiliar(req, res) {
 
   if (quitadoDeVerdad) {
     await avisarAuxiliarDeBaja(auxiliarId, contador.nombre);
+    await avisarAdministradores(contadorId, auxiliarId, 'quitó a', 'de su equipo');
   }
 
   const auxiliares = await AuxiliarModel.listarAuxiliares(contadorId);
@@ -246,6 +248,28 @@ async function avisarVinculosQuitados(auxiliarId, quitados) {
 async function avisarAuxiliarDeBaja(auxiliarId, nombreContador) {
   await NotificacionModel.crear({ usuarioId: auxiliarId, casoId: null, mensaje: `Ya no apoyas a ${nombreContador} con sus casos.` });
   eventos.enviarAUsuario(auxiliarId, 'aviso-nuevo', {});
+}
+
+/**
+ * Avisa a cada administrador de un cambio de equipo hecho por un contador
+ * (campana y evento aviso-nuevo, caso_id nulo). Los usuarios de sistema no reciben nada.
+ * @param {number} contadorId - Id del contador que cambió su equipo.
+ * @param {number} auxiliarId - Id del auxiliar agregado o quitado.
+ * @param {string} accion - Verbo del aviso: «agregó a» o «quitó a».
+ * @param {string} destino - Final del aviso: «a su equipo» o «de su equipo».
+ */
+async function avisarAdministradores(contadorId, auxiliarId, accion, destino) {
+  const contador = await UserModel.findById(contadorId);
+  const auxiliar = await UserModel.findById(auxiliarId);
+  const administradores = await UserModel.findAll({ rol: 'administrador' });
+  for (const administrador of administradores) {
+    await NotificacionModel.crear({
+      usuarioId: administrador.id,
+      casoId: null,
+      mensaje: `${contador.nombre} ${accion} ${auxiliar.nombre} ${destino}.`,
+    });
+    eventos.enviarAUsuario(administrador.id, 'aviso-nuevo', {});
+  }
 }
 
 /**

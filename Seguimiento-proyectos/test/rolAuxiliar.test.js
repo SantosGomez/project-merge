@@ -65,7 +65,7 @@ describe('rol auxiliar: pantallas', () => {
 
   it('el menú muestra «Mi trabajo» y la campana a quien trabaja casos; auxiliares y auditorías solo al contador', () => {
     assert.match(layout, /<template v-if="session\.trabajaCasos">/)
-    assert.equal((layout.match(/<CampanaAvisos v-if="session\.trabajaCasos"/g) ?? []).length, 2)
+    assert.equal((layout.match(/<CampanaAvisos v-if="session\.veCampana"/g) ?? []).length, 2)
     const miTrabajo = layout.slice(layout.indexOf('<template v-if="session.trabajaCasos">'))
     assert.match(miTrabajo, /v-if="session\.esContador"[\s\S]*?name: 'contador-auxiliares'/)
     assert.match(miTrabajo, /v-if="session\.esContador"[\s\S]*?name: 'auditorias'/)

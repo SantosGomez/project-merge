@@ -29,7 +29,7 @@
             <q-tooltip>{{ pageTitle }}</q-tooltip>
           </h1>
 
-          <CampanaAvisos v-if="session.trabajaCasos" clara />
+          <CampanaAvisos v-if="session.veCampana" clara />
         </div>
       </div>
     </q-header>
@@ -296,7 +296,7 @@
     <q-page-container id="contenido-principal" tabindex="-1" class="contenedor-paginas">
       <header v-if="$q.screen.gt.sm" class="page-header">
         <h1 class="page-header__title">{{ pageTitle }}</h1>
-        <CampanaAvisos v-if="session.trabajaCasos" class="page-header__campana" />
+        <CampanaAvisos v-if="session.veCampana" class="page-header__campana" />
       </header>
 
       <q-page v-if="session.sesionCaducada" class="access-page">

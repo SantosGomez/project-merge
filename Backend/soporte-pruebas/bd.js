@@ -144,6 +144,10 @@ async function limpiarDatosDePrueba() {
     await query(`DELETE FROM usuarios WHERE id IN (${marcas})`, idsUsuarios);
   }
 
+  // Avisos que nombran a cuentas de prueba y llegaron a cuentas ajenas a este proceso
+  // (p. ej. a los administradores cuando un contador de prueba cambia su equipo).
+  await query("DELETE FROM notificaciones WHERE mensaje LIKE '%zz\\_test\\_%'");
+
   usuariosCreados.length = 0;
   correosRegistrados.length = 0;
   casosCreados.length = 0;
