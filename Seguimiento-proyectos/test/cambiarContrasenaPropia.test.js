@@ -88,8 +88,14 @@ describe('«Mi cuenta»: botón «Cambiar contraseña»', () => {
     const cuenta = plantillaPagina.slice(0, plantillaPagina.indexOf('Mis auxiliares'))
     assert.match(cuenta, /label="Cambiar contraseña"/)
     assert.match(cuenta, /<q-btn[^>]*label="Cambiar contraseña"[\s\S]*?<q-tooltip>[^<]+<\/q-tooltip>/)
-    assert.match(plantillaPagina, /<CambiarContrasenaDialog\s+v-model="dialogoContrasenaAbierto"/)
+    assert.match(plantillaPagina, /<CambiarContrasenaDialog[^>]*v-model="dialogoContrasenaAbierto"/)
     assert.match(pagina, /import CambiarContrasenaDialog from '..\/components\/CambiarContrasenaDialog\.vue'/)
+  })
+
+  it('de momento está desactivado: el botón y el diálogo dependen de un interruptor apagado', () => {
+    assert.match(pagina, /const CAMBIO_CONTRASENA_HABILITADO = false/)
+    assert.match(plantillaPagina, /<q-btn\s+v-if="CAMBIO_CONTRASENA_HABILITADO"[^>]*label="Cambiar contraseña"/)
+    assert.match(plantillaPagina, /<CambiarContrasenaDialog\s+v-if="CAMBIO_CONTRASENA_HABILITADO"/)
   })
 })
 

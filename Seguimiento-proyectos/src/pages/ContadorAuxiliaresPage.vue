@@ -53,6 +53,7 @@
           </q-list>
 
           <q-btn
+            v-if="CAMBIO_CONTRASENA_HABILITADO"
             outline
             no-caps
             color="primary"
@@ -292,7 +293,7 @@
     </div>
 
     <AgregarAuxiliaresDialog v-if="session.esContador" v-model="dialogoAgregarAbierto" @asignados="alAsignar" />
-    <CambiarContrasenaDialog v-model="dialogoContrasenaAbierto" />
+    <CambiarContrasenaDialog v-if="CAMBIO_CONTRASENA_HABILITADO" v-model="dialogoContrasenaAbierto" />
   </q-page>
 </template>
 
@@ -322,6 +323,10 @@ const $q = useQuasar()
 
 const dialogoAgregarAbierto = ref(false)
 const dialogoContrasenaAbierto = ref(false)
+
+// «Cambiar contraseña» está desactivado de momento (decisión del usuario, 2026-11-11).
+// Para volver a mostrar el botón y el diálogo basta con poner true.
+const CAMBIO_CONTRASENA_HABILITADO = false
 
 // «Mi cuenta»: datos de la cuenta de la sesión. Si fallan, solo esa sección muestra el error.
 const perfil = ref(null)
