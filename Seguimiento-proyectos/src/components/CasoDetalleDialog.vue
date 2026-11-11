@@ -22,95 +22,100 @@
       </q-card-section>
 
       <q-card-section class="detalle-caso__body">
-        <!-- Datos del caso y fechas -->
+        <!-- Datos del caso y fechas en dos columnas -->
         <section class="detalle-seccion">
           <h3 class="detalle-seccion__titulo">Datos del caso</h3>
-          <div class="detalle-grid">
-            <div class="detalle-fila">
-              <div class="detalle-label">
-                <q-icon name="flag" size="16px" aria-hidden="true" />
-                <span>Prioridad</span>
+          <div class="detalle-seccion__columnas">
+            <div class="detalle-columna">
+              <div class="detalle-campo">
+                <div class="detalle-label">
+                  <q-icon name="flag" size="16px" aria-hidden="true" />
+                  <span>Prioridad</span>
+                </div>
+                <div class="detalle-value">
+                  <PriorityTag :priority="caso.prioridad" />
+                </div>
               </div>
-              <div class="detalle-value">
-                <PriorityTag :priority="caso.prioridad" />
-              </div>
-            </div>
 
-            <div class="detalle-fila">
-              <div class="detalle-label">
-                <q-icon name="tune" size="16px" aria-hidden="true" />
-                <span>Estado</span>
-              </div>
-              <div class="detalle-value">
-                <span
-                  class="detalle-estado"
-                  :class="{ 'detalle-estado--finalizado': esFinalizado }"
-                  :style="{ '--dot-color': colorEstado }"
-                >
-                  <span class="punto-estado-sm" aria-hidden="true" />
-                  {{ statusLabel }}
-                </span>
-                <q-tooltip
-                  >Pendiente: sin empezar. En proceso: en trabajo. Finalizado: terminado.</q-tooltip
-                >
-              </div>
-            </div>
-
-            <div class="detalle-fila">
-              <div class="detalle-label">
-                <q-icon name="star" size="16px" aria-hidden="true" />
-                <span>Importante</span>
-              </div>
-              <div class="detalle-value">
-                <span v-if="caso.importante" class="detalle-importante">
-                  <q-icon name="star" size="12px" aria-hidden="true" />
-                  Importante
-                  <q-tooltip
-                    >Caso marcado como importante: requiere seguimiento especial.</q-tooltip
+              <div class="detalle-campo">
+                <div class="detalle-label">
+                  <q-icon name="tune" size="16px" aria-hidden="true" />
+                  <span>Estado</span>
+                </div>
+                <div class="detalle-value">
+                  <span
+                    class="detalle-estado"
+                    :class="{ 'detalle-estado--finalizado': esFinalizado }"
+                    :style="{ '--dot-color': colorEstado }"
                   >
-                </span>
-                <span v-else class="detalle-vacio">No</span>
+                    <span class="punto-estado-sm" aria-hidden="true" />
+                    {{ statusLabel }}
+                  </span>
+                  <q-tooltip
+                    >Pendiente: sin empezar. En proceso: en trabajo. Finalizado:
+                    terminado.</q-tooltip
+                  >
+                </div>
+              </div>
+
+              <div class="detalle-campo">
+                <div class="detalle-label">
+                  <q-icon name="star" size="16px" aria-hidden="true" />
+                  <span>Importante</span>
+                </div>
+                <div class="detalle-value">
+                  <span v-if="caso.importante" class="detalle-importante">
+                    <q-icon name="star" size="12px" aria-hidden="true" />
+                    Importante
+                    <q-tooltip
+                      >Caso marcado como importante: requiere seguimiento especial.</q-tooltip
+                    >
+                  </span>
+                  <span v-else class="detalle-vacio">No</span>
+                </div>
+              </div>
+
+              <div class="detalle-campo">
+                <div class="detalle-label">
+                  <q-icon name="person" size="16px" aria-hidden="true" />
+                  <span>Contador asignado</span>
+                </div>
+                <div class="detalle-value">{{ nombreContador }}</div>
               </div>
             </div>
 
-            <div class="detalle-fila">
-              <div class="detalle-label">
-                <q-icon name="person" size="16px" aria-hidden="true" />
-                <span>Contador asignado</span>
+            <div class="detalle-columna">
+              <div class="detalle-campo">
+                <div class="detalle-label">
+                  <q-icon name="event" size="16px" aria-hidden="true" />
+                  <span>Fecha de inicio</span>
+                </div>
+                <div class="detalle-value" :class="{ 'detalle-vacio': !fechaInicio }">
+                  {{ fechaInicio || 'Sin fecha' }}
+                </div>
               </div>
-              <div class="detalle-value">{{ nombreContador }}</div>
-            </div>
 
-            <div class="detalle-fila">
-              <div class="detalle-label">
-                <q-icon name="event" size="16px" aria-hidden="true" />
-                <span>Fecha de inicio</span>
+              <div class="detalle-campo">
+                <div class="detalle-label">
+                  <q-icon name="schedule" size="16px" aria-hidden="true" />
+                  <span>Fecha de vencimiento</span>
+                </div>
+                <div
+                  class="detalle-value"
+                  :class="{ 'detalle-vacio': !fechaVencimiento, 'detalle-vencido': vencido }"
+                >
+                  {{ fechaVencimiento || 'Sin fecha' }}
+                </div>
               </div>
-              <div class="detalle-value" :class="{ 'detalle-vacio': !fechaInicio }">
-                {{ fechaInicio || 'Sin fecha' }}
-              </div>
-            </div>
 
-            <div class="detalle-fila">
-              <div class="detalle-label">
-                <q-icon name="schedule" size="16px" aria-hidden="true" />
-                <span>Fecha de vencimiento</span>
-              </div>
-              <div
-                class="detalle-value"
-                :class="{ 'detalle-vacio': !fechaVencimiento, 'detalle-vencido': vencido }"
-              >
-                {{ fechaVencimiento || 'Sin fecha' }}
-              </div>
-            </div>
-
-            <div class="detalle-fila">
-              <div class="detalle-label">
-                <q-icon name="play_circle_outline" size="16px" aria-hidden="true" />
-                <span>En proceso desde</span>
-              </div>
-              <div class="detalle-value" :class="{ 'detalle-vacio': !enProcesoDesde }">
-                {{ enProcesoDesde || 'Sin fecha' }}
+              <div class="detalle-campo">
+                <div class="detalle-label">
+                  <q-icon name="play_circle_outline" size="16px" aria-hidden="true" />
+                  <span>En proceso desde</span>
+                </div>
+                <div class="detalle-value" :class="{ 'detalle-vacio': !enProcesoDesde }">
+                  {{ enProcesoDesde || 'Sin fecha' }}
+                </div>
               </div>
             </div>
           </div>
@@ -293,22 +298,33 @@ const cerrar = () => {
   text-transform: uppercase;
 }
 
-.detalle-grid {
+.detalle-seccion__columnas {
   display: grid;
-  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
-  gap: 10px 20px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 24px;
   min-width: 0;
 }
 
-.detalle-fila {
-  display: contents;
-}
-
 @media (max-width: 599px) {
-  .detalle-grid {
+  .detalle-seccion__columnas {
     grid-template-columns: 1fr;
     gap: 6px 0;
   }
+}
+
+.detalle-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.detalle-campo {
+  display: grid;
+  grid-template-columns: minmax(110px, 130px) minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: baseline;
+  min-width: 0;
 }
 
 .detalle-label {
