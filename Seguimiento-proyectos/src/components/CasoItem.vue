@@ -186,6 +186,19 @@
         <q-tooltip>{{ ayudaEstado }}</q-tooltip>
       </q-select>
       <q-btn
+        flat
+        no-caps
+        icon="visibility"
+        label="Ver"
+        aria-haspopup="dialog"
+        :aria-label="`Ver la ficha del caso de ${caso.client}`"
+        :disable="deshabilitado"
+        class="control-touch boton-presionable"
+        @click="emit('ver')"
+      >
+        <q-tooltip>Abre la ficha del caso en modo consulta. Desde ahí no puedes modificar nada.</q-tooltip>
+      </q-btn>
+      <q-btn
         v-if="!soloCambiaEstado"
         outline
         no-caps
@@ -290,7 +303,7 @@ const ayudaEstado = computed(() =>
 /* El verde de Finalizado aplica al contador y a la vista de consulta del administrador. */
 const esFinalizado = computed(() => props.caso.status === 'finalizado')
 
-const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar', 'cambiar-prioridad'])
+const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar', 'cambiar-prioridad', 'ver'])
 
 const opcionesEstado = STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s }))
 const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p }))

@@ -34,7 +34,7 @@ describe('Grupo A: textos de «Mis casos»', () => {
     const plantilla = plantillaDe(pagina)
     assert.ok(
       plantilla.includes(
-        'Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; en tus casos y en los de tus auxiliares, usa «Editar» para el resto de los datos.',
+        'Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; usa «Ver» para consultar la ficha completa sin cambiarla y «Editar» para modificarla.',
       ),
     )
     assert.match(plantilla, /title="Todavía no tienes casos"/)

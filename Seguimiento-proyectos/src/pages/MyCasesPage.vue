@@ -2,7 +2,7 @@
   <q-page class="my-cases-page">
     <div class="my-cases-page__head">
       <p class="my-cases-page__lead">
-        Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; en tus casos y en los de tus auxiliares, usa «Editar» para el resto de los datos.
+        Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; usa «Ver» para consultar la ficha completa sin cambiarla y «Editar» para modificarla.
       </p>
       <q-btn
         class="my-cases-page__register-btn control-touch boton-presionable"
@@ -103,6 +103,7 @@
               @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
               @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
               @editar="abrirEdicion(item.id)"
+              @ver="abrirDetalle(item.id)"
             />
           </TransitionGroup>
         </q-list>
@@ -161,6 +162,11 @@
       @registrado="alRegistrar"
       @guardado="alGuardarEdicion"
     />
+    <CasoDetalleDialog
+      v-if="casoEnDetalle"
+      v-model="detalleAbierto"
+      :caso="casoEnDetalle"
+    />
   </q-page>
 </template>
 
@@ -170,6 +176,7 @@ import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
 import CaseFormDialog from '../components/CaseFormDialog.vue'
+import CasoDetalleDialog from '../components/CasoDetalleDialog.vue'
 import CasoItem from '../components/CasoItem.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
@@ -257,6 +264,9 @@ const screenStateName = computed(() =>
 
 const dialogoRegistroAbierto = ref(false)
 const casoEnEdicion = ref(null)
+// Detalle de solo lectura («Ver»).
+const detalleAbierto = ref(false)
+const casoEnDetalle = ref(null)
 // Fila que se está guardando: solo esa se deshabilita mientras tanto.
 const guardandoId = ref(null)
 // Se activa solo al finalizar un caso, para que esa fila salga con un fundido (no al filtrar).
@@ -310,6 +320,22 @@ const abrirRegistro = () => {
 const abrirEdicion = (caseId) => {
   casoEnEdicion.value = cases.casos.find((caso) => String(caso.id) === String(caseId)) ?? null
   dialogoRegistroAbierto.value = casoEnEdicion.value !== null
+}
+
+// Abre la ficha de solo lectura con los datos completos del caso.
+const abrirDetalle = (caseId) => {
+  const caso = cases.casos.find((c) => String(c.id) === String(caseId)) ?? null
+  if (caso) {
+    // El POST /casos no devuelve el nombre del contador (sin join); si es el propio, se usa el de la sesión.
+    if (!caso.nombre_contador && session.nombreVisible && String(caso.contador_id) === String(session.id)) {
+      casoEnDetalle.value = { ...caso, nombre_contador: session.nombreVisible }
+    } else {
+      casoEnDetalle.value = caso
+    }
+  } else {
+    casoEnDetalle.value = null
+  }
+  detalleAbierto.value = casoEnDetalle.value !== null
 }
 
 const alGuardarEdicion = () => {

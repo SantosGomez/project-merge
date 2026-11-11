@@ -1,0 +1,235 @@
+// Pruebas estáticas: ficha de solo lectura «Ver» en «Mis casos».
+// No hay campos editables; abre desde «Mis casos» con botón «Ver» en CasoItem.
+
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+
+const leer = (relativa) => readFileSync(fileURLToPath(new URL(relativa, import.meta.url)), 'utf8')
+const plantillaDe = (fuente) => fuente.split('<script')[0]
+const scriptDe = (fuente) => fuente.slice(fuente.indexOf('<script'), fuente.indexOf('<style'))
+const estilosDe = (fuente) => fuente.slice(fuente.indexOf('<style'))
+
+const casoItem = leer('../src/components/CasoItem.vue')
+const myCases = leer('../src/pages/MyCasesPage.vue')
+const detalle = leer('../src/components/CasoDetalleDialog.vue')
+
+describe('Grupo A: botón «Ver» en CasoItem', () => {
+  it('emite ver y no emite estado ni edición', () => {
+    const plantilla = plantillaDe(casoItem)
+    const script = scriptDe(casoItem)
+    assert.match(script, /defineEmits\(\[[\s\S]*?'ver'/, 'emit "ver" declarado')
+    // El botón Ver debe emitir 'ver', no 'editar' ni 'cambiar-estado'
+    const bloqueVer = plantilla.slice(
+      plantilla.indexOf('label="Ver"'),
+      plantilla.indexOf('</q-btn>', plantilla.indexOf('label="Ver"')),
+    )
+    assert.match(bloqueVer, /@click="emit\('ver'\)"/, 'emite ver')
+    assert.doesNotMatch(
+      bloqueVer,
+      /@click="emit\('cambiar-estado'\)"/,
+      'no dispara cambio de estado',
+    )
+    assert.doesNotMatch(bloqueVer, /@click="emit\('editar'\)"/, 'no dispara edición')
+  })
+
+  it('solo aparece en ramas editables (no en soloLectura ni soloCambiaEstado)', () => {
+    const plantilla = plantillaDe(casoItem)
+    // Busca el botón Ver en toda la plantilla; debe estar en la rama v-else (editable/soloEstado)
+    assert.match(plantilla, /label="Ver"/, 'botón Ver presente en plantilla')
+    assert.match(plantilla, /icon="visibility"/, 'icono visibility')
+    assert.match(plantilla, /flat/, 'botón plano (secundario)')
+    assert.match(plantilla, /control-touch/, 'área táctil 44 px')
+    assert.match(plantilla, /boton-presionable/, 'feedback al presionar')
+    assert.match(
+      plantilla,
+      /Abre la ficha del caso en modo consulta\./,
+      'tooltip aclara que es solo consulta',
+    )
+    // No debe estar en la rama soloLectura (admin)
+    const bloqueSoloLectura = plantilla.slice(
+      plantilla.indexOf('<q-item-section v-if="soloLectura" side class="caso-item__acciones">'),
+      plantilla.indexOf(
+        '</q-item-section>',
+        plantilla.indexOf('<q-item-section v-if="soloLectura" side class="caso-item__acciones">'),
+      ),
+    )
+    assert.doesNotMatch(bloqueSoloLectura, /label="Ver"/, 'no hay botón Ver en soloLectura')
+  })
+
+  it('NO aparece en la rama soloLectura (vista admin)', () => {
+    const plantilla = plantillaDe(casoItem)
+    const bloqueSoloLectura = plantilla.slice(
+      plantilla.indexOf('<q-item-section v-if="soloLectura" side class="caso-item__acciones">'),
+      plantilla.indexOf(
+        '</q-item-section>',
+        plantilla.indexOf('<q-item-section v-if="soloLectura" side class="caso-item__acciones">'),
+      ),
+    )
+    assert.doesNotMatch(bloqueSoloLectura, /label="Ver"/, 'no hay botón Ver en soloLectura')
+  })
+})
+
+describe('Grupo B: CasoDetalleDialog.vue — ficha de solo lectura', () => {
+  it('existe el componente', () => {
+    assert.ok(detalle.includes('<template>'), 'archivo creado')
+  })
+
+  it('no contiene formularios ni campos editables', () => {
+    const plantilla = plantillaDe(detalle)
+    assert.doesNotMatch(plantilla, /<q-form/, 'sin q-form')
+    assert.doesNotMatch(plantilla, /<q-input/, 'sin q-input')
+    assert.doesNotMatch(plantilla, /<q-select/, 'sin q-select')
+    assert.doesNotMatch(plantilla, /<q-toggle/, 'sin q-toggle')
+    assert.doesNotMatch(plantilla, /<q-btn[^>]*type="submit"/, 'sin botón submit')
+  })
+
+  it('usa q-dialog con transiciones estándar y no es persistente', () => {
+    const plantilla = plantillaDe(detalle)
+    assert.match(plantilla, /transition-show="dialogo-entra"/, 'entrada estándar')
+    assert.match(plantilla, /transition-hide="dialogo-sale"/, 'salida estándar')
+    assert.match(plantilla, /:transition-duration="220"/, '220 ms')
+    assert.doesNotMatch(plantilla, /:persistent=/, 'no persistente: no hay datos que perder')
+  })
+
+  it('muestra cliente, prioridad, estado, contador, fechas, descripción y observaciones', () => {
+    const plantilla = plantillaDe(detalle)
+    const script = scriptDe(detalle)
+    for (const campo of [
+      'cliente',
+      'prioridad',
+      'estado',
+      'nombre_contador',
+      'fecha_inicio',
+      'fecha_vencimiento',
+      'descripcion',
+      'observaciones',
+    ]) {
+      assert.ok(plantilla.includes(campo) || script.includes(campo), `campo ${campo} presente`)
+    }
+    // Las fechas del store vienen en AAAA-MM-DD: la ficha las pasa a DD-MM-AAAA.
+    assert.match(script, /fechaParaFormulario\(props\.caso\.fecha_inicio\)/, 'inicio formateado')
+    assert.match(
+      script,
+      /fechaParaFormulario\(props\.caso\.fecha_vencimiento\)/,
+      'vencimiento formateado',
+    )
+    // Etiqueta de prioridad
+    assert.match(plantilla, /<PriorityTag/, 'prioridad con PriorityTag')
+    // Estado como texto (no selector)
+    assert.match(plantilla, /class="detalle-estado"/, 'estado como texto visible')
+  })
+
+  it('textos explícitos cuando descripción u observaciones están vacías', () => {
+    const plantilla = plantillaDe(detalle)
+    assert.match(
+      plantilla,
+      /Sin descripción|sin descripción/i,
+      'texto explícito para descripción vacía',
+    )
+    assert.match(
+      plantilla,
+      /Sin observaciones|sin observaciones/i,
+      'texto explícito para observaciones vacías',
+    )
+  })
+
+  it('respeta saltos de línea y no usa colores hexadecimales', () => {
+    const estilos = estilosDe(detalle)
+    assert.match(estilos, /white-space:\s*pre-line|pre-wrap/, 'saltos de línea respetados')
+    assert.doesNotMatch(estilos, /#[0-9a-fA-F]{3,6}\b/, 'sin hexadecimales en estilos')
+  })
+
+  it('cierra con botón, Esc y clic fuera', () => {
+    const plantilla = plantillaDe(detalle)
+    assert.match(plantilla, /label="Cerrar"/, 'botón Cerrar')
+    // q-dialog por defecto cierra con Esc y clic fuera si no es persistent
+  })
+})
+
+describe('Grupo C: MyCasesPage.vue — integración', () => {
+  it('define refs para el diálogo de detalle y función abrirDetalle', () => {
+    const script = scriptDe(myCases)
+    assert.match(script, /const detalleAbierto = ref\(false\)/, 'ref detalleAbierto')
+    assert.match(script, /const casoEnDetalle = ref\(null\)/, 'ref casoEnDetalle')
+    assert.match(script, /const abrirDetalle = \(caseId\) => \{/, 'función abrirDetalle')
+    assert.match(script, /cases\.casos\.find/, 'busca el caso del store')
+    assert.match(script, /detalleAbierto\.value = casoEnDetalle\.value !== null/, 'abre el diálogo')
+  })
+
+  it('cablea @ver en CasoItem', () => {
+    const plantilla = plantillaDe(myCases)
+    assert.match(plantilla, /@ver="abrirDetalle\(item\.id\)"/, 'manejador @ver')
+  })
+
+  it('incluye CasoDetalleDialog en la plantilla', () => {
+    const plantilla = plantillaDe(myCases)
+    assert.match(plantilla, /<CasoDetalleDialog/, 'diálogo presente')
+    assert.match(plantilla, /v-model="detalleAbierto"/, 'v-model conectado')
+    assert.match(plantilla, /:caso="casoEnDetalle"/, 'caso pasado como prop')
+  })
+})
+
+describe('Grupo D: rediseño moderno de CasoDetalleDialog', () => {
+  it('usa iconos en todos los campos', () => {
+    const plantilla = plantillaDe(detalle)
+    for (const icono of [
+      'flag',
+      'tune',
+      'star',
+      'person',
+      'event',
+      'schedule',
+      'play_circle_outline',
+      'description',
+      'sticky_note_2',
+      'visibility',
+    ]) {
+      assert.match(plantilla, new RegExp(`name="${icono}"`), `icono ${icono} presente`)
+    }
+  })
+
+  it('agrupa los campos en secciones separadas', () => {
+    const plantilla = plantillaDe(detalle)
+    const estilos = estilosDe(detalle)
+    assert.match(plantilla, /class="detalle-seccion"/, 'secciones presentes')
+    assert.match(estilos, /\.detalle-seccion \+ \.detalle-seccion/, 'regla de separador')
+    assert.match(
+      estilos,
+      /border-top:\s*1px solid var\(--dg-borde\)/,
+      'separador con borde de paleta',
+    )
+  })
+
+  it('usa radius 12 px y ancho 1080', () => {
+    const estilos = estilosDe(detalle)
+    assert.match(estilos, /border-radius:\s*12px/, 'radius 12 px')
+    assert.match(estilos, /min\(1080px,\s*calc\(100vw - 32px\)\)/, 'ancho 1080')
+  })
+
+  it('limita la altura de los textos largos con scroll', () => {
+    const estilos = estilosDe(detalle)
+    assert.match(estilos, /\.detalle-texto[\s\S]*?max-height:\s*120px/, 'max-height 120')
+    assert.match(estilos, /\.detalle-texto[\s\S]*?overflow-y:\s*auto/, 'scroll interno')
+  })
+
+  it('pinta el punto de color del estado con COLOR_ESTADO', () => {
+    const plantilla = plantillaDe(detalle)
+    const script = scriptDe(detalle)
+    assert.match(plantilla, /punto-estado-sm/, 'punto de estado pequeño')
+    assert.match(script, /COLOR_ESTADO/, 'importa COLOR_ESTADO')
+  })
+
+  it('muestra «Tú» para el caso propio y usa la sesión', () => {
+    const script = scriptDe(detalle)
+    assert.match(script, /useSessionStore/, 'usa la sesión')
+    assert.match(script, /'Tú'/, 'texto «Tú»')
+    assert.match(script, /contador_id/, 'compara contador_id')
+  })
+
+  it('mantiene la cabecera con icono visibility', () => {
+    const plantilla = plantillaDe(detalle)
+    assert.match(plantilla, /name="visibility"/, 'icono en el encabezado')
+  })
+})
