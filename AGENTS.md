@@ -102,7 +102,7 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - Los comentarios deben estar en español.
 - las vistas deben ser responsivas para todo tipo de dispositivos (mobile, desktop).
 - los textos de las vistas no tienen que ser ambiguos para que todas los usuarios puedan entender
-- tener tooltips para dar contexto al usuario y evitar ambiguedad.
+- tener tooltips para dar contexto al usuario y evitar ambiguedad. Excepción: los ítems del menú lateral (`MaquetaLayout.vue`) no llevan tooltip, porque la etiqueta y el subtítulo ya dan el contexto; el logo (fijar menú) y el nombre del usuario sí lo conservan.
 - Identidad visual: la app se llama «Seguimiento de Proyectos» y comparte el diseño de las demás apps de Grupo DelGrow S.C. (menú lateral oscuro de altura completa con logo, nombre de la empresa y de la app, secciones por rol y usuario con cierre de sesión al pie).
 - Componentes de Quasar en todas las vistas (`q-btn`, `q-list`/`q-item`, `q-card`, `q-chip`/`q-badge`, `q-form`, `q-input`…). HTML nativo solo cuando Quasar no tiene equivalente; la única excepción acordada es el SVG de la dona «Casos por estado» (`DonaEstados.vue`), que va dentro de un `q-card`.
 - Colores desde la paleta `$dg-colores` de `src/css/quasar.variables.scss` (`color="dg-acento"`, clases `text-dg-*`/`bg-dg-*` o `var(--dg-*)`), nunca un hexadecimal suelto en un componente. Un color nuevo se agrega a la paleta y, si es texto sobre fondo, a los pares de contraste de `test/paletaColores.test.js`.
