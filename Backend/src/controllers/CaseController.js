@@ -58,6 +58,14 @@ const TEXTOS_OPCIONALES = {
 // Importante es opcional, pero si viene debe ser un booleano real (no "true", 1 ni null)
 const ERROR_IMPORTANTE = buildError('Dato inválido', 'importante', 'Envía importante como true o false');
 
+// Solo el contador escala un caso: el auxiliar no marca ni desmarca «Importante».
+const ERROR_IMPORTANTE_DE_AUXILIAR = buildError(
+  'Acceso denegado',
+  'importante',
+  'Solo tu contador puede marcar un caso como importante'
+);
+const cuentaEsAuxiliar = (req) => req.user.rol === 'auxiliar';
+
 function importanteInvalido(valor) {
   return valor !== undefined && typeof valor !== 'boolean';
 }
@@ -189,6 +197,10 @@ function validarNuevoCaso(cuerpo) {
  * @param {Object} res - Respuesta Express.
  */
 async function createCase(req, res) {
+  if (cuentaEsAuxiliar(req) && req.body.importante === true) {
+    return res.status(403).json(ERROR_IMPORTANTE_DE_AUXILIAR);
+  }
+
   const { error, datos } = validarNuevoCaso(req.body);
   if (error) {
     return res.status(400).json(error);
@@ -245,6 +257,10 @@ async function updateCase(req, res) {
   }
 
   const { importante } = req.body;
+  if (cuentaEsAuxiliar(req) && importante !== undefined) {
+    return res.status(403).json(ERROR_IMPORTANTE_DE_AUXILIAR);
+  }
+
   const editables = [
     cliente,
     estado,
@@ -488,6 +504,9 @@ async function crearCasoComoAuxiliar(req, res) {
     return res.status(403).json(
       buildError('Acceso denegado', 'caso', 'No eres auxiliar de este contador')
     );
+  }
+  if (req.body.importante === true) {
+    return res.status(403).json(ERROR_IMPORTANTE_DE_AUXILIAR);
   }
 
   const { error, datos } = validarNuevoCaso(req.body);

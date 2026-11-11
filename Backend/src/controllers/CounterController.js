@@ -75,25 +75,26 @@ async function teamSummary(req, res) {
 }
 
 /**
- * Devuelve los casos de un contador (solo administrador).
+ * Devuelve los casos de un contador o de un auxiliar (solo administrador). En un contador
+ * se suman los casos escalados de sus auxiliares (los que marcó como importantes).
  * RF-14, RF-16, RF-24.
- * @param {Object} req - Petición Express con params.id del contador.
+ * @param {Object} req - Petición Express con params.id del contador o auxiliar.
  * @param {Object} res - Respuesta Express.
  */
 async function getCasesByCounter(req, res) {
   const { id } = req.params;
 
-  // El identificador debe ser un entero positivo y pertenecer a un contador (RF-16, RF-35)
+  // El identificador debe ser un entero positivo y pertenecer a una cuenta que trabaja casos (RF-16, RF-35)
   const idNumerico = parseCounterId(id);
-  const contador = idNumerico ? await UserModel.findCounterById(idNumerico) : null;
+  const contador = idNumerico ? await UserModel.findContadorOAuxiliarById(idNumerico) : null;
   if (!contador) {
     return res.status(404).json(
       buildError('No se encontró el contador', 'contador solicitado', 'Revisa que el contador exista y actualiza la lista')
     );
   }
 
-  // Solo los casos del contador: los de sus auxiliares se ven en el detalle de cada auxiliar
-  const casos = await CaseModel.findByCounter(idNumerico, { soloImportantes: pideSoloImportantes(req) });
+  // Sus casos y los escalados de sus auxiliares; cada uno trae el nombre de su dueño
+  const casos = await CaseModel.findParaAdministrador(idNumerico, { soloImportantes: pideSoloImportantes(req) });
   if (casos.length === 0) {
     return res.status(200).json({
       mensaje: 'El contador no tiene casos registrados',

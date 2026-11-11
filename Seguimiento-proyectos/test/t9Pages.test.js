@@ -446,7 +446,7 @@ describe('Editar caso — fila con fechas y botón «Editar»', () => {
     assert.match(detalle, /<CasoItem[^>]*solo-lectura/)
     assert.doesNotMatch(admin, /abrirEdicion|guardarCambio/)
     // En solo lectura no hay estrella, selector de estado ni «Editar».
-    assert.match(casoItemSource, /<q-item-section v-if="!soloLectura && !soloCambiaEstado" avatar/)
+    assert.match(casoItemSource, /<q-item-section v-if="!soloLectura && !soloCambiaEstado && puedeMarcarImportante" avatar/)
     assert.match(casoItemSource, /<q-item-section v-else side class="caso-item__acciones">\s*<q-select/)
   })
 })

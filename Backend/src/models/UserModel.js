@@ -107,6 +107,19 @@ async function updatePassword(id, hash, debeCambiarContrasena) {
   );
 }
 
+/**
+ * Busca una cuenta que trabaja casos (contador o auxiliar) por su ID.
+ * @param {number} id - ID del usuario.
+ * @returns {Promise<{id: number, nombre: string, rol: string}|null>} La cuenta, o null si no existe o tiene otro rol.
+ */
+async function findContadorOAuxiliarById(id) {
+  const rows = await query(
+    "SELECT id, nombre, rol FROM usuarios WHERE id = ? AND rol IN ('contador', 'auxiliar')",
+    [id]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
+
 module.exports = {
   findByCorreo,
   registrarUltimoAcceso,
@@ -117,4 +130,5 @@ module.exports = {
   findAllPublic,
   findCountersPublic,
   findCounterById,
+  findContadorOAuxiliarById,
 };

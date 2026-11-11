@@ -19,7 +19,7 @@
         </div>
         <p v-if="session.esAdministrador" class="directory-panel__help">
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. Para ver los casos
-          importantes de un contador, pulsa «Ver casos importantes» en su fila.
+          importantes de un contador o de un auxiliar, pulsa «Ver casos importantes» en su fila.
         </p>
         <p v-else class="directory-panel__help">
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. «Nuevo usuario»
@@ -34,6 +34,11 @@
         @creado="alCrearUsuario"
       />
       <ContadoresDeAuxiliarDialog v-model="dialogoContadoresAbierto" :cuenta="cuentaAuxiliar" :contadores="contadores" />
+      <CasosDeAuxiliarDialog
+        v-if="session.esAdministrador"
+        v-model="dialogoCasosAuxiliarAbierto"
+        :cuenta="cuentaCasosAuxiliar"
+      />
       <ResetPasswordDialog
         v-if="session.esUsuarioSistema"
         v-model="dialogoRestablecerAbierto"
@@ -162,6 +167,20 @@
                 <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
               </q-btn>
               <q-btn
+                v-if="props.row.puedeVerCasosDeAuxiliar && session.esAdministrador"
+                flat
+                no-caps
+                color="primary"
+                icon="folder_open"
+                label="Ver casos importantes"
+                aria-haspopup="dialog"
+                :aria-label="`Ver casos importantes de ${props.row.nombre}`"
+                class="control-touch boton-presionable"
+                @click="abrirCasosDeAuxiliar(props.row)"
+              >
+                <q-tooltip>Abre los casos de este auxiliar que su contador marcó como importantes.</q-tooltip>
+              </q-btn>
+              <q-btn
                 v-if="props.row.rolClave === 'auxiliar'"
                 flat
                 no-caps
@@ -219,6 +238,20 @@
                     <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
                   </q-btn>
                   <q-btn
+                    v-if="props.row.puedeVerCasosDeAuxiliar && session.esAdministrador"
+                    flat
+                    no-caps
+                    color="primary"
+                    icon="folder_open"
+                    label="Ver casos importantes"
+                    aria-haspopup="dialog"
+                    :aria-label="`Ver casos importantes de ${props.row.nombre}`"
+                    class="control-touch boton-presionable"
+                    @click="abrirCasosDeAuxiliar(props.row)"
+                  >
+                    <q-tooltip>Abre los casos de este auxiliar que su contador marcó como importantes.</q-tooltip>
+                  </q-btn>
+                  <q-btn
                     v-if="props.row.rolClave === 'auxiliar'"
                     flat
                     no-caps
@@ -261,6 +294,7 @@ import { useRouter } from 'vue-router'
 
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import CasosDeAuxiliarDialog from '../components/CasosDeAuxiliarDialog.vue'
 import ContadoresDeAuxiliarDialog from '../components/ContadoresDeAuxiliarDialog.vue'
 import NewUserDialog from '../components/NewUserDialog.vue'
 import ResetPasswordDialog from '../components/ResetPasswordDialog.vue'
@@ -404,6 +438,15 @@ const cuentaAuxiliar = ref(null)
 const abrirContadores = (fila) => {
   cuentaAuxiliar.value = fila
   dialogoContadoresAbierto.value = true
+}
+
+// Casos importantes de un auxiliar (los que escaló su contador): se abren aquí, no en el dashboard.
+const dialogoCasosAuxiliarAbierto = ref(false)
+const cuentaCasosAuxiliar = ref(null)
+
+const abrirCasosDeAuxiliar = (fila) => {
+  cuentaCasosAuxiliar.value = fila
+  dialogoCasosAuxiliarAbierto.value = true
 }
 
 // En celular la tarjeta solo lleva barra de acciones si tiene algún botón que mostrar.

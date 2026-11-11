@@ -11,7 +11,7 @@
 
     <ScreenLoader
       v-else-if="estado === SCREEN_STATES.loading"
-      text="Cargando los casos del contador seleccionado…"
+      :text="auxiliar ? 'Cargando los casos del auxiliar…' : 'Cargando los casos del contador seleccionado…'"
     />
 
     <!-- Un fallo del detalle se queda aquí: la lista de contadores sigue a la vista. -->
@@ -23,8 +23,12 @@
 
     <EmptyState
       v-else-if="estado === SCREEN_STATES.empty"
-      title="Este contador no tiene casos importantes"
-      :message="`${contador.nombre} no tiene casos marcados como importantes.`"
+      :title="auxiliar ? 'Este auxiliar no tiene casos importantes' : 'Este contador no tiene casos importantes'"
+      :message="
+        auxiliar
+          ? `Ningún contador ha marcado como importante un caso de ${contador.nombre}.`
+          : `${contador.nombre} no tiene casos marcados como importantes.`
+      "
     />
 
     <template v-else>
@@ -42,6 +46,7 @@
           :caso="caso"
           solo-lectura
           puede-cambiar-prioridad
+          :contador-autenticado-id="contador.id"
           :deshabilitado="guardando"
           @cambiar-prioridad="(prioridad) => emit('cambiar-prioridad', caso, prioridad)"
         />
@@ -93,6 +98,8 @@ defineProps({
   guardando: { type: Boolean, default: false },
   /** Error de tres partes de la carga del detalle, o null. */
   error: { type: Object, default: null },
+  /** La cuenta es un auxiliar (diálogo del directorio): cambian los textos de carga y de vacío. */
+  auxiliar: { type: Boolean, default: false },
 })
 
 /** Filtro de estado del detalle; lo comparten los chips y los conteos de la fila del contador. */

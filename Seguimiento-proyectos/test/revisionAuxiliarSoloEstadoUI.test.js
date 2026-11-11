@@ -21,7 +21,7 @@ describe('CasoItem: edición limitada para el auxiliar', () => {
   })
 
   it('no muestra la estrella de Importante cuando solo se cambia el estado', () => {
-    assert.match(plantilla, /<q-item-section v-if="!soloLectura && !soloCambiaEstado"/)
+    assert.match(plantilla, /<q-item-section v-if="!soloLectura && !soloCambiaEstado && puedeMarcarImportante"/)
   })
 
   it('no muestra el botón Editar cuando solo se cambia el estado', () => {

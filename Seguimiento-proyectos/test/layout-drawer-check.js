@@ -704,7 +704,7 @@ describe('Directorio de usuarios (rebanada 2: el usuario de sistema entra) — v
   it('«Ver casos» solo se muestra al administrador', () => {
     const condiciones = [...pagina.matchAll(/v-if="([^"]*puedeVerCasos[^"]*)"/g)].map((m) => m[1])
 
-    assert.equal(condiciones.length, 2, 'tabla y tarjetas')
+    assert.equal(condiciones.length, 4, 'tabla y tarjetas, para contador y para auxiliar')
     for (const condicion of condiciones) {
       assert.match(condicion, /session\.esAdministrador/, `«${condicion}» exige administrador`)
     }

@@ -27,6 +27,30 @@ async function findByCounter(contadorId, { soloImportantes = false } = {}) {
   return rows;
 }
 
+// Casos escalados: los que un contador marcó como importantes en la cuenta de uno de sus auxiliares.
+// El auxiliar no puede marcar «Importante»; así el caso llega al administrador bajo su contador.
+const ESCALADOS_DE_SUS_AUXILIARES =
+  '(c.importante = 1 AND c.contador_id IN (SELECT auxiliar_id FROM contador_auxiliar WHERE contador_id = ?))';
+
+/**
+ * Casos que el administrador ve de una cuenta: los propios y, si es un contador, los casos
+ * escalados de sus auxiliares. Cada caso trae `nombre_contador` (su dueño).
+ * @param {number} usuarioId - ID del contador o del auxiliar.
+ * @param {{ soloImportantes?: boolean }} [opciones] - de los propios, solo los importantes.
+ * @returns {Promise<Array>} Casos, del más reciente al más antiguo.
+ */
+async function findParaAdministrador(usuarioId, { soloImportantes = false } = {}) {
+  return query(
+    `SELECT c.*, u.nombre AS nombre_contador
+     FROM casos c
+     JOIN usuarios u ON u.id = c.contador_id
+     WHERE (c.contador_id = ?${soloImportantes ? ' AND c.importante = 1' : ''})
+        OR ${ESCALADOS_DE_SUS_AUXILIARES}
+     ORDER BY c.id DESC`,
+    [usuarioId, usuarioId]
+  );
+}
+
 /**
  * Devuelve los casos del equipo de un contador (casos en conjunto): los suyos, los de sus
  * auxiliares y los de los contadores a los que apoya como auxiliar, sin duplicados.
@@ -58,6 +82,7 @@ async function findByCounterYAuxiliares(contadorId, { soloImportantes = false } 
 
 /**
  * Devuelve el conteo de casos por estado para un contador, incluyendo ceros.
+ * Cuenta sus casos y los escalados de sus auxiliares.
  * RF-13.
  * @param {number} contadorId - ID del contador.
  * @param {{ soloImportantes?: boolean }} [opciones] - contar solo los casos marcados como importantes.
@@ -65,11 +90,12 @@ async function findByCounterYAuxiliares(contadorId, { soloImportantes = false } 
  */
 async function countByStatus(contadorId, { soloImportantes = false } = {}) {
   const rows = await query(
-    `SELECT estado, COUNT(*) AS cantidad
-     FROM casos
-     WHERE contador_id = ?${soloImportantes ? ' AND importante = 1' : ''}
-     GROUP BY estado`,
-    [contadorId]
+    `SELECT c.estado, COUNT(*) AS cantidad
+     FROM casos c
+     WHERE (c.contador_id = ?${soloImportantes ? ' AND c.importante = 1' : ''})
+        OR ${ESCALADOS_DE_SUS_AUXILIARES}
+     GROUP BY c.estado`,
+    [contadorId, contadorId]
   );
 
   const conteos = { pendiente: 0, en_proceso: 0, finalizado: 0 };
@@ -91,7 +117,7 @@ const CAMPOS_RESUMEN = ['pendiente', 'en_proceso', 'finalizado', 'abiertos', 've
 /**
  * Resumen de casos de cada contador en una sola consulta, con ceros para quien no tiene casos.
  * Vencido = vencimiento anterior a `hoy` y no finalizado; alta abierta = prioridad Alta no finalizada.
- * Solo cuentan las cuentas con rol contador.
+ * Solo cuentan las cuentas con rol contador; cada una suma los casos escalados de sus auxiliares.
  * @param {string} hoy - Fecha AAAA-MM-DD de hoy en hora local.
  * @param {{ soloImportantes?: boolean }} [opciones] - contar solo los casos marcados como importantes.
  * @returns {Promise<Array<{contador_id: number, pendiente: number, en_proceso: number, finalizado: number, abiertos: number, vencidos: number, alta_abiertos: number}>>}
@@ -107,7 +133,10 @@ async function resumenPorContador(hoy, { soloImportantes = false } = {}) {
             SUM(c.estado <> 'Finalizado' AND c.fecha_vencimiento < ?) AS vencidos,
             SUM(c.estado <> 'Finalizado' AND c.prioridad = 'Alta') AS alta_abiertos
      FROM usuarios u
-     LEFT JOIN casos c ON c.contador_id = u.id${filtroImportante}
+     LEFT JOIN casos c ON (c.contador_id = u.id${filtroImportante})
+       OR (c.importante = 1 AND c.contador_id IN (
+         SELECT ca.auxiliar_id FROM contador_auxiliar ca WHERE ca.contador_id = u.id
+       ))
      WHERE u.rol = 'contador'
      GROUP BY u.id
      ORDER BY u.id`,
@@ -228,4 +257,4 @@ async function updatePatch(id, campos = {}, ejecutar = query) {
   await ejecutar(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
-module.exports = { findById, findByCounter, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
+module.exports = { findById, findByCounter, findParaAdministrador, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };

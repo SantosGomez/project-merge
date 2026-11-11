@@ -7,7 +7,7 @@
       'caso-item--solo-lectura': soloLectura,
     }"
   >
-    <q-item-section v-if="!soloLectura && !soloCambiaEstado" avatar class="caso-item__estrella">
+    <q-item-section v-if="!soloLectura && !soloCambiaEstado && puedeMarcarImportante" avatar class="caso-item__estrella">
       <q-btn
         flat
         round
@@ -253,7 +253,15 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  /** Id del contador autenticado (texto). Se usa para mostrar «de …» cuando el caso es de un auxiliar. */
+  /** El auxiliar no marca «Importante»: solo su contador escala un caso. */
+  puedeMarcarImportante: {
+    type: Boolean,
+    default: true,
+  },
+  /**
+   * Id del contador autenticado (texto), para mostrar «de …» cuando el caso es de un auxiliar.
+   * En la vista del administrador es el contador elegido: «de …» marca los casos escalados de sus auxiliares.
+   */
   contadorAutenticadoId: {
     type: [String, Number],
     default: null,
@@ -275,11 +283,12 @@ const esCasoDeOtroContador = computed(
  */
 const soloCambiaEstado = computed(() => props.caso.soloEstado === true)
 
-const ayudaDuenio = computed(() =>
-  soloCambiaEstado.value
+const ayudaDuenio = computed(() => {
+  if (props.soloLectura) return 'Caso de un auxiliar de este contador: el contador lo marcó como importante.'
+  return soloCambiaEstado.value
     ? 'Este caso es del contador al que apoyas: solo puedes cambiar su estado.'
     : 'Este caso es de tu auxiliar: puedes editarlo completo.'
-)
+})
 
 const vencido = computed(() => Boolean(props.caso.vencido) && !props.soloLectura)
 const proximo = computed(() => Boolean(props.caso.proximo) && !props.soloLectura)

@@ -2,7 +2,7 @@
   <q-page class="my-cases-page">
     <div class="my-cases-page__head">
       <p class="my-cases-page__lead">
-        Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; usa «Ver» para consultar la ficha completa sin cambiarla y «Editar» para modificarla.
+        Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; usa «Ver» para consultar la ficha completa sin cambiarla y «Editar» para modificarla.<template v-if="session.esAuxiliar"> Solo tu contador puede marcar un caso como importante.</template>
       </p>
       <q-btn
         class="my-cases-page__register-btn control-touch boton-presionable"
@@ -100,6 +100,7 @@
               :caso="item"
               :deshabilitado="guardandoId === item.id"
               :contador-autenticado-id="contadorAutenticadoId"
+              :puede-marcar-importante="!session.esAuxiliar"
               @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
               @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
               @editar="abrirEdicion(item.id)"

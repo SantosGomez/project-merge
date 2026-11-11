@@ -66,6 +66,8 @@ export const usuarioAFila = (usuario) => {
     /** Lo que se muestra: DD-MM-AAAA HH:mm; `ultimoAcceso` se queda crudo para ordenar. */
     ultimoAccesoTexto: textoUltimoAcceso(usuario.ultimo_acceso_en),
     puedeVerCasos: usuario.rol === PROFILES.contador,
+    /** El administrador abre los casos importantes del auxiliar en un diálogo del directorio. */
+    puedeVerCasosDeAuxiliar: usuario.rol === PROFILES.auxiliar,
   }
 }
 

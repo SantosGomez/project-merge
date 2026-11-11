@@ -289,7 +289,8 @@
             </template>
           </div>
 
-          <div class="form-group">
+          <!-- El auxiliar no marca «Importante»: solo su contador escala un caso. -->
+          <div v-if="!session.esAuxiliar" class="form-group">
             <q-toggle
               v-model="importante"
               color="dg-importante"
