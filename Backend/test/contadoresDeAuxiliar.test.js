@@ -30,6 +30,13 @@ const pedir = (metodo, ruta, cuerpo, token = tokenSistema) => peticion(servidor.
 const idsDe = (respuesta) => respuesta.body.contadores.map((c) => c.id).sort((a, b) => a - b);
 const avisosDe = async (usuarioId) =>
   Number((await query('SELECT COUNT(*) AS n FROM notificaciones WHERE usuario_id = ?', [usuarioId]))[0].n);
+const ultimoAvisoDe = async (usuarioId) => {
+  const filas = await query(
+    'SELECT mensaje FROM notificaciones WHERE usuario_id = ? ORDER BY creado_en DESC, id DESC LIMIT 1',
+    [usuarioId]
+  );
+  return filas.length > 0 ? filas[0].mensaje : null;
+};
 const correoNuevo = () => {
   const correo = `zz_test_alta_aux_${crypto.randomBytes(4).toString('hex')}@prueba.local`;
   registrarUsuarioCreado(correo);
@@ -150,5 +157,42 @@ describe('contadores que apoya un auxiliar (despacho)', () => {
     });
     assert.strictEqual(alta.statusCode, 400);
     assert.strictEqual((await query('SELECT id FROM usuarios WHERE correo = ?', [correo])).length, 0);
+  });
+
+  test('al quitar un contador del equipo se avisa al auxiliar y al contador', async () => {
+    const ruta = `/usuarios/${auxiliar.id}/contadores`;
+    const antesContador = await avisosDe(contadorDos.id);
+    const antesAuxiliar = await avisosDe(auxiliar.id);
+
+    const quitado = await pedir('PUT', ruta, { agregar: [], quitar: [contadorDos.id] });
+    assert.strictEqual(quitado.statusCode, 200, JSON.stringify(quitado.body));
+    assert.deepStrictEqual(idsDe(quitado), [], 'el vínculo se quitó de verdad');
+
+    assert.strictEqual(await avisosDe(contadorDos.id), antesContador + 1, 'el contador recibe aviso de la baja');
+    assert.strictEqual(await avisosDe(auxiliar.id), antesAuxiliar + 1, 'el auxiliar recibe aviso de la baja');
+
+    assert.strictEqual(
+      await ultimoAvisoDe(auxiliar.id),
+      `Ya no apoyas a ${contadorDos.nombre} con sus casos.`,
+      'texto del aviso al auxiliar'
+    );
+    assert.strictEqual(
+      await ultimoAvisoDe(contadorDos.id),
+      `${auxiliar.nombre} ya no es tu auxiliar.`,
+      'texto del aviso al contador'
+    );
+  });
+
+  test('quitar a quien no estaba vinculado no crea avisos', async () => {
+    const ruta = `/usuarios/${auxiliar.id}/contadores`;
+    const antesContador = await avisosDe(contadorUno.id);
+    const antesAuxiliar = await avisosDe(auxiliar.id);
+
+    const quitado = await pedir('PUT', ruta, { agregar: [], quitar: [contadorUno.id] });
+    assert.strictEqual(quitado.statusCode, 200);
+    assert.deepStrictEqual(idsDe(quitado), [], 'no había vínculo que quitar');
+
+    assert.strictEqual(await avisosDe(contadorUno.id), antesContador, 'el contador no recibe aviso');
+    assert.strictEqual(await avisosDe(auxiliar.id), antesAuxiliar, 'el auxiliar no recibe aviso');
   });
 });

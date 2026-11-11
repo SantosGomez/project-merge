@@ -74,13 +74,14 @@ async function asignarAuxiliar(contadorId, auxiliarId) {
  * Quita un auxiliar de un contador.
  * @param {number} contadorId - Id del contador.
  * @param {number} auxiliarId - Id del auxiliar a quitar.
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} true si de verdad se borró el vínculo, false si ya no existía.
  */
 async function quitarAuxiliar(contadorId, auxiliarId) {
-  await query(
+  const resultado = await query(
     'DELETE FROM contador_auxiliar WHERE contador_id = ? AND auxiliar_id = ?',
     [contadorId, auxiliarId]
   );
+  return resultado.affectedRows > 0;
 }
 
 /**

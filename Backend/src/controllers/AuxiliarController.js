@@ -146,7 +146,12 @@ async function quitarAuxiliar(req, res) {
     return res.status(404).json(ERROR_AUXILIAR_NO_VALIDO);
   }
 
-  await AuxiliarModel.quitarAuxiliar(contadorId, auxiliarId);
+  const contador = await UserModel.findById(contadorId);
+  const quitadoDeVerdad = await AuxiliarModel.quitarAuxiliar(contadorId, auxiliarId);
+
+  if (quitadoDeVerdad) {
+    await avisarAuxiliarDeBaja(auxiliarId, contador.nombre);
+  }
 
   const auxiliares = await AuxiliarModel.listarAuxiliares(contadorId);
   return res.status(200).json({
@@ -212,6 +217,36 @@ async function avisarNuevosVinculos(auxiliarId, nuevos) {
 }
 
 /**
+ * Avisa al auxiliar y a cada contador cuyo vínculo se quitó de verdad
+ * (vía despacho: ambos reciben el aviso y el evento aviso-nuevo, caso_id nulo).
+ * @param {number} auxiliarId - Id de la cuenta auxiliar.
+ * @param {Array<number>} quitados - Ids de contadores cuyo vínculo se quitó.
+ */
+async function avisarVinculosQuitados(auxiliarId, quitados) {
+  if (quitados.length === 0) return;
+  const auxiliar = await UserModel.findById(auxiliarId);
+  for (const contadorId of quitados) {
+    const contador = await UserModel.findById(contadorId);
+    if (!contador) continue;
+    await NotificacionModel.crear({ usuarioId: auxiliarId, casoId: null, mensaje: `Ya no apoyas a ${contador.nombre} con sus casos.` });
+    await NotificacionModel.crear({ usuarioId: contador.id, casoId: null, mensaje: `${auxiliar.nombre} ya no es tu auxiliar.` });
+    eventos.enviarAUsuario(auxiliarId, 'aviso-nuevo', {});
+    eventos.enviarAUsuario(contador.id, 'aviso-nuevo', {});
+  }
+}
+
+/**
+ * Avisa solo al auxiliar de que dejó de apoyar a un contador
+ * (vía contador: el contador no recibe aviso, caso_id nulo).
+ * @param {number} auxiliarId - Id de la cuenta auxiliar.
+ * @param {string} nombreContador - Nombre del contador al que dejó de apoyar.
+ */
+async function avisarAuxiliarDeBaja(auxiliarId, nombreContador) {
+  await NotificacionModel.crear({ usuarioId: auxiliarId, casoId: null, mensaje: `Ya no apoyas a ${nombreContador} con sus casos.` });
+  eventos.enviarAUsuario(auxiliarId, 'aviso-nuevo', {});
+}
+
+/**
  * GET /usuarios/:id/contadores — contadores que apoya un auxiliar (administrador o sistema).
  * @param {Object} req - Petición Express.
  * @param {Object} res - Respuesta Express.
@@ -230,7 +265,7 @@ async function listarContadoresDeAuxiliar(req, res) {
  * @param {Object} req - Petición Express.
  * @param {Object} res - Respuesta Express.
  */
-async function reemplazarContadoresDeAuxiliar(req, res) {
+async function ajustarContadoresDeAuxiliar(req, res) {
   const auxiliarId = parseCounterId(req.params.id);
   if (!auxiliarId) return res.status(404).json(ERROR_AUXILIAR_NO_VALIDO);
 
@@ -245,6 +280,7 @@ async function reemplazarContadoresDeAuxiliar(req, res) {
     return responderErrorDelModelo(res, error);
   }
   await avisarNuevosVinculos(auxiliarId, cambios.agregados);
+  await avisarVinculosQuitados(auxiliarId, cambios.quitados);
 
   const contadores = await AuxiliarModel.listarContadoresQueMeTienenComoAuxiliar(auxiliarId);
   return res.status(200).json({ mensaje: 'Contadores del auxiliar actualizados', contadores });
@@ -252,7 +288,7 @@ async function reemplazarContadoresDeAuxiliar(req, res) {
 
 module.exports = {
   listarContadoresDeAuxiliar,
-  reemplazarContadoresDeAuxiliar,
+  ajustarContadoresDeAuxiliar,
   avisarNuevosVinculos,
   ERROR_LISTA_CONTADORES,
   listarAuxiliares,

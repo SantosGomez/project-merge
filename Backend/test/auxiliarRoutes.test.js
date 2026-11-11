@@ -38,6 +38,19 @@ async function get(ruta, token) {
   return peticion(servidor.puerto, 'GET', ruta, undefined, token);
 }
 
+async function contarAvisos(usuarioId) {
+  const [fila] = await query('SELECT COUNT(*) AS n FROM notificaciones WHERE usuario_id = ?', [usuarioId]);
+  return Number(fila.n);
+}
+
+async function ultimoAvisoDe(usuarioId) {
+  const filas = await query(
+    'SELECT mensaje FROM notificaciones WHERE usuario_id = ? ORDER BY creado_en DESC, id DESC LIMIT 1',
+    [usuarioId]
+  );
+  return filas.length > 0 ? filas[0].mensaje : null;
+}
+
 async function post(ruta, token) {
   return peticion(servidor.puerto, 'POST', ruta, {}, token);
 }
@@ -165,5 +178,35 @@ describe('rutas de auxiliares del contador', () => {
     assert.ok(!ids.includes(dueno.id), 'no se incluye a uno mismo');
     assert.ok(!ids.includes(auxiliarUno.id), 'no se incluye a un auxiliar ya asignado');
     assert.ok(ids.includes(auxiliarDos.id), 'incluye a los contadores libres');
+  });
+
+  test('al quitar un auxiliar se le avisa solo a él, no al contador', async () => {
+    await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+
+    const avisosAuxiliarAntes = await contarAvisos(auxiliarUno.id);
+    const avisosDuenoAntes = await contarAvisos(dueno.id);
+
+    const quitar = await del(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
+    assert.strictEqual(quitar.statusCode, 200, 'el dueño puede quitar a su auxiliar');
+
+    assert.strictEqual(await contarAvisos(auxiliarUno.id), avisosAuxiliarAntes + 1, 'el auxiliar recibe el aviso de baja');
+    assert.strictEqual(await contarAvisos(dueno.id), avisosDuenoAntes, 'el contador no recibe aviso');
+
+    assert.strictEqual(
+      await ultimoAvisoDe(auxiliarUno.id),
+      `Ya no apoyas a ${dueno.nombre} con sus casos.`,
+      'texto del aviso al auxiliar'
+    );
+  });
+
+  test('quitar a un auxiliar que no está vinculado no crea avisos', async () => {
+    const avisosAuxiliarAntes = await contarAvisos(auxiliarDos.id);
+    const avisosDuenoAntes = await contarAvisos(dueno.id);
+
+    const quitar = await del(`/contadores/${dueno.id}/auxiliares/${auxiliarDos.id}`, tokenDueno);
+    assert.strictEqual(quitar.statusCode, 200, 'quitar sin vínculo no da error');
+
+    assert.strictEqual(await contarAvisos(auxiliarDos.id), avisosAuxiliarAntes, 'sin aviso al auxiliar');
+    assert.strictEqual(await contarAvisos(dueno.id), avisosDuenoAntes, 'sin aviso al contador');
   });
 });

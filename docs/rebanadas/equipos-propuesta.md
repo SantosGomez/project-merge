@@ -34,7 +34,7 @@ Análisis de Fable 5.2 (2026-11-10, solo lectura), revisado por el orquestador. 
 | N.º | Rebanada | Riesgo | Archivo |
 |---|---|---|---|
 | 01 | El despacho guarda solo la diferencia (`{ agregar, quitar }` en transacción + prueba cruzada) | alto | `01-despacho-guarda-diferencia.md` |
-| 02 | Avisos al quitar, en las dos vías, y renombre de `reemplazarContadoresDeAuxiliar` en controlador y ruta | medio | — |
+| 02 | Avisos al quitar, en las dos vías, y renombre de `reemplazarContadoresDeAuxiliar` en controlador y ruta | medio | `02-avisos-al-quitar.md` |
 | 03 | Avisos cuando el contador asigna | medio | — |
 | 04a | Se guarda un aviso para cada administrador cuando un contador cambia su equipo (backend) | medio | — |
 | 04b | El administrador ve la campana de avisos en el menú (hoy solo la ven contador y auxiliar) | medio | — |
