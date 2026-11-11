@@ -233,3 +233,43 @@ describe('Grupo D: rediseño moderno de CasoDetalleDialog', () => {
     assert.match(plantilla, /name="visibility"/, 'icono en el encabezado')
   })
 })
+
+describe('Grupo E: correcciones de la revisión de la ficha', () => {
+  it('el vencimiento lleva texto «Vencido» o «Vence pronto»: el color no es el único aviso', () => {
+    const plantilla = plantillaDe(detalle)
+    const script = scriptDe(detalle)
+    assert.match(plantilla, /v-if="vencido"[^>]*>[\s\S]*?Vencido/, 'etiqueta Vencido con texto')
+    assert.match(
+      plantilla,
+      /v-else-if="proximo"[^>]*>[\s\S]*?Vence pronto/,
+      'etiqueta Vence pronto',
+    )
+    assert.match(
+      script,
+      /esCasoProximoAVencer\(props\.caso, hoyLocal\(\)\)/,
+      'usa la regla de la lista',
+    )
+  })
+
+  it('la ayuda no menciona «Editar» cuando el caso solo permite cambiar el estado', () => {
+    const plantilla = plantillaDe(detalle)
+    const script = scriptDe(detalle)
+    assert.match(script, /props\.caso\.solo_estado === true/, 'lee solo_estado del backend')
+    assert.match(script, /solo puedes cambiar su estado desde la lista/, 'ayuda del caso ajeno')
+    assert.match(plantilla, /\{\{ textoAyuda \}\}/, 'la plantilla usa la ayuda calculada')
+  })
+
+  it('las etiquetas caben en una línea en escritorio y el cliente largo no desborda', () => {
+    const estilos = estilosDe(detalle)
+    assert.match(
+      estilos,
+      /grid-template-columns:\s*170px minmax\(0, 1fr\)/,
+      'columna de etiqueta de 170 px',
+    )
+    assert.match(
+      estilos,
+      /\.detalle-caso__title \{[^}]*overflow-wrap:\s*anywhere/,
+      'título con corte',
+    )
+  })
+})

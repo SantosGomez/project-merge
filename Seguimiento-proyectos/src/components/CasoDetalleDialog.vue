@@ -14,9 +14,7 @@
           </span>
           <div class="detalle-caso__head-texto">
             <h2 id="detalle-caso-titulo" class="detalle-caso__title">{{ caso.cliente }}</h2>
-            <p class="detalle-caso__ayuda">
-              Ficha de solo lectura: para cambiar algo usa «Editar».
-            </p>
+            <p class="detalle-caso__ayuda">{{ textoAyuda }}</p>
           </div>
         </div>
       </q-card-section>
@@ -100,11 +98,17 @@
                   <q-icon name="schedule" size="16px" aria-hidden="true" />
                   <span>Fecha de vencimiento</span>
                 </div>
-                <div
-                  class="detalle-value"
-                  :class="{ 'detalle-vacio': !fechaVencimiento, 'detalle-vencido': vencido }"
-                >
-                  {{ fechaVencimiento || 'Sin fecha' }}
+                <div class="detalle-value detalle-vencimiento">
+                  <span :class="{ 'detalle-vacio': !fechaVencimiento, 'detalle-vencido': vencido }">
+                    {{ fechaVencimiento || 'Sin fecha' }}
+                  </span>
+                  <!-- El color no es el único aviso: la etiqueta dice lo mismo que la fila de la lista. -->
+                  <span v-if="vencido" class="detalle-alerta detalle-alerta--vencido">
+                    <q-icon name="error_outline" aria-hidden="true" /> Vencido
+                  </span>
+                  <span v-else-if="proximo" class="detalle-alerta detalle-alerta--pronto">
+                    <q-icon name="schedule" aria-hidden="true" /> Vence pronto
+                  </span>
                 </div>
               </div>
 
@@ -167,7 +171,7 @@ import { useSessionStore } from '../stores/session.js'
 import PriorityTag from './PriorityTag.vue'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
-import { esCasoVencido, hoyLocal } from '../utils/filtrosCasos.js'
+import { esCasoProximoAVencer, esCasoVencido, hoyLocal } from '../utils/filtrosCasos.js'
 import { COLOR_ESTADO } from '../utils/filasVista.js'
 
 /*
@@ -197,6 +201,14 @@ const enProcesoDesde = computed(() => fechaParaFormulario(props.caso.en_proceso_
 
 // El vencimiento lo decide el backend: la ficha solo pinta el color, nunca calcula la fecha.
 const vencido = computed(() => esCasoVencido(props.caso, hoyLocal()))
+const proximo = computed(() => esCasoProximoAVencer(props.caso, hoyLocal()))
+
+// En los casos del contador al que apoyas no existe «Editar»: la ayuda no debe mencionarlo.
+const textoAyuda = computed(() =>
+  props.caso.solo_estado === true
+    ? 'Ficha de solo lectura. Este caso es del contador al que apoyas: solo puedes cambiar su estado desde la lista.'
+    : 'Ficha de solo lectura: para cambiar algo usa «Editar».',
+)
 
 // El caso propio se muestra como «Tú»; los demás con el nombre del contador o «Sin asignar».
 const nombreContador = computed(() => {
@@ -255,6 +267,7 @@ const cerrar = () => {
   color: var(--dg-texto);
   font-size: 1.15rem;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .detalle-caso__ayuda {
@@ -321,10 +334,48 @@ const cerrar = () => {
 
 .detalle-campo {
   display: grid;
-  grid-template-columns: minmax(110px, 130px) minmax(0, 1fr);
+  /* 170 px: «Fecha de vencimiento» cabe en una línea junto a su icono. */
+  grid-template-columns: 170px minmax(0, 1fr);
   gap: 4px 12px;
   align-items: baseline;
   min-width: 0;
+}
+
+@media (max-width: 599px) {
+  .detalle-campo {
+    grid-template-columns: minmax(110px, 130px) minmax(0, 1fr);
+  }
+}
+
+.detalle-vencimiento {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* Mismas etiquetas que la fila de «Mis casos» (`caso-item__alerta`). */
+.detalle-alerta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.detalle-alerta--vencido {
+  border-color: var(--dg-error);
+  background: var(--dg-error-fondo);
+  color: var(--dg-error);
+}
+
+.detalle-alerta--pronto {
+  border-color: var(--dg-aviso-borde);
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
 }
 
 .detalle-label {
