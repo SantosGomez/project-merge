@@ -12,6 +12,10 @@
             prioridad Alta. Haz clic en una tarjeta o en un estado de la leyenda para ver esos casos
             en «Mis casos».
           </p>
+          <p v-else-if="pestana === 'equipo'" class="dashboard-page__lead">
+            Revisa cómo van los casos de tus auxiliares: cuántos tiene cada uno en cada estado y
+            cuáles ya vencieron. Elige un auxiliar para ver y trabajar sus casos.
+          </p>
           <p v-else class="dashboard-page__lead">
             Revisa el avance de tus auditorías: sus indicadores, en qué fase va cada una y qué vence
             después. Haz clic en una auditoría para abrir su ficha.
@@ -31,6 +35,18 @@
           <q-tooltip
             >Abre la lista de tus casos para registrarlos, revisarlos y editarlos.</q-tooltip
           >
+        </q-btn>
+        <q-btn
+          v-else-if="pestana === 'equipo'"
+          class="dashboard-page__ir-btn control-touch boton-presionable"
+          color="primary"
+          no-caps
+          unelevated
+          icon="group"
+          label="Ver mis auxiliares"
+          :to="{ name: 'contador-auxiliares' }"
+        >
+          <q-tooltip>Abre «Mis auxiliares» para agregar o quitar a quienes te apoyan.</q-tooltip>
         </q-btn>
         <q-btn
           v-else
@@ -59,6 +75,9 @@
       >
         <q-tab name="casos" icon="assignment" label="Casos">
           <q-tooltip>Resumen de tus casos por estado.</q-tooltip>
+        </q-tab>
+        <q-tab v-if="tieneEquipo" name="equipo" icon="groups" label="Mi equipo">
+          <q-tooltip>Casos de tus auxiliares: cifras del equipo y detalle por auxiliar.</q-tooltip>
         </q-tab>
         <q-tab v-if="session.esContador" name="auditorias" icon="fact_check" label="Auditorías">
           <q-tooltip>Indicadores y avance por fase de tus auditorías.</q-tooltip>
@@ -98,6 +117,22 @@
           />
         </q-tab-panel>
 
+        <q-tab-panel v-if="tieneEquipo" name="equipo" class="dashboard-page__panel">
+          <MiEquipo
+            :equipo="equipo.equipo"
+            :filas="equipo.filas"
+            :hoy="hoy"
+            :cargando="cases.cargando"
+            :error="cases.error"
+            :guardando-id="casoCambiando"
+            @reintentar="cases.cargarCasos()"
+            @alternar-importante="(casoId, importante) => guardarCambio(casoId, { importante })"
+            @cambiar-estado="(casoId, estado) => guardarCambio(casoId, { estado })"
+            @editar="abrirEdicion"
+            @ver="abrirDetalle"
+          />
+        </q-tab-panel>
+
         <q-tab-panel v-if="session.esContador" name="auditorias" class="dashboard-page__panel">
           <TableroAuditorias propias />
         </q-tab-panel>
@@ -109,25 +144,30 @@
         :caso="casoEnEdicion"
         @guardado="$q.notify({ type: 'positive', message: 'Cambio guardado.' })"
       />
+      <!-- La misma ficha «Ver» de «Mis casos», para los casos del equipo -->
+      <CasoDetalleDialog v-if="casoEnDetalle" v-model="detalleAbierto" :caso="casoEnDetalle" />
     </div>
   </q-page>
 </template>
 
 <script setup>
 import { useQuasar } from 'quasar'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AgendaCasos from '../components/AgendaCasos.vue'
 import CaseFormDialog from '../components/CaseFormDialog.vue'
+import CasoDetalleDialog from '../components/CasoDetalleDialog.vue'
+import MiEquipo from '../components/MiEquipo.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
 import TableroAuditorias from '../components/TableroAuditorias.vue'
 import { eventos } from '../services/eventosService.js'
+import { useAuxiliaresStore } from '../stores/auxiliares.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { agendaCasos, hoyLocal } from '../utils/filtrosCasos.js'
-import { resumenMisCasos } from '../utils/resumenMisCasos.js'
+import { resumenDeAuxiliares, resumenMisCasos } from '../utils/resumenMisCasos.js'
 
 /*
  * «Mi resumen» del contador: las mismas gráficas del dashboard del administrador, pero solo
@@ -137,13 +177,20 @@ import { resumenMisCasos } from '../utils/resumenMisCasos.js'
 
 const $q = useQuasar()
 const cases = useCasesStore()
+const auxiliares = useAuxiliaresStore()
 const session = useSessionStore()
 const route = useRoute()
 const router = useRouter()
 
 // Pestaña en la URL (?tab=auditorias): al volver de una ficha se regresa a la misma pestaña.
 // El auxiliar no tiene auditorías: solo ve la pestaña de casos.
-const pestanas = computed(() => (session.esContador ? ['casos', 'auditorias'] : ['casos']))
+// «Mi equipo» solo existe para el contador que tiene al menos un auxiliar.
+const tieneEquipo = computed(() => session.esContador && auxiliares.total > 0)
+const pestanas = computed(() => [
+  'casos',
+  ...(tieneEquipo.value ? ['equipo'] : []),
+  ...(session.esContador ? ['auditorias'] : []),
+])
 const pestana = computed({
   get: () => (pestanas.value.includes(route.query.tab) ? route.query.tab : 'casos'),
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
@@ -158,6 +205,8 @@ const actualizarHoy = () => {
 
 const resumen = computed(() => resumenMisCasos(cases.casos, hoy.value))
 const agenda = computed(() => agendaCasos(cases.casos, hoy.value))
+// Cifras de «Mi equipo»: salen de la misma lista de casos, que ya trae los de los auxiliares.
+const equipo = computed(() => resumenDeAuxiliares(cases.casos, auxiliares.auxiliares, hoy.value))
 
 const dialogoEdicionAbierto = ref(false)
 const casoEnEdicion = ref(null)
@@ -168,7 +217,52 @@ const abrirEdicion = (casoId) => {
   dialogoEdicionAbierto.value = casoEnEdicion.value !== null
 }
 
+// Ficha «Ver» de un caso del equipo; si el caso cambia con la ficha abierta, recibe la versión nueva.
+const detalleAbierto = ref(false)
+const casoEnDetalle = ref(null)
+const abrirDetalle = (casoId) => {
+  casoEnDetalle.value = cases.casos.find((caso) => String(caso.id) === String(casoId)) ?? null
+  detalleAbierto.value = casoEnDetalle.value !== null
+}
+watch(
+  () => cases.casos.find((caso) => String(caso.id) === String(casoEnDetalle.value?.id)),
+  (nuevo) => {
+    if (detalleAbierto.value && nuevo) casoEnDetalle.value = nuevo
+  },
+)
+
 const casoCambiando = ref(null)
+
+/**
+ * Guarda un cambio hecho desde «Mi equipo» (estado o marca de importante) y avisa del resultado.
+ * @param {number|string} casoId
+ * @param {{ estado?: string, importante?: boolean }} cambios
+ */
+const guardarCambio = async (casoId, cambios) => {
+  if (casoCambiando.value !== null) return
+  const cliente = cases.casos.find((caso) => String(caso.id) === String(casoId))?.cliente ?? 'este cliente'
+  casoCambiando.value = casoId
+  const resultado = await cases.actualizarCaso(casoId, cambios)
+  casoCambiando.value = null
+
+  if (resultado.ok) {
+    const mensaje =
+      cambios.estado !== undefined
+        ? `Caso de ${cliente} ahora está ${STATUS_LABELS[cambios.estado]}.`
+        : cambios.importante
+          ? `Caso de ${cliente} marcado como importante: el administrador ya puede verlo.`
+          : `Caso de ${cliente} ya no está marcado como importante.`
+    $q.notify({ type: 'positive', message: mensaje })
+  } else if (!resultado.descartado) {
+    $q.notify({
+      type: 'negative',
+      message: `No se guardó el cambio del caso de ${cliente}.`,
+      caption: resultado.error?.mensaje ?? 'Revisa tu conexión y vuelve a intentarlo.',
+      timeout: 8000,
+      actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: () => guardarCambio(casoId, cambios) }],
+    })
+  }
+}
 
 /**
  * Botón de la agenda: guarda el estado siguiente y avisa; si falla, muestra el motivo del servidor.
@@ -211,6 +305,8 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 
 onMounted(() => {
   cases.cargarCasos()
+  // Solo el contador tiene auxiliares; un fallo aquí solo deja sin pestaña «Mi equipo».
+  if (session.esContador) auxiliares.cargarAuxiliares(Number(session.id))
   document.addEventListener('visibilitychange', actualizarHoy)
 })
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', actualizarHoy))

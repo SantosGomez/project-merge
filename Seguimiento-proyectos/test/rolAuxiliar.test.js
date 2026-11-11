@@ -73,7 +73,7 @@ describe('rol auxiliar: pantallas', () => {
 
   it('«Mi resumen» oculta la pestaña de auditorías al auxiliar', () => {
     assert.match(resumen, /<q-tab v-if="session\.esContador" name="auditorias"/)
-    assert.match(resumen, /session\.esContador \? \['casos', 'auditorias'\] : \['casos'\]/)
+    assert.match(resumen, /\.\.\.\(session\.esContador \? \['auditorias'\] : \[\]\)/)
     assert.match(resumen, /<q-tab-panel v-if="session\.esContador" name="auditorias"/)
   })
 

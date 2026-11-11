@@ -33,3 +33,39 @@ export const resumenMisCasos = (casos, hoy) => {
 
   return resumen
 }
+
+/**
+ * Resumen del equipo de un contador para la pestaña «Mi equipo»: una fila por auxiliar con sus
+ * casos y sus cifras, y el total de todos los auxiliares (sin los casos del propio contador).
+ * Las filas van con lo urgente primero: más vencidos, luego más abiertos, luego por nombre.
+ * @param {Array<Object>} casos - casos internos del store (los propios y los del equipo).
+ * @param {Array<{ id: number|string, nombre: string }>} auxiliares - auxiliares del contador.
+ * @param {string} hoy - fecha local de hoy en AAAA-MM-DD.
+ * @returns {{ equipo: Object, filas: Array<{ id: number|string, nombre: string, casos: Array<Object>, resumen: Object }> }}
+ */
+export const resumenDeAuxiliares = (casos, auxiliares, hoy) => {
+  const filas = (auxiliares ?? []).map((auxiliar) => {
+    const suyos = (casos ?? []).filter((caso) => String(caso.contador_id) === String(auxiliar.id))
+    return {
+      id: auxiliar.id,
+      nombre: auxiliar.nombre ?? '',
+      casos: suyos,
+      resumen: resumenMisCasos(suyos, hoy),
+    }
+  })
+
+  filas.sort(
+    (a, b) =>
+      b.resumen.vencidos - a.resumen.vencidos ||
+      b.resumen.abiertos - a.resumen.abiertos ||
+      a.nombre.localeCompare(b.nombre, 'es'),
+  )
+
+  return {
+    equipo: resumenMisCasos(
+      filas.flatMap((fila) => fila.casos),
+      hoy,
+    ),
+    filas,
+  }
+}
