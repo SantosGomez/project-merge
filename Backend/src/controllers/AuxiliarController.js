@@ -52,6 +52,22 @@ const RESPUESTAS_POR_CODIGO = {
       'Deja cada contador en una sola lista: la de agregar o la de quitar'
     ),
   ],
+  AUXILIAR_CON_OTRO_CONTADOR: [
+    409,
+    buildError(
+      'El auxiliar ya apoya a otro contador',
+      'auxiliar',
+      'Un auxiliar solo puede apoyar a un contador: pide al despacho que lo cambie de contador'
+    ),
+  ],
+  MAS_DE_UN_CONTADOR: [
+    400,
+    buildError(
+      'Un auxiliar solo puede apoyar a un contador',
+      'contadores',
+      'Elige un solo contador; para cambiarlo, quita al actual y agrega al nuevo'
+    ),
+  ],
   YA_ASIGNADO: [
     409,
     buildError('El auxiliar ya está asignado', 'auxiliar', 'Elige a otro contador o quita la asignación actual'),

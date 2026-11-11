@@ -107,16 +107,18 @@ async function testListarContadoresQueMeTienenComoAuxiliar() {
   const auxiliar = await crearUsuarioDePrueba('auxiliar');
 
   await asignarAuxiliar(contador1.id, auxiliar.id);
-  await asignarAuxiliar(contador2.id, auxiliar.id);
+  // Un auxiliar apoya a un solo contador: el segundo vínculo se rechaza.
+  await assert.rejects(
+    asignarAuxiliar(contador2.id, auxiliar.id),
+    (error) => error.codigo === 'AUXILIAR_CON_OTRO_CONTADOR'
+  );
 
   const contadores = await listarContadoresQueMeTienenComoAuxiliar(auxiliar.id);
-  assert.strictEqual(
-    contadores.length,
-    2,
-    'el auxiliar debe aparecer como auxiliar de los dos contadores'
+  assert.deepStrictEqual(
+    contadores.map((c) => c.id),
+    [contador1.id],
+    'el auxiliar solo aparece con su contador'
   );
-  const ids = contadores.map((c) => c.id).sort();
-  assert.deepStrictEqual(ids, [contador1.id, contador2.id].sort());
 }
 
 // Desde 2026-11-10 solo una cuenta con rol auxiliar se asigna como auxiliar.

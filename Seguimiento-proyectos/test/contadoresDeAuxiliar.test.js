@@ -57,7 +57,7 @@ describe('pantallas: alta y directorio', () => {
   const dialogo = leer('../src/components/ContadoresDeAuxiliarDialog.vue')
 
   it('el alta muestra «Contadores que apoya» solo con el rol auxiliar', () => {
-    assert.match(alta, /v-if="rol === 'auxiliar'"[\s\S]*?>Contadores que apoya \(opcional\)<\/label>/)
+    assert.match(alta, /v-if="rol === 'auxiliar'"[\s\S]*?>Contador que apoya \(opcional\)<\/label>/)
     assert.match(alta, /contadores: rol\.value === 'auxiliar' \? contadoresElegidos\.value : undefined/)
   })
 
@@ -78,5 +78,40 @@ describe('pantallas: alta y directorio', () => {
     assert.match(dialogo, /calcularCambiosDeContadores\(cargados\.value, elegidos\.value\)/)
     assert.match(dialogo, /if \(sinCambios\) \{\s*dialogoAbierto\.value = false\s*return/)
     assert.match(dialogo, /guardarContadoresDeAuxiliar\(props\.cuenta\.id, cambios\)/)
+  })
+})
+
+// Regla del 2026-11-11: un auxiliar apoya a un solo contador (un contador puede tener varios auxiliares).
+describe('un auxiliar apoya a un solo contador', () => {
+  const fuente = (ruta) => readFileSync(fileURLToPath(new URL(ruta, import.meta.url)), 'utf8')
+  const plantilla = (ruta) => fuente(ruta).split('<script')[0]
+
+  it('el directorio elige un solo contador, sin selección múltiple', () => {
+    const dialogoUno = plantilla('../src/components/ContadoresDeAuxiliarDialog.vue')
+    assert.match(dialogoUno, />Contador que apoya</)
+    assert.doesNotMatch(dialogoUno, /\bmultiple\b/, 'sin selección múltiple')
+    assert.match(dialogoUno, /v-model="elegido"[\s\S]*?clearable/, 'se puede dejar sin contador')
+    assert.match(dialogoUno, /Un auxiliar solo puede apoyar a un contador\./)
+    assert.match(dialogoUno, /cargados\.length > 1[\s\S]*?Al guardar quedará solo con el que elijas/, 'avisa de vínculos viejos')
+  })
+
+  it('el alta elige un solo contador y lo envía como lista', () => {
+    const altaUno = fuente('../src/components/NewUserDialog.vue')
+    assert.doesNotMatch(altaUno.split('<script')[0], /\bmultiple\b/, 'sin selección múltiple')
+    assert.match(altaUno, /contadorElegido\.value === null \? \[\] : \[contadorElegido\.value\]/)
+  })
+
+  it('cambiar de contador envía el nuevo en agregar y el anterior en quitar', async () => {
+    const { calcularCambiosDeContadores } = await import('../src/services/userService.js')
+    assert.deepEqual(calcularCambiosDeContadores([3], [7]), { agregar: [7], quitar: [3] })
+    assert.deepEqual(calcularCambiosDeContadores([3, 5], [3]), { agregar: [], quitar: [5] }, 'vínculos viejos: deja uno')
+    assert.deepEqual(calcularCambiosDeContadores([3], []), { agregar: [], quitar: [3] })
+  })
+
+  it('«Agregar auxiliares» explica por qué no aparecen todos', () => {
+    assert.match(
+      plantilla('../src/components/AgregarAuxiliaresDialog.vue').replace(/\s+/g, ' '),
+      /Solo aparecen los auxiliares que todavía no apoyan a otro contador\./,
+    )
   })
 })

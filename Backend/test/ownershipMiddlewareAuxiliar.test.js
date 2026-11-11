@@ -8,7 +8,7 @@ const {
   limpiarDatosDePrueba,
   cerrarBaseDeDatos,
 } = require('../soporte-pruebas/bd');
-const { asignarAuxiliar } = require('../src/models/AuxiliarModel');
+const { asignarAuxiliar, ajustarContadoresDeAuxiliar } = require('../src/models/AuxiliarModel');
 const { query } = require('../src/config/db');
 
 /**
@@ -81,15 +81,14 @@ async function testAuxiliarPuedeEditarCasoDeCualquierContadorDelQueSeaAuxiliar()
     cliente: 'zz_test_caso_otro_contador',
   });
 
-  // El auxiliar ya es auxiliar de contadorDueño (de la prueba anterior);
-  // ahora lo es también de otroContador.
-  await asignarAuxiliar(otroContador.id, contadorAuxiliar.id);
+  // Un auxiliar apoya a un solo contador: el despacho lo cambia de contadorDueño a otroContador.
+  await ajustarContadoresDeAuxiliar(contadorAuxiliar.id, { agregar: [otroContador.id], quitar: [contadorDueño.id] });
 
   const req = reqConUsuarioYParam(contadorAuxiliar.id, casoOtro);
   const res = crearRes();
   const next = crearNext();
   await checkCaseOwnership(req, res, next);
-  assert.strictEqual(next.llamado(), true, 'el auxiliar debe poder editar casos de cualquier contador del que sea auxiliar');
+  assert.strictEqual(next.llamado(), true, 'el auxiliar edita los casos de su contador actual');
 }
 
 describe('middleware de propiedad con auxiliares', () => {
@@ -109,5 +108,5 @@ describe('middleware de propiedad con auxiliares', () => {
 
   test('el auxiliar puede editar un caso de su contador', testAuxiliarPuedeEditarCasoDeSuContador);
   test('un contador no auxiliar no puede editar un caso ajeno', testContadorNoAuxiliarNoPuedeEditarCasoAjeno);
-  test('el auxiliar puede editar casos de cualquier contador del que sea auxiliar', testAuxiliarPuedeEditarCasoDeCualquierContadorDelQueSeaAuxiliar);
+  test('al cambiar de contador, el auxiliar edita los casos del nuevo', testAuxiliarPuedeEditarCasoDeCualquierContadorDelQueSeaAuxiliar);
 });

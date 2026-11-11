@@ -68,16 +68,28 @@ describe('contadores que apoya un auxiliar (despacho)', () => {
     const ruta = `/usuarios/${auxiliar.id}/contadores`;
     assert.deepStrictEqual(idsDe(await pedir('GET', ruta)), []);
 
+    // Un auxiliar apoya a un solo contador: dos a la vez se rechazan sin guardar nada.
     const ambos = await pedir('PUT', ruta, { agregar: [contadorUno.id, contadorDos.id], quitar: [] });
-    assert.strictEqual(ambos.statusCode, 200, JSON.stringify(ambos.body));
-    assert.deepStrictEqual(idsDe(ambos), [contadorUno.id, contadorDos.id].sort((a, b) => a - b));
-    assert.strictEqual(await avisosDe(contadorUno.id), 1, 'el contador sabe que tiene un auxiliar nuevo');
-    assert.strictEqual(await avisosDe(auxiliar.id), 2, 'el auxiliar sabe a quién apoya');
+    assert.strictEqual(ambos.statusCode, 400, JSON.stringify(ambos.body));
+    assert.match(ambos.body.mensaje, /solo puede apoyar a un contador/);
+    assert.deepStrictEqual(idsDe(await pedir('GET', ruta)), []);
 
-    const soloDos = await pedir('PUT', ruta, { agregar: [], quitar: [contadorUno.id] }, tokenAdmin);
-    assert.strictEqual(soloDos.statusCode, 200);
-    assert.deepStrictEqual(idsDe(soloDos), [contadorDos.id]);
-    assert.strictEqual(await avisosDe(contadorDos.id), 1, 'conservar un vínculo no vuelve a avisar');
+    const uno = await pedir('PUT', ruta, { agregar: [contadorUno.id], quitar: [] });
+    assert.strictEqual(uno.statusCode, 200, JSON.stringify(uno.body));
+    assert.deepStrictEqual(idsDe(uno), [contadorUno.id]);
+    assert.strictEqual(await avisosDe(contadorUno.id), 1, 'el contador sabe que tiene un auxiliar nuevo');
+    assert.strictEqual(await avisosDe(auxiliar.id), 1, 'el auxiliar sabe a quién apoya');
+
+    // Agregar otro sin quitar al actual también se rechaza.
+    const otroMas = await pedir('PUT', ruta, { agregar: [contadorDos.id], quitar: [] }, tokenAdmin);
+    assert.strictEqual(otroMas.statusCode, 400, JSON.stringify(otroMas.body));
+    assert.deepStrictEqual(idsDe(await pedir('GET', ruta)), [contadorUno.id]);
+
+    // Cambiarlo de contador: el nuevo en agregar y el actual en quitar.
+    const cambio = await pedir('PUT', ruta, { agregar: [contadorDos.id], quitar: [contadorUno.id] }, tokenAdmin);
+    assert.strictEqual(cambio.statusCode, 200, JSON.stringify(cambio.body));
+    assert.deepStrictEqual(idsDe(cambio), [contadorDos.id]);
+    assert.strictEqual(await avisosDe(contadorDos.id), 1, 'el contador nuevo recibe su aviso');
   });
 
   test('repetir un cambio no duplica, no falla y no vuelve a avisar', async () => {
@@ -109,26 +121,42 @@ describe('contadores que apoya un auxiliar (despacho)', () => {
     assert.deepStrictEqual(idsDe(await pedir('GET', ruta)), antes, 'ni el contador válido se agregó ni Dos se quitó');
   });
 
-  test('el despacho no pisa al contador que agregó al auxiliar mientras el diálogo estaba abierto', async () => {
+  test('un contador no puede tomar al auxiliar de otro; sí cuando el despacho lo libera', async () => {
     const otroAuxiliar = await crearUsuarioDePrueba('auxiliar');
     const ruta = `/usuarios/${otroAuxiliar.id}/contadores`;
     await pedir('PUT', ruta, { agregar: [contadorUno.id], quitar: [] });
 
-    // El despacho abre el diálogo: ve solo a Uno.
-    assert.deepStrictEqual(idsDe(await pedir('GET', ruta)), [contadorUno.id]);
+    // El contador Dos intenta agregarlo desde «Mis auxiliares»: ya apoya a Uno.
+    const tomar = () =>
+      pedir('POST', `/contadores/${contadorDos.id}/auxiliares/${otroAuxiliar.id}`, undefined, tokenContadorDos);
+    const rechazado = await tomar();
+    assert.strictEqual(rechazado.statusCode, 409, JSON.stringify(rechazado.body));
+    assert.deepStrictEqual(idsDe(await pedir('GET', ruta)), [contadorUno.id], 'el vínculo con Uno sigue igual');
 
-    // Mientras tanto, el contador Dos lo agrega desde «Mis auxiliares».
-    const porSuCuenta = await pedir('POST', `/contadores/${contadorDos.id}/auxiliares/${otroAuxiliar.id}`, undefined, tokenContadorDos);
-    assert.strictEqual(porSuCuenta.statusCode, 201, JSON.stringify(porSuCuenta.body));
-
-    // El despacho desmarca a Uno y guarda: solo viaja lo que cambió.
-    const guardado = await pedir('PUT', ruta, { agregar: [], quitar: [contadorUno.id] });
-    assert.strictEqual(guardado.statusCode, 200, JSON.stringify(guardado.body));
-    assert.deepStrictEqual(idsDe(guardado), [contadorDos.id], 'el vínculo del contador Dos sigue vivo');
+    // El despacho lo libera y entonces Dos sí puede tomarlo.
+    const liberado = await pedir('PUT', ruta, { agregar: [], quitar: [contadorUno.id] });
+    assert.strictEqual(liberado.statusCode, 200, JSON.stringify(liberado.body));
+    assert.strictEqual((await tomar()).statusCode, 201);
+    assert.deepStrictEqual(idsDe(await pedir('GET', ruta)), [contadorDos.id]);
   });
 
   test('un contador no puede usar estas rutas', async () => {
     assert.strictEqual((await pedir('GET', `/usuarios/${auxiliar.id}/contadores`, undefined, tokenContador)).statusCode, 403);
+  });
+
+  test('el alta de un auxiliar con dos contadores se rechaza y no crea la cuenta', async () => {
+    const correo = correoNuevo();
+    const alta = await pedir('POST', '/usuarios', {
+      nombre: 'zz_test Auxiliar con dos contadores',
+      correo,
+      password: 'NuevoPass1234',
+      rol: 'auxiliar',
+      contadores: [contadorUno.id, contadorDos.id],
+    });
+    assert.strictEqual(alta.statusCode, 400, JSON.stringify(alta.body));
+    assert.match(alta.body.mensaje, /solo puede apoyar a un contador/);
+    const [{ n }] = await query('SELECT COUNT(*) AS n FROM usuarios WHERE correo = ?', [correo]);
+    assert.strictEqual(Number(n), 0);
   });
 
   test('el alta de un auxiliar lo vincula en el mismo paso', async () => {

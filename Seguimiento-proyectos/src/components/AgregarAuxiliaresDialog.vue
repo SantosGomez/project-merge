@@ -14,7 +14,7 @@
         <p class="agregar-auxiliares__help">
           Marca a quienes te ayudarán. Verán tus casos y podrán cambiar su estado; tú recibirás un
           aviso cada vez que lo hagan. A cada persona que asignes se le avisará, y también a los
-          administradores.
+          administradores. Solo aparecen los auxiliares que todavía no apoyan a otro contador.
         </p>
       </q-card-section>
 
@@ -39,8 +39,9 @@
         </div>
 
         <p v-else-if="auxiliares.disponibles.length === 0" class="agregar-auxiliares__vacio">
-          No hay auxiliares disponibles. Las cuentas con rol de auxiliar las da de alta el
-          usuario de sistema en el directorio; pídele que cree la de la persona que te apoyará.
+          No hay auxiliares disponibles: cada auxiliar apoya a un solo contador y los que hay ya
+          tienen el suyo. Las cuentas con rol de auxiliar las da de alta el usuario de sistema en
+          el directorio; pídele que cree la de la persona que te apoyará o que la cambie de contador.
         </p>
 
         <template v-else>

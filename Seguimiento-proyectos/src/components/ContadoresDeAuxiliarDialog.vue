@@ -10,9 +10,10 @@
   >
     <q-card class="contadores-auxiliar">
       <q-card-section>
-        <h2 id="contadores-auxiliar-titulo" class="contadores-auxiliar__title">Contadores que apoya</h2>
+        <h2 id="contadores-auxiliar-titulo" class="contadores-auxiliar__title">Contador que apoya</h2>
         <p class="contadores-auxiliar__help">
-          {{ cuenta?.nombre }} verá los casos de estos contadores y podrá cambiar su estado. Al guardar se avisa a {{ cuenta?.nombre }} y a cada contador que agregues o quites.
+          {{ cuenta?.nombre }} verá los casos de este contador y podrá cambiar su estado. Un auxiliar solo puede apoyar a un contador.
+          Al guardar se avisa a {{ cuenta?.nombre }} y al contador que agregues o quites.
           Cada contador también puede cambiar su equipo desde «Mis auxiliares».
         </p>
       </q-card-section>
@@ -23,14 +24,17 @@
           <span>{{ error }}</span>
           <q-btn flat no-caps dense icon="refresh" label="Reintentar" color="primary" @click="cargar" />
         </div>
+        <!-- Vínculos anteriores a la regla de un solo contador: se avisa antes de dejar solo uno. -->
+        <p v-if="!cargando && !error && cargados.length > 1" class="contadores-auxiliar__aviso" role="status">
+          Hoy apoya a {{ cargados.length }} contadores. Al guardar quedará solo con el que elijas.
+        </p>
         <q-select
-          v-else
-          v-model="elegidos"
+          v-if="!cargando && !error"
+          v-model="elegido"
           :options="opciones"
-          :placeholder="elegidos.length === 0 ? 'Elige uno o varios' : ''"
-          aria-label="Contadores que apoya"
-          multiple
-          use-chips
+          :placeholder="elegido === null ? 'Elige un contador' : ''"
+          aria-label="Contador que apoya"
+          clearable
           emit-value
           map-options
           outlined
@@ -42,7 +46,7 @@
           :disable="guardando"
         >
           <template #prepend><q-icon name="groups" aria-hidden="true" /></template>
-          <q-tooltip>Deja la lista vacía si por ahora no apoya a nadie.</q-tooltip>
+          <q-tooltip>Déjalo vacío si por ahora no apoya a nadie.</q-tooltip>
         </q-select>
       </q-card-section>
 
@@ -82,8 +86,8 @@ import {
 } from '../services/userService.js'
 
 /*
- * Directorio: el despacho fija a qué contadores apoya un auxiliar. Carga lo actual al abrir
- * y guarda solo lo que se marcó o desmarcó, para no pisar lo que un contador agregó mientras tanto.
+ * Directorio: el despacho fija a qué contador apoya un auxiliar (uno solo). Carga lo actual al
+ * abrir y guarda solo la diferencia: para cambiarlo de contador envía el nuevo y quita el anterior.
  */
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 const props = defineProps({
@@ -95,7 +99,9 @@ const props = defineProps({
 
 const $q = useQuasar()
 const opciones = computed(() => props.contadores.map((c) => ({ label: c.nombre, value: c.id })))
-const elegidos = ref([])
+/** Id del contador elegido, o null si no apoya a nadie. */
+const elegido = ref(null)
+const elegidos = computed(() => (elegido.value === null ? [] : [elegido.value]))
 /** Ids vinculados cuando se abrió el diálogo: contra ellos se calcula qué cambió. */
 const cargados = ref([])
 const cargando = ref(false)
@@ -107,7 +113,7 @@ const cargar = async () => {
   error.value = ''
   try {
     cargados.value = (await listarContadoresDeAuxiliar(props.cuenta.id)).map((c) => c.id)
-    elegidos.value = [...cargados.value]
+    elegido.value = cargados.value[0] ?? null
   } catch (fallo) {
     error.value = fallo?.mensaje ?? 'No se pudieron cargar los contadores de este auxiliar.'
   } finally {
@@ -127,7 +133,7 @@ const guardar = async () => {
   try {
     await guardarContadoresDeAuxiliar(props.cuenta.id, cambios)
     dialogoAbierto.value = false
-    $q.notify({ type: 'positive', message: `Contadores de ${props.cuenta.nombre} actualizados.` })
+    $q.notify({ type: 'positive', message: `Contador de ${props.cuenta.nombre} actualizado.` })
   } catch (fallo) {
     $q.notify({ type: 'negative', message: 'No se guardaron los cambios.', caption: fallo?.mensaje, timeout: 8000 })
   } finally {
@@ -153,6 +159,17 @@ const guardar = async () => {
 .contadores-auxiliar__help {
   margin: 0;
   color: var(--dg-texto-tenue);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.contadores-auxiliar__aviso {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--dg-aviso-borde);
+  border-radius: 8px;
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
   font-size: 0.85rem;
   line-height: 1.45;
 }

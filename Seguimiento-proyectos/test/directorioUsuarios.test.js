@@ -23,7 +23,7 @@ describe('Directorio de usuarios (rebanada 3: «Nuevo usuario» en diálogo)', (
   it('el diálogo pide los campos de la tabla usuarios, en orden', () => {
     const etiquetas = [...dialogo.matchAll(/class="form-label"\s*>([^<]+)</g)].map((m) => m[1].trim())
     // «Contadores que apoya» solo aparece con el rol auxiliar (tabla contador_auxiliar).
-    assert.deepEqual(etiquetas, ['Nombre', 'Correo', 'Contraseña', 'Rol', 'Contadores que apoya (opcional)'])
+    assert.deepEqual(etiquetas, ['Nombre', 'Correo', 'Contraseña', 'Rol', 'Contador que apoya (opcional)'])
     assert.match(dialogo, /v-model="correo"[\s\S]*?type="email"/, 'el correo abre el teclado de correo')
   })
 

@@ -149,7 +149,10 @@ describe('rutas de auxiliares del contador', () => {
 
   test('el auxiliar ve para qué contadores trabaja y solo los suyos', async () => {
     await post(`/contadores/${dueno.id}/auxiliares/${auxiliarUno.id}`, tokenDueno);
-    await post(`/contadores/${otroContador.id}/auxiliares/${auxiliarUno.id}`, tokenOtro);
+    // Un auxiliar apoya a un solo contador: otro contador no puede tomarlo.
+    const segundo = await post(`/contadores/${otroContador.id}/auxiliares/${auxiliarUno.id}`, tokenOtro);
+    assert.strictEqual(segundo.statusCode, 409, JSON.stringify(segundo.body));
+    assert.match(segundo.body.mensaje, /ya apoya a otro contador/);
 
     const respuesta = await get(
       `/contadores/${auxiliarUno.id}/contadores-que-me-tienen-como-auxiliar`,
@@ -158,7 +161,7 @@ describe('rutas de auxiliares del contador', () => {
     assert.strictEqual(respuesta.statusCode, 200);
     assert.ok(Array.isArray(respuesta.body.contadores));
     const ids = respuesta.body.contadores.map((c) => c.id).sort((a, b) => a - b);
-    assert.deepStrictEqual(ids, [dueno.id, otroContador.id].sort((a, b) => a - b));
+    assert.deepStrictEqual(ids, [dueno.id]);
 
     const ajeno = await get(
       `/contadores/${dueno.id}/contadores-que-me-tienen-como-auxiliar`,
@@ -178,6 +181,10 @@ describe('rutas de auxiliares del contador', () => {
     assert.ok(!ids.includes(dueno.id), 'no se incluye a uno mismo');
     assert.ok(!ids.includes(auxiliarUno.id), 'no se incluye a un auxiliar ya asignado');
     assert.ok(ids.includes(auxiliarDos.id), 'incluye a los contadores libres');
+
+    // El auxiliar que ya apoya a un contador tampoco está disponible para los demás.
+    const paraOtro = await get(`/contadores/${otroContador.id}/auxiliares-disponibles`, tokenOtro);
+    assert.ok(!paraOtro.body.contadores.map((c) => c.id).includes(auxiliarUno.id), 'ya apoya a otro contador');
   });
 
   test('al quitar un auxiliar se le avisa solo a él, no al contador', async () => {

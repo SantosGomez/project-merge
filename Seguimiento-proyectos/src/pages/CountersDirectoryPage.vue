@@ -186,12 +186,12 @@
                 no-caps
                 color="primary"
                 icon="groups"
-                label="Contadores que apoya"
-                :aria-label="`Contadores que apoya ${props.row.nombre}`"
+                label="Contador que apoya"
+                :aria-label="`Contador que apoya ${props.row.nombre}`"
                 class="control-touch boton-presionable"
                 @click="abrirContadores(props.row)"
               >
-                <q-tooltip>Elige a qué contadores apoya este auxiliar.</q-tooltip>
+                <q-tooltip>Elige a qué contador apoya este auxiliar (solo uno).</q-tooltip>
               </q-btn>
               <q-btn
                 v-if="session.esUsuarioSistema"
@@ -257,12 +257,12 @@
                     no-caps
                     color="primary"
                     icon="groups"
-                    label="Contadores que apoya"
-                    :aria-label="`Contadores que apoya ${props.row.nombre}`"
+                    label="Contador que apoya"
+                    :aria-label="`Contador que apoya ${props.row.nombre}`"
                     class="control-touch boton-presionable"
                     @click="abrirContadores(props.row)"
                   >
-                    <q-tooltip>Elige a qué contadores apoya este auxiliar.</q-tooltip>
+                    <q-tooltip>Elige a qué contador apoya este auxiliar (solo uno).</q-tooltip>
                   </q-btn>
                   <q-btn
                     v-if="session.esUsuarioSistema"
@@ -427,7 +427,7 @@ const alRestablecer = (nombre) => {
   $q.notify({ type: 'positive', message: `Contraseña de ${nombre} restablecida; sus sesiones abiertas se cerraron.` })
 }
 
-// Contadores del directorio: opciones para vincular a un auxiliar (alta y «Contadores que apoya»).
+// Contadores del directorio: opciones para vincular a un auxiliar (alta y «Contador que apoya»).
 const contadores = computed(() =>
   usuarios.value.filter((u) => u.rol === PROFILES.contador).map((u) => ({ id: u.id, nombre: u.nombre })),
 )

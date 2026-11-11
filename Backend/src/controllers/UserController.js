@@ -80,9 +80,15 @@ async function createUser(req, res) {
     );
   }
 
-  // Un auxiliar puede quedar vinculado con sus contadores en el mismo paso; se valida antes de crear
+  // Un auxiliar puede quedar vinculado con su contador en el mismo paso; se valida antes de crear
   const contadoresIds = rol === 'auxiliar' && req.body.contadores !== undefined ? parseListaDeIds(req.body.contadores) : [];
   if (!contadoresIds) return res.status(400).json(ERROR_LISTA_CONTADORES);
+  // Un auxiliar apoya a un solo contador
+  if (contadoresIds.length > 1) {
+    return res.status(400).json(
+      buildError('Un auxiliar solo puede apoyar a un contador', 'contadores', 'Elige un solo contador')
+    );
+  }
   for (const contadorId of contadoresIds) {
     if (!(await UserModel.findCounterById(contadorId))) {
       return res.status(400).json(

@@ -187,14 +187,13 @@
           </div>
 
           <div v-if="rol === 'auxiliar'" class="form-group">
-            <label for="nuevo-contadores" class="form-label">Contadores que apoya (opcional)</label>
+            <label for="nuevo-contadores" class="form-label">Contador que apoya (opcional)</label>
             <q-select
               for="nuevo-contadores"
-              v-model="contadoresElegidos"
+              v-model="contadorElegido"
               :options="opcionesContador"
-              :placeholder="contadoresElegidos.length === 0 ? 'Elige uno o varios' : ''"
-              multiple
-              use-chips
+              :placeholder="contadorElegido === null ? 'Elige un contador' : ''"
+              clearable
               emit-value
               map-options
               outlined
@@ -207,10 +206,10 @@
               aria-describedby="nuevo-contadores-ayuda"
             >
               <template #prepend><q-icon name="groups" aria-hidden="true" /></template>
-              <q-tooltip>Elige a quiénes apoyará; también puedes hacerlo después desde el directorio.</q-tooltip>
+              <q-tooltip>Elige a quién apoyará (solo un contador); también puedes hacerlo después desde el directorio.</q-tooltip>
             </q-select>
             <p id="nuevo-contadores-ayuda" class="form-help">
-              El auxiliar verá los casos de estos contadores y podrá cambiar su estado. Se les avisará a ellos y al auxiliar.
+              El auxiliar verá los casos de este contador y podrá cambiar su estado. Se le avisará al contador y al auxiliar.
             </p>
           </div>
 
@@ -267,7 +266,9 @@ const props = defineProps({
 const emit = defineEmits(['creado'])
 
 const opcionesContador = computed(() => props.contadores.map((c) => ({ label: c.nombre, value: c.id })))
-const contadoresElegidos = ref([])
+// Un auxiliar apoya a un solo contador; la API recibe la lista (vacía o con ese contador).
+const contadorElegido = ref(null)
+const contadoresElegidos = computed(() => (contadorElegido.value === null ? [] : [contadorElegido.value]))
 
 const opcionesRol = Object.values(PROFILES).map((valor) => ({
   label: formatearRol(valor),
@@ -337,7 +338,7 @@ watch(dialogoAbierto, (abierto) => {
     correo.value = ''
     password.value = ''
     rol.value = null
-    contadoresElegidos.value = []
+    contadorElegido.value = null
     for (const campo of Object.keys(errores)) errores[campo] = null
     errorGeneral.value = ''
     verPassword.value = false

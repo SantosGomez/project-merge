@@ -37,9 +37,21 @@ async function validarCuentaConRol(id, rolEsperado) {
 }
 
 /**
+ * Ids de los contadores a los que apoya un auxiliar.
+ * Regla (2026-11-11): un auxiliar apoya a un solo contador; un contador puede tener varios auxiliares.
+ * @param {number} auxiliarId - Id de la cuenta auxiliar.
+ * @returns {Promise<Array<number>>}
+ */
+async function idsDeContadoresDe(auxiliarId) {
+  const filas = await query('SELECT contador_id FROM contador_auxiliar WHERE auxiliar_id = ?', [auxiliarId]);
+  return filas.map((fila) => Number(fila.contador_id));
+}
+
+/**
  * Asigna un auxiliar a un contador.
  * El dueño debe ser un contador y el auxiliar una cuenta con rol auxiliar (2026-11-10),
- * no pueden ser el mismo usuario y la relación no debe existir ya.
+ * no pueden ser el mismo usuario, la relación no debe existir ya y el auxiliar no debe
+ * apoyar a otro contador (AUXILIAR_CON_OTRO_CONTADOR).
  * @param {number} contadorId - Id del contador que tiene auxiliares.
  * @param {number} auxiliarId - Id de la cuenta auxiliar.
  * @returns {Promise<void>}
@@ -61,6 +73,12 @@ async function asignarAuxiliar(contadorId, auxiliarId) {
   if (existente.length > 0) {
     const error = new Error('el auxiliar ya está asignado a este contador');
     error.codigo = 'YA_ASIGNADO';
+    throw error;
+  }
+
+  if ((await idsDeContadoresDe(auxiliarId)).length > 0) {
+    const error = new Error('el auxiliar ya apoya a otro contador');
+    error.codigo = 'AUXILIAR_CON_OTRO_CONTADOR';
     throw error;
   }
 
@@ -116,7 +134,7 @@ async function listarContadoresQueMeTienenComoAuxiliar(auxiliarId) {
 
 /**
  * Devuelve las cuentas que un contador puede asignar como auxiliares:
- * las de rol auxiliar que todavía no tiene asignadas.
+ * las de rol auxiliar que todavía no apoyan a ningún contador (un auxiliar, un solo contador).
  * @param {number} contadorId - Id del contador que quiere asignar auxiliares.
  * @returns {Promise<Array<{id: number, nombre: string}>>}
  */
@@ -124,9 +142,8 @@ async function listarDisponiblesParaAuxiliar(contadorId) {
   const filas = await query(
     "SELECT u.id, u.nombre FROM usuarios u " +
     "WHERE u.rol = 'auxiliar' " +
-    'AND NOT EXISTS (SELECT 1 FROM contador_auxiliar ca WHERE ca.contador_id = ? AND ca.auxiliar_id = u.id) ' +
-    'ORDER BY u.nombre',
-    [contadorId]
+    'AND NOT EXISTS (SELECT 1 FROM contador_auxiliar ca WHERE ca.auxiliar_id = u.id) ' +
+    'ORDER BY u.nombre'
   );
   return filas;
 }
@@ -136,6 +153,8 @@ async function listarDisponiblesParaAuxiliar(contadorId) {
  * y quita otros, sin tocar los demás vínculos (los que haya agregado cada contador por su cuenta).
  * Valida todo antes de escribir y escribe en una transacción: o se guarda todo o nada.
  * Repetir un cambio no falla: agregar a quien ya estaba o quitar a quien ya no estaba no hace nada.
+ * Al agregar, el auxiliar no puede terminar con más de un contador (MAS_DE_UN_CONTADOR): para
+ * cambiarlo de contador se envía el nuevo en `agregar` y el actual en `quitar`.
  * @param {number} auxiliarId - Id de la cuenta auxiliar.
  * @param {{ agregar: Array<number>, quitar: Array<number> }} cambios - Ids de contadores.
  * @returns {Promise<{ agregados: Array<number>, quitados: Array<number> }>} Lo que de verdad cambió.
@@ -149,6 +168,15 @@ async function ajustarContadoresDeAuxiliar(auxiliarId, { agregar, quitar }) {
   await validarCuentaConRol(auxiliarId, 'auxiliar');
   for (const contadorId of agregar) {
     await validarCuentaConRol(contadorId, 'contador');
+  }
+  if (agregar.length > 0) {
+    const actuales = await idsDeContadoresDe(auxiliarId);
+    const finales = new Set([...actuales.filter((id) => !quitar.includes(id)), ...agregar]);
+    if (finales.size > 1) {
+      const error = new Error('un auxiliar solo puede apoyar a un contador');
+      error.codigo = 'MAS_DE_UN_CONTADOR';
+      throw error;
+    }
   }
 
   return conTransaccion(async (ejecutar) => {
