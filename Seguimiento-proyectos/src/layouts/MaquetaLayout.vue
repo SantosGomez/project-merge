@@ -49,9 +49,7 @@
       @focusout="alSalirFoco"
       @keydown.esc="cerrarMenuMovil"
       class="bg-primary menu-lateral"
-      :class="{ 'menu-lateral--al-instante': !cursorEnMenu }"
-      transition-show="slide-right"
-      transition-hide="slide-left"
+      :class="{ 'menu-lateral--al-instante': esEscritorio && !cursorEnMenu && !acompanarMenu }"
     >
       <div class="drawer-marca">
         <!-- Siempre el mismo botón: crearlo o destruirlo al cruzar 1024 px perdía el foco. -->
@@ -293,7 +291,12 @@
       </div>
     </q-drawer>
 
-    <q-page-container id="contenido-principal" tabindex="-1" class="contenedor-paginas">
+    <q-page-container
+      id="contenido-principal"
+      tabindex="-1"
+      class="contenedor-paginas"
+      :class="{ 'contenedor-paginas--acompana-menu': acompanarMenu }"
+    >
       <header v-if="$q.screen.gt.sm" class="page-header">
         <h1 class="page-header__title">{{ pageTitle }}</h1>
         <CampanaAvisos v-if="session.veCampana" class="page-header__campana" />
@@ -419,8 +422,18 @@ const textoBotonMenu = computed(() =>
 // Por debajo de 1024 px el menú se abre con el botón de la barra y el logo no fija nada.
 const esEscritorio = computed(() => $q.screen.gt.sm)
 
+// Al fijar o desfijar cambia el espacio que deja el menú: el contenido se desliza con él.
+const DURACION_MENU_MS = 150
+const acompanarMenu = ref(false)
+let esperaAcompanar = null
+
 const alternarMenuFijado = () => {
   if (!esEscritorio.value) return
+  clearTimeout(esperaAcompanar)
+  acompanarMenu.value = true
+  esperaAcompanar = setTimeout(() => {
+    acompanarMenu.value = false
+  }, DURACION_MENU_MS)
   menuFijado.value = !menuFijado.value
   guardarMenuFijado(menuFijado.value)
 }
@@ -588,12 +601,28 @@ onBeforeUnmount(() => {
  * instante (las acciones de teclado no se animan). La regla de Quasar lleva !important y se
  * aplica al <aside class="q-drawer">, mientras que nuestras clases quedan en su contenido.
  */
+/*
+ * Curva de salida de la app ($curva-salida) en lugar del `ease` de Quasar. Quasar quita la
+ * clase de animación a los 155 ms, así que la duración no puede pasar de 150 ms.
+ */
+:global(.q-body--layout-animate .q-drawer:has(> .menu-lateral)) {
+  transition:
+    transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    width 150ms cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+
 :global(.q-body--layout-animate .q-drawer:has(> .menu-lateral--al-instante)) {
   transition: none !important;
 }
 
+/* Al fijar o desfijar, el contenido se desliza al mismo ritmo que el menú. */
+.contenedor-paginas--acompana-menu {
+  transition: padding-left 150ms cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  :global(.q-body--layout-animate .q-drawer:has(> .menu-lateral)) {
+  :global(.q-body--layout-animate .q-drawer:has(> .menu-lateral)),
+  .contenedor-paginas--acompana-menu {
     transition: none !important;
   }
 }

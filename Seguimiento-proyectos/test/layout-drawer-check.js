@@ -46,9 +46,9 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(!src.includes('bordered'), 'no debe llevar bordered')
   })
 
-  it('drawer con transiciones slide-right/slide-left', () => {
-    assert.ok(src.includes('transition-show="slide-right"'), 'falta transition-show slide-right')
-    assert.ok(src.includes('transition-hide="slide-left"'), 'falta transition-hide slide-left')
+  it('drawer sin transition-show/transition-hide: QDrawer no los usa (el deslizamiento es de Quasar)', () => {
+    assert.ok(!src.includes('transition-show="slide-right"'), 'transition-show no es prop de QDrawer')
+    assert.ok(!src.includes('transition-hide="slide-left"'), 'transition-hide no es prop de QDrawer')
   })
 
   it('el menú ocupa toda la altura y la barra superior empieza a su derecha', () => {

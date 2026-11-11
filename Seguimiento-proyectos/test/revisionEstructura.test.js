@@ -66,7 +66,7 @@ describe('El menú lateral es la navegación principal', () => {
     const boton = plantillaLayout.slice(plantillaLayout.lastIndexOf('<q-btn', plantillaLayout.indexOf('saltar-contenido')))
     assert.match(boton.slice(0, boton.indexOf('/>')), /label="Saltar al contenido"/)
     assert.match(boton.slice(0, boton.indexOf('/>')), /@click="saltarAlContenido"/)
-    assert.match(plantillaLayout, /<q-page-container id="contenido-principal" tabindex="-1"/)
+    assert.match(plantillaLayout, /<q-page-container\s+id="contenido-principal"\s+tabindex="-1"/)
     assert.ok(
       plantillaLayout.indexOf('saltar-contenido') < plantillaLayout.indexOf('<q-drawer'),
       'es lo primero que recibe el foco',
@@ -102,7 +102,8 @@ describe('Menú compacto: se despliega con intención', () => {
 
   it('con el teclado se despliega al instante, sin animación', () => {
     const drawer = etiquetaDe(plantillaLayout, 'q-drawer')
-    assert.match(drawer, /'menu-lateral--al-instante': !cursorEnMenu/)
+    // Solo en escritorio: en el celular nunca hay cursor y el menú debe deslizarse.
+    assert.match(drawer, /'menu-lateral--al-instante': esEscritorio && !cursorEnMenu/)
     // Quasar pone las clases en .q-drawer__content; la transición está en el <aside class="q-drawer">.
     assert.match(
       layout,
@@ -113,7 +114,8 @@ describe('Menú compacto: se despliega con intención', () => {
   it('con movimiento reducido el menú no se anima', () => {
     const reducido = layout.slice(layout.indexOf('@media (prefers-reduced-motion: reduce)'))
     assert.ok(layout.includes('@media (prefers-reduced-motion: reduce)'))
-    assert.match(reducido, /:global\(\.q-body--layout-animate \.q-drawer:has\(> \.menu-lateral\)\)\s*\{[^}]*transition:\s*none !important/)
+    // El menú puede compartir la regla con otros selectores (el contenido que lo acompaña).
+    assert.match(reducido, /:global\(\.q-body--layout-animate \.q-drawer:has\(> \.menu-lateral\)\)[^{]*\{[^}]*transition:\s*none !important/)
   })
 })
 
