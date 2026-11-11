@@ -154,6 +154,26 @@ export const validarContrasenaNueva = (nueva, confirmacion) => {
   return { valido: Object.values(errores).every((error) => error === null), errores }
 }
 
+/** Valida el cambio voluntario de la contraseña propia: la actual es obligatoria y la nueva
+ * sigue las reglas de `validarContrasenaNueva`, además de ser distinta a la actual
+ * (se compara tal cual, como el backend).
+ * @returns {{ valido: boolean, errores: { actual: string|null, nueva: string|null, confirmacion: string|null } }}
+ */
+export const validarCambioContrasenaPropia = (actual, nueva, confirmacion) => {
+  const { errores: erroresNueva } = validarContrasenaNueva(nueva, confirmacion)
+  const errores = {
+    actual: String(actual ?? '').length === 0 ? 'actual_requerida' : null,
+    nueva: erroresNueva.nueva,
+    confirmacion: erroresNueva.confirmacion,
+  }
+
+  if (errores.nueva === null && nueva === actual) {
+    errores.nueva = 'nueva_igual_actual'
+  }
+
+  return { valido: Object.values(errores).every((error) => error === null), errores }
+}
+
 /** Valida el restablecimiento de contraseña (historia 9b) con las mismas reglas que el alta:
  * correo obligatorio, de hasta 150 caracteres y con forma de correo; contraseña de al menos 8.
  * @returns {{ valido: boolean, errores: { correo: string|null, password: string|null } }}

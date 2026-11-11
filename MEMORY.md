@@ -34,6 +34,8 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle de cada cambio está en s
 
 ## Pendientes
 
+- **«Mi perfil» (2026-11-11, rebanadas 06–09 en `docs/rebanadas/`, hechas y revisadas, sin commit):** la vista sigue en `ContadorAuxiliaresPage.vue` (decisión del usuario: no crear otra), ruta `perfil` (`mi-perfil`) para contador y auxiliar; `contador/auxiliares` redirige. Se entra por el bloque del usuario al pie del menú (enlace solo con `session.trabajaCasos`); el ítem «Mis auxiliares» salió del menú. Secciones: «Mi cuenta» (`GET /auth/perfil`), «Mis auxiliares» (contador), «Contador que apoyas» (auxiliar) y «Mi cartera de clientes» (`utils/carteraClientes.js`, solo casos propios, derivada de `casos.cliente`). «Cambiar contraseña»: `PATCH /auth/mi-contrasena` pide la actual (`CambiarContrasenaDialog.vue`); el diálogo recorta los campos igual que el login (sin recortar, un espacio final dejaba la cuenta sin acceso). Visto en navegador: contador en escritorio y móvil, auxiliar en móvil, cambio de contraseña real. **Sin ver en navegador:** estados vacíos y de error, y el menú compacto. **Opcionales que dejó el reviewer (requieren aprobación):** revocar las demás sesiones al cambiar la contraseña (`revocarSesionesDeUsuario` ya existe), límite de intentos para la actual incorrecta, recortar o rechazar espacios extremos en el servidor, pruebas de plantilla de la cartera. Proponer pasar la regla de «Mi perfil» a `AGENTS.md`.
+
 - Boceto de auditorías: Importancia, aviso al Socio Director, días inhábiles SAT, RFC/Unidad/Socio/Multa (no existen en las tablas: proponer esquema antes).
 - Preguntas abiertas: nombre de la PWA, logo PNG más liviano, ¿avisos de la campana con enlace?, ¿otro dato en el pie del menú?
 - Pruebas del backend: correr todo junto se queda colgado (algún archivo deja conexiones abiertas); por archivo pasan. `authRoutes` «correo en mayúsculas» falla a veces; `verificarPruebas.js` da FALLA por `MINIMOS` desactualizados.
@@ -49,6 +51,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle de cada cambio está en s
 - Las pruebas de equipos avisan a todos los administradores de la base de pruebas: `limpiarDatosDePrueba` (`soporte-pruebas/bd.js`) borra los avisos con `zz_test_` en el mensaje; una prueba que no la llame deja residuos en campanas ajenas.
 - Subagentes: el reviewer de opencode dejó un `npm run dev` abierto y su proceso no terminaba ("waiting for 1 background job"); el implementer de opencode editó MEMORY.md sin permiso. Pedir en el encargo: nada en segundo plano y no tocar MEMORY.md.
 - MySQL de XAMPP: si una tabla da «doesn't exist in engine», no borrar tablas sueltas.
+- `q-avatar` toma su tamaño del `font-size`: un `font-size` en su clase lo encoge (los avatares medían 15 px); usar las props `size` y `font-size`. Si el servidor de desarrollo sirve estilos viejos tras editar un `.vue`, tocar la fecha del archivo y recargar.
 
 ---
 Nada sensible en esta memoria.

@@ -5,7 +5,7 @@ const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 const { hashPassword, verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
-const { nowLocal } = require('../utils/dateUtils');
+const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
 const { eventos } = require('../utils/eventos');
 const { JWT_SECRET, JWT_EXPIRES_IN, JWT_EXPIRES_IN_PERSISTENTE } = require('../config/jwt');
 
@@ -135,6 +135,55 @@ async function cambiarContrasena(req, res) {
 }
 
 /**
+ * La persona cambia su contraseña por voluntad propia escribiendo la actual.
+ * La sesión actual sigue abierta; las demás sesiones no se tocan.
+ * @param {Object} req - Petición Express con cuerpo { password_actual, password }.
+ * @param {Object} res - Respuesta Express.
+ */
+async function cambiarMiContrasena(req, res) {
+  const { password_actual: actual, password } = req.body;
+
+  // 1. La actual es obligatoria y debe ser texto
+  if (typeof actual !== 'string' || actual === '') {
+    return res.status(400).json(
+      buildError('Falta la contraseña actual', 'contraseña actual', 'Escribe tu contraseña actual')
+    );
+  }
+
+  // 2. La nueva sigue la misma regla que el alta: texto de al menos 8 caracteres
+  const campo = validarCampoTexto(password, 'contraseña');
+  if (campo.estado === 'tipo_invalido') {
+    return res.status(400).json(
+      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe enviarse como texto')
+    );
+  }
+  if (campo.estado !== 'valido' || password.length < 8) {
+    return res.status(400).json(
+      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')
+    );
+  }
+
+  // 3. La actual debe ser la guardada
+  const cuenta = await UserModel.findById(req.user.id);
+  if (!cuenta || !(await verifyPassword(actual, cuenta.password_hash))) {
+    return res.status(400).json(
+      buildError('La contraseña actual no es correcta', 'contraseña actual', 'Revisa que la escribiste igual e inténtalo de nuevo')
+    );
+  }
+
+  // 4. Debe ser distinta a la actual
+  if (password === actual) {
+    return res.status(400).json(
+      buildError('La contraseña nueva es igual a la actual', 'contraseña', 'Escribe una contraseña distinta a la actual')
+    );
+  }
+
+  // 5. Guardar con Argon2id; la sesión actual sigue abierta
+  await UserModel.updatePassword(cuenta.id, await hashPassword(password), false);
+  return res.status(200).json({ mensaje: 'Contraseña actualizada correctamente' });
+}
+
+/**
  * Cierre de sesión: revoca el token de forma persistente en la base de datos.
  * RF-26, RF-31.
  * @param {Object} req - Petición Express con cabecera Authorization: Bearer <token>.
@@ -170,4 +219,27 @@ async function logout(req, res) {
   return res.status(200).json({ mensaje: 'Sesión cerrada correctamente' });
 }
 
-module.exports = { login, logout, cambiarContrasena };
+/**
+ * Datos de la cuenta de la sesión para la vista «Mi perfil». Nunca incluye el hash
+ * de la contraseña ni datos de otra cuenta; las fechas salen en hora local.
+ * @param {Object} req - Petición Express ya autenticada (req.user.id).
+ * @param {Object} res - Respuesta Express.
+ */
+async function obtenerPerfil(req, res) {
+  const cuenta = await UserModel.findById(req.user.id);
+  if (!cuenta) {
+    return res.status(404).json(
+      buildError('Cuenta no encontrada', 'perfil', 'Vuelve a iniciar sesión')
+    );
+  }
+  return res.status(200).json({
+    id: cuenta.id,
+    nombre: cuenta.nombre,
+    correo: cuenta.correo,
+    rol: cuenta.rol,
+    creado_en: cuenta.creado_en ? formatLocalDate(cuenta.creado_en) : null,
+    ultimo_acceso_en: cuenta.ultimo_acceso_en ? formatLocalDate(cuenta.ultimo_acceso_en) : null,
+  });
+}
+
+module.exports = { login, logout, cambiarContrasena, cambiarMiContrasena, obtenerPerfil };

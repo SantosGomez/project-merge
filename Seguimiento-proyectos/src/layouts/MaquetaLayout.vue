@@ -191,27 +191,7 @@
               </q-item-section>
             </q-item>
 
-            <!-- Solo el contador gestiona auxiliares y entra a auditorías; el auxiliar, no. -->
-            <q-item
-              v-if="session.esContador"
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
-              :to="{ name: 'contador-auxiliares' }"
-              :aria-current="paginaActual('contador-auxiliares')"
-              aria-label="Ir a mis auxiliares"
-            >
-              <q-item-section avatar>
-                <q-icon name="person_add" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Mis auxiliares</q-item-label>
-                <q-item-label caption>Auxiliares que te apoyan</q-item-label>
-              </q-item-section>
-            </q-item>
-
-
+            <!-- Solo el contador entra a auditorías; el auxiliar, no. -->
             <q-item
               v-if="session.esContador"
               clickable
@@ -259,7 +239,25 @@
       </q-scroll-area>
 
       <div class="drawer-usuario" v-if="session.autenticado">
-        <div class="drawer-usuario__fila" v-if="session.nombreVisible">
+        <!-- Quien trabaja casos entra a «Mi perfil» desde su nombre; el resto ve el bloque sin enlace. -->
+        <router-link
+          v-if="session.nombreVisible && session.trabajaCasos"
+          :to="{ name: 'mi-perfil' }"
+          :aria-current="paginaActual('mi-perfil')"
+          aria-label="Ir a mi perfil"
+          class="drawer-usuario__fila drawer-usuario__fila--enlace"
+          active-class="drawer-usuario__fila--activa"
+        >
+          <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
+          <div class="drawer-usuario__datos">
+            <p class="drawer-usuario__nombre">
+              {{ session.nombreVisible }}
+              <q-tooltip>{{ session.nombreVisible }}</q-tooltip>
+            </p>
+            <p class="drawer-usuario__rol">{{ rolLegible }}</p>
+          </div>
+        </router-link>
+        <div v-else-if="session.nombreVisible" class="drawer-usuario__fila">
           <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
           <div class="drawer-usuario__datos">
             <p class="drawer-usuario__nombre">
@@ -803,6 +801,30 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+/* El bloque del usuario es un enlace a «Mi perfil» para quien trabaja casos. */
+.drawer-usuario__fila--enlace {
+  min-height: 44px;
+  padding: 4px 8px;
+  margin: 0 -8px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.drawer-usuario__fila--enlace:hover {
+  background: var(--dg-fondo-menu-activo);
+}
+
+.drawer-usuario__fila--enlace:focus-visible {
+  outline: 2px solid var(--q-secondary) !important;
+  outline-offset: -2px;
+}
+
+.drawer-usuario__fila--activa {
+  background: var(--dg-fondo-menu-activo);
+  box-shadow: inset 3px 0 0 var(--q-secondary);
+}
+
 .drawer-usuario__salir {
   margin: 0 -16px;
 }
@@ -886,6 +908,11 @@ onBeforeUnmount(() => {
 
 .q-drawer--mini .drawer-usuario__fila {
   justify-content: center;
+}
+
+.q-drawer--mini .drawer-usuario__fila--enlace {
+  margin: 0;
+  padding: 4px 0;
 }
 
 .dialogo-cierre {

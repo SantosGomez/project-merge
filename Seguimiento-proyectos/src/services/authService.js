@@ -180,6 +180,26 @@ export const crearAuthService = (opciones = {}) => {
   }
 
   /**
+   * Cambio voluntario de la contraseña propia (PATCH /auth/mi-contrasena), escribiendo la actual.
+   * La sesión sigue abierta. Si falla, rechaza con el error normalizado de api.js.
+   * @param {{ passwordActual: string, password: string }} datos
+   */
+  const cambiarMiContrasena = async ({ passwordActual, password }) => {
+    await api.patch('/auth/mi-contrasena', { password_actual: passwordActual, password })
+  }
+
+  /**
+   * Datos de la cuenta de la sesión (GET /auth/perfil) para «Mi perfil».
+   * Si falla, rechaza con el error normalizado de api.js.
+   * @returns {Promise<{ id: number, nombre: string, correo: string, rol: string,
+   *   creado_en: string|null, ultimo_acceso_en: string|null }>}
+   */
+  const obtenerPerfil = async () => {
+    const { data } = await api.get('/auth/perfil')
+    return data
+  }
+
+  /**
    * Revoca la sesión en el backend (POST /auth/logout) sin lanzar nunca.
    * Resuelve `{ ok: true, mensaje }` si el backend confirma la revocación o
    * `{ ok: false, error }` con el error normalizado si falla (RF-47).
@@ -203,6 +223,8 @@ export const crearAuthService = (opciones = {}) => {
     login,
     logout,
     cambiarContrasena,
+    cambiarMiContrasena,
+    obtenerPerfil,
     getToken,
     getRol,
     getNombre,
@@ -225,6 +247,8 @@ const servicioPorDefecto = crearAuthService()
 export const login = servicioPorDefecto.login
 export const logout = servicioPorDefecto.logout
 export const cambiarContrasena = servicioPorDefecto.cambiarContrasena
+export const cambiarMiContrasena = servicioPorDefecto.cambiarMiContrasena
+export const obtenerPerfil = servicioPorDefecto.obtenerPerfil
 export const getCambioPendiente = servicioPorDefecto.getCambioPendiente
 export const getPersistente = servicioPorDefecto.getPersistente
 export const getToken = servicioPorDefecto.getToken

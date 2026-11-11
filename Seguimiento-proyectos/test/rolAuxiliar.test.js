@@ -41,10 +41,10 @@ describe('rol auxiliar: datos y reglas', () => {
     assert.equal(valido, true)
   })
 
-  it('entra a «Mis casos» y «Mi resumen», pero no a «Mis auxiliares» ni a auditorías', () => {
+  it('entra a «Mis casos», «Mi resumen» y «Mi perfil», pero no a auditorías', () => {
     assert.equal(accesoDelAuxiliar('contador-casos'), 'permitir')
     assert.equal(accesoDelAuxiliar('contador-dashboard'), 'permitir')
-    assert.equal(accesoDelAuxiliar('contador-auxiliares'), 'denegar')
+    assert.equal(accesoDelAuxiliar('mi-perfil'), 'permitir')
     assert.equal(accesoDelAuxiliar('auditorias'), 'denegar')
     assert.equal(accesoDelAuxiliar('admin-dashboard'), 'denegar')
   })
@@ -63,11 +63,11 @@ describe('rol auxiliar: pantallas', () => {
   const alta = leer('../src/components/NewUserDialog.vue')
   const directorio = leer('../src/pages/CountersDirectoryPage.vue')
 
-  it('el menú muestra «Mi trabajo» y la campana a quien trabaja casos; auxiliares y auditorías solo al contador', () => {
+  it('el menú muestra «Mi trabajo» y la campana a quien trabaja casos; auditorías solo al contador', () => {
     assert.match(layout, /<template v-if="session\.trabajaCasos">/)
     assert.equal((layout.match(/<CampanaAvisos v-if="session\.veCampana"/g) ?? []).length, 2)
     const miTrabajo = layout.slice(layout.indexOf('<template v-if="session.trabajaCasos">'))
-    assert.match(miTrabajo, /v-if="session\.esContador"[\s\S]*?name: 'contador-auxiliares'/)
+    assert.doesNotMatch(miTrabajo, /contador-auxiliares/)
     assert.match(miTrabajo, /v-if="session\.esContador"[\s\S]*?name: 'auditorias'/)
   })
 

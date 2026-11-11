@@ -44,7 +44,7 @@
           unelevated
           icon="group"
           label="Ver mis auxiliares"
-          :to="{ name: 'contador-auxiliares' }"
+          :to="{ name: 'mi-perfil' }"
         >
           <q-tooltip>Abre «Mis auxiliares» para agregar o quitar a quienes te apoyan.</q-tooltip>
         </q-btn>

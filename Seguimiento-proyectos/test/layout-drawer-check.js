@@ -136,12 +136,12 @@ describe('Drawer sidebar — verificación estática', () => {
       !/q-item[^>]*v-if="session\.esAdministrador"/.test(src),
       'el v-if del administrador debe estar solo en el <template>',
     )
-    // Rol auxiliar (2026-11-10): dentro de «Mi trabajo» solo «Mis auxiliares» y «Auditorías»
-    // son exclusivos del contador; el resto lo ven contador y auxiliar.
+    // Rol auxiliar (2026-11-10): dentro de «Mi trabajo» solo «Auditorías» es exclusiva del
+    // contador; el resto lo ven contador y auxiliar («Mis auxiliares» pasó a «Mi perfil», rebanada 06).
     assert.deepEqual(
       [...src.matchAll(/<q-item\s+v-if="session\.esContador"[\s\S]*?name: '([\w-]+)'/g)].map((m) => m[1]),
-      ['contador-auxiliares', 'auditorias'],
-      'solo Mis auxiliares y Auditorías llevan v-if del contador',
+      ['auditorias'],
+      'solo Auditorías lleva v-if del contador',
     )
   })
 
@@ -178,12 +178,12 @@ describe('Drawer sidebar — verificación estática', () => {
       )
     }
 
-    // Rol auxiliar (2026-11-10): dentro de «Mi trabajo» solo «Mis auxiliares» y «Auditorías»
-    // son exclusivos del contador; el resto lo ven contador y auxiliar.
+    // Rol auxiliar (2026-11-10): dentro de «Mi trabajo» solo «Auditorías» es exclusiva del
+    // contador; el resto lo ven contador y auxiliar («Mis auxiliares» pasó a «Mi perfil», rebanada 06).
     assert.deepEqual(
       [...src.matchAll(/<q-item\s+v-if="session\.esContador"[\s\S]*?name: '([\w-]+)'/g)].map((m) => m[1]),
-      ['contador-auxiliares', 'auditorias'],
-      'solo Mis auxiliares y Auditorías llevan v-if del contador',
+      ['auditorias'],
+      'solo Auditorías lleva v-if del contador',
     )
     assert.ok(
       !/q-item[^>]*v-if="session\.esAdministrador"/.test(src),
@@ -240,15 +240,16 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.match(pieTag, /v-if="session\.autenticado"/, 'el pie se muestra con la sesión abierta')
     assert.doesNotMatch(pieTag, /esAdministrador|esContador/, 'el pie no depende del rol')
 
-    const filaTag = src.match(/<div class="drawer-usuario__fila"[^>]*>/)?.[0] ?? ''
-    assert.match(filaTag, /v-if="session\.nombreVisible"/, 'la fila del nombre se muestra con el nombre')
+    // Dos variantes: enlace a «Mi perfil» (trabaja casos) y bloque sin enlace (el resto).
+    const filaTag = src.match(/<div v-else-if="session\.nombreVisible" class="drawer-usuario__fila"[^>]*>/)?.[0] ?? ''
+    assert.ok(filaTag, 'la fila sin enlace se muestra con el nombre')
     assert.doesNotMatch(filaTag, /esAdministrador|esContador/, 'la fila no depende del rol')
 
-    const filaInicio = src.indexOf('<div class="drawer-usuario__fila"')
+    const filaInicio = src.indexOf('<router-link')
     const opcionInicio = src.indexOf('@click="abrirDialogoCierre"')
     assert.ok(opcionInicio > filaInicio, 'la opción va después del inicio de la fila')
     let filaFin = filaInicio
-    for (let cierre = 0; cierre < 3; cierre += 1) {
+    for (let cierre = 0; cierre < 5; cierre += 1) {
       filaFin = src.indexOf('</div>', filaFin + 1)
       assert.ok(filaFin > filaInicio, 'no se encontró el cierre de la fila del nombre')
     }
@@ -667,8 +668,9 @@ describe('Sección «Usuarios» y aviso de acceso (historia 9a) — verificació
 
 describe('Pie del menú con el nombre de la cuenta (login por correo)', () => {
   it('muestra el nombre visible y sus iniciales, no el usuario', () => {
-    const pie = src.slice(src.indexOf('<div class="drawer-usuario__fila"'), src.indexOf('<div class="drawer-usuario__salir"'))
-    assert.match(pie, /v-if="session\.nombreVisible"/, 'la fila aparece con el nombre')
+    const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('<div class="drawer-usuario__salir"'))
+    assert.match(pie, /v-if="session\.nombreVisible && session\.trabajaCasos"/, 'el enlace aparece con el nombre')
+    assert.match(pie, /v-else-if="session\.nombreVisible"/, 'la fila sin enlace aparece con el nombre')
     assert.match(pie, /\{\{ session\.nombreVisible \}\}\s*<q-tooltip>\{\{ session\.nombreVisible \}\}<\/q-tooltip>/, 'nombre y su tooltip')
     assert.doesNotMatch(pie, /session\.usuario/, 'el pie ya no muestra el usuario')
     assert.match(src, /formatearIniciales\(session\.nombreVisible\)/, 'iniciales del nombre')

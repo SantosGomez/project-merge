@@ -49,16 +49,15 @@ describe('Grupo A: página de gestión de auxiliares', () => {
 })
 
 describe('Grupo B: menú y ruta', () => {
-  it('el menú del contador tiene ítem "Mis auxiliares"', () => {
-    assert.match(menu, /Mis auxiliares/)
+  // Rebanada 06: «Mis auxiliares» ya no es un ítem del menú; vive en «Mi perfil» (nombre al pie del menú).
+  it('el menú ya no tiene ítem "Mis auxiliares" y el nombre del pie lleva a mi-perfil', () => {
+    assert.doesNotMatch(menu, /Mis auxiliares/)
+    assert.match(menu, /:to="\{ name: 'mi-perfil' \}"/)
   })
 
-  it('el ítem de menú apunta a la ruta contador-auxiliares', () => {
-    assert.match(menu, /contador-auxiliares/)
-  })
-
-  it('el router tiene la ruta contador/auxiliares', () => {
-    assert.match(router, /contador\/auxiliares/)
-    assert.match(router, /name: 'contador-auxiliares'/)
+  it('el router pinta la vista en perfil y contador/auxiliares solo redirige', () => {
+    assert.match(router, /path: 'perfil',\s+name: 'mi-perfil'/)
+    assert.match(router, /path: 'contador\/auxiliares',[\s\S]*?redirect: \{ name: 'mi-perfil' \}/)
+    assert.doesNotMatch(router, /name: 'contador-auxiliares'/)
   })
 })

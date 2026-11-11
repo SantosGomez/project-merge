@@ -124,12 +124,17 @@ const routes = [
       },
       {
         path: 'contador/auxiliares',
-        name: 'contador-auxiliares',
+        // «Mis auxiliares» vive ahora dentro de «Mi perfil».
+        redirect: { name: 'mi-perfil' },
+      },
+      {
+        path: 'perfil',
+        name: 'mi-perfil',
         component: ContadorAuxiliaresPage,
         meta: {
           requiereSesion: true,
-          perfil: PROFILES.contador,
-          titulo: 'Mis auxiliares',
+          perfil: [PROFILES.contador, PROFILES.auxiliar],
+          titulo: 'Mi perfil',
         },
       },
       {

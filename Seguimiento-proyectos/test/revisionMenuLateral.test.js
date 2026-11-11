@@ -66,7 +66,7 @@ describe('Menú lateral: «Auditorías» activo en la ficha', () => {
 describe('Menú lateral: sin tooltips en los ítems', () => {
   it('ningún ítem del menú lleva q-tooltip', () => {
     const items = itemsDelMenu()
-    assert.ok(items.length >= 9, `se esperan los 9 ítems del menú, hay ${items.length}`)
+    assert.ok(items.length >= 8, `se esperan los 8 ítems del menú, hay ${items.length}`)
     for (const item of items) assert.doesNotMatch(item, /<q-tooltip/)
   })
 
