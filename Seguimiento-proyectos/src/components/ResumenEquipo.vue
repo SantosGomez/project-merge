@@ -170,13 +170,13 @@ const tarjetas = computed(() =>
 }
 
 .resumen-tarjeta__cuerpo:focus-visible {
-  outline: 2px solid var(--q-primary);
+  outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
 }
 
 .resumen-tarjeta--clicable {
   cursor: pointer;
-  transition: box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: box-shadow 160ms var(--dg-curva-salida), transform 120ms var(--dg-curva-salida);
 }
 
 /* Solo con ratón: en táctil el hover se queda pegado. */

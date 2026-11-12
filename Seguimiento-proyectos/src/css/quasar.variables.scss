@@ -14,7 +14,9 @@
 
 $primary: #111e30;
 $secondary: #5abbf1;
-$accent: #9c27b0;
+// `accent` e `info` de Quasar apuntan a la paleta (acento e info-borde): el morado y el cian de
+// fábrica no pertenecen a la identidad de la app.
+$accent: #1f5f99;
 
 $secondary-black: #000000;
 $secondary-white: #bfbfbf;
@@ -27,7 +29,7 @@ $dark-page: #121212;
 // $dg-colores: el verde y el rojo de fábrica no daban contraste AA con texto blanco.
 $positive: #1b5e20;
 $negative: #a3231b;
-$info: #31ccec;
+$info: #1a5f9e;
 $warning: #f2c037;
 
 // Tooltips de toda la app: fondo `texto` de $dg-colores y letra legible. El gris y los 10 px de

@@ -14,7 +14,8 @@ const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'ut
 const src = read('../src/layouts/MaquetaLayout.vue')
 const drawerTag = src.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
 const estilos = src.slice(src.indexOf('<style'))
-const CURVA_SALIDA = 'cubic-bezier(0.23, 1, 0.32, 1)'
+// La curva vive en `app.scss` como `--dg-curva-salida` (cubic-bezier(0.23, 1, 0.32, 1)).
+const CURVA_SALIDA = 'var(--dg-curva-salida)'
 
 /** Duraciones en ms de una declaración `transition`. */
 const duraciones = (declaracion) => [...declaracion.matchAll(/(\d+)ms/g)].map((m) => Number(m[1]))

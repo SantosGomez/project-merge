@@ -117,3 +117,28 @@ test('app.scss publica la paleta como variables CSS y como clases de color de Qu
   assert.match(appScss, /\.text-dg-#\{\$nombre\}\s*\{[^}]*color:\s*var\(--dg-#\{\$nombre\}\)/, 'clase text-dg-*')
   assert.match(appScss, /\.bg-dg-#\{\$nombre\}\s*\{[^}]*background:\s*var\(--dg-#\{\$nombre\}\)/, 'clase bg-dg-*')
 })
+
+// Revisión de UI (2026-11-12): sombras y curva de movimiento como variables CSS, para que los
+// estilos `scoped` no repitan el valor.
+test('app.scss publica las sombras y la curva de salida, y ningún componente las repite sueltas', async () => {
+  const { readdirSync } = await import('node:fs')
+  for (const nombre of ['sombra-campo', 'sombra-campo-hover', 'sombra-menu', 'sombra-tarjeta', 'anillo-foco']) {
+    assert.match(appScss, new RegExp(`--dg-${nombre}:\s*[^;]+;`), `falta --dg-${nombre}`)
+  }
+  assert.match(appScss, /--dg-curva-salida:\s*cubic-bezier\(0\.23, 1, 0\.32, 1\);/)
+
+  const carpetas = ['../src/components/', '../src/pages/', '../src/layouts/']
+  for (const carpeta of carpetas) {
+    for (const archivo of readdirSync(new URL(carpeta, import.meta.url)).filter((a) => a.endsWith('.vue'))) {
+      const codigo = leer(carpeta + archivo)
+      assert.doesNotMatch(codigo, /cubic-bezier\(/, `${archivo} debe usar var(--dg-curva-salida)`)
+      assert.doesNotMatch(codigo, /rgba?\(/, `${archivo} no debe llevar un color rgb suelto`)
+    }
+  }
+})
+
+test('la selección de texto, el cursor y las barras de desplazamiento usan la paleta', () => {
+  assert.match(appScss, /::selection\s*\{[^}]*var\(--dg-fondo-seleccion\)/)
+  assert.match(appScss, /accent-color:\s*var\(--dg-acento\)/)
+  assert.match(appScss, /scrollbar-color:\s*var\(--dg-borde-fuerte\)/)
+})

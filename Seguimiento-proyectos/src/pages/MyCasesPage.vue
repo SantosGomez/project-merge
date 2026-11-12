@@ -231,7 +231,10 @@ watch([filtros, porPagina], () => {
 // los vencidos y los próximos a vencer se actualizan.
 const hoy = ref(hoyLocal())
 const actualizarHoy = () => {
-  if (document.visibilityState === 'visible') hoy.value = hoyLocal()
+  if (document.visibilityState !== 'visible') return
+  hoy.value = hoyLocal()
+  // Además se relee la lista: un cambio hecho mientras la ventana estaba oculta puede no haber llegado.
+  cases.refrescarEnSilencio()
 }
 
 const paginacion = computed(() =>
@@ -287,6 +290,9 @@ const avisoDeExito = (cliente, cambios) => {
   return 'Cambio guardado.'
 }
 
+// Espera que apaga la animación de salida; se cancela al desmontar la vista.
+let esperaSalida = null
+
 // Guarda un cambio de estado o de importante. Si falla, el aviso ofrece repetir el mismo cambio.
 const guardarCambio = async (caseId, cambios) => {
   if (cases.guardando) return
@@ -297,17 +303,21 @@ const guardarCambio = async (caseId, cambios) => {
   const resultado = await cases.actualizarCaso(caseId, cambios)
   guardandoId.value = null
   // Se apaga cuando la fila ya salió, para que el siguiente filtro no se anime.
-  if (animarSalida.value) setTimeout(() => (animarSalida.value = false), DURACION_SALIDA_MS + 50)
+  if (animarSalida.value) {
+    clearTimeout(esperaSalida)
+    esperaSalida = setTimeout(() => (animarSalida.value = false), DURACION_SALIDA_MS + 50)
+  }
 
   if (resultado.ok) {
     $q.notify({ type: 'positive', message: avisoDeExito(cliente, cambios) })
-  } else {
+  } else if (!resultado.descartado) {
+    // Un guardado descartado (llegó otro más nuevo) no es un fallo: no se avisa.
     $q.notify({
       type: 'negative',
       message: `No se guardó el cambio del caso de ${cliente}.`,
       caption: resultado.error?.mensaje ?? 'Revisa tu conexión y vuelve a intentarlo.',
       timeout: 8000,
-      actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: () => guardarCambio(caseId, cambios) }],
+      actions: [{ label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: () => guardarCambio(caseId, cambios) }],
     })
   }
 }
@@ -481,7 +491,7 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 /* Caso al que llevó un aviso de la campana: marco de acento unos segundos. */
 .caso-resaltado {
   box-shadow: inset 0 0 0 2px var(--dg-acento);
-  transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: box-shadow 200ms var(--dg-curva-salida);
 }
 
 .caso-resaltado:focus {
@@ -495,7 +505,7 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 .caso-salida-leave-active {
   position: absolute;
   width: 100%;
-  transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1), transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 150ms var(--dg-curva-salida), transform 150ms var(--dg-curva-salida);
 }
 
 .caso-salida-leave-to {
@@ -504,7 +514,7 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 }
 
 .caso-salida-move {
-  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 150ms var(--dg-curva-salida);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -139,7 +139,7 @@
                     <th class="text-right">Concluidas</th>
                     <th class="text-right">Total</th>
                     <th v-for="fase in fases" :key="fase.id" class="text-right">
-                      {{ fase.id }}
+                      <span class="sr-only">Fase </span>{{ fase.id }}<span class="sr-only">: {{ fase.nombre }}</span>
                       <q-tooltip>{{ fase.nombre }}</q-tooltip>
                     </th>
                   </tr>
@@ -705,7 +705,7 @@ const imprimirReporte = () => window.print()
 
 .kanban__tarjeta,
 .avance__fila {
-  transition: background 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background 150ms var(--dg-curva-salida);
 }
 
 .kanban__tarjeta:focus-visible {

@@ -158,7 +158,7 @@ const guardarPrioridad = async (caso, prioridad, nombre) => {
       actions: [
         {
           label: 'Reintentar',
-          color: 'white',
+          color: 'dg-texto-claro',
           noCaps: true,
           handler: () => guardarPrioridad(caso, prioridad, nombre),
         },

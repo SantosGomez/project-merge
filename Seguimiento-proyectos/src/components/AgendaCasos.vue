@@ -181,7 +181,7 @@ const urgencia = (caso) => {
 .agenda-salida-leave-active {
   position: absolute;
   width: 100%;
-  transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1), transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 150ms var(--dg-curva-salida), transform 150ms var(--dg-curva-salida);
 }
 
 .agenda-salida-leave-to {
@@ -190,7 +190,7 @@ const urgencia = (caso) => {
 }
 
 .agenda-salida-move {
-  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 150ms var(--dg-curva-salida);
 }
 
 .agenda-casos__lista {

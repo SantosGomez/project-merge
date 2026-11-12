@@ -258,7 +258,7 @@
               </q-input>
 
               <p v-if="clientesVisibles.length === 0" class="cartera__sin-resultados" role="status">
-                Ningún cliente coincide con "{{ busquedaCliente }}"
+                Ningún cliente coincide con «{{ busquedaCliente }}». Revisa el nombre o borra la búsqueda.
               </p>
 
               <q-list
@@ -429,8 +429,9 @@ const confirmarQuitar = (auxiliar) => {
     ...DIALOGO,
     title: '¿Quitar auxiliar?',
     message: `${auxiliar.nombre} dejará de ver tus casos y de poder cambiar su estado. Se le avisará, y también a los administradores.`,
-    cancel: { label: 'Cancelar', flat: true, noCaps: true },
-    ok: { label: 'Quitar', color: 'dg-error', noCaps: true, unelevated: true },
+    cancel: { label: 'Cancelar', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Quitar', color: 'dg-error', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
+    focus: 'cancel',
   }).onOk(async () => {
     const resultado = await auxiliares.quitarAuxiliar(Number(session.id), auxiliar.id)
     if (resultado.ok) {

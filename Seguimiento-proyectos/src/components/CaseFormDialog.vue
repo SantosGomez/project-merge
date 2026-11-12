@@ -253,7 +253,7 @@
                       class="punto-estado-sm"
                       :style="{ '--dot-color': `var(--dg-estado-${(scope.opt?.value ?? estado)?.replace(/_/g, '-')})` }"
                     />
-                    <span class="text-weight-medium text-primary">{{ scope.opt?.label ?? scope.opt }}</span>
+                    <span class="text-weight-medium text-dg-texto">{{ scope.opt?.label ?? scope.opt }}</span>
                   </div>
                 </template>
                 <template #option="{ itemProps, opt, selected }">
@@ -403,7 +403,8 @@
             <p id="contador-help" class="form-help">Contador que atenderá el caso.</p>
           </div>
 
-          <dl v-else class="readonly-info">
+          <!-- Al registrar para otro contador el título ya dice para quién es: la fila no se muestra. -->
+          <dl v-else-if="!modoAuxiliar" class="readonly-info">
             <div class="readonly-row">
               <dt>Contador asignado</dt>
               <dd>{{ assignedCounterName }}</dd>
@@ -656,9 +657,11 @@ const hayDatosSinGuardar = computed(() => {
   )
 })
 
-const assignedCounterName = computed(() =>
-  assignedCounter.value ? assignedCounter.value.name : 'Sin asignar',
-)
+// Al editar se muestra al dueño del caso (puede ser un auxiliar), no a quien tiene la sesión.
+const assignedCounterName = computed(() => {
+  if (modoEdicion.value && props.caso?.nombre_contador) return props.caso.nombre_contador
+  return assignedCounter.value ? assignedCounter.value.name : 'Sin asignar'
+})
 
 const statusLabel = STATUS_LABELS[STATUSES[0]]
 

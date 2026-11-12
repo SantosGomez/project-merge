@@ -134,7 +134,7 @@ const emit = defineEmits(['select', 'filtrar'])
 /* Al elegir un contador o un conteo, el color cambia con suavidad. */
 .counter-row,
 .counter-row__count {
-  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1), border-color 150ms cubic-bezier(0.23, 1, 0.32, 1), transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background-color 150ms var(--dg-curva-salida), border-color 150ms var(--dg-curva-salida), transform 120ms var(--dg-curva-salida);
 }
 
 /* Sin el sombreado de q-btn al pasar el puntero o al enfocar: el estado se marca con borde y fondo. */
@@ -154,6 +154,14 @@ const emit = defineEmits(['select', 'filtrar'])
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
+}
+
+/* En táctil el nombre sí mide 44 px: la prop `padding` de q-btn escribe `min-height: 0` en línea
+   y dejaba el botón en 26 px. Con ratón la fila conserva su alto compacto. */
+@media (pointer: coarse) {
+  .counter-row__select {
+    min-height: 44px !important;
+  }
 }
 
 /* El foco de teclado siempre es visible (RNF-07); q-btn trae `no-outline`. */

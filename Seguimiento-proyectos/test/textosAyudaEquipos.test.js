@@ -37,7 +37,7 @@ describe('textos de ayuda de los equipos', () => {
   it('«Contadores que apoya» dice a quién se avisa al guardar y que cada contador ajusta su equipo', () => {
     assert.ok(
       normalizado('../src/components/ContadoresDeAuxiliarDialog.vue').includes(
-        'podrá cambiar su estado. Un auxiliar solo puede apoyar a un contador. Al guardar se avisa a {{ cuenta?.nombre }} y al contador que agregues o quites. Cada contador también puede cambiar su equipo desde «Mis auxiliares».',
+        'podrá cambiar su estado. Un auxiliar solo puede apoyar a un contador. Al guardar se avisa a {{ cuenta?.nombre }} y al contador que agregues o quites. Cada contador también puede cambiar su equipo desde «Mi perfil».',
       ),
     )
   })

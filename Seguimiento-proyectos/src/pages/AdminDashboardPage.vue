@@ -490,8 +490,8 @@ const cambiarPrioridad = (caso, prioridad) => {
     message:
       `La prioridad de «${caso.client}» pasará de ${PRIORITY_LABELS[caso.priority]} a ` +
       `${PRIORITY_LABELS[prioridad]} y se avisará a ${nombreContador}. La fecha de vencimiento no cambia.`,
-    cancel: { label: 'Cancelar', flat: true, noCaps: true },
-    ok: { label: 'Cambiar prioridad', color: 'primary', unelevated: true, noCaps: true },
+    cancel: { label: 'Cancelar', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Cambiar prioridad', color: 'primary', unelevated: true, noCaps: true, class: 'control-touch boton-presionable' },
     persistent: true,
     transitionShow: 'dialogo-entra',
     transitionHide: 'dialogo-sale',
@@ -517,7 +517,7 @@ const guardarPrioridad = async (caso, prioridad, nombreContador) => {
       message: fallo?.mensaje ?? 'No se pudo cambiar la prioridad. Inténtalo de nuevo.',
       timeout: 8000,
       actions: [
-        { label: 'Reintentar', color: 'white', noCaps: true, handler: () => guardarPrioridad(caso, prioridad, nombreContador) },
+        { label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: () => guardarPrioridad(caso, prioridad, nombreContador) },
       ],
     })
   } finally {

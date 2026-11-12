@@ -210,8 +210,9 @@ const pedirDescartar = () => {
     ...DIALOGO,
     title: '¿Descartar los cambios?',
     message: 'Lo que escribiste en este formulario se perderá.',
-    cancel: { label: 'Seguir editando', flat: true, noCaps: true },
-    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true },
+    cancel: { label: 'Seguir editando', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
+    focus: 'cancel',
   }).onOk(() => {
     dialogoAbierto.value = false
   })

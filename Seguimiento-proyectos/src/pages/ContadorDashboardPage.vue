@@ -46,7 +46,7 @@
           label="Ver mis auxiliares"
           :to="{ name: 'mi-perfil' }"
         >
-          <q-tooltip>Abre «Mis auxiliares» para agregar o quitar a quienes te apoyan.</q-tooltip>
+          <q-tooltip>Abre «Mi perfil», donde agregas o quitas a los auxiliares que te apoyan.</q-tooltip>
         </q-btn>
         <q-btn
           v-else
@@ -142,7 +142,7 @@
       <CaseFormDialog
         v-model="dialogoEdicionAbierto"
         :caso="casoEnEdicion"
-        @guardado="$q.notify({ type: 'positive', message: 'Cambio guardado.' })"
+        @guardado="$q.notify({ type: 'positive', message: 'Cambios guardados.' })"
       />
       <!-- La misma ficha «Ver» de «Mis casos», para los casos del equipo -->
       <CasoDetalleDialog v-if="casoEnDetalle" v-model="detalleAbierto" :caso="casoEnDetalle" />
@@ -200,7 +200,10 @@ const pestana = computed({
 // los vencidos, los próximos a vencer y la agenda se actualizan.
 const hoy = ref(hoyLocal())
 const actualizarHoy = () => {
-  if (document.visibilityState === 'visible') hoy.value = hoyLocal()
+  if (document.visibilityState !== 'visible') return
+  hoy.value = hoyLocal()
+  // Además se relee la lista: un cambio hecho mientras la ventana estaba oculta puede no haber llegado.
+  cases.refrescarEnSilencio()
 }
 
 const resumen = computed(() => resumenMisCasos(cases.casos, hoy.value))
@@ -259,7 +262,7 @@ const guardarCambio = async (casoId, cambios) => {
       message: `No se guardó el cambio del caso de ${cliente}.`,
       caption: resultado.error?.mensaje ?? 'Revisa tu conexión y vuelve a intentarlo.',
       timeout: 8000,
-      actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: () => guardarCambio(casoId, cambios) }],
+      actions: [{ label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: () => guardarCambio(casoId, cambios) }],
     })
   }
 }
@@ -270,6 +273,8 @@ const guardarCambio = async (casoId, cambios) => {
  * @param {string} estado - código interno del estado nuevo.
  */
 const cambiarEstado = async (casoId, estado) => {
+  // Un guardado a la vez: «Deshacer» no se cruza con otro cambio en curso.
+  if (casoCambiando.value !== null) return
   const cliente = cases.casos.find((caso) => String(caso.id) === String(casoId))?.cliente ?? 'este cliente'
   casoCambiando.value = casoId
   const resultado = await cases.actualizarCaso(casoId, { estado })
@@ -282,11 +287,19 @@ const cambiarEstado = async (casoId, estado) => {
       // Finalizar se hace con un clic: se puede deshacer (desde la agenda solo se finaliza lo que estaba En proceso).
       actions:
         estado === 'finalizado'
-          ? [{ label: 'Deshacer', color: 'white', noCaps: true, handler: () => cambiarEstado(casoId, 'en_proceso') }]
+          ? [{ label: 'Deshacer', color: 'dg-texto-claro', noCaps: true, handler: () => cambiarEstado(casoId, 'en_proceso') }]
           : [],
     })
   } else if (!resultado.descartado) {
-    $q.notify({ type: 'negative', message: resultado.error?.mensaje ?? 'Error al guardar el cambio.' })
+    $q.notify({
+      type: 'negative',
+      message: `No se guardó el cambio del caso de ${cliente}.`,
+      caption: resultado.error?.mensaje ?? 'Revisa tu conexión y vuelve a intentarlo.',
+      timeout: 8000,
+      actions: [
+        { label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: () => cambiarEstado(casoId, estado) },
+      ],
+    })
   }
 }
 

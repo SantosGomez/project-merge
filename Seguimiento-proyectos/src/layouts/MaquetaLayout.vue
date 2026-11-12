@@ -538,7 +538,7 @@ const alRecibirMensajeDelChat = (datos) => {
     actions: [
       {
         label: 'Ver mensajes',
-        color: 'white',
+        color: 'dg-texto-claro',
         noCaps: true,
         handler: () =>
           router.push({ name: 'auditoria-ficha', params: { id: aviso.auditoriaId }, query: { chat: '1' } }),
@@ -613,8 +613,8 @@ onBeforeUnmount(() => {
  */
 :global(.q-body--layout-animate .q-drawer:has(> .menu-lateral)) {
   transition:
-    transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
-    width 150ms cubic-bezier(0.23, 1, 0.32, 1) !important;
+    transform 150ms var(--dg-curva-salida),
+    width 150ms var(--dg-curva-salida) !important;
 }
 
 :global(.q-body--layout-animate .q-drawer:has(> .menu-lateral--al-instante)) {
@@ -623,7 +623,7 @@ onBeforeUnmount(() => {
 
 /* Al fijar o desfijar, el contenido se desliza al mismo ritmo que el menú. */
 .contenedor-paginas--acompana-menu {
-  transition: padding-left 150ms cubic-bezier(0.23, 1, 0.32, 1) !important;
+  transition: padding-left 150ms var(--dg-curva-salida) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -811,8 +811,11 @@ onBeforeUnmount(() => {
   text-decoration: none;
 }
 
-.drawer-usuario__fila--enlace:hover {
-  background: var(--dg-fondo-menu-activo);
+/* Solo con ratón: en pantallas táctiles el hover se queda pegado tras tocar. */
+@media (hover: hover) and (pointer: fine) {
+  .drawer-usuario__fila--enlace:hover {
+    background: var(--dg-fondo-menu-activo);
+  }
 }
 
 .drawer-usuario__fila--enlace:focus-visible {

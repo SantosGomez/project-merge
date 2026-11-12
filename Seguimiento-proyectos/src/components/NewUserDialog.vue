@@ -20,7 +20,7 @@
           <h2 id="nuevo-usuario-titulo" class="nuevo-usuario__title">Nuevo usuario</h2>
           <p class="nuevo-usuario__help">
             La persona entrará con este correo y esta contraseña, y verá las pantallas del rol que
-            elijas. Todos los campos son obligatorios.
+            elijas. Los campos con * son obligatorios.
           </p>
         </q-card-section>
 
@@ -201,6 +201,9 @@
               options-dense
               dropdown-icon="expand_more"
               popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              :transition-duration="180"
               class="selector-moderno"
               :disable="guardando"
               aria-describedby="nuevo-contadores-ayuda"
@@ -300,8 +303,9 @@ const pedirDescartar = () => {
     ...DIALOGO,
     title: '¿Descartar los cambios?',
     message: 'Lo que escribiste en este formulario se perderá.',
-    cancel: { label: 'Seguir editando', flat: true, noCaps: true },
-    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true },
+    cancel: { label: 'Seguir editando', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
+    focus: 'cancel',
   }).onOk(() => {
     dialogoAbierto.value = false
   })

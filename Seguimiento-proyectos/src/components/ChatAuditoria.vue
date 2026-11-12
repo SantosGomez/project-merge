@@ -46,7 +46,7 @@
               :name="mensaje.autor.nombre"
               :stamp="mensaje.fechaHora"
               :bg-color="esPropio(mensaje) ? 'dg-info-fondo' : 'dg-neutro-fondo'"
-              :text-color="esPropio(mensaje) ? 'dg-info-texto' : 'primary'"
+              :text-color="esPropio(mensaje) ? 'dg-info-texto' : 'dg-texto'"
               class="chat-auditoria__mensaje"
               :class="{ 'chat-auditoria__mensaje--entrando': recientes.has(mensaje.id) }"
             >
@@ -206,7 +206,7 @@ const enviar = async () => {
       type: 'negative',
       message: error.mensaje ?? 'No se pudo enviar el mensaje.',
       // «Reintentar» envía lo que está en el campo (el texto devuelto, o lo que se haya escrito).
-      actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: enviar }],
+      actions: [{ label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: enviar }],
     })
   } finally {
     enviando.value = false
@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
 
 /* Un mensaje que llega en vivo sube un poco mientras aparece; ease-out fuerte, sin rebote. */
 .chat-auditoria__mensaje--entrando {
-  animation: chat-entrar 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: chat-entrar 200ms var(--dg-curva-salida) both;
 }
 
 @keyframes chat-entrar {

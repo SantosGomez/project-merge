@@ -10,7 +10,7 @@
           :class="`auditoria-item__estado--${estadoClase}`"
         >
           {{ etiquetaEstado(auditoria.estado) }}
-          <q-tooltip>Estatus de la auditoría; se cambia con «Editar».</q-tooltip>
+          <q-tooltip>Estado de la auditoría; se cambia con «Editar».</q-tooltip>
         </q-chip>
         <q-chip
           dense

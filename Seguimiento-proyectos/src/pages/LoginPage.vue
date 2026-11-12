@@ -115,6 +115,7 @@
                   class="login-form__help-icon"
                   tabindex="0"
                   role="img"
+                  aria-hidden="false"
                   aria-label="Ayuda sobre el campo correo"
                 >
                   <q-tooltip>
@@ -245,7 +246,9 @@ const sesionRequerida = computed(
     route.query.aviso === 'sesion' &&
     errorCredenciales.value === '' &&
     errorConexion.value === null &&
-    errorBloqueo.value === '',
+    errorBloqueo.value === '' &&
+    !errorPerfil.value &&
+    !sesionCaducada.value,
 )
 
 /** Escribir en el formulario retira el error de ese campo y el aviso de cierre (RF-46/47). */
@@ -401,7 +404,7 @@ const submit = async () => {
   padding: 24px;
   border-radius: 16px;
   background: var(--dg-superficie);
-  box-shadow: 0 12px 32px rgb(16 42 67 / 12%);
+  box-shadow: var(--dg-sombra-tarjeta);
 }
 
 /* El PNG trae margen blanco arriba y abajo: fit="cover" lo recorta. */

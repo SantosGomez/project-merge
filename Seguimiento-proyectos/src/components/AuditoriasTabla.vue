@@ -267,7 +267,9 @@ const etapaDeFase = (fase) => {
   font-weight: 600;
 }
 
-.auditorias-tabla__acciones {
+/* Los tres botones van en un renglón. El selector lleva la tabla delante porque la regla general
+   de las celdas (`white-space: normal`) pesaba más y los apilaba, alargando cada fila. */
+.auditorias-tabla :deep(td.auditorias-tabla__acciones) {
   white-space: nowrap;
 }
 

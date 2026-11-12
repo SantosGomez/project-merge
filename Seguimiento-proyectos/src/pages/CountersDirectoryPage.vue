@@ -3,7 +3,7 @@
     <section class="directory-panel" aria-labelledby="directory-title">
       <div class="directory-panel__head">
         <div class="directory-panel__title-row">
-          <h2 id="directory-title" class="directory-panel__title">Directorio de usuarios</h2>
+          <h2 id="directory-title" class="directory-panel__title">Cuentas del equipo</h2>
           <q-btn
             v-if="session.esUsuarioSistema"
             color="primary"
@@ -56,7 +56,7 @@
 
         <ErrorState
           v-else-if="screenStateName === SCREEN_STATES.error"
-          detail="el directorio de usuarios."
+          :detail="error?.mensaje ?? 'el directorio de usuarios.'"
           @retry="retry"
         />
 
@@ -164,7 +164,7 @@
                 class="control-touch boton-presionable"
                 @click="selectCounter(props.row.id)"
               >
-                <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
+                <q-tooltip>Abre en «Resumen del equipo» los casos importantes de este contador.</q-tooltip>
               </q-btn>
               <q-btn
                 v-if="props.row.puedeVerCasosDeAuxiliar && session.esAdministrador"
@@ -235,7 +235,7 @@
                     class="control-touch boton-presionable"
                     @click="selectCounter(props.row.id)"
                   >
-                    <q-tooltip>Abre en el dashboard los casos importantes de este contador.</q-tooltip>
+                    <q-tooltip>Abre en «Resumen del equipo» los casos importantes de este contador.</q-tooltip>
                   </q-btn>
                   <q-btn
                     v-if="props.row.puedeVerCasosDeAuxiliar && session.esAdministrador"
@@ -440,7 +440,7 @@ const abrirContadores = (fila) => {
   dialogoContadoresAbierto.value = true
 }
 
-// Casos importantes de un auxiliar (los que escaló su contador): se abren aquí, no en el dashboard.
+// Casos importantes de un auxiliar (los que escaló su contador): se abren aquí, no en «Resumen del equipo».
 const dialogoCasosAuxiliarAbierto = ref(false)
 const cuentaCasosAuxiliar = ref(null)
 
@@ -466,7 +466,7 @@ const refrescar = async ({ avisarFallo = false } = {}) => {
       $q.notify({
         type: 'negative',
         message: 'La cuenta se creó, pero no se pudo actualizar el directorio.',
-        actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: () => refrescar({ avisarFallo: true }) }],
+        actions: [{ label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: () => refrescar({ avisarFallo: true }) }],
       })
     }
   }

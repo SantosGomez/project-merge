@@ -93,6 +93,75 @@ body {
   @each $nombre, $color in $dg-colores {
     --dg-#{$nombre}: #{$color};
   }
+
+  // Sombras y curva de movimiento: un solo lugar, para que los estilos `scoped` (CSS plano, sin
+  // acceso a las variables de Sass) no repitan el valor. Todas las sombras parten del color `texto`.
+  --dg-sombra-campo: 0 1px 2px rgba(16, 42, 67, 0.04);
+  --dg-sombra-campo-hover: 0 2px 6px rgba(16, 42, 67, 0.08);
+  --dg-sombra-menu: 0 4px 16px rgba(16, 42, 67, 0.1), 0 1px 4px rgba(16, 42, 67, 0.06);
+  --dg-sombra-tarjeta: 0 12px 32px rgba(16, 42, 67, 0.12);
+  --dg-anillo-foco: 0 0 0 3px rgba(11, 92, 173, 0.12);
+  --dg-curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+// Superficies del navegador con la paleta: selección de texto, cursor de escritura, controles
+// nativos y barras de desplazamiento. Sin esto salen con el azul y el gris de fábrica.
+::selection {
+  background: var(--dg-fondo-seleccion);
+  color: var(--dg-texto);
+}
+
+:root {
+  accent-color: var(--dg-acento);
+  caret-color: var(--dg-foco);
+  scrollbar-color: var(--dg-borde-fuerte) transparent;
+}
+
+// El menú lateral es oscuro: ahí la selección usa el celeste de la marca para que se lea.
+.q-drawer ::selection {
+  background: var(--q-secondary);
+  color: var(--q-primary);
+}
+
+// Cifras alineadas en conteos: cada dígito ocupa el mismo ancho y no baila cuando un número cambia
+// en tiempo real. Solo para números: en Matter también ensancha el punto («S . A .»), por eso no
+// se aplica a celdas con texto.
+.cifras-tabulares {
+  font-variant-numeric: tabular-nums;
+}
+
+// Encabezados: Quasar les da un alto de línea de hasta 3.75rem, peso 300 y espaciado negativo,
+// pensados para titulares enormes. Los títulos de la app miden 1–1.5rem: con esos valores
+// quedaban en cajas de 50–60 px y con letra fina. Las clases propias de cada vista siguen ganando.
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: normal;
+}
+
+// En pantallas táctiles, los botones de paginación de Quasar (34 px) crecen al mínimo de 44 px.
+@media (pointer: coarse) {
+  .q-table__bottom .q-btn,
+  .q-pagination .q-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+// Título de sección dentro de una vista (paneles del dashboard, directorio, perfil). Quasar da a
+// los `h2` peso 300 y espaciado negativo; aquí todos los títulos de sección pesan lo mismo.
+.titulo-seccion {
+  margin: 0;
+  color: var(--dg-texto);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: normal;
 }
 
 @each $nombre, $color in $dg-colores {
@@ -198,14 +267,14 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
 .selector-moderno .q-field__control {
   border-radius: 10px !important;
   border-color: var(--dg-borde) !important;
-  box-shadow: 0 1px 2px rgba(16, 42, 67, 0.04);
+  box-shadow: var(--dg-sombra-campo);
   transition: box-shadow 160ms $curva-salida, border-color 160ms $curva-salida;
 }
 
 .input-moderno:hover .q-field__control,
 .selector-moderno:hover .q-field__control {
   border-color: var(--dg-borde-fuerte) !important;
-  box-shadow: 0 2px 6px rgba(16, 42, 67, 0.08);
+  box-shadow: var(--dg-sombra-campo-hover);
 }
 
 .input-moderno .q-field--focused .q-field__control,
@@ -213,7 +282,7 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
 .selector-moderno .q-field--focused .q-field__control,
 .selector-moderno.q-field--focused .q-field__control {
   border-color: var(--dg-foco) !important;
-  box-shadow: 0 0 0 3px rgba(11, 92, 173, 0.12);
+  box-shadow: var(--dg-anillo-foco);
 }
 
 /* Icono del chevron del q-select: rotación al abrir */
@@ -266,9 +335,7 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
 .menu-seleccion-custom {
   border-radius: 12px !important;
   padding: 6px !important;
-  box-shadow:
-    0 4px 16px rgba(16, 42, 67, 0.10),
-    0 1px 4px rgba(16, 42, 67, 0.06) !important;
+  box-shadow: var(--dg-sombra-menu) !important;
 }
 
 /* Cada opción dentro del menú */

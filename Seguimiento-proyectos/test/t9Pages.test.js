@@ -36,7 +36,8 @@ const cssRule = (source, selector) => {
 
 describe('Directorio de usuarios (rebanada 1) — revisión estática de P-3 (RF-16, RF-17, RNF-9, RNF-10)', () => {
   it('es una tabla de cuentas con nombre, correo, rol y último acceso, sin conteos ni casos (RF-16)', () => {
-    assert.match(directorySource, /Directorio de usuarios/)
+    // El título de la página lo pone el layout («Directorio de usuarios»); el panel no lo repite.
+    assert.match(directorySource, /Cuentas del equipo/)
     assert.match(directorySource, /<q-table/, 'usa QTable')
     for (const etiqueta of ['Nombre', 'Correo', 'Rol', 'Último acceso']) {
       assert.ok(directorySource.includes(`label: '${etiqueta}'`), `columna «${etiqueta}»`)

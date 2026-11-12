@@ -209,6 +209,7 @@
                 for="aud-estado"
                 v-model="estado"
                 :options="opcionesEstado"
+                :option-label="etiquetaEstado"
                 outlined
                 dense
                 options-dense
@@ -231,7 +232,7 @@
                     :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
                   >
                     <q-item-section>
-                      <q-item-label>{{ opt }}</q-item-label>
+                      <q-item-label>{{ etiquetaEstado(opt) }}</q-item-label>
                     </q-item-section>
                     <q-item-section v-if="selected" side>
                       <q-icon name="check" size="18px" color="primary" />
@@ -410,6 +411,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import ErrorState from './ErrorState.vue'
 import { actualizarAuditoria, registrarAuditoria } from '../services/auditoriaService.js'
 import { fechaADominioBackend } from '../utils/fechasCaso.js'
+import { etiquetaEstado } from '../utils/semaforoAuditoria.js'
 import { TIPOS_AUDITORIA, campoConError, diaNoAnterior, filtrarSugerencias } from '../utils/formularioAuditoria.js'
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })

@@ -5,6 +5,7 @@
       'caso-item--importante': caso.important && !soloLectura,
       'caso-item--finalizado': esFinalizado,
       'caso-item--solo-lectura': soloLectura,
+      'caso-item--sin-estrella': soloCambiaEstado || !puedeMarcarImportante,
     }"
   >
     <q-item-section v-if="!soloLectura && !soloCambiaEstado && puedeMarcarImportante" avatar class="caso-item__estrella">
@@ -188,6 +189,7 @@
       <q-btn
         flat
         no-caps
+        color="dg-acento"
         icon="visibility"
         label="Ver"
         aria-haspopup="dialog"
@@ -354,7 +356,7 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
 
 /* La estrella se encoge un poco más que un botón normal al presionarla: confirma el cambio de marca. */
 .caso-item__estrella-boton {
-  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 150ms var(--dg-curva-salida);
 }
 
 .caso-item__estrella-boton:active:not(.disabled) {
@@ -503,9 +505,19 @@ const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], va
     padding-left: 48px;
   }
 
-  /* Sin estrella (admin) no hay nada con qué alinear. */
+  /* Sin estrella (admin, auxiliar o caso de solo estado) no hay nada con qué alinear. */
   .caso-item--solo-lectura .caso-item__acciones {
     padding-left: 0;
+  }
+
+  .caso-item--sin-estrella .caso-item__acciones {
+    padding-left: 0;
+  }
+
+  /* El estado ocupa su renglón y «Ver» y «Editar» comparten el siguiente: la tarjeta se acorta. */
+  .caso-item__estado {
+    flex: 1 1 100%;
+    width: auto;
   }
 }
 

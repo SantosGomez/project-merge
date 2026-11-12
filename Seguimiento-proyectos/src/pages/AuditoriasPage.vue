@@ -364,7 +364,7 @@ const alRegistrar = (auditoria) => {
   $q.notify({
     type: 'positive',
     message: oculta ? 'Auditoría registrada. No aparece porque hay filtros activos.' : 'Auditoría registrada.',
-    actions: oculta ? [{ label: 'Limpiar filtros', color: 'white', noCaps: true, handler: limpiarFiltros }] : [],
+    actions: oculta ? [{ label: 'Limpiar filtros', color: 'dg-texto-claro', noCaps: true, handler: limpiarFiltros }] : [],
   })
 }
 

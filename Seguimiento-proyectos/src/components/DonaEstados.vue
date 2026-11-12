@@ -149,12 +149,15 @@ const descripcion = computed(
 
 .dona-estados__leyenda {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
   min-width: 0;
+  /* La leyenda decide su forma según su propio ancho, no el de la ventana. */
+  container-type: inline-size;
 }
 
 /* q-item trae relleno y alto mínimo propios; la leyenda es compacta. */
@@ -187,12 +190,33 @@ const descripcion = computed(
 }
 
 .dona-estados__cifra {
+  margin-left: auto;
   color: var(--dg-texto-tenue);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Leyenda angosta (tarjeta junto a los indicadores): la cifra baja entera a una segunda línea,
+   alineada con el nombre del estado, en vez de partirse a la mitad. */
+@container (max-width: 200px) {
+  .dona-estados__item {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr);
+    align-content: center;
+    gap: 0 8px;
+  }
+
+  .dona-estados__cifra {
+    grid-column: 2;
+    margin-left: 0;
+    font-size: 0.8rem;
+    line-height: 1.2;
+  }
 }
 
 /* Al llegar un cambio en tiempo real, los arcos se reacomodan en vez de saltar. */
 .dona-estados__grafica circle {
-  transition: stroke-dasharray 300ms cubic-bezier(0.23, 1, 0.32, 1), stroke-dashoffset 300ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: stroke-dasharray 300ms var(--dg-curva-salida), stroke-dashoffset 300ms var(--dg-curva-salida);
 }
 
 @media (prefers-reduced-motion: reduce) {

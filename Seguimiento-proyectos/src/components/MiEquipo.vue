@@ -305,8 +305,8 @@ const elegir = async (auxiliarId, estado = null) => {
   border-radius: 10px;
   background: var(--dg-superficie);
   transition:
-    border-color 150ms ease,
-    background-color 150ms ease;
+    border-color 150ms var(--dg-curva-salida),
+    background-color 150ms var(--dg-curva-salida);
 }
 
 .mi-equipo__fila--elegida {
@@ -320,6 +320,13 @@ const elegir = async (auxiliarId, estado = null) => {
   min-height: 44px;
   color: var(--dg-texto);
   text-align: left;
+}
+
+/* En táctil el nombre sí mide 44 px: la prop `padding` de q-btn escribe `min-height: 0` en línea. */
+@media (pointer: coarse) {
+  .mi-equipo__nombre-boton {
+    min-height: 44px !important;
+  }
 }
 
 .mi-equipo__identidad {

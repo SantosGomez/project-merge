@@ -117,7 +117,7 @@ describe('Detalles de interacción del chat (revisión de diseño)', () => {
     assert.match(script, /if \(!esPropio\(nuevo\)\) recientes\.value\.add\(nuevo\.id\)/)
     const entrada = estilos.match(/\.chat-auditoria__mensaje--entrando\s*\{([^}]*)\}/)?.[1] ?? ''
     assert.match(entrada, /200ms/)
-    assert.match(entrada, /cubic-bezier\(0\.23, 1, 0\.32, 1\)/, 'ease-out fuerte')
+    assert.match(entrada, /var\(--dg-curva-salida\)/, 'ease-out fuerte (curva de la app)')
   })
 
   it('con movimiento reducido la entrada es solo un desvanecido', () => {

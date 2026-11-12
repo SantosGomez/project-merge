@@ -49,6 +49,7 @@
               name="check_circle"
               color="dg-exito-oscuro"
               role="img"
+              aria-hidden="false"
               aria-label="Las contraseñas coinciden"
             />
             <q-btn
@@ -88,6 +89,7 @@
               name="check_circle"
               color="dg-exito-oscuro"
               role="img"
+              aria-hidden="false"
               aria-label="Las contraseñas coinciden"
             />
             <q-btn
@@ -258,7 +260,7 @@ const salir = async () => {
   padding: 24px;
   border-radius: 16px;
   background: var(--dg-superficie);
-  box-shadow: 0 12px 32px rgb(16 42 67 / 12%);
+  box-shadow: var(--dg-sombra-tarjeta);
 }
 
 /* El PNG trae margen blanco arriba y abajo: fit="cover" lo recorta. */

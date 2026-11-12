@@ -76,7 +76,7 @@ const destino = computed(() =>
   padding: 24px;
   border-radius: 16px;
   background: var(--dg-superficie);
-  box-shadow: 0 12px 32px rgb(16 42 67 / 12%);
+  box-shadow: var(--dg-sombra-tarjeta);
   text-align: center;
 }
 

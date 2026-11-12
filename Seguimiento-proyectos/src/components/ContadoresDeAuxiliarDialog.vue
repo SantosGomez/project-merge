@@ -14,7 +14,7 @@
         <p class="contadores-auxiliar__help">
           {{ cuenta?.nombre }} verá los casos de este contador y podrá cambiar su estado. Un auxiliar solo puede apoyar a un contador.
           Al guardar se avisa a {{ cuenta?.nombre }} y al contador que agregues o quites.
-          Cada contador también puede cambiar su equipo desde «Mis auxiliares».
+          Cada contador también puede cambiar su equipo desde «Mi perfil».
         </p>
       </q-card-section>
 
@@ -42,6 +42,9 @@
           options-dense
           dropdown-icon="expand_more"
           popup-content-class="menu-seleccion-custom"
+          transition-show="jump-down"
+          transition-hide="jump-up"
+          :transition-duration="180"
           class="selector-moderno"
           :disable="guardando"
         >
@@ -108,16 +111,23 @@ const cargando = ref(false)
 const guardando = ref(false)
 const error = ref('')
 
+// Número de la última carga: una respuesta vieja (de otro auxiliar) no pisa a la actual.
+let peticion = 0
+
 const cargar = async () => {
+  const actual = ++peticion
   cargando.value = true
   error.value = ''
   try {
-    cargados.value = (await listarContadoresDeAuxiliar(props.cuenta.id)).map((c) => c.id)
-    elegido.value = cargados.value[0] ?? null
+    const ids = (await listarContadoresDeAuxiliar(props.cuenta.id)).map((c) => c.id)
+    if (actual !== peticion) return
+    cargados.value = ids
+    elegido.value = ids[0] ?? null
   } catch (fallo) {
+    if (actual !== peticion) return
     error.value = fallo?.mensaje ?? 'No se pudieron cargar los contadores de este auxiliar.'
   } finally {
-    cargando.value = false
+    if (actual === peticion) cargando.value = false
   }
 }
 

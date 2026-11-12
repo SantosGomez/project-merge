@@ -684,7 +684,7 @@ const releerTrasCambio = async () => {
       type: 'negative',
       message: 'Se guardó, pero no se pudo actualizar la bitácora.',
       timeout: 8000,
-      actions: [{ label: 'Reintentar', color: 'white', noCaps: true, handler: releerTrasCambio }],
+      actions: [{ label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: releerTrasCambio }],
     })
   }
 }
@@ -709,8 +709,9 @@ const confirmarDescartar = (seguir) => {
     ...DIALOGO,
     title: '¿Descartar los cambios?',
     message: 'Lo que escribiste en este evento se perderá.',
-    cancel: { label: 'Seguir editando', flat: true, noCaps: true },
-    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true },
+    cancel: { label: 'Seguir editando', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
+    focus: 'cancel',
   }).onOk(seguir)
 }
 
@@ -817,6 +818,8 @@ const registrarEntrega = async (ev) => {
   } finally {
     guardando.value = false
   }
+  // Si ese evento estaba abierto en el formulario, se cierra: guardarlo deshacía la entrega.
+  if (eventoEnEdicion.value?.id === ev.id) cerrarFormulario()
   $q.notify({ type: 'positive', message: `Entrega registrada: «${ev.evento}».` })
   releerTrasCambio()
 }
@@ -827,8 +830,8 @@ const confirmarEntrega = (ev) => {
     ...DIALOGO,
     title: '¿Registrar la entrega?',
     message: `«${ev.evento}» quedará como Completado con fecha de entrega de hoy (${hoyDDMM()}).`,
-    cancel: { label: 'Cancelar', flat: true, noCaps: true },
-    ok: { label: 'Registrar entrega', color: 'dg-exito', noCaps: true, unelevated: true },
+    cancel: { label: 'Cancelar', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Registrar entrega', color: 'dg-exito', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
   }).onOk(() => registrarEntrega(ev))
 }
 
@@ -837,8 +840,9 @@ const confirmarBorrado = (ev) => {
     ...DIALOGO,
     title: 'Borrar evento',
     message: `¿Borrar «${ev.evento}» del ${ev.fecha}? Esta acción no se puede deshacer.`,
-    cancel: { label: 'Cancelar', flat: true, noCaps: true },
-    ok: { label: 'Borrar evento', color: 'dg-error', noCaps: true, unelevated: true },
+    cancel: { label: 'Cancelar', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Borrar evento', color: 'dg-error', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
+    focus: 'cancel',
   }).onOk(async () => {
     guardando.value = true
     try {
@@ -1158,7 +1162,7 @@ const confirmarBorrado = (ev) => {
 /* El formulario de evento aparece y se va con un fundido corto, sin saltar. */
 .bitacora-form-enter-active,
 .bitacora-form-leave-active {
-  transition: opacity 180ms cubic-bezier(0.23, 1, 0.32, 1), transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 180ms var(--dg-curva-salida), transform 180ms var(--dg-curva-salida);
 }
 
 .bitacora-form-enter-from,
