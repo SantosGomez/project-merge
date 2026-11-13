@@ -48,6 +48,10 @@
         <strong v-if="totales.total > 0" class="lista-mes__avance">
           {{ totales.hechas }} de {{ totales.total }} hechas este mes.
         </strong>
+        <strong v-if="totalVencidas > 0" class="lista-mes__vencidas">
+          {{ totalVencidas === 1 ? '1 vencida' : `${totalVencidas} vencidas` }}.
+          <q-tooltip>Actividades pendientes cuya fecha de vencimiento ya pasó.</q-tooltip>
+        </strong>
       </p>
     </q-card-section>
 
@@ -112,6 +116,56 @@
             >
               <q-item-section class="lista-mes__principal">
                 <q-item-label class="lista-mes__cliente">{{ renglon.cliente }}</q-item-label>
+                <q-item-label
+                  v-if="renglon.vence || renglon.falta_rfc"
+                  caption
+                  class="lista-mes__vence"
+                >
+                  <span v-if="renglon.vence" class="lista-mes__fecha" tabindex="0">
+                    <q-icon name="schedule" aria-hidden="true" />
+                    {{ textoDeVencimiento(renglon.vence) }}
+                    <q-tooltip
+                      >Fecha límite de esta actividad en este mes, según la regla de su
+                      tipo.</q-tooltip
+                    >
+                  </span>
+                  <q-badge
+                    v-if="estadoDeVencimiento(renglon, hoy) === 'vencida'"
+                    color="dg-error-fondo"
+                    text-color="dg-error"
+                    class="lista-mes__etiqueta"
+                  >
+                    <q-icon name="error_outline" size="14px" aria-hidden="true" class="q-mr-xs" />
+                    Vencida
+                    <q-tooltip
+                      >La fecha de vencimiento ya pasó y la actividad no está hecha.</q-tooltip
+                    >
+                  </q-badge>
+                  <q-badge
+                    v-else-if="estadoDeVencimiento(renglon, hoy) === 'pronto'"
+                    color="dg-aviso-fondo"
+                    text-color="dg-aviso-texto"
+                    class="lista-mes__etiqueta"
+                  >
+                    <q-icon name="schedule" size="14px" aria-hidden="true" class="q-mr-xs" />
+                    Vence pronto
+                    <q-tooltip
+                      >Vence hoy o en los próximos 3 días y la actividad no está hecha.</q-tooltip
+                    >
+                  </q-badge>
+                  <q-badge
+                    v-if="renglon.falta_rfc"
+                    outline
+                    color="dg-texto-tenue"
+                    class="lista-mes__etiqueta"
+                    label="Falta el RFC del cliente"
+                  >
+                    <q-tooltip
+                      >Este tipo vence según el RFC y el cliente no lo tiene. Captúralo en «Clientes
+                      y tipos», en «Mis clientes», con «Editar».</q-tooltip
+                    >
+                  </q-badge>
+                </q-item-label>
                 <q-item-label v-if="!renglon.cliente_activo || !renglon.tipo_activo" caption>
                   <q-badge outline color="dg-texto-tenue" :label="avisoDeInactivo(renglon)">
                     <q-tooltip
@@ -126,7 +180,7 @@
                   label="Hecha"
                   color="primary"
                   class="control-touch"
-                  :aria-label="`Marcar como hecha: ${renglon.cliente}, ${grupo.tipo}`"
+                  :aria-label="nombreAccesibleDeRenglon(renglon, hoy)"
                   :disable="
                     estaGuardando(renglon) || !renglon.cliente_activo || !renglon.tipo_activo
                   "
@@ -160,14 +214,19 @@ import { listarClientes } from '../services/clienteService.js'
 import { listarTipos } from '../services/tipoActividadService.js'
 import {
   agruparPorTipo,
+  contarVencidas,
   diagnosticoVacio,
   esMesValido,
+  estadoDeVencimiento,
   etiquetaDeMes,
   mesActual,
   mesAnterior,
   mesSiguiente,
+  nombreAccesibleDeRenglon,
+  textoDeVencimiento,
   totalesDelMes,
 } from '../utils/actividades.js'
+import { hoyLocal } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 /*
@@ -183,6 +242,8 @@ const router = useRouter()
 
 // «Hoy» se recalcula al volver a la ventana: si la app queda abierta de un día para otro, cambia el mes.
 const mesDeHoy = ref(mesActual())
+// Fecha de hoy (AAAA-MM-DD) para «Vencida» y «Vence pronto»; también se refresca al volver a la ventana.
+const hoy = ref(hoyLocal())
 const mes = computed(() => (esMesValido(route.query.mes) ? route.query.mes : mesDeHoy.value))
 
 const actividades = ref([])
@@ -195,6 +256,7 @@ const guardandoClaves = reactive(new Set())
 
 const grupos = computed(() => agruparPorTipo(actividades.value))
 const totales = computed(() => totalesDelMes(grupos.value))
+const totalVencidas = computed(() => contarVencidas(actividades.value, hoy.value))
 const estado = computed(() =>
   screenState({ loading: cargando.value, error: error.value, rows: actividades.value }),
 )
@@ -310,6 +372,7 @@ const cambiarEstado = async (renglon, hecha) => {
 const alVolverALaVentana = () => {
   if (document.visibilityState !== 'visible') return
   mesDeHoy.value = mesActual()
+  hoy.value = hoyLocal()
   cargar({ silencioso: true })
 }
 
@@ -360,6 +423,10 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
   color: var(--dg-texto-secundario);
 }
 
+.lista-mes__vencidas {
+  color: var(--dg-error);
+}
+
 .lista-mes__cuerpo {
   padding: 0;
 }
@@ -402,5 +469,31 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
 .lista-mes__cliente {
   color: var(--dg-texto);
   overflow-wrap: anywhere;
+}
+
+/* Fecha y etiquetas en una línea que baja de renglón en pantallas angostas. */
+.lista-mes__vence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.lista-mes__fecha {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+
+.lista-mes__fecha:focus-visible {
+  outline: 3px solid var(--dg-foco);
+  outline-offset: 2px;
+}
+
+.lista-mes__etiqueta {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 </style>

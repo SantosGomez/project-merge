@@ -72,6 +72,9 @@
               >
                 <q-tooltip>Clientes activos a los que les haces este tipo de actividad.</q-tooltip>
               </q-badge>
+              <q-badge outline color="dg-texto-tenue" :label="etiquetaDeRegla(tipo)">
+                <q-tooltip>Cuándo vence esta actividad cada mes. Cámbialo con «Editar».</q-tooltip>
+              </q-badge>
               <q-badge v-if="!tipo.activo" outline color="dg-texto-tenue" label="Desactivado">
                 <q-tooltip>No se ofrece al registrar actividades. Puedes reactivarlo.</q-tooltip>
               </q-badge>
@@ -106,7 +109,7 @@
                 :disable="cambiandoId === tipo.id"
                 @click="abrirEdicion(tipo)"
               >
-                <q-tooltip>Cambia el nombre de este tipo o si es cobrable.</q-tooltip>
+                <q-tooltip>Cambia el nombre de este tipo, si es cobrable o cuándo vence.</q-tooltip>
               </q-btn>
               <q-btn
                 flat
@@ -151,7 +154,7 @@ import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import TipoActividadFormDialog from './TipoActividadFormDialog.vue'
 import { actualizarTipo, listarTipos } from '../services/tipoActividadService.js'
-import { mezclarEnLista } from '../utils/actividades.js'
+import { etiquetaDeRegla, mezclarEnLista } from '../utils/actividades.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const $q = useQuasar()

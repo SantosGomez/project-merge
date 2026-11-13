@@ -1,6 +1,9 @@
 // Validaciones y orden de las listas de «Mis actividades» (clientes y tipos de actividad propios).
 // Funciones puras, sin Vue ni navegador.
 
+import { fechaParaFormulario } from './fechasCaso.js'
+import { esCasoProximoAVencer, esCasoVencido } from './filtrosCasos.js'
+
 /** Longitudes máximas que acepta el backend. */
 export const MAX_NOMBRE_CLIENTE = 150
 export const MAX_NOMBRE_TIPO = 120
@@ -39,18 +42,47 @@ export const validarDatosCliente = ({ nombre, rfc }) => {
   return { valido: Object.keys(errores).length === 0, errores }
 }
 
+/** Reglas de vencimiento que ofrece el formulario del tipo («Sin fecha» es la de por defecto). */
+export const REGLAS_VENCIMIENTO = Object.freeze([
+  { value: 'ninguna', label: 'Sin fecha' },
+  { value: 'dia_del_mes', label: 'Día fijo del mes' },
+  { value: 'fin_de_mes', label: 'Fin de mes' },
+  { value: 'dia_17_rfc', label: 'Día 17 según el RFC del cliente' },
+])
+
+/** Último día que se puede elegir como día fijo; el último día del mes se logra con «Fin de mes». */
+export const DIA_MAX_DEL_MES = 28
+
 /**
- * Valida el nombre de un tipo de actividad.
- * @param {{ nombre: string }} datos - Valores del formulario.
- * @returns {{ valido: boolean, errores: { nombre?: string } }}
+ * Regla de vencimiento de un tipo escrita para la fila del tipo.
+ * @param {{ regla_vencimiento?: string, dia_del_mes?: number|null }} tipo
+ * @returns {string}
  */
-export const validarDatosTipo = ({ nombre }) => {
+export const etiquetaDeRegla = ({ regla_vencimiento: regla, dia_del_mes: dia } = {}) => {
+  if (regla === 'dia_del_mes') return `Vence el día ${dia}`
+  if (regla === 'fin_de_mes') return 'Vence a fin de mes'
+  if (regla === 'dia_17_rfc') return 'Vence el 17 según el RFC'
+  return 'Sin fecha de vencimiento'
+}
+
+/**
+ * Valida el nombre de un tipo de actividad y, con la regla «Día fijo del mes», su día.
+ * @param {{ nombre: string, regla_vencimiento?: string, dia_del_mes?: string|number|null }} datos - Valores del formulario.
+ * @returns {{ valido: boolean, errores: { nombre?: string, dia_del_mes?: string } }}
+ */
+export const validarDatosTipo = ({ nombre, regla_vencimiento: regla, dia_del_mes: dia }) => {
   const errores = {}
   const nombreLimpio = recortar(nombre)
   if (nombreLimpio === '') {
     errores.nombre = 'Escribe el nombre del tipo de actividad.'
   } else if (nombreLimpio.length > MAX_NOMBRE_TIPO) {
     errores.nombre = `El nombre supera los ${MAX_NOMBRE_TIPO} caracteres. Escribe uno más corto.`
+  }
+  if (regla === 'dia_del_mes') {
+    const numero = /^\d+$/.test(String(dia ?? '').trim()) ? Number(String(dia).trim()) : 0
+    if (numero < 1 || numero > DIA_MAX_DEL_MES) {
+      errores.dia_del_mes = `Escribe un día del mes de 1 a ${DIA_MAX_DEL_MES}. Para el último día del mes elige «Fin de mes».`
+    }
   }
   return { valido: Object.keys(errores).length === 0, errores }
 }
@@ -137,9 +169,81 @@ export const etiquetaDeMes = (mes) => {
   return `${NOMBRES_DE_MES[Number(numero) - 1]} de ${anio}`
 }
 
+// Un renglón pendiente se evalúa como un caso abierto (mismo umbral de «próximo a vencer»); uno hecho, como finalizado.
+const comoCaso = (renglon) => ({
+  estado: renglon.hecha ? 'finalizado' : 'pendiente',
+  fecha_vencimiento: renglon.vence ?? '',
+})
+
+/**
+ * Si un renglón pendiente ya venció o vence en los próximos 3 días (hoy incluido).
+ * @param {{ hecha: boolean, vence: string|null }} renglon - Renglón de la lista del mes.
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @returns {'vencida'|'pronto'|null} null si está hecho, no tiene fecha o aún falta tiempo.
+ */
+export const estadoDeVencimiento = (renglon, hoy) => {
+  if (esCasoVencido(comoCaso(renglon), hoy)) return 'vencida'
+  if (esCasoProximoAVencer(comoCaso(renglon), hoy)) return 'pronto'
+  return null
+}
+
+/**
+ * Cuántos renglones pendientes ya vencieron.
+ * @param {Array<Object>} renglones - Renglones de la lista del mes.
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @returns {number}
+ */
+export const contarVencidas = (renglones, hoy) =>
+  renglones.filter((renglon) => estadoDeVencimiento(renglon, hoy) === 'vencida').length
+
+/**
+ * «Vence DD-MM-AAAA» de un renglón, o texto vacío si no tiene fecha.
+ * @param {string|null} vence - Fecha AAAA-MM-DD.
+ * @returns {string}
+ */
+export const textoDeVencimiento = (vence) => {
+  const fecha = fechaParaFormulario(vence)
+  return fecha ? `Vence ${fecha}` : ''
+}
+
+const ETIQUETAS_DE_ESTADO = { vencida: 'Vencida', pronto: 'Vence pronto' }
+
+/**
+ * Nombre accesible de la casilla «Hecha» de un renglón: cliente, tipo, fecha y etiqueta de alerta.
+ * @param {Object} renglon - Renglón de la lista del mes (`cliente`, `tipo`, `vence`, `falta_rfc`, `hecha`).
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @returns {string}
+ */
+export const nombreAccesibleDeRenglon = (renglon, hoy) => {
+  const partes = [`Marcar como hecha: ${renglon.cliente}, ${renglon.tipo}.`]
+  const fecha = textoDeVencimiento(renglon.vence)
+  if (fecha) partes.push(`${fecha}.`)
+  const estado = estadoDeVencimiento(renglon, hoy)
+  if (estado) partes.push(`${ETIQUETAS_DE_ESTADO[estado]}.`)
+  if (renglon.falta_rfc) partes.push('Falta el RFC del cliente.')
+  return partes.join(' ')
+}
+
+/**
+ * Orden de los renglones de un grupo: primero lo pendiente por fecha de vencimiento (lo vencido arriba,
+ * lo que no tiene fecha al final) y luego lo hecho. Los empates conservan el orden de llegada.
+ * @param {Array<Object>} renglones - Renglones de un grupo (no se modifica).
+ * @returns {Array<Object>}
+ */
+export const ordenarPorVencimiento = (renglones) =>
+  [...renglones].sort((a, b) => {
+    if (a.hecha !== b.hecha) return Number(a.hecha) - Number(b.hecha)
+    if (a.hecha) return 0
+    if (a.vence === b.vence) return 0
+    if (!a.vence) return 1
+    if (!b.vence) return -1
+    return a.vence < b.vence ? -1 : 1
+  })
+
 /**
  * Agrupa los renglones de la lista del mes por tipo, en el orden en que llegan (el backend los
- * entrega por tipo y cliente), con cuántos están hechos.
+ * entrega por tipo y cliente), con cuántos están hechos. Dentro de cada grupo los renglones van
+ * ordenados por vencimiento (`ordenarPorVencimiento`).
  * @param {Array<Object>} actividades - Renglones (`tipo_id`, `tipo`, `tipo_activo`, `hecha`…).
  * @returns {Array<{ tipo_id: number, tipo: string, tipo_activo: boolean, renglones: Array<Object>, hechas: number, total: number }>}
  */
@@ -161,7 +265,10 @@ export const agruparPorTipo = (actividades) => {
     grupo.total += 1
     if (actividad.hecha) grupo.hechas += 1
   }
-  return [...grupos.values()]
+  return [...grupos.values()].map((grupo) => ({
+    ...grupo,
+    renglones: ordenarPorVencimiento(grupo.renglones),
+  }))
 }
 
 /**

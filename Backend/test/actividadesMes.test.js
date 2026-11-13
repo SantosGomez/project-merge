@@ -31,19 +31,19 @@ let tokenOtroContador;
 let tokenAuxiliar;
 let secuencia = 0;
 
-async function nuevoCliente(token, nombre) {
+async function nuevoCliente(token, nombre, rfc) {
   secuencia += 1;
-  const respuesta = await peticion(
-    servidor.puerto, 'POST', '/clientes', { nombre: nombre ?? `Cliente mes ${secuencia}` }, token
-  );
+  const cuerpo = { nombre: nombre ?? `Cliente mes ${secuencia}` };
+  if (rfc !== undefined) cuerpo.rfc = rfc;
+  const respuesta = await peticion(servidor.puerto, 'POST', '/clientes', cuerpo, token);
   assert.strictEqual(respuesta.statusCode, 201);
   return respuesta.body.cliente;
 }
 
-async function nuevoTipo(token, nombre) {
+async function nuevoTipo(token, nombre, vencimiento = {}) {
   secuencia += 1;
   const respuesta = await peticion(
-    servidor.puerto, 'POST', '/tipos-actividad', { nombre: nombre ?? `Tipo mes ${secuencia}` }, token
+    servidor.puerto, 'POST', '/tipos-actividad', { nombre: nombre ?? `Tipo mes ${secuencia}`, ...vencimiento }, token
   );
   assert.strictEqual(respuesta.statusCode, 201);
   return respuesta.body.tipo;
@@ -101,11 +101,57 @@ async function testListaUnRenglonPorTipoYClienteAgrupadoPorTipoYOrdenado() {
   const primero = respuesta.body.actividades[0];
   assert.deepStrictEqual(
     Object.keys(primero).sort(),
-    ['cliente', 'cliente_activo', 'cliente_id', 'hecha', 'hecha_en', 'tipo', 'tipo_activo', 'tipo_id']
+    ['cliente', 'cliente_activo', 'cliente_id', 'falta_rfc', 'hecha', 'hecha_en', 'tipo', 'tipo_activo', 'tipo_id', 'vence']
   );
   assert.strictEqual(primero.hecha, false);
   assert.strictEqual(primero.hecha_en, null);
   assert.ok(!respuesta.body.actividades.some((r) => r.tipo_id === sinCartera.id), 'un tipo sin cartera no tiene renglones');
+}
+
+async function testCadaReglaDaSuFechaDeVencimientoEnElMes() {
+  const sinRegla = await nuevoTipo(tokenContador);
+  const fijo = await nuevoTipo(tokenContador, undefined, { regla_vencimiento: 'dia_del_mes', dia_del_mes: 7 });
+  const fin = await nuevoTipo(tokenContador, undefined, { regla_vencimiento: 'fin_de_mes' });
+  const diecisiete = await nuevoTipo(tokenContador, undefined, { regla_vencimiento: 'dia_17_rfc' });
+  const cliente = await nuevoCliente(tokenContador, undefined, 'ABCD260105AB1');
+  for (const tipo of [sinRegla, fijo, fin, diecisiete]) await asignar(tokenContador, tipo, [cliente]);
+
+  const noviembre = (await listar(tokenContador, '2026-11')).body;
+  assert.strictEqual(renglon(noviembre, cliente, sinRegla).vence, null);
+  assert.strictEqual(renglon(noviembre, cliente, sinRegla).falta_rfc, false);
+  assert.strictEqual(renglon(noviembre, cliente, fijo).vence, '2026-11-09', 'el 7 es sábado: pasa al lunes');
+  assert.strictEqual(renglon(noviembre, cliente, fin).vence, '2026-11-30');
+  assert.strictEqual(renglon(noviembre, cliente, diecisiete).vence, '2026-11-20', 'martes 17 más 3 hábiles (dígito 5)');
+  assert.strictEqual(renglon(noviembre, cliente, diecisiete).falta_rfc, false);
+
+  const octubre = (await listar(tokenContador, '2026-10')).body;
+  assert.strictEqual(renglon(octubre, cliente, fin).vence, '2026-11-02', 'fin de mes en sábado pasa al mes siguiente');
+  assert.strictEqual(renglon(octubre, cliente, diecisiete).vence, '2026-10-22', 'sábado 17 pasa al lunes 19 más 3 hábiles');
+
+  const marzo2024 = (await listar(tokenContador, '2024-03')).body;
+  assert.strictEqual(renglon(marzo2024, cliente, diecisiete).vence, '2024-03-22', 'domingo 17 y lunes 18 festivo: martes 19 más 3');
+}
+
+async function testSinRfcLaReglaDel17NoDaFechaYAvisaFaltaRfc() {
+  const tipo17 = await nuevoTipo(tokenContador, undefined, { regla_vencimiento: 'dia_17_rfc' });
+  const tipoFin = await nuevoTipo(tokenContador, undefined, { regla_vencimiento: 'fin_de_mes' });
+  const sinRfc = await nuevoCliente(tokenContador);
+  const conRfc = await nuevoCliente(tokenContador, undefined, 'ABC260101AB1');
+  await asignar(tokenContador, tipo17, [sinRfc, conRfc]);
+  await asignar(tokenContador, tipoFin, [sinRfc]);
+
+  const lista = (await listar(tokenContador, '2026-11')).body;
+  assert.strictEqual(renglon(lista, sinRfc, tipo17).vence, null);
+  assert.strictEqual(renglon(lista, sinRfc, tipo17).falta_rfc, true);
+  assert.strictEqual(renglon(lista, conRfc, tipo17).vence, '2026-11-18');
+  assert.strictEqual(renglon(lista, conRfc, tipo17).falta_rfc, false);
+  assert.strictEqual(renglon(lista, sinRfc, tipoFin).vence, '2026-11-30', 'otras reglas no necesitan RFC');
+  assert.strictEqual(renglon(lista, sinRfc, tipoFin).falta_rfc, false);
+
+  await marcar(tokenContador, sinRfc, tipo17, true, '2026-11');
+  const hecha = (await listar(tokenContador, '2026-11')).body;
+  assert.strictEqual(renglon(hecha, sinRfc, tipo17).hecha, true);
+  assert.strictEqual(renglon(hecha, sinRfc, tipo17).falta_rfc, true, 'el aviso no depende de si está hecha');
 }
 
 async function testSinMesUsaElMesActualYRechazaMesesInvalidos() {
@@ -309,6 +355,8 @@ describe('/actividades (lista del mes)', () => {
 
   test('el seed crea actividades_mes y se puede repetir', testSeedCreaLaTablaDeFormaIdempotente);
   test('lista un renglón por tipo y cliente, agrupado por tipo y ordenado', testListaUnRenglonPorTipoYClienteAgrupadoPorTipoYOrdenado);
+  test('cada regla da su fecha de vencimiento dentro del mes', testCadaReglaDaSuFechaDeVencimientoEnElMes);
+  test('sin RFC la regla del 17 no da fecha y avisa que falta el RFC', testSinRfcLaReglaDel17NoDaFechaYAvisaFaltaRfc);
   test('sin mes usa el mes actual y rechaza meses inválidos', testSinMesUsaElMesActualYRechazaMesesInvalidos);
   test('marcar y desmarcar se guarda y se ve en la lista', testMarcarYDesmarcarSeGuardaYSeVeEnLaLista);
   test('cada mes tiene su propio estado', testCadaMesTieneSuPropioEstado);

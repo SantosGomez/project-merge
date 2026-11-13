@@ -19,7 +19,7 @@ export const crearTipoActividadService = (opciones = {}) => {
 
   /**
    * GET /tipos-actividad: tipos de la cuenta, activos primero.
-   * @returns {Promise<Array<{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string, total_clientes: number }>>}
+   * @returns {Promise<Array<{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string, total_clientes: number, regla_vencimiento: string, dia_del_mes: number|null }>>}
    */
   const listarTipos = async () => {
     const { data } = await api.get('/tipos-actividad')
@@ -29,19 +29,23 @@ export const crearTipoActividadService = (opciones = {}) => {
   }
 
   /**
-   * POST /tipos-actividad: agrega un tipo. El nombre va recortado.
-   * @param {{ nombre: string, cobrable: boolean }} datos
+   * POST /tipos-actividad: agrega un tipo. El nombre va recortado; la regla de vencimiento y su día
+   * se envían solo si se reciben.
+   * @param {{ nombre: string, cobrable: boolean, regla_vencimiento?: string, dia_del_mes?: number }} datos
    * @returns {Promise<Object>} el tipo creado.
    */
-  const crearTipo = async ({ nombre, cobrable }) => {
-    const { data } = await api.post('/tipos-actividad', { nombre: nombre.trim(), cobrable })
+  const crearTipo = async ({ nombre, cobrable, regla_vencimiento, dia_del_mes }) => {
+    const cuerpo = { nombre: nombre.trim(), cobrable }
+    if (regla_vencimiento !== undefined) cuerpo.regla_vencimiento = regla_vencimiento
+    if (dia_del_mes !== undefined) cuerpo.dia_del_mes = dia_del_mes
+    const { data } = await api.post('/tipos-actividad', cuerpo)
     return leerTipo(data)
   }
 
   /**
-   * PATCH /tipos-actividad/:id: cambia solo los campos recibidos (nombre, cobrable o activo).
+   * PATCH /tipos-actividad/:id: cambia solo los campos recibidos (nombre, cobrable, activo o vencimiento).
    * @param {number} id - Id del tipo.
-   * @param {{ nombre?: string, cobrable?: boolean, activo?: boolean }} cambios
+   * @param {{ nombre?: string, cobrable?: boolean, activo?: boolean, regla_vencimiento?: string, dia_del_mes?: number }} cambios
    * @returns {Promise<Object>} el tipo actualizado.
    */
   const actualizarTipo = async (id, cambios) => {
@@ -49,6 +53,9 @@ export const crearTipoActividadService = (opciones = {}) => {
     if (cambios.nombre !== undefined) cuerpo.nombre = cambios.nombre.trim()
     if (cambios.cobrable !== undefined) cuerpo.cobrable = cambios.cobrable
     if (cambios.activo !== undefined) cuerpo.activo = cambios.activo
+    if (cambios.regla_vencimiento !== undefined)
+      cuerpo.regla_vencimiento = cambios.regla_vencimiento
+    if (cambios.dia_del_mes !== undefined) cuerpo.dia_del_mes = cambios.dia_del_mes
     const { data } = await api.patch(`/tipos-actividad/${id}`, cuerpo)
     return leerTipo(data)
   }

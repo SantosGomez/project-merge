@@ -94,7 +94,7 @@ describe('agruparPorTipo y totalesDelMes', () => {
     renglon(2, 'Beta', 10, 'Ana', true, { tipo_activo: false }),
   ]
 
-  it('agrupa por tipo conservando el orden recibido y cuenta las hechas', () => {
+  it('agrupa por tipo en el orden recibido y cuenta las hechas (lo pendiente va antes que lo hecho)', () => {
     const grupos = agruparPorTipo(actividades)
     assert.equal(grupos.length, 2)
     assert.deepEqual(
@@ -104,9 +104,10 @@ describe('agruparPorTipo y totalesDelMes', () => {
         [2, 'Beta', 1, 1, false],
       ],
     )
+    // Regla de la rebanada 12: dentro del grupo, primero lo pendiente y luego lo hecho.
     assert.deepEqual(
       grupos[0].renglones.map((r) => r.cliente),
-      ['Ana', 'Beto'],
+      ['Beto', 'Ana'],
     )
   })
 

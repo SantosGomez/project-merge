@@ -170,6 +170,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarContadorAuxiliar();
   await migrarClientesYTiposActividad();
   await migrarCarteraYActividadesMes();
+  await migrarVencimientoDeTipos();
 
   if (!cuentasDemo) return;
 
@@ -483,6 +484,17 @@ async function migrarCarteraYActividadesMes() {
       CONSTRAINT fk_actividades_tipo FOREIGN KEY (tipo_id) REFERENCES tipos_actividad(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
+}
+
+/**
+ * Regla de vencimiento de cada tipo de actividad (rebanada 12). Los tipos que ya existían quedan en
+ * `ninguna` (sin fecha). `dia_del_mes` solo se llena con la regla `dia_del_mes`. Idempotente.
+ */
+async function migrarVencimientoDeTipos() {
+  await query(
+    "ALTER TABLE tipos_actividad ADD COLUMN IF NOT EXISTS regla_vencimiento ENUM('ninguna', 'dia_del_mes', 'fin_de_mes', 'dia_17_rfc') NOT NULL DEFAULT 'ninguna'"
+  );
+  await query('ALTER TABLE tipos_actividad ADD COLUMN IF NOT EXISTS dia_del_mes TINYINT NULL');
 }
 
 module.exports = { seedDatabase, debeSembrarCuentasDemo };

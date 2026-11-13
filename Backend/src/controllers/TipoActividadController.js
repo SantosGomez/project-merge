@@ -1,5 +1,6 @@
 const TipoActividadModel = require('../models/TipoActividadModel');
 const { buildError } = require('../utils/errorUtils');
+const { REGLAS } = require('../utils/vencimientoActividad');
 const { parseCounterId, validarCampoTexto } = require('../utils/validationUtils');
 
 /**
@@ -7,6 +8,7 @@ const { parseCounterId, validarCampoTexto } = require('../utils/validationUtils'
  */
 
 const LONGITUD_MAX_NOMBRE = 120;
+const DIA_MAX_DEL_MES = 28;
 
 const ERROR_NO_ENCONTRADO = buildError(
   'No se encontró el tipo de actividad',
@@ -26,10 +28,20 @@ const ERROR_NOMBRE_REPETIDO = buildError(
 const ERROR_SIN_CAMBIOS = buildError(
   'No se envió ningún dato para cambiar',
   'tipo de actividad solicitado',
-  'Envía al menos el nombre, si es cobrable o si está activo'
+  'Envía al menos el nombre, si es cobrable, si está activo o su vencimiento'
 );
 const ERROR_COBRABLE = buildError('El valor no es válido', 'cobrable', 'Envía verdadero o falso');
 const ERROR_ACTIVO = buildError('El valor no es válido', 'activo', 'Envía verdadero o falso');
+const ERROR_REGLA = buildError(
+  'La regla de vencimiento no es válida',
+  'vencimiento',
+  'Elige sin fecha, día fijo del mes, fin de mes o día 17 según el RFC'
+);
+const ERROR_DIA = buildError(
+  `El día del mes no es válido (de 1 a ${DIA_MAX_DEL_MES})`,
+  'día del mes',
+  'Escribe un número entero de 1 a 28; para el último día del mes usa «Fin de mes»'
+);
 
 /**
  * Valida el nombre del tipo de actividad.
@@ -57,6 +69,19 @@ function validarNombre(valor) {
     };
   }
   return { valor: nombre.valor };
+}
+
+/**
+ * Valida la regla de vencimiento y su día. El día solo se conserva con la regla de día fijo; con las demás es null.
+ * @param {*} regla - Regla recibida.
+ * @param {*} dia - Día del mes recibido.
+ * @returns {{ regla_vencimiento?: string, dia_del_mes?: number|null, error?: Object }}
+ */
+function validarVencimiento(regla, dia) {
+  if (typeof regla !== 'string' || !REGLAS.includes(regla)) return { error: ERROR_REGLA };
+  if (regla !== 'dia_del_mes') return { regla_vencimiento: regla, dia_del_mes: null };
+  if (!Number.isInteger(dia) || dia < 1 || dia > DIA_MAX_DEL_MES) return { error: ERROR_DIA };
+  return { regla_vencimiento: regla, dia_del_mes: dia };
 }
 
 /**
@@ -95,10 +120,14 @@ async function crearTipo(req, res) {
     return res.status(400).json(ERROR_COBRABLE);
   }
 
+  const vencimiento = validarVencimiento(cuerpo.regla_vencimiento ?? 'ninguna', cuerpo.dia_del_mes);
+  if (vencimiento.error) return res.status(400).json(vencimiento.error);
+
   try {
     const tipo = await TipoActividadModel.crear(Number(req.user.id), {
       nombre: nombre.valor,
       cobrable: cuerpo.cobrable === true,
+      ...vencimiento,
     });
     return res.status(201).json({ tipo });
   } catch (error) {
@@ -129,6 +158,17 @@ async function actualizarTipo(req, res) {
   if (cuerpo.activo !== undefined) {
     if (typeof cuerpo.activo !== 'boolean') return res.status(400).json(ERROR_ACTIVO);
     cambios.activo = cuerpo.activo;
+  }
+  if (cuerpo.regla_vencimiento !== undefined || cuerpo.dia_del_mes !== undefined) {
+    // Lo que no se envía se toma del tipo guardado para validar la regla y el día juntos.
+    const actual = await TipoActividadModel.buscarDeUsuario(id, Number(req.user.id));
+    if (!actual) return res.status(404).json(ERROR_NO_ENCONTRADO);
+    const vencimiento = validarVencimiento(
+      cuerpo.regla_vencimiento !== undefined ? cuerpo.regla_vencimiento : actual.regla_vencimiento,
+      cuerpo.dia_del_mes !== undefined ? cuerpo.dia_del_mes : actual.dia_del_mes
+    );
+    if (vencimiento.error) return res.status(400).json(vencimiento.error);
+    Object.assign(cambios, vencimiento);
   }
   if (Object.keys(cambios).length === 0) return res.status(400).json(ERROR_SIN_CAMBIOS);
 

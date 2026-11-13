@@ -9,15 +9,17 @@ const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 /**
  * Renglones de un mes: la cartera actual (solo clientes y tipos activos) más lo ya hecho en ese mes,
  * aunque después el cliente haya salido de la cartera o se haya desactivado él o el tipo.
- * Ordenados por tipo y, dentro, por cliente.
+ * Ordenados por tipo y, dentro, por cliente. Cada renglón trae la regla de vencimiento del tipo y el RFC
+ * del cliente para que el controlador calcule la fecha.
  * @param {number} usuarioId - Dueño de la lista.
  * @param {string} mes - Mes en formato AAAA-MM.
  * @returns {Promise<Array<Object>>}
  */
 async function listarDelMes(usuarioId, mes) {
   const filas = await query(
-    `SELECT c.id AS cliente_id, c.nombre AS cliente, c.activo AS cliente_activo,
+    `SELECT c.id AS cliente_id, c.nombre AS cliente, c.activo AS cliente_activo, c.rfc AS rfc,
             t.id AS tipo_id, t.nombre AS tipo, t.activo AS tipo_activo,
+            t.regla_vencimiento AS regla_vencimiento, t.dia_del_mes AS dia_del_mes,
             am.estado AS estado, am.hecha_en AS hecha_en
        FROM (
          SELECT ca.cliente_id, ca.tipo_id
@@ -39,9 +41,12 @@ async function listarDelMes(usuarioId, mes) {
     cliente_id: fila.cliente_id,
     cliente: fila.cliente,
     cliente_activo: Boolean(fila.cliente_activo),
+    rfc: fila.rfc,
     tipo_id: fila.tipo_id,
     tipo: fila.tipo,
     tipo_activo: Boolean(fila.tipo_activo),
+    regla_vencimiento: fila.regla_vencimiento,
+    dia_del_mes: fila.dia_del_mes,
     hecha: fila.estado === 'hecha',
     hecha_en: fila.hecha_en ? formatLocalDate(fila.hecha_en) : null,
   }));

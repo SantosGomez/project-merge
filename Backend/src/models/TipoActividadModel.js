@@ -7,7 +7,7 @@ const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
  */
 
 // `total_clientes` cuenta los clientes activos de la cartera del tipo (rebanada 11).
-const COLUMNAS = `id, nombre, cobrable, activo, creado_en,
+const COLUMNAS = `id, nombre, cobrable, activo, creado_en, regla_vencimiento, dia_del_mes,
   (SELECT COUNT(*) FROM cartera_actividad ca
      JOIN clientes c ON c.id = ca.cliente_id
      WHERE ca.tipo_id = tipos_actividad.id AND c.activo = 1) AS total_clientes`;
@@ -15,7 +15,8 @@ const COLUMNAS = `id, nombre, cobrable, activo, creado_en,
 /**
  * Convierte una fila de la tabla en el tipo que entrega la API.
  * @param {Object} fila - Fila de `tipos_actividad`.
- * @returns {{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string, total_clientes: number }}
+ * @returns {{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string,
+ *   regla_vencimiento: string, dia_del_mes: number|null, total_clientes: number }}
  */
 function aTipo(fila) {
   return {
@@ -24,6 +25,8 @@ function aTipo(fila) {
     cobrable: Boolean(fila.cobrable),
     activo: Boolean(fila.activo),
     creado_en: formatLocalDate(fila.creado_en),
+    regla_vencimiento: fila.regla_vencimiento,
+    dia_del_mes: fila.dia_del_mes,
     total_clientes: Number(fila.total_clientes),
   };
 }
@@ -69,15 +72,16 @@ async function buscarDeUsuario(id, usuarioId) {
 /**
  * Crea un tipo activo para el usuario.
  * @param {number} usuarioId - Dueño.
- * @param {{ nombre: string, cobrable: boolean }} datos - Datos ya validados.
+ * @param {{ nombre: string, cobrable: boolean, regla_vencimiento: string, dia_del_mes: number|null }} datos - Datos ya validados.
  * @returns {Promise<Object>} El tipo creado.
  * @throws {Error} NOMBRE_REPETIDO si el usuario ya tiene un tipo con ese nombre.
  */
-async function crear(usuarioId, { nombre, cobrable }) {
+async function crear(usuarioId, { nombre, cobrable, regla_vencimiento: regla, dia_del_mes: dia }) {
   try {
     const resultado = await query(
-      'INSERT INTO tipos_actividad (usuario_id, nombre, cobrable, activo, creado_en) VALUES (?, ?, ?, 1, ?)',
-      [usuarioId, nombre, cobrable ? 1 : 0, formatLocalDate(nowLocal())]
+      `INSERT INTO tipos_actividad (usuario_id, nombre, cobrable, activo, creado_en, regla_vencimiento, dia_del_mes)
+       VALUES (?, ?, ?, 1, ?, ?, ?)`,
+      [usuarioId, nombre, cobrable ? 1 : 0, formatLocalDate(nowLocal()), regla, dia]
     );
     return await buscarDeUsuario(resultado.insertId, usuarioId);
   } catch (error) {
@@ -89,7 +93,8 @@ async function crear(usuarioId, { nombre, cobrable }) {
  * Actualiza solo los campos recibidos de un tipo del usuario.
  * @param {number} id - Id del tipo.
  * @param {number} usuarioId - Dueño.
- * @param {{ nombre?: string, cobrable?: boolean, activo?: boolean }} cambios - Campos ya validados.
+ * @param {{ nombre?: string, cobrable?: boolean, activo?: boolean, regla_vencimiento?: string, dia_del_mes?: number|null }} cambios
+ *   Campos ya validados.
  * @returns {Promise<Object|null>} El tipo actualizado, o null si no es del usuario.
  * @throws {Error} NOMBRE_REPETIDO si el nuevo nombre lo tiene otro tipo del usuario.
  */
@@ -99,6 +104,12 @@ async function actualizar(id, usuarioId, cambios) {
   if (cambios.nombre !== undefined) {
     campos.push('nombre = ?');
     valores.push(cambios.nombre);
+  }
+  for (const campo of ['regla_vencimiento', 'dia_del_mes']) {
+    if (cambios[campo] !== undefined) {
+      campos.push(`${campo} = ?`);
+      valores.push(cambios[campo]);
+    }
   }
   for (const campo of ['cobrable', 'activo']) {
     if (cambios[campo] !== undefined) {

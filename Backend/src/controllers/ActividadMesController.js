@@ -3,6 +3,7 @@ const ClienteModel = require('../models/ClienteModel');
 const TipoActividadModel = require('../models/TipoActividadModel');
 const { nowLocal } = require('../utils/dateUtils');
 const { buildError } = require('../utils/errorUtils');
+const { calcularVencimiento } = require('../utils/vencimientoActividad');
 const { esMesValido, parseCounterId } = require('../utils/validationUtils');
 
 /**
@@ -43,6 +44,18 @@ function mesActual() {
 }
 
 /**
+ * Convierte un renglón del modelo en el de la API: agrega `vence` (AAAA-MM-DD o null) y `falta_rfc`
+ * (la regla del día 17 necesita el RFC del cliente y no lo tiene).
+ * @param {Object} fila - Renglón del modelo, con la regla del tipo y el RFC del cliente.
+ * @param {string} mes - Mes de la lista (AAAA-MM).
+ * @returns {Object}
+ */
+function conVencimiento({ rfc, regla_vencimiento: regla, dia_del_mes: dia, ...renglon }, mes) {
+  const vence = calcularVencimiento({ regla, dia, mes, rfc });
+  return { ...renglon, vence, falta_rfc: regla === 'dia_17_rfc' && vence === null };
+}
+
+/**
  * GET /actividades?mes=AAAA-MM — Renglones del mes; sin `mes` usa el mes actual.
  * @param {Object} req - Petición Express.
  * @param {Object} res - Respuesta Express.
@@ -50,8 +63,8 @@ function mesActual() {
 async function listarActividadesDelMes(req, res) {
   const mes = req.query.mes === undefined ? mesActual() : req.query.mes;
   if (!esMesValido(mes)) return res.status(400).json(ERROR_MES);
-  const actividades = await ActividadMesModel.listarDelMes(Number(req.user.id), mes);
-  return res.status(200).json({ mes, actividades });
+  const filas = await ActividadMesModel.listarDelMes(Number(req.user.id), mes);
+  return res.status(200).json({ mes, actividades: filas.map((fila) => conVencimiento(fila, mes)) });
 }
 
 /**

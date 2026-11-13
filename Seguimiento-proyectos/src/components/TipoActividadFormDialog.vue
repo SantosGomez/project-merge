@@ -72,6 +72,71 @@
             </p>
           </div>
 
+          <div class="form-group">
+            <label for="tipo-vencimiento" class="form-label">Vencimiento</label>
+            <q-select
+              for="tipo-vencimiento"
+              v-model="form.regla_vencimiento"
+              :options="REGLAS_VENCIMIENTO"
+              option-label="label"
+              option-value="value"
+              outlined
+              dense
+              options-dense
+              dropdown-icon="expand_more"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              :transition-duration="180"
+              class="selector-moderno"
+              emit-value
+              map-options
+              aria-describedby="tipo-vencimiento-ayuda"
+              @popup-show="selectorAbierto = true"
+              @popup-hide="selectorAbierto = false"
+              @update:model-value="erroresCampo.dia_del_mes = null"
+            >
+              <template #prepend><q-icon name="event" aria-hidden="true" /></template>
+              <!-- Con la lista abierta el tooltip taparía la primera opción. -->
+              <q-tooltip v-if="!selectorAbierto"
+                >Cuándo vence esta actividad cada mes. Se calcula dentro del mes de trabajo y, si
+                cae en día inhábil, pasa al siguiente día hábil.</q-tooltip
+              >
+            </q-select>
+            <p id="tipo-vencimiento-ayuda" class="form-help">
+              {{ ayudaDeRegla }}
+            </p>
+          </div>
+
+          <div v-if="form.regla_vencimiento === 'dia_del_mes'" class="form-group">
+            <label for="tipo-dia" class="form-label"
+              >Día del mes <span aria-hidden="true" class="required-mark">*</span></label
+            >
+            <q-input
+              for="tipo-dia"
+              v-model="form.dia_del_mes"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="28"
+              placeholder="Del 1 al 28"
+              outlined
+              dense
+              class="input-moderno"
+              aria-required="true"
+              aria-describedby="tipo-dia-ayuda"
+              :error="!!erroresCampo.dia_del_mes"
+              :error-message="erroresCampo.dia_del_mes"
+              @update:model-value="erroresCampo.dia_del_mes = null"
+            >
+              <template #prepend><q-icon name="calendar_today" aria-hidden="true" /></template>
+              <q-tooltip>Día del mes en que vence la actividad, del 1 al 28.</q-tooltip>
+            </q-input>
+            <p id="tipo-dia-ayuda" class="form-help">
+              Del 1 al 28. Para el último día del mes elige «Fin de mes».
+            </p>
+          </div>
+
           <p v-if="errorGeneral" class="error-banner" role="alert">{{ errorGeneral }}</p>
         </q-card-section>
 
@@ -113,7 +178,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 
 import { actualizarTipo, crearTipo } from '../services/tipoActividadService.js'
-import { validarDatosTipo } from '../utils/actividades.js'
+import { REGLAS_VENCIMIENTO, validarDatosTipo } from '../utils/actividades.js'
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
@@ -128,17 +193,46 @@ const $q = useQuasar()
 const tarjeta = ref(null)
 const esEdicion = computed(() => props.tipo !== null)
 
-const form = reactive({ nombre: '', cobrable: false })
-const erroresCampo = reactive({ nombre: null })
+const form = reactive({
+  nombre: '',
+  cobrable: false,
+  regla_vencimiento: 'ninguna',
+  dia_del_mes: '',
+})
+const erroresCampo = reactive({ nombre: null, dia_del_mes: null })
 const errorGeneral = ref('')
 const guardando = ref(false)
+const selectorAbierto = ref(false)
 
 // Lo que había al abrir: sirve para saber si hay algo sin guardar (también al editar).
-const inicial = reactive({ nombre: '', cobrable: false })
+const inicial = reactive({
+  nombre: '',
+  cobrable: false,
+  regla_vencimiento: 'ninguna',
+  dia_del_mes: '',
+})
+
+// El día solo cuenta con «Día fijo del mes»: con otra regla escribirlo no es un cambio.
+const diaDe = (datos) =>
+  datos.regla_vencimiento === 'dia_del_mes' ? String(datos.dia_del_mes ?? '') : ''
 
 const hayDatosSinGuardar = computed(
-  () => form.nombre.trim() !== inicial.nombre || form.cobrable !== inicial.cobrable,
+  () =>
+    form.nombre.trim() !== inicial.nombre ||
+    form.cobrable !== inicial.cobrable ||
+    form.regla_vencimiento !== inicial.regla_vencimiento ||
+    diaDe(form) !== diaDe(inicial),
 )
+
+const AYUDAS_DE_REGLA = {
+  ninguna: 'La actividad no tiene fecha de vencimiento. Es la opción por defecto.',
+  dia_del_mes:
+    'Vence el día del mes que elijas. Si cae en día inhábil, pasa al siguiente día hábil.',
+  fin_de_mes: 'Vence el último día del mes. Si es inhábil, pasa al siguiente día hábil.',
+  dia_17_rfc:
+    'Vence el día 17 más días hábiles según el sexto dígito del RFC del cliente. Si el cliente no tiene RFC, no hay fecha.',
+}
+const ayudaDeRegla = computed(() => AYUDAS_DE_REGLA[form.regla_vencimiento])
 
 const DIALOGO = {
   transitionShow: 'dialogo-entra',
@@ -196,9 +290,14 @@ watch(dialogoAbierto, (abierto) => {
   if (!abierto) return
   form.nombre = props.tipo?.nombre ?? ''
   form.cobrable = props.tipo?.cobrable ?? false
+  form.regla_vencimiento = props.tipo?.regla_vencimiento ?? 'ninguna'
+  form.dia_del_mes = props.tipo?.dia_del_mes ?? ''
   inicial.nombre = form.nombre.trim()
   inicial.cobrable = form.cobrable
+  inicial.regla_vencimiento = form.regla_vencimiento
+  inicial.dia_del_mes = form.dia_del_mes
   erroresCampo.nombre = null
+  erroresCampo.dia_del_mes = null
   errorGeneral.value = ''
 })
 
@@ -208,6 +307,7 @@ const guardar = async () => {
 
   const validacion = validarDatosTipo(form)
   erroresCampo.nombre = validacion.errores.nombre ?? null
+  erroresCampo.dia_del_mes = validacion.errores.dia_del_mes ?? null
   if (!validacion.valido) {
     enfocarPrimerError()
     return
@@ -215,7 +315,12 @@ const guardar = async () => {
 
   guardando.value = true
   try {
-    const datos = { nombre: form.nombre, cobrable: form.cobrable }
+    const datos = {
+      nombre: form.nombre,
+      cobrable: form.cobrable,
+      regla_vencimiento: form.regla_vencimiento,
+    }
+    if (form.regla_vencimiento === 'dia_del_mes') datos.dia_del_mes = Number(form.dia_del_mes)
     const tipo = esEdicion.value
       ? await actualizarTipo(props.tipo.id, datos)
       : await crearTipo(datos)
