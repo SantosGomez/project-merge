@@ -410,7 +410,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('aria-label='), 'falta aria-label en items')
     assert.ok(src.includes('Ir al resumen del equipo'), 'falta aria-label del resumen del equipo')
     assert.ok(src.includes('Ir al directorio de usuarios'), 'falta aria-label directorio')
-    assert.ok(src.includes('Ir a mis casos'), 'falta aria-label mis casos')
+    assert.ok(src.includes('Ir a mi trabajo'), 'falta aria-label mis casos')
   })
 
   it('las opciones tienen texto, iconos y descripciones con contraste suficiente, también en el estado activo', () => {

@@ -1,5 +1,32 @@
 <template>
   <q-page class="my-cases-page">
+    <q-tabs
+      v-model="pestana"
+      no-caps
+      inline-label
+      align="left"
+      active-color="primary"
+      indicator-color="primary"
+      class="my-cases-page__tabs"
+    >
+      <q-tab name="casos" icon="list_alt" label="Mis casos">
+        <q-tooltip>Los casos que registraste o te asignaron.</q-tooltip>
+      </q-tab>
+      <q-tab name="actividades" icon="task_alt" label="Mis actividades">
+        <q-tooltip>Tus clientes y tus tipos de actividad.</q-tooltip>
+      </q-tab>
+    </q-tabs>
+
+    <q-tab-panels
+      v-model="pestana"
+      keep-alive
+      animated
+      transition-prev="fade"
+      transition-next="fade"
+      :transition-duration="150"
+      class="my-cases-page__paneles"
+    >
+      <q-tab-panel name="casos" class="my-cases-page__panel">
     <div class="my-cases-page__head">
       <p class="my-cases-page__lead">
         Aquí están los casos que registraste, los que te asignó el administrador, los de tus auxiliares y los de los contadores a los que apoyas. Cambia el estado desde la lista; usa «Ver» para consultar la ficha completa sin cambiarla y «Editar» para modificarla.<template v-if="session.esAuxiliar"> Solo tu contador puede marcar un caso como importante.</template>
@@ -168,6 +195,12 @@
       v-model="detalleAbierto"
       :caso="casoEnDetalle"
     />
+      </q-tab-panel>
+
+      <q-tab-panel name="actividades" class="my-cases-page__panel">
+        <MisActividades />
+      </q-tab-panel>
+    </q-tab-panels>
   </q-page>
 </template>
 
@@ -182,6 +215,7 @@ import CasoItem from '../components/CasoItem.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import FiltrosCasos from '../components/FiltrosCasos.vue'
+import MisActividades from '../components/MisActividades.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { eventos } from '../services/eventosService.js'
 import { useCasesStore } from '../stores/cases.js'
@@ -208,6 +242,13 @@ const auxiliaresStore = useAuxiliaresStore()
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
+
+// Pestaña en la URL (?tab=actividades), como «Mi equipo» en «Mi resumen»; sin parámetro, «Mis casos».
+const PESTANAS = ['casos', 'actividades']
+const pestana = computed({
+  get: () => (PESTANAS.includes(route.query.tab) ? route.query.tab : 'casos'),
+  set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
+})
 
 // Id del contador autenticado (texto en la sesión, número en el caso). Se usa para mostrar «de …»
 // cuando el caso es de un auxiliar.
@@ -449,6 +490,20 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 <style scoped>
 .my-cases-page {
   padding: 16px;
+}
+
+.my-cases-page__tabs {
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--dg-borde);
+  color: var(--dg-texto-secundario);
+}
+
+.my-cases-page__paneles {
+  background: transparent;
+}
+
+.my-cases-page__panel {
+  padding: 12px 0 0;
 }
 
 .my-cases-page__head {

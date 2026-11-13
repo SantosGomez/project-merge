@@ -180,13 +180,13 @@
               active-class="q-item--nav-activo"
               :to="{ name: 'contador-casos' }"
               :aria-current="paginaActual('contador-casos')"
-              aria-label="Ir a mis casos"
+              aria-label="Ir a mi trabajo"
             >
               <q-item-section avatar>
                 <q-icon name="list_alt" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>Mis casos</q-item-label>
+                <q-item-label>Mi trabajo</q-item-label>
                 <q-item-label caption>Registrar, revisar y editar</q-item-label>
               </q-item-section>
             </q-item>

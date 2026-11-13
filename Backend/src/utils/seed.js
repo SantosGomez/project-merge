@@ -168,6 +168,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarSesiones();
   await migrarAuditorias();
   await migrarContadorAuxiliar();
+  await migrarClientesYTiposActividad();
 
   if (!cuentasDemo) return;
 
@@ -407,6 +408,39 @@ async function migrarContadorAuxiliar() {
       PRIMARY KEY (contador_id, auxiliar_id),
       CONSTRAINT fk_ca_contador FOREIGN KEY (contador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
       CONSTRAINT fk_ca_auxiliar FOREIGN KEY (auxiliar_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+}
+
+/**
+ * Tablas de «Mi trabajo > Mis actividades» (rebanada 10): los clientes y los tipos de actividad
+ * son propios de cada contador o auxiliar. El nombre es único por usuario y, con la colación
+ * `_ci`, sin distinguir mayúsculas ni acentos. Se borran en cascada con su cuenta. Idempotente.
+ */
+async function migrarClientesYTiposActividad() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      nombre VARCHAR(150) NOT NULL,
+      rfc VARCHAR(13) NULL,
+      activo TINYINT(1) NOT NULL DEFAULT 1,
+      creado_en DATETIME NOT NULL,
+      UNIQUE KEY uq_clientes_usuario_nombre (usuario_id, nombre),
+      CONSTRAINT fk_clientes_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS tipos_actividad (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      nombre VARCHAR(120) NOT NULL,
+      cobrable TINYINT(1) NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1,
+      creado_en DATETIME NOT NULL,
+      UNIQUE KEY uq_tipos_actividad_usuario_nombre (usuario_id, nombre),
+      CONSTRAINT fk_tipos_actividad_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
 }
