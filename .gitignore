@@ -36,3 +36,6 @@ Thumbs.db
 .agents/skills/emil-design-eng/
 .claude/skills/impeccable/
 .claude/skills/emil-design-eng/
+
+# Grafo generado por la skill graphify (se reconstruye a partir del código)
+graphify-out/
