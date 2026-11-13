@@ -169,6 +169,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarAuditorias();
   await migrarContadorAuxiliar();
   await migrarClientesYTiposActividad();
+  await migrarCarteraYActividadesMes();
 
   if (!cuentasDemo) return;
 
@@ -441,6 +442,45 @@ async function migrarClientesYTiposActividad() {
       creado_en DATETIME NOT NULL,
       UNIQUE KEY uq_tipos_actividad_usuario_nombre (usuario_id, nombre),
       CONSTRAINT fk_tipos_actividad_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+}
+
+/**
+ * Tablas de la cartera por tipo y la lista del mes (rebanada 11). `cartera_actividad` dice qué clientes
+ * lleva cada usuario en cada tipo de actividad; `actividades_mes` guarda solo los renglones marcados como
+ * hechos (lo pendiente no ocupa filas). Se borran en cascada con la cuenta, el cliente o el tipo. Idempotente.
+ */
+async function migrarCarteraYActividadesMes() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS cartera_actividad (
+      usuario_id INT NOT NULL,
+      cliente_id INT NOT NULL,
+      tipo_id INT NOT NULL,
+      creado_en DATETIME NOT NULL,
+      PRIMARY KEY (cliente_id, tipo_id),
+      KEY idx_cartera_tipo (tipo_id),
+      KEY idx_cartera_usuario (usuario_id),
+      CONSTRAINT fk_cartera_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      CONSTRAINT fk_cartera_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+      CONSTRAINT fk_cartera_tipo FOREIGN KEY (tipo_id) REFERENCES tipos_actividad(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS actividades_mes (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      cliente_id INT NOT NULL,
+      tipo_id INT NOT NULL,
+      mes CHAR(7) NOT NULL,
+      estado ENUM('pendiente', 'hecha') NOT NULL DEFAULT 'pendiente',
+      hecha_en DATETIME NULL,
+      UNIQUE KEY uq_actividades_mes (cliente_id, tipo_id, mes),
+      KEY idx_actividades_usuario_mes (usuario_id, mes),
+      CONSTRAINT fk_actividades_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      CONSTRAINT fk_actividades_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+      CONSTRAINT fk_actividades_tipo FOREIGN KEY (tipo_id) REFERENCES tipos_actividad(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
 }

@@ -65,6 +65,13 @@
               <q-badge v-else outline color="dg-texto-tenue" label="No cobrable">
                 <q-tooltip>El tiempo de este tipo no se cobra al cliente.</q-tooltip>
               </q-badge>
+              <q-badge
+                outline
+                color="dg-texto-tenue"
+                :label="etiquetaDeClientes(tipo.total_clientes)"
+              >
+                <q-tooltip>Clientes activos a los que les haces este tipo de actividad.</q-tooltip>
+              </q-badge>
               <q-badge v-if="!tipo.activo" outline color="dg-texto-tenue" label="Desactivado">
                 <q-tooltip>No se ofrece al registrar actividades. Puedes reactivarlo.</q-tooltip>
               </q-badge>
@@ -73,6 +80,21 @@
 
           <q-item-section side class="mis-tipos__acciones">
             <div class="mis-tipos__botones">
+              <q-btn
+                v-if="tipo.activo"
+                flat
+                no-caps
+                color="primary"
+                icon="groups"
+                label="Clientes"
+                class="control-touch boton-presionable"
+                aria-haspopup="dialog"
+                :aria-label="`Elegir los clientes del tipo ${tipo.nombre}`"
+                :disable="cambiandoId === tipo.id"
+                @click="abrirClientes(tipo)"
+              >
+                <q-tooltip>Elige a qué clientes les haces este tipo de actividad.</q-tooltip>
+              </q-btn>
               <q-btn
                 flat
                 no-caps
@@ -111,6 +133,11 @@
     </q-card-section>
 
     <TipoActividadFormDialog v-model="dialogoAbierto" :tipo="tipoEnEdicion" @guardado="alGuardar" />
+    <ClientesDeTipoDialog
+      v-model="clientesAbierto"
+      :tipo="tipoConClientes"
+      @guardado="alGuardarClientes"
+    />
   </q-card>
 </template>
 
@@ -118,6 +145,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
 
+import ClientesDeTipoDialog from './ClientesDeTipoDialog.vue'
 import EmptyState from './EmptyState.vue'
 import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'
@@ -134,6 +162,8 @@ const error = ref(null)
 
 const dialogoAbierto = ref(false)
 const tipoEnEdicion = ref(null)
+const clientesAbierto = ref(false)
+const tipoConClientes = ref(null)
 // Tipo al que se le está cambiando «activo»; solo esa fila queda ocupada.
 const cambiandoId = ref(null)
 
@@ -161,6 +191,19 @@ const abrirAlta = () => {
 const abrirEdicion = (tipo) => {
   tipoEnEdicion.value = tipo
   dialogoAbierto.value = true
+}
+
+const etiquetaDeClientes = (total) => (total === 1 ? '1 cliente' : `${total ?? 0} clientes`)
+
+const abrirClientes = (tipo) => {
+  tipoConClientes.value = tipo
+  clientesAbierto.value = true
+}
+
+const alGuardarClientes = ({ tipoId, total }) => {
+  const tipo = tipos.value.find((actual) => actual.id === tipoId)
+  if (tipo) tipo.total_clientes = total
+  $q.notify({ type: 'positive', message: 'Clientes del tipo guardados.' })
 }
 
 const alGuardar = (tipo, fueEdicion) => {

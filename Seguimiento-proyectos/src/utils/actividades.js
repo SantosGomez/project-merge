@@ -69,3 +69,131 @@ export const mezclarEnLista = (lista, elemento) =>
       a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }) ||
       a.id - b.id,
   )
+
+const NOMBRES_DE_MES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+]
+
+const FORMA_MES = /^(\d{4})-(0[1-9]|1[0-2])$/
+
+const textoDeMes = (anio, mes) => `${String(anio).padStart(4, '0')}-${String(mes).padStart(2, '0')}`
+
+/**
+ * Indica si un texto es un mes con la forma AAAA-MM (mes de 01 a 12).
+ * @param {*} mes - Valor a revisar.
+ * @returns {boolean}
+ */
+export const esMesValido = (mes) => typeof mes === 'string' && FORMA_MES.test(mes)
+
+/**
+ * Mes de una fecha en hora local, como texto AAAA-MM (el mes en que se hace el trabajo).
+ * @param {Date} [hoy] - Fecha de referencia; por defecto, ahora.
+ * @returns {string}
+ */
+export const mesActual = (hoy = new Date()) => textoDeMes(hoy.getFullYear(), hoy.getMonth() + 1)
+
+/**
+ * Mes anterior a uno dado, calculado sobre el texto (sin `Date`, que desplaza días por la zona horaria).
+ * @param {string} mes - Mes AAAA-MM válido.
+ * @returns {string}
+ */
+export const mesAnterior = (mes) => {
+  const [, anio, numero] = FORMA_MES.exec(mes)
+  return Number(numero) === 1
+    ? textoDeMes(Number(anio) - 1, 12)
+    : textoDeMes(Number(anio), Number(numero) - 1)
+}
+
+/**
+ * Mes siguiente a uno dado, calculado sobre el texto.
+ * @param {string} mes - Mes AAAA-MM válido.
+ * @returns {string}
+ */
+export const mesSiguiente = (mes) => {
+  const [, anio, numero] = FORMA_MES.exec(mes)
+  return Number(numero) === 12
+    ? textoDeMes(Number(anio) + 1, 1)
+    : textoDeMes(Number(anio), Number(numero) + 1)
+}
+
+/**
+ * Mes escrito para mostrarlo, como «Noviembre de 2026».
+ * @param {string} mes - Mes AAAA-MM válido.
+ * @returns {string}
+ */
+export const etiquetaDeMes = (mes) => {
+  const [, anio, numero] = FORMA_MES.exec(mes)
+  return `${NOMBRES_DE_MES[Number(numero) - 1]} de ${anio}`
+}
+
+/**
+ * Agrupa los renglones de la lista del mes por tipo, en el orden en que llegan (el backend los
+ * entrega por tipo y cliente), con cuántos están hechos.
+ * @param {Array<Object>} actividades - Renglones (`tipo_id`, `tipo`, `tipo_activo`, `hecha`…).
+ * @returns {Array<{ tipo_id: number, tipo: string, tipo_activo: boolean, renglones: Array<Object>, hechas: number, total: number }>}
+ */
+export const agruparPorTipo = (actividades) => {
+  const grupos = new Map()
+  for (const actividad of actividades) {
+    if (!grupos.has(actividad.tipo_id)) {
+      grupos.set(actividad.tipo_id, {
+        tipo_id: actividad.tipo_id,
+        tipo: actividad.tipo,
+        tipo_activo: actividad.tipo_activo,
+        renglones: [],
+        hechas: 0,
+        total: 0,
+      })
+    }
+    const grupo = grupos.get(actividad.tipo_id)
+    grupo.renglones.push(actividad)
+    grupo.total += 1
+    if (actividad.hecha) grupo.hechas += 1
+  }
+  return [...grupos.values()]
+}
+
+/**
+ * Total de renglones hechos y de renglones del mes, sumando todos los grupos.
+ * @param {Array<{ hechas: number, total: number }>} grupos - Salida de `agruparPorTipo`.
+ * @returns {{ hechas: number, total: number }}
+ */
+export const totalesDelMes = (grupos) => ({
+  hechas: grupos.reduce((suma, grupo) => suma + grupo.hechas, 0),
+  total: grupos.reduce((suma, grupo) => suma + grupo.total, 0),
+})
+
+/**
+ * Diferencia entre la cartera cargada de un tipo y la que quedó marcada: solo eso se envía al guardar.
+ * @param {Array<number>} cargados - Ids de cliente marcados al abrir.
+ * @param {Array<number>} elegidos - Ids de cliente marcados al guardar.
+ * @returns {{ agregar: Array<number>, quitar: Array<number> }}
+ */
+export const calcularCambiosDeCartera = (cargados, elegidos) => ({
+  agregar: elegidos.filter((id) => !cargados.includes(id)),
+  quitar: cargados.filter((id) => !elegidos.includes(id)),
+})
+
+/**
+ * Por qué la lista del mes está vacía, para explicar qué falta y a dónde ir.
+ * @param {{ clientes: Array<{ activo: boolean }>, tipos: Array<{ activo: boolean, total_clientes: number }> }} catalogos
+ * @returns {'sin-clientes'|'sin-tipos'|'sin-cartera'|'sin-renglones'}
+ */
+export const diagnosticoVacio = ({ clientes, tipos }) => {
+  const tiposActivos = tipos.filter((tipo) => tipo.activo)
+  if (!clientes.some((cliente) => cliente.activo)) return 'sin-clientes'
+  if (tiposActivos.length === 0) return 'sin-tipos'
+  if (tiposActivos.every((tipo) => tipo.total_clientes === 0)) return 'sin-cartera'
+  return 'sin-renglones'
+}

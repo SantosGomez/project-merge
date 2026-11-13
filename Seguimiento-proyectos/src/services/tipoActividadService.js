@@ -19,7 +19,7 @@ export const crearTipoActividadService = (opciones = {}) => {
 
   /**
    * GET /tipos-actividad: tipos de la cuenta, activos primero.
-   * @returns {Promise<Array<{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string }>>}
+   * @returns {Promise<Array<{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string, total_clientes: number }>>}
    */
   const listarTipos = async () => {
     const { data } = await api.get('/tipos-actividad')
@@ -53,7 +53,30 @@ export const crearTipoActividadService = (opciones = {}) => {
     return leerTipo(data)
   }
 
-  return { listarTipos, crearTipo, actualizarTipo }
+  /**
+   * GET /tipos-actividad/:id/clientes: ids de los clientes que llevas en ese tipo.
+   * @param {number} id - Id del tipo.
+   * @returns {Promise<Array<number>>}
+   */
+  const listarClientesDeTipo = async (id) => {
+    const { data } = await api.get(`/tipos-actividad/${id}/clientes`)
+    if (!Array.isArray(data?.cliente_ids)) throw crearErrorInesperado('los clientes del tipo')
+    return data.cliente_ids
+  }
+
+  /**
+   * PUT /tipos-actividad/:id/clientes: guarda solo la diferencia de la cartera del tipo.
+   * @param {number} id - Id del tipo.
+   * @param {{ agregar: Array<number>, quitar: Array<number> }} cambios
+   * @returns {Promise<Array<number>>} ids de cliente que quedan en el tipo.
+   */
+  const guardarClientesDeTipo = async (id, { agregar, quitar }) => {
+    const { data } = await api.put(`/tipos-actividad/${id}/clientes`, { agregar, quitar })
+    if (!Array.isArray(data?.cliente_ids)) throw crearErrorInesperado('los clientes del tipo')
+    return data.cliente_ids
+  }
+
+  return { listarTipos, crearTipo, actualizarTipo, listarClientesDeTipo, guardarClientesDeTipo }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -62,3 +85,5 @@ const servicioPorDefecto = crearTipoActividadService()
 export const listarTipos = servicioPorDefecto.listarTipos
 export const crearTipo = servicioPorDefecto.crearTipo
 export const actualizarTipo = servicioPorDefecto.actualizarTipo
+export const listarClientesDeTipo = servicioPorDefecto.listarClientesDeTipo
+export const guardarClientesDeTipo = servicioPorDefecto.guardarClientesDeTipo

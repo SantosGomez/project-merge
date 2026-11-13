@@ -148,6 +148,15 @@ function esCorreoValido(correo) {
 }
 
 /**
+ * Indica si un texto es un mes con la forma AAAA-MM (mes de 01 a 12).
+ * @param {*} valor - Mes recibido en la petición.
+ * @returns {boolean} true si tiene la forma AAAA-MM.
+ */
+function esMesValido(valor) {
+  return typeof valor === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(valor);
+}
+
+/**
  * Convierte una lista de identificadores en enteros positivos sin repetir.
  * @param {*} valor - Lista recibida en el cuerpo de la petición.
  * @returns {Array<number>|null} Los ids, o null si no es una lista o algún id no es válido.
@@ -195,4 +204,5 @@ module.exports = {
   esCorreoValido,
   parseCounterId,
   parseListaDeIds,
+  esMesValido,
 };

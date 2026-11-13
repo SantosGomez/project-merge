@@ -6,12 +6,16 @@ const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
  * El nombre es único por usuario sin distinguir mayúsculas ni acentos (colación de la tabla).
  */
 
-const COLUMNAS = 'id, nombre, cobrable, activo, creado_en';
+// `total_clientes` cuenta los clientes activos de la cartera del tipo (rebanada 11).
+const COLUMNAS = `id, nombre, cobrable, activo, creado_en,
+  (SELECT COUNT(*) FROM cartera_actividad ca
+     JOIN clientes c ON c.id = ca.cliente_id
+     WHERE ca.tipo_id = tipos_actividad.id AND c.activo = 1) AS total_clientes`;
 
 /**
  * Convierte una fila de la tabla en el tipo que entrega la API.
  * @param {Object} fila - Fila de `tipos_actividad`.
- * @returns {{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string }}
+ * @returns {{ id: number, nombre: string, cobrable: boolean, activo: boolean, creado_en: string, total_clientes: number }}
  */
 function aTipo(fila) {
   return {
@@ -20,6 +24,7 @@ function aTipo(fila) {
     cobrable: Boolean(fila.cobrable),
     activo: Boolean(fila.activo),
     creado_en: formatLocalDate(fila.creado_en),
+    total_clientes: Number(fila.total_clientes),
   };
 }
 

@@ -46,7 +46,8 @@ async function testAltaDevuelve201ConCobrableApagadoPorDefecto() {
   const respuesta = await crear(tokenContador, { nombre: '  Revisión de facturas  ' });
   assert.strictEqual(respuesta.statusCode, 201);
   const { tipo } = respuesta.body;
-  assert.deepStrictEqual(Object.keys(tipo).sort(), ['activo', 'cobrable', 'creado_en', 'id', 'nombre']);
+  assert.deepStrictEqual(Object.keys(tipo).sort(), ['activo', 'cobrable', 'creado_en', 'id', 'nombre', 'total_clientes']);
+  assert.strictEqual(tipo.total_clientes, 0);
   assert.strictEqual(tipo.nombre, 'Revisión de facturas');
   assert.strictEqual(tipo.cobrable, false);
   assert.strictEqual(tipo.activo, true);
