@@ -58,6 +58,7 @@ const MINIMOS = {
   'ownershipMiddlewareAuxiliar.test.js': 3,
   'passwordUtils.test.js': 4,
   'prioridadAdmin.test.js': 6,
+  'registrosTiempo.test.js': 13,
   'respuestasApi.test.js': 3,
   'rolAuxiliar.test.js': 10,
   'roleMiddleware.test.js': 8,

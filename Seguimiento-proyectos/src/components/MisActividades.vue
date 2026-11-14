@@ -1,5 +1,7 @@
 <template>
   <div class="mis-actividades">
+    <CronometroActivo />
+
     <q-btn-toggle
       :model-value="vista"
       no-caps
@@ -42,13 +44,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import CalendarioActividades from './CalendarioActividades.vue'
+import CronometroActivo from './CronometroActivo.vue'
 import ListaDelMes from './ListaDelMes.vue'
 import MisClientes from './MisClientes.vue'
 import MisTiposActividad from './MisTiposActividad.vue'
+import { useCronometroStore } from '../stores/cronometro.js'
 
 const OPCIONES_DE_VISTA = [
   { label: 'Lista del mes', value: 'lista', icon: 'checklist' },
@@ -58,6 +62,18 @@ const OPCIONES_DE_VISTA = [
 
 const route = useRoute()
 const router = useRouter()
+const cronometro = useCronometroStore()
+
+// El cronómetro en marcha vive en el servidor: se lee al entrar y, en silencio, al volver a la ventana
+// (lo pudiste iniciar o detener en otro dispositivo). Un fallo de lectura no borra lo que se mostraba.
+const alVolverALaVentana = () => {
+  if (document.visibilityState === 'visible') cronometro.cargarActivo()
+}
+onMounted(() => {
+  cronometro.cargarActivo()
+  document.addEventListener('visibilitychange', alVolverALaVentana)
+})
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverALaVentana))
 
 // La vista va en la dirección (?vista=calendario o ?vista=catalogos), como la pestaña (?tab=); sin
 // parámetro, la lista del mes. El mes (?mes=) lo comparten la lista y el calendario.

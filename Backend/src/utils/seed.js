@@ -171,6 +171,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarClientesYTiposActividad();
   await migrarCarteraYActividadesMes();
   await migrarVencimientoDeTipos();
+  await migrarRegistrosTiempo();
 
   if (!cuentasDemo) return;
 
@@ -495,6 +496,33 @@ async function migrarVencimientoDeTipos() {
     "ALTER TABLE tipos_actividad ADD COLUMN IF NOT EXISTS regla_vencimiento ENUM('ninguna', 'dia_del_mes', 'fin_de_mes', 'dia_17_rfc') NOT NULL DEFAULT 'ninguna'"
   );
   await query('ALTER TABLE tipos_actividad ADD COLUMN IF NOT EXISTS dia_del_mes TINYINT NULL');
+}
+
+/**
+ * Bloques de tiempo del cronómetro (rebanada 14). `fin` NULL significa cronómetro en marcha (a lo más uno
+ * por usuario, lo garantiza el modelo con transacción). `cobrable` es copia del tipo al crear el bloque.
+ * Se borran en cascada con la cuenta, el cliente o el tipo. Idempotente.
+ */
+async function migrarRegistrosTiempo() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS registros_tiempo (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      cliente_id INT NOT NULL,
+      tipo_id INT NOT NULL,
+      mes CHAR(7) NOT NULL,
+      inicio DATETIME NOT NULL,
+      fin DATETIME NULL,
+      minutos INT NULL,
+      cobrable TINYINT(1) NOT NULL DEFAULT 0,
+      manual TINYINT(1) NOT NULL DEFAULT 0,
+      KEY idx_registros_usuario_mes (usuario_id, mes),
+      KEY idx_registros_renglon (cliente_id, tipo_id, mes),
+      CONSTRAINT fk_registros_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      CONSTRAINT fk_registros_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+      CONSTRAINT fk_registros_tipo FOREIGN KEY (tipo_id) REFERENCES tipos_actividad(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
 }
 
 module.exports = { seedDatabase, debeSembrarCuentasDemo };

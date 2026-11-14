@@ -242,10 +242,10 @@ export const ordenarPorVencimiento = (renglones) =>
 
 /**
  * Agrupa los renglones de la lista del mes por tipo, en el orden en que llegan (el backend los
- * entrega por tipo y cliente), con cuántos están hechos. Dentro de cada grupo los renglones van
+ * entrega por tipo y cliente), con cuántos están hechos y los minutos registrados. Dentro de cada grupo los renglones van
  * ordenados por vencimiento (`ordenarPorVencimiento`).
  * @param {Array<Object>} actividades - Renglones (`tipo_id`, `tipo`, `tipo_activo`, `hecha`…).
- * @returns {Array<{ tipo_id: number, tipo: string, tipo_activo: boolean, renglones: Array<Object>, hechas: number, total: number }>}
+ * @returns {Array<{ tipo_id: number, tipo: string, tipo_activo: boolean, renglones: Array<Object>, hechas: number, total: number, minutos: number }>}
  */
 export const agruparPorTipo = (actividades) => {
   const grupos = new Map()
@@ -258,12 +258,14 @@ export const agruparPorTipo = (actividades) => {
         renglones: [],
         hechas: 0,
         total: 0,
+        minutos: 0,
       })
     }
     const grupo = grupos.get(actividad.tipo_id)
     grupo.renglones.push(actividad)
     grupo.total += 1
     if (actividad.hecha) grupo.hechas += 1
+    grupo.minutos += Number(actividad.minutos) || 0
   }
   return [...grupos.values()].map((grupo) => ({
     ...grupo,
@@ -423,4 +425,84 @@ export const textoSinFecha = (cantidad) => {
       ? '1 actividad de este mes no tiene fecha de vencimiento'
       : `${cantidad} actividades de este mes no tienen fecha de vencimiento`
   return `${sujeto} y no ${cantidad === 1 ? 'sale' : 'salen'} en el calendario. Búscala${cantidad === 1 ? '' : 's'} en la «Lista del mes».`
+}
+
+/**
+ * Minutos registrados en todo el mes, sumando los grupos.
+ * @param {Array<{ minutos: number }>} grupos - Salida de `agruparPorTipo`.
+ * @returns {number}
+ */
+export const minutosDelMes = (grupos) => grupos.reduce((suma, grupo) => suma + grupo.minutos, 0)
+
+/**
+ * Duración escrita para el renglón, el grupo y el mes: «45 min», «2 h» o «1 h 20 min».
+ * @param {number|null|undefined} minutos - Minutos; lo que no sea un número positivo cuenta como cero.
+ * @returns {string}
+ */
+export const formatearDuracion = (minutos) => {
+  const total = Number.isFinite(minutos) && minutos > 0 ? Math.floor(minutos) : 0
+  const horas = Math.floor(total / 60)
+  const resto = total % 60
+  if (horas === 0) return `${resto} min`
+  return resto === 0 ? `${horas} h` : `${horas} h ${resto} min`
+}
+
+/**
+ * Tiempo transcurrido del cronómetro como H:MM:SS.
+ * @param {number} segundos - Segundos transcurridos.
+ * @returns {string}
+ */
+export const formatearCronometro = (segundos) => {
+  const total = Number.isFinite(segundos) && segundos > 0 ? Math.floor(segundos) : 0
+  const horas = Math.floor(total / 3600)
+  const minutos = String(Math.floor((total % 3600) / 60)).padStart(2, '0')
+  const resto = String(total % 60).padStart(2, '0')
+  return `${horas}:${minutos}:${resto}`
+}
+
+const FORMA_HORA_SERVIDOR = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/
+
+/**
+ * Lee una hora del servidor (AAAA-MM-DD HH:mm:ss, hora local) armando la fecha con sus partes.
+ * @param {*} texto - Hora recibida de la API.
+ * @returns {Date|null} null si no tiene esa forma.
+ */
+export const parsearHoraDelServidor = (texto) => {
+  const partes = typeof texto === 'string' ? FORMA_HORA_SERVIDOR.exec(texto) : null
+  if (!partes) return null
+  const [anio, mes, dia, horas, minutos, segundos] = partes.slice(1).map(Number)
+  return new Date(anio, mes - 1, dia, horas, minutos, segundos)
+}
+
+/**
+ * Segundos entre dos horas del servidor; nunca negativo y 0 si alguna no es válida.
+ * @param {string} inicio - Hora de inicio.
+ * @param {string} ahora - Hora actual del servidor.
+ * @returns {number}
+ */
+export const segundosEntre = (inicio, ahora) => {
+  const desde = parsearHoraDelServidor(inicio)
+  const hasta = parsearHoraDelServidor(ahora)
+  if (!desde || !hasta) return 0
+  return Math.max(0, Math.round((hasta.getTime() - desde.getTime()) / 1000))
+}
+
+/** Máximo de minutos que se puede agregar a mano en un solo bloque (un día completo). */
+export const MINUTOS_MAX_MANUAL = 1440
+
+/**
+ * Valida los minutos de un bloque escrito a mano: entero de 1 a 1440.
+ * @param {*} valor - Lo escrito en el campo (texto o número).
+ * @returns {{ valido: true, minutos: number } | { valido: false, error: string }}
+ */
+export const validarMinutosManual = (valor) => {
+  const texto = String(valor ?? '').trim()
+  const minutos = /^\d+$/.test(texto) ? Number(texto) : 0
+  if (minutos < 1 || minutos > MINUTOS_MAX_MANUAL) {
+    return {
+      valido: false,
+      error: `Escribe un número entero de minutos entre 1 y ${MINUTOS_MAX_MANUAL}, por ejemplo 30.`,
+    }
+  }
+  return { valido: true, minutos }
 }

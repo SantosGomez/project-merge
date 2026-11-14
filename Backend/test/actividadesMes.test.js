@@ -101,7 +101,7 @@ async function testListaUnRenglonPorTipoYClienteAgrupadoPorTipoYOrdenado() {
   const primero = respuesta.body.actividades[0];
   assert.deepStrictEqual(
     Object.keys(primero).sort(),
-    ['cliente', 'cliente_activo', 'cliente_id', 'falta_rfc', 'hecha', 'hecha_en', 'tipo', 'tipo_activo', 'tipo_id', 'vence']
+    ['cliente', 'cliente_activo', 'cliente_id', 'falta_rfc', 'hecha', 'hecha_en', 'minutos', 'tipo', 'tipo_activo', 'tipo_id', 'vence']
   );
   assert.strictEqual(primero.hecha, false);
   assert.strictEqual(primero.hecha_en, null);

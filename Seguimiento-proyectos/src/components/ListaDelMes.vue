@@ -48,6 +48,10 @@
         <strong v-if="totales.total > 0" class="lista-mes__avance">
           {{ totales.hechas }} de {{ totales.total }} hechas este mes.
         </strong>
+        <strong v-if="totales.total > 0" class="lista-mes__avance">
+          Tiempo registrado: {{ formatearDuracion(minutosMes) }}.
+          <q-tooltip>Suma del tiempo de todos los renglones del mes.</q-tooltip>
+        </strong>
         <strong v-if="totalVencidas > 0" class="lista-mes__vencidas">
           {{ totalVencidas === 1 ? '1 vencida' : `${totalVencidas} vencidas` }}.
           <q-tooltip>Actividades pendientes cuya fecha de vencimiento ya pasó.</q-tooltip>
@@ -88,7 +92,13 @@
               <q-item-label class="lista-mes__grupo-nombre">{{ grupo.tipo }}</q-item-label>
               <q-item-label v-if="!grupo.tipo_activo" caption>Tipo desactivado</q-item-label>
             </q-item-section>
-            <q-item-section side>
+            <!-- Una sola sección: en pantallas angostas las insignias se apilan y el nombre conserva su ancho. -->
+            <q-item-section side class="lista-mes__grupo-insignias">
+              <q-badge outline color="dg-texto-tenue" class="lista-mes__tiempo-grupo">
+                <q-icon name="history" size="14px" aria-hidden="true" class="q-mr-xs" />
+                {{ formatearDuracion(grupo.minutos) }}
+                <q-tooltip>Tiempo registrado en las actividades de este tipo este mes.</q-tooltip>
+              </q-badge>
               <q-badge
                 v-if="grupo.hechas === grupo.total"
                 color="dg-exito-fondo"
@@ -175,6 +185,9 @@
                 </q-item-label>
               </q-item-section>
               <q-item-section side class="lista-mes__lado">
+                <RenglonActividad :renglon="renglon" :mes="mes" />
+              </q-item-section>
+              <q-item-section side class="lista-mes__lado">
                 <q-checkbox
                   :model-value="renglon.hecha"
                   label="Hecha"
@@ -208,10 +221,12 @@ import { useQuasar } from 'quasar'
 
 import EmptyState from './EmptyState.vue'
 import ErrorState from './ErrorState.vue'
+import RenglonActividad from './RenglonActividad.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import { guardarEstado, listarActividades } from '../services/actividadService.js'
 import { listarClientes } from '../services/clienteService.js'
 import { listarTipos } from '../services/tipoActividadService.js'
+import { useCronometroStore } from '../stores/cronometro.js'
 import {
   agruparPorTipo,
   contarVencidas,
@@ -219,9 +234,11 @@ import {
   esMesValido,
   estadoDeVencimiento,
   etiquetaDeMes,
+  formatearDuracion,
   mesActual,
   mesAnterior,
   mesSiguiente,
+  minutosDelMes,
   nombreAccesibleDeRenglon,
   textoDeVencimiento,
   totalesDelMes,
@@ -237,6 +254,7 @@ import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 const emit = defineEmits(['ir-a-catalogos'])
 
 const $q = useQuasar()
+const cronometro = useCronometroStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -256,6 +274,7 @@ const guardandoClaves = reactive(new Set())
 
 const grupos = computed(() => agruparPorTipo(actividades.value))
 const totales = computed(() => totalesDelMes(grupos.value))
+const minutosMes = computed(() => minutosDelMes(grupos.value))
 const totalVencidas = computed(() => contarVencidas(actividades.value, hoy.value))
 const estado = computed(() =>
   screenState({ loading: cargando.value, error: error.value, rows: actividades.value }),
@@ -338,6 +357,12 @@ const irAlMes = (nuevo) => {
 }
 
 watch(mes, () => cargar())
+
+// Al iniciar o detener un cronómetro o cambiar bloques de tiempo se releen los minutos sin pantalla de carga.
+watch(
+  () => cronometro.cambios,
+  () => cargar({ silencioso: true }),
+)
 
 const cambiarEstado = async (renglon, hecha) => {
   const clave = claveDe(renglon)
@@ -447,7 +472,24 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
 .lista-mes__grupo-nombre {
   color: var(--dg-texto);
   font-weight: 600;
-  overflow-wrap: anywhere;
+  /* `break-word` y no `anywhere`: solo parte una palabra cuando sola no cabe en la línea. */
+  overflow-wrap: break-word;
+}
+
+.lista-mes__grupo-insignias {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 8px;
+}
+
+/* En celular las insignias van una sobre otra para no quitarle ancho al nombre del tipo. */
+@media (max-width: 599px) {
+  .lista-mes__grupo-insignias {
+    flex-direction: column;
+    align-items: flex-end;
+  }
 }
 
 .lista-mes__fila {

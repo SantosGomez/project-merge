@@ -9,8 +9,9 @@ const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 /**
  * Renglones de un mes: la cartera actual (solo clientes y tipos activos) más lo ya hecho en ese mes,
  * aunque después el cliente haya salido de la cartera o se haya desactivado él o el tipo.
- * Ordenados por tipo y, dentro, por cliente. Cada renglón trae la regla de vencimiento del tipo y el RFC
- * del cliente para que el controlador calcule la fecha.
+ * También sale todo renglón con tiempo registrado ese mes (historial), y trae `minutos`: la suma de sus
+ * bloques terminados (el cronómetro en marcha aún no suma). Ordenados por tipo y, dentro, por cliente.
+ * Cada renglón trae la regla de vencimiento del tipo y el RFC del cliente para que el controlador calcule la fecha.
  * @param {number} usuarioId - Dueño de la lista.
  * @param {string} mes - Mes en formato AAAA-MM.
  * @returns {Promise<Array<Object>>}
@@ -20,7 +21,7 @@ async function listarDelMes(usuarioId, mes) {
     `SELECT c.id AS cliente_id, c.nombre AS cliente, c.activo AS cliente_activo, c.rfc AS rfc,
             t.id AS tipo_id, t.nombre AS tipo, t.activo AS tipo_activo,
             t.regla_vencimiento AS regla_vencimiento, t.dia_del_mes AS dia_del_mes,
-            am.estado AS estado, am.hecha_en AS hecha_en
+            am.estado AS estado, am.hecha_en AS hecha_en, COALESCE(rt.minutos, 0) AS minutos
        FROM (
          SELECT ca.cliente_id, ca.tipo_id
            FROM cartera_actividad ca
@@ -30,12 +31,20 @@ async function listarDelMes(usuarioId, mes) {
          UNION
          SELECT cliente_id, tipo_id FROM actividades_mes
           WHERE usuario_id = ? AND mes = ? AND estado = 'hecha'
+         UNION
+         SELECT cliente_id, tipo_id FROM registros_tiempo
+          WHERE usuario_id = ? AND mes = ?
        ) k
        JOIN clientes c ON c.id = k.cliente_id
        JOIN tipos_actividad t ON t.id = k.tipo_id
        LEFT JOIN actividades_mes am ON am.cliente_id = k.cliente_id AND am.tipo_id = k.tipo_id AND am.mes = ?
+       LEFT JOIN (
+         SELECT cliente_id, tipo_id, SUM(minutos) AS minutos FROM registros_tiempo
+          WHERE usuario_id = ? AND mes = ? AND fin IS NOT NULL
+          GROUP BY cliente_id, tipo_id
+       ) rt ON rt.cliente_id = k.cliente_id AND rt.tipo_id = k.tipo_id
       ORDER BY t.nombre ASC, t.id ASC, c.nombre ASC, c.id ASC`,
-    [usuarioId, usuarioId, mes, mes]
+    [usuarioId, usuarioId, mes, usuarioId, mes, mes, usuarioId, mes]
   );
   return filas.map((fila) => ({
     cliente_id: fila.cliente_id,
@@ -49,6 +58,7 @@ async function listarDelMes(usuarioId, mes) {
     dia_del_mes: fila.dia_del_mes,
     hecha: fila.estado === 'hecha',
     hecha_en: fila.hecha_en ? formatLocalDate(fila.hecha_en) : null,
+    minutos: Number(fila.minutos),
   }));
 }
 

@@ -187,6 +187,9 @@
                     </q-item-label>
                   </q-item-section>
                   <q-item-section side class="calendario__lado">
+                    <RenglonActividad :renglon="renglon" :mes="renglon.mes" />
+                  </q-item-section>
+                  <q-item-section side class="calendario__lado">
                     <q-checkbox
                       :model-value="renglon.hecha"
                       label="Hecha"
@@ -222,8 +225,10 @@ import { useQuasar } from 'quasar'
 
 import EmptyState from './EmptyState.vue'
 import ErrorState from './ErrorState.vue'
+import RenglonActividad from './RenglonActividad.vue'
 import ScreenLoader from './ScreenLoader.vue'
 import { guardarEstado, listarActividades } from '../services/actividadService.js'
+import { useCronometroStore } from '../stores/cronometro.js'
 import {
   diaInicialDelCalendario,
   esDiaInhabil,
@@ -272,6 +277,7 @@ const COLOR_DEL_PUNTO = { vencida: 'dg-error', 'por-vencer': 'dg-importante', he
 const emit = defineEmits(['ir-a-catalogos'])
 
 const $q = useQuasar()
+const cronometro = useCronometroStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -393,6 +399,12 @@ watch(mes, (nuevo) => {
   fechaRef.value?.setCalendarTo(anio, numero)
   cargar()
 })
+
+// Al iniciar o detener un cronómetro o cambiar bloques de tiempo se releen los minutos sin pantalla de carga.
+watch(
+  () => cronometro.cambios,
+  () => cargar({ silencioso: true }),
+)
 
 const cambiarEstado = async (renglon, hecha) => {
   const clave = claveDe(renglon)

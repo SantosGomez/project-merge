@@ -64,11 +64,19 @@ Fuera de esta lista, el implementer para y pregunta.
 
 ## Reporte del implementer
 
-1. Rebanada completada:
-2. Archivos modificados:
-3. Prueba en rojo y por qué falló:
-4. Puertas (verde / rojo / no aplica):
-5. Decisiones no cubiertas:
-6. Para la memoria:
+1. Rebanada completada: los 12 criterios (2026-11-13).
+2. Archivos: backend nuevos `RegistroTiempoModel.js`, `RegistroTiempoController.js`, `tiempoRoutes.js`, `test/registrosTiempo.test.js` (13); modificados `seed.js` (`migrarRegistrosTiempo`), `app.js`, `ActividadMesModel.js`, `actividadesMes.test.js`, `MINIMOS`. Frontend nuevos `CronometroActivo.vue`, `RenglonActividad.vue` (botón del cronómetro, tiempo y diálogo compartidos por lista y calendario), `TiempoRegistradoDialog.vue`, `tiempoService.js`, `stores/cronometro.js`, `test/cronometro.test.js` (35); modificados `MisActividades.vue`, `ListaDelMes.vue`, `CalendarioActividades.vue`, `utils/actividades.js`.
+3. Prueba en rojo y por qué falló: `/tiempo` no existía (404), faltaba `minutos` en el renglón, imports inexistentes en el frontend; al quitar el bloqueo, la prueba de dos «iniciar» simultáneos se puso en rojo.
+4. Puertas: frontend lint, build y 1286/1286; backend `registrosTiempo` 13, `actividadesMes` 14, `seed` 26, `carteraActividad` 8 y `verificarPruebas.js` OK (52 archivos, 500 pruebas); navegador en escritorio y móvil de 375 px. Sin verificar: `visibilitychange` en vivo, segundo dispositivo, lector de pantalla.
+5. Decisiones no cubiertas: un solo cronómetro por usuario con transacción y `SELECT … FOR UPDATE` sobre la fila del usuario (sin índice único); minutos = máx(1, redondeo); el tiempo a mano termina «ahora» y su inicio es aproximado (etiqueta «A mano»); `GET /tiempo` devuelve solo bloques terminados; `DELETE /tiempo/:id` responde `{ ok: true }` y también borra un bloque en marcha propio; el intervalo de 1 s vive en `CronometroActivo.vue`; el aviso es un `q-card` con `role="region"` y el tiempo `role="timer"`; el aviso no es fijo al desplazarse.
+6. Para la memoria: ver MEMORY.md.
 
 ## Veredicto del reviewer (vuelta 1)
+
+**CAMBIOS NECESARIOS** (reviewer con Opus, 2026-11-13). Único cambio: en móvil de 375 px la cabecera del grupo de `ListaDelMes.vue` ganó una tercera insignia (el tiempo) y el nombre del tipo se partía a mitad de palabra. Los riesgos altos están bien: intentó romper la concurrencia con 15 vueltas de 25 peticiones simultáneas y nunca hubo más de un cronómetro ni errores 500; aislamiento, horas del servidor, validaciones, historial y migración correctos.
+
+Opcionales sin aplicar: «Iniciar» sigue activo en un renglón de historial fuera de cartera (el servidor responde 400); un bloque que cruce el cambio de horario se desviaría 60 min; `DELETE` permite borrar el bloque en marcha; el tooltip del campo de minutos tapa su error; las pruebas de componentes revisan el código fuente.
+
+## Corrección del orquestador (vuelta 1)
+
+Las dos insignias de la cabecera van en una sola sección (`lista-mes__grupo-insignias`) que se apila en columna por debajo de 600 px, y el nombre usa `overflow-wrap: break-word` en vez de `anywhere`. Frontend 1286/1286, lint y prettier en verde. **Sin segunda vuelta del reviewer y sin comprobar aún en navegador a 375 px; queda para la revisión de UI/UX.**
