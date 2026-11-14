@@ -285,6 +285,9 @@ const enfocarPrimerError = () =>
 // Fecha del formulario en AAAA-MM-DD, o null si está incompleta o no es un día real.
 const fechaElegida = () => fechaADominioBackend(form.fecha)
 
+// Día (AAAA-MM-DD) cuyas horas están en el formulario; sirve para volver a él si no se quiere cambiar.
+const fechaCargada = ref(null)
+
 const ponerHoras = (jornada) => {
   for (const paso of PASOS) {
     form[paso] = jornada?.[paso] ?? ''
@@ -301,6 +304,7 @@ const cargarDia = async () => {
   const fecha = fechaElegida()
   if (!fecha || fecha > fechaDeHoy()) return
   const lectura = (ultimaLectura += 1)
+  fechaCargada.value = fecha
   cargandoDia.value = true
   errorGeneral.value = ''
   try {
@@ -325,17 +329,47 @@ watch(dialogoAbierto, (abierto) => {
   for (const campo of Object.keys(erroresCampo)) erroresCampo[campo] = null
   errorGeneral.value = ''
   ponerHoras(null)
+  fechaCargada.value = null
   form.fecha = fechaParaFormulario(fechaDeHoy())
   cargarDia()
 })
 
-// Al elegir otro día (a mano o en el calendario) se leen sus horas.
-watch(
-  () => form.fecha,
-  () => {
-    if (dialogoAbierto.value) cargarDia()
-  },
-)
+// Al elegir otro día (a mano o en el calendario) se leen sus horas. Si ya habías escrito horas del día
+// anterior, primero se pregunta: cargar otro día las reemplaza.
+const alCambiarFecha = () => {
+  if (!dialogoAbierto.value) return
+  const fecha = fechaElegida()
+  if (!fecha || fecha > fechaDeHoy() || fecha === fechaCargada.value) return
+  if (!fechaCargada.value || !hayDatosSinGuardar.value) {
+    cargarDia()
+    return
+  }
+  $q.dialog({
+    ...DIALOGO,
+    title: '¿Cambiar de día?',
+    message: `Cambiaste horas del ${fechaParaFormulario(fechaCargada.value)} y no las has guardado. Si cambias al ${fechaParaFormulario(fecha)}, se perderán.`,
+    persistent: true,
+    cancel: {
+      label: 'Seguir en este día',
+      flat: true,
+      noCaps: true,
+      class: 'control-touch boton-presionable',
+    },
+    ok: {
+      label: 'Cambiar de día',
+      color: 'dg-error',
+      noCaps: true,
+      unelevated: true,
+      class: 'control-touch boton-presionable',
+    },
+    focus: 'cancel',
+  })
+    .onOk(() => cargarDia())
+    .onCancel(() => {
+      form.fecha = fechaParaFormulario(fechaCargada.value)
+    })
+}
+watch(() => form.fecha, alCambiarFecha)
 
 const enviar = async (fecha, horas) => {
   guardando.value = true
@@ -455,6 +489,11 @@ const guardar = async () => {
 
 .jornada-form__calendario {
   cursor: pointer;
+}
+
+.jornada-form__calendario:focus-visible {
+  outline: 3px solid var(--dg-foco);
+  outline-offset: 2px;
 }
 
 .form-label__nota {

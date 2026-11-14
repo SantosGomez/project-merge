@@ -31,7 +31,7 @@
 
         <template v-else>
           <q-list class="jornada__horas" aria-label="Las cuatro horas de tu jornada de hoy">
-            <q-item v-for="paso in PASOS" :key="paso" class="jornada__hora">
+            <q-item v-for="paso in PASOS" :key="paso" dense class="jornada__hora">
               <q-item-section>
                 <q-item-label caption class="jornada__hora-etiqueta">
                   {{ ETIQUETAS_DE_PASO[paso] }}
@@ -382,8 +382,31 @@ onBeforeUnmount(() => {
 .jornada__cuerpo {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
+}
+
+/* En escritorio los botones y el avance comparten renglón: la lista del mes queda más cerca. */
+@media (min-width: 900px) {
+  .jornada__cuerpo {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px 24px;
+  }
+
+  .jornada__cuerpo > * {
+    grid-column: 1 / -1;
+  }
+
+  .jornada__cuerpo > .jornada__acciones {
+    grid-column: 1;
+    max-width: 420px;
+  }
+
+  .jornada__cuerpo > .jornada__metricas {
+    grid-column: 2;
+  }
 }
 
 .jornada__horas {
@@ -411,7 +434,7 @@ onBeforeUnmount(() => {
 
 .jornada__hora-valor {
   color: var(--dg-texto);
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -420,6 +443,8 @@ onBeforeUnmount(() => {
   color: var(--dg-texto-tenue);
   font-size: 0.95rem;
   font-weight: 400;
+  /* Misma altura de línea que una hora registrada: las cuatro casillas miden igual. */
+  line-height: 1.38rem;
 }
 
 .jornada__acciones {
@@ -469,7 +494,9 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dg-borde);
 }
 
 .jornada__base {

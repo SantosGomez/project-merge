@@ -111,7 +111,10 @@
                 @update:model-value="erroresCampo.minutos = null"
               >
                 <template #prepend><q-icon name="timer" aria-hidden="true" /></template>
-                <q-tooltip>Minutos de trabajo que quieres sumar a este renglón.</q-tooltip>
+                <!-- Arriba del campo y sin error a la vista: abajo taparía el mensaje de error y la ayuda. -->
+                <q-tooltip v-if="!erroresCampo.minutos" anchor="top middle" self="bottom middle">
+                  Minutos de trabajo que quieres sumar a este renglón.
+                </q-tooltip>
               </q-input>
               <q-btn
                 type="submit"

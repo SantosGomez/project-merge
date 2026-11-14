@@ -37,25 +37,34 @@
           :disable="mes === mesDeHoy"
           @click="irAlMes(mesDeHoy)"
         >
-          <q-tooltip>Vuelve al mes actual.</q-tooltip>
+          <q-tooltip>{{
+            mes === mesDeHoy ? 'Ya estás en el mes actual.' : 'Vuelve al mes actual.'
+          }}</q-tooltip>
         </q-btn>
       </div>
+
+      <!-- Las cifras del mes van solas y primero: es lo que se busca al entrar. Mientras carga otro mes no se muestran las del anterior. -->
+      <p v-if="estado === SCREEN_STATES.content" class="lista-mes__totales">
+        <strong class="lista-mes__avance">
+          <q-icon name="task_alt" size="18px" aria-hidden="true" />
+          {{ totales.hechas }} de {{ totales.total }} hechas este mes
+        </strong>
+        <span class="lista-mes__avance">
+          <q-icon name="history" size="18px" aria-hidden="true" />
+          Tiempo registrado: {{ formatearDuracion(minutosMes) }}
+          <q-tooltip>Suma del tiempo de todos los renglones del mes.</q-tooltip>
+        </span>
+        <strong v-if="totalVencidas > 0" class="lista-mes__vencidas">
+          <q-icon name="error_outline" size="18px" aria-hidden="true" />
+          {{ totalVencidas === 1 ? '1 vencida' : `${totalVencidas} vencidas` }}
+          <q-tooltip>Actividades pendientes cuya fecha de vencimiento ya pasó.</q-tooltip>
+        </strong>
+      </p>
 
       <p class="lista-mes__ayuda">
         Aquí ves lo que te toca hacer en el mes: un renglón por cada cliente y tipo de actividad de
         tu cartera. El mes es el mes en que haces el trabajo: en noviembre ves lo que haces en
         noviembre. Marca «Hecha» y se guarda al instante.
-        <strong v-if="totales.total > 0" class="lista-mes__avance">
-          {{ totales.hechas }} de {{ totales.total }} hechas este mes.
-        </strong>
-        <strong v-if="totales.total > 0" class="lista-mes__avance">
-          Tiempo registrado: {{ formatearDuracion(minutosMes) }}.
-          <q-tooltip>Suma del tiempo de todos los renglones del mes.</q-tooltip>
-        </strong>
-        <strong v-if="totalVencidas > 0" class="lista-mes__vencidas">
-          {{ totalVencidas === 1 ? '1 vencida' : `${totalVencidas} vencidas` }}.
-          <q-tooltip>Actividades pendientes cuya fecha de vencimiento ya pasó.</q-tooltip>
-        </strong>
       </p>
     </q-card-section>
 
@@ -123,6 +132,7 @@
               v-for="renglon in grupo.renglones"
               :key="renglon.cliente_id"
               class="lista-mes__fila"
+              :class="{ 'lista-mes__fila--hecha': renglon.hecha }"
             >
               <q-item-section class="lista-mes__principal">
                 <q-item-label class="lista-mes__cliente">{{ renglon.cliente }}</q-item-label>
@@ -240,6 +250,7 @@ import {
   mesSiguiente,
   minutosDelMes,
   nombreAccesibleDeRenglon,
+  posicionesDeRenglones,
   textoDeVencimiento,
   totalesDelMes,
 } from '../utils/actividades.js'
@@ -272,7 +283,11 @@ const error = ref(null)
 // Renglones que se están guardando (clave `tipo-cliente`): solo esas casillas quedan ocupadas.
 const guardandoClaves = reactive(new Set())
 
-const grupos = computed(() => agruparPorTipo(actividades.value))
+// Lugar de cada renglón en la última carga con orden nuevo: marcar «Hecha» o detener el cronómetro no
+// reordena la lista bajo el cursor. Lo hecho baja al final al cambiar de mes o al volver a la ventana.
+const posiciones = ref(null)
+
+const grupos = computed(() => agruparPorTipo(actividades.value, posiciones.value))
 const totales = computed(() => totalesDelMes(grupos.value))
 const minutosMes = computed(() => minutosDelMes(grupos.value))
 const totalVencidas = computed(() => contarVencidas(actividades.value, hoy.value))
@@ -324,7 +339,8 @@ const avisoDeInactivo = (renglon) =>
 let secuencia = 0
 
 // En silencio no se muestra la carga ni el error: si falla, se queda lo que ya había.
-const cargar = async ({ silencioso = false } = {}) => {
+// `conservarOrden`: los renglones se quedan donde estaban (relectura por el cronómetro).
+const cargar = async ({ silencioso = false, conservarOrden = false } = {}) => {
   const actual = ++secuencia
   if (!silencioso) {
     cargando.value = true
@@ -337,6 +353,9 @@ const cargar = async ({ silencioso = false } = {}) => {
       listarTipos(),
     ])
     if (actual !== secuencia) return
+    if (!conservarOrden || !posiciones.value) {
+      posiciones.value = posicionesDeRenglones(agruparPorTipo(resultado.actividades))
+    }
     actividades.value = resultado.actividades
     clientes.value = listaClientes
     tipos.value = listaTipos
@@ -361,7 +380,7 @@ watch(mes, () => cargar())
 // Al iniciar o detener un cronómetro o cambiar bloques de tiempo se releen los minutos sin pantalla de carga.
 watch(
   () => cronometro.cambios,
-  () => cargar({ silencioso: true }),
+  () => cargar({ silencioso: true, conservarOrden: true }),
 )
 
 const cambiarEstado = async (renglon, hecha) => {
@@ -444,12 +463,34 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
   line-height: 1.45;
 }
 
+.lista-mes__totales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.lista-mes__avance,
+.lista-mes__vencidas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .lista-mes__avance {
+  color: var(--dg-texto);
+}
+
+span.lista-mes__avance {
   color: var(--dg-texto-secundario);
+  cursor: help;
 }
 
 .lista-mes__vencidas {
   color: var(--dg-error);
+  cursor: help;
 }
 
 .lista-mes__cuerpo {
@@ -498,6 +539,14 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
   padding: 4px 16px 4px 32px;
 }
 
+/* En celular (también a 360 px) «Iniciar», el tiempo y «Hecha» caben en una sola línea. */
+@media (max-width: 599px) {
+  .lista-mes__fila {
+    gap: 4px 8px;
+    padding-left: 24px;
+  }
+}
+
 .lista-mes__principal {
   flex: 1 1 220px;
   min-width: 0;
@@ -511,6 +560,16 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
 .lista-mes__cliente {
   color: var(--dg-texto);
   overflow-wrap: anywhere;
+}
+
+/* Lo hecho se atenúa para que lo pendiente destaque; la casilla marcada sigue siendo el indicador. */
+.lista-mes__fila--hecha .lista-mes__cliente {
+  color: var(--dg-texto-tenue);
+}
+
+/* Quasar pinta la etiqueta de la casilla en un gris propio; aquí va el texto secundario de la paleta. */
+.lista-mes__fila :deep(.q-checkbox__label) {
+  color: var(--dg-texto-secundario);
 }
 
 /* Fecha y etiquetas en una línea que baja de renglón en pantallas angostas. */

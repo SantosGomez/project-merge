@@ -48,9 +48,10 @@
               @update:model-value="erroresCampo.nombre = null"
             >
               <template #prepend><q-icon name="task_alt" aria-hidden="true" /></template>
-              <q-tooltip
-                >Nombre con el que reconocerás esta actividad cuando la registres.</q-tooltip
-              >
+              <!-- Arriba del campo y sin error a la vista: abajo taparía el mensaje de error y la ayuda. -->
+              <q-tooltip v-if="!erroresCampo.nombre" anchor="top middle" self="bottom middle">
+                Nombre con el que reconocerás esta actividad cuando la registres.
+              </q-tooltip>
             </q-input>
             <p id="tipo-nombre-ayuda" class="form-help">
               Máximo 120 caracteres. No puede repetir el nombre de otro tipo tuyo.
@@ -130,7 +131,9 @@
               @update:model-value="erroresCampo.dia_del_mes = null"
             >
               <template #prepend><q-icon name="calendar_today" aria-hidden="true" /></template>
-              <q-tooltip>Día del mes en que vence la actividad, del 1 al 28.</q-tooltip>
+              <q-tooltip v-if="!erroresCampo.dia_del_mes" anchor="top middle" self="bottom middle">
+                Día del mes en que vence la actividad, del 1 al 28.
+              </q-tooltip>
             </q-input>
             <p id="tipo-dia-ayuda" class="form-help">
               Del 1 al 28. Para el último día del mes elige «Fin de mes».

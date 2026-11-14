@@ -125,10 +125,10 @@ describe('textos de horas trabajadas y tiempo asignado', () => {
 
   it('el resumen de la tarjeta plegada dice en qué va el día', () => {
     assert.equal(resumenDeJornada(null, 0), 'Aún no registras tu entrada.')
-    assert.equal(resumenDeJornada(dia('09:00'), 40), 'Entrada 09:00 · llevas 40 min trabajados')
+    assert.equal(resumenDeJornada(dia('09:00'), 40), 'Entrada 09:00 · llevas 40 min de trabajo')
     assert.equal(
       resumenDeJornada(dia('09:00', '14:00'), 300),
-      'En descanso desde las 14:00 · llevas 5 h trabajadas',
+      'En descanso desde las 14:00 · llevas 5 h de trabajo',
     )
     assert.equal(
       resumenDeJornada(dia('09:00', null, null, '17:30'), 510),

@@ -152,6 +152,22 @@ const abrirDetalle = () => {
   gap: 4px 8px;
 }
 
+/* `dense` deja el texto pegado al borde; `padding` como prop escribiría `min-height: 0` en línea. */
+.renglon-tiempo__boton {
+  padding: 0 12px;
+}
+
+/* En celular cada píxel cuenta para que «Hecha» quepa en la misma línea. */
+@media (max-width: 599px) {
+  .renglon-tiempo {
+    gap: 4px;
+  }
+
+  .renglon-tiempo .renglon-tiempo__boton {
+    padding: 0 6px;
+  }
+}
+
 .renglon-tiempo__reloj {
   color: var(--dg-error);
   font-weight: 700;

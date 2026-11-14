@@ -47,9 +47,10 @@
               @update:model-value="erroresCampo.nombre = null"
             >
               <template #prepend><q-icon name="business" aria-hidden="true" /></template>
-              <q-tooltip
-                >Nombre con el que reconocerás a este cliente en tus actividades.</q-tooltip
-              >
+              <!-- Arriba del campo y sin error a la vista: abajo taparía el mensaje de error y la ayuda. -->
+              <q-tooltip v-if="!erroresCampo.nombre" anchor="top middle" self="bottom middle">
+                Nombre con el que reconocerás a este cliente en tus actividades.
+              </q-tooltip>
             </q-input>
             <p id="cliente-nombre-ayuda" class="form-help">
               Máximo 150 caracteres. No puede repetir el nombre de otro cliente tuyo.
@@ -75,9 +76,9 @@
               @update:model-value="erroresCampo.rfc = null"
             >
               <template #prepend><q-icon name="badge" aria-hidden="true" /></template>
-              <q-tooltip
-                >RFC del cliente: 12 caracteres si es empresa o 13 si es persona física.</q-tooltip
-              >
+              <q-tooltip v-if="!erroresCampo.rfc" anchor="top middle" self="bottom middle">
+                RFC del cliente: 12 caracteres si es empresa o 13 si es persona física.
+              </q-tooltip>
             </q-input>
             <p id="cliente-rfc-ayuda" class="form-help">
               12 caracteres (empresa) o 13 (persona física). Se guarda en mayúsculas.

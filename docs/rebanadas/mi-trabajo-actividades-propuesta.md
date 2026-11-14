@@ -1,6 +1,6 @@
 # «Mi trabajo» y «Mis actividades» — propuesta (feature a futuro)
 
-- **Estado:** plan aprobado en conversación (2026-11-13). Rebanada 1 en curso (`10-mi-trabajo-clientes-tipos.md`); las demás sin implementar.
+- **Estado:** completo en `experimento` (2026-11-13): rebanadas 10 a 16 hechas y revisadas, más la revisión de UI/UX (`17-revision-ui-actividades.md`). La rebanada 2 del plan se partió en 11 (cartera y lista) y 12 (vencimientos), así que la numeración final es 10–16.
 - **Rama de trabajo:** `experimento` (feature a futuro; no va a `main` ni a Docker hasta decidirlo).
 - **Origen:** artefactos «Agenda de trabajo» y «Bitácora de jornada» de claude.ai (carpeta Descargas del usuario; no se versionan). La Bitácora es una versión anterior y más simple de la agenda: mismas 3 pestañas y mismo modelo de datos. Se aprovecha su **lógica**, no su interfaz (vanilla JS, CSS propio y `window.claude`, que no encajan con Quasar ni con la paleta `dg-*`).
 

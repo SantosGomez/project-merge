@@ -1,5 +1,5 @@
 <template>
-  <div class="mis-actividades">
+  <div class="mis-actividades" :class="{ 'mis-actividades--con-cronometro': cronometro.activo }">
     <JornadaDeHoy />
 
     <CronometroActivo />
@@ -97,10 +97,43 @@ const cambiarVista = (valor) => {
 </script>
 
 <style scoped>
+/* Con un cronómetro en marcha puede aparecer su barra fija abajo: se deja sitio para el último renglón. */
+.mis-actividades--con-cronometro {
+  padding-bottom: 68px;
+}
+
 .mis-actividades__conmutador {
+  max-width: 100%;
   margin: 0 0 16px;
   border: 1px solid var(--dg-borde);
   border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Cada rótulo en una sola línea: partido en dos o tres renglones no se lee de un vistazo. */
+.mis-actividades__conmutador :deep(.q-btn) {
+  white-space: nowrap;
+}
+
+/* En celular las cuatro vistas no caben en fila: van en cuadrícula de 2 × 2, cada una de 44 px. */
+@media (max-width: 599px) {
+  .mis-actividades__conmutador {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mis-actividades__conmutador :deep(.q-btn) {
+    min-height: 44px;
+    border-radius: 0;
+  }
+
+  .mis-actividades__conmutador :deep(.q-btn:nth-child(odd)) {
+    border-right: 1px solid var(--dg-borde);
+  }
+
+  .mis-actividades__conmutador :deep(.q-btn:nth-child(-n + 2)) {
+    border-bottom: 1px solid var(--dg-borde);
+  }
 }
 
 .mis-actividades__lead {

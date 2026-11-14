@@ -4,8 +4,8 @@
       <div class="mis-tipos__texto">
         <h2 id="mis-tipos-titulo" class="mis-tipos__titulo">Mis tipos de actividad</h2>
         <p class="mis-tipos__ayuda">
-          Las actividades que repites, como «Revisión de facturas». Solo tú los ves. Si desactivas
-          uno, deja de ofrecerse, pero no se borra y puedes reactivarlo.
+          Las actividades que repites, como «Revisión de facturas». Solo tú las ves. Si desactivas
+          un tipo, deja de ofrecerse, pero no se borra y puedes reactivarlo.
         </p>
       </div>
       <q-btn

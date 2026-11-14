@@ -13,7 +13,10 @@
         <q-tooltip>Los casos que registraste o te asignaron.</q-tooltip>
       </q-tab>
       <q-tab name="actividades" icon="task_alt" label="Mis actividades">
-        <q-tooltip>Tus clientes y tus tipos de actividad.</q-tooltip>
+        <q-tooltip>
+          Tu jornada de hoy, lo que te toca hacer en el mes, tu calendario de vencimientos y tus
+          informes de horas.
+        </q-tooltip>
       </q-tab>
     </q-tabs>
 

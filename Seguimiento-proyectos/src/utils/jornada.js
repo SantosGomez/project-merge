@@ -91,9 +91,9 @@ export const resumenDeJornada = (jornada, minutos) => {
   if (!jornada?.entrada) return 'Aún no registras tu entrada.'
   if (jornada.salida) return `Jornada cerrada: trabajaste ${formatearDuracion(minutos)}`
   if (jornada.salida_descanso && !jornada.regreso_descanso) {
-    return `En descanso desde las ${jornada.salida_descanso} · llevas ${formatearDuracion(minutos)} trabajadas`
+    return `En descanso desde las ${jornada.salida_descanso} · llevas ${formatearDuracion(minutos)} de trabajo`
   }
-  return `Entrada ${jornada.entrada} · llevas ${formatearDuracion(minutos)} trabajados`
+  return `Entrada ${jornada.entrada} · llevas ${formatearDuracion(minutos)} de trabajo`
 }
 
 const FORMA_HORA = /^([01]\d|2[0-3]):[0-5]\d$/

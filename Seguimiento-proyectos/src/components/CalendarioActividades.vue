@@ -685,6 +685,11 @@ onBeforeUnmount(() => {
   padding-left: 0;
 }
 
+/* Quasar pinta la etiqueta de la casilla en un gris propio; aquí va el texto secundario de la paleta. */
+.calendario__fila :deep(.q-checkbox__label) {
+  color: var(--dg-texto-secundario);
+}
+
 .calendario__tipo {
   color: var(--dg-texto);
   font-weight: 600;

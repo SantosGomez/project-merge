@@ -170,7 +170,20 @@
       Corrige las fechas del periodo para ver el informe.
     </p>
 
-    <template v-else-if="informe">
+    <!-- Al cambiar un filtro el informe anterior se atenúa y una barra avisa que se está actualizando. -->
+    <div
+      v-else-if="informe"
+      class="informes__resultado"
+      :class="{ 'informes__resultado--actualizando': actualizando }"
+      :aria-busy="actualizando"
+    >
+      <q-linear-progress
+        v-if="actualizando"
+        indeterminate
+        color="primary"
+        class="informes__progreso"
+        aria-label="Actualizando el informe"
+      />
       <q-card flat bordered class="informes__tarjeta" aria-labelledby="informes-resumen-titulo">
         <q-card-section>
           <div class="informes__cabecera-seccion">
@@ -390,7 +403,7 @@
           </q-table>
         </q-card-section>
       </q-card>
-    </template>
+    </div>
   </div>
 </template>
 
@@ -454,6 +467,9 @@ const estado = computed(() => {
   if (cargando.value && !informe.value) return SCREEN_STATES.loading
   return SCREEN_STATES.content
 })
+
+// Ya hay un informe a la vista y se está pidiendo otro (cambió el periodo o un filtro).
+const actualizando = computed(() => cargando.value && Boolean(informe.value))
 
 const opcionesDeClientes = computed(() => [
   { label: 'Todos los clientes', value: TODOS },
@@ -715,6 +731,33 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
   min-width: 0;
 }
 
+.informes__resultado {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.informes__resultado > .informes__tarjeta,
+.informes__resultado > .informes__barras {
+  transition: opacity 150ms var(--dg-curva-salida);
+}
+
+.informes__resultado--actualizando > .informes__tarjeta,
+.informes__resultado--actualizando > .informes__barras {
+  opacity: 0.55;
+}
+
+/* Sobre el hueco entre tarjetas: no empuja el contenido al aparecer. */
+.informes__progreso {
+  position: absolute;
+  top: -10px;
+  right: 0;
+  left: 0;
+  border-radius: 2px;
+}
+
 .informes__tarjeta {
   border-radius: 12px;
   border-color: var(--dg-borde);
@@ -790,9 +833,11 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverA
   justify-content: flex-start;
 }
 
+/* Junto a «Desde» y «Hasta»: baja lo que mide la etiqueta para quedar a la altura de los campos, sin estirarse. */
 @media (min-width: 600px) {
   .informes__campo--boton {
-    justify-content: flex-end;
+    align-items: flex-start;
+    padding-top: 24px;
   }
 }
 

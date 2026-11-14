@@ -244,10 +244,14 @@ export const ordenarPorVencimiento = (renglones) =>
  * Agrupa los renglones de la lista del mes por tipo, en el orden en que llegan (el backend los
  * entrega por tipo y cliente), con cuántos están hechos y los minutos registrados. Dentro de cada grupo los renglones van
  * ordenados por vencimiento (`ordenarPorVencimiento`).
+ * Con `posiciones` (salida de `posicionesDeRenglones` de una carga anterior) cada renglón conserva el
+ * lugar que tenía: así no salta bajo el cursor al marcarlo como hecho. Los que no estaban van al final.
  * @param {Array<Object>} actividades - Renglones (`tipo_id`, `tipo`, `tipo_activo`, `hecha`…).
+ * @param {Map<string, number>|null} [posiciones] - Lugar de cada renglón en la carga anterior.
  * @returns {Array<{ tipo_id: number, tipo: string, tipo_activo: boolean, renglones: Array<Object>, hechas: number, total: number, minutos: number }>}
  */
-export const agruparPorTipo = (actividades) => {
+export const agruparPorTipo = (actividades, posiciones = null) => {
+  const lugarDe = (renglon) => posiciones?.get(claveDeRenglon(renglon)) ?? Number.MAX_SAFE_INTEGER
   const grupos = new Map()
   for (const actividad of actividades) {
     if (!grupos.has(actividad.tipo_id)) {
@@ -267,10 +271,32 @@ export const agruparPorTipo = (actividades) => {
     if (actividad.hecha) grupo.hechas += 1
     grupo.minutos += Number(actividad.minutos) || 0
   }
-  return [...grupos.values()].map((grupo) => ({
-    ...grupo,
-    renglones: ordenarPorVencimiento(grupo.renglones),
-  }))
+  return [...grupos.values()].map((grupo) => {
+    const renglones = ordenarPorVencimiento(grupo.renglones)
+    // `sort` es estable: los renglones nuevos (mismo lugar) conservan el orden por vencimiento.
+    if (posiciones) renglones.sort((a, b) => lugarDe(a) - lugarDe(b))
+    return { ...grupo, renglones }
+  })
+}
+
+/**
+ * Clave de un renglón de la lista del mes dentro de su mes: tipo y cliente.
+ * @param {{ tipo_id: number, cliente_id: number }} renglon
+ * @returns {string}
+ */
+export const claveDeRenglon = (renglon) => `${renglon.tipo_id}-${renglon.cliente_id}`
+
+/**
+ * Lugar que ocupa cada renglón en los grupos ya ordenados, para conservarlo mientras se trabaja la lista.
+ * @param {Array<{ renglones: Array<Object> }>} grupos - Salida de `agruparPorTipo`.
+ * @returns {Map<string, number>}
+ */
+export const posicionesDeRenglones = (grupos) => {
+  const posiciones = new Map()
+  for (const grupo of grupos) {
+    grupo.renglones.forEach((renglon, lugar) => posiciones.set(claveDeRenglon(renglon), lugar))
+  }
+  return posiciones
 }
 
 /**
