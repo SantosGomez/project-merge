@@ -18,7 +18,7 @@ const { run } = require('node:test');
 
 // Mínimos de pruebas por archivo (los del plan 9.5 y los que se fueron sumando con cada rebanada).
 const MINIMOS = {
-  'actividadesMes.test.js': 13,
+  'actividadesMes.test.js': 14,
   'adminVeEquiposYCampana.test.js': 4,
   'appCors.test.js': 4,
   'asignarCaso.test.js': 2,
@@ -68,7 +68,7 @@ const MINIMOS = {
   'userModel.test.js': 5,
   'userRoutes.test.js': 10,
   'validationUtils.test.js': 22,
-  'vencimientoActividad.test.js': 20,
+  'vencimientoActividad.test.js': 24,
 };
 
 const TESTS_DIR = path.join(__dirname, '..', 'test');

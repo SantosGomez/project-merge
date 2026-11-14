@@ -173,7 +173,7 @@ describe('actividadService', () => {
     assert.deepEqual(api.llamadas, [
       { metodo: 'get', url: '/actividades', cuerpo: { params: { mes: '2026-11' } } },
     ])
-    assert.deepEqual(resultado, { mes: '2026-11', actividades: [{ cliente_id: 1 }] })
+    assert.deepEqual(resultado, { mes: '2026-11', festivos: [], actividades: [{ cliente_id: 1 }] })
   })
 
   it('listarActividades falla con error de tres partes si la respuesta no trae la lista', async () => {

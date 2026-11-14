@@ -3,7 +3,7 @@ const ClienteModel = require('../models/ClienteModel');
 const TipoActividadModel = require('../models/TipoActividadModel');
 const { nowLocal } = require('../utils/dateUtils');
 const { buildError } = require('../utils/errorUtils');
-const { calcularVencimiento } = require('../utils/vencimientoActividad');
+const { calcularVencimiento, festivosDelMes } = require('../utils/vencimientoActividad');
 const { esMesValido, parseCounterId } = require('../utils/validationUtils');
 
 /**
@@ -56,7 +56,7 @@ function conVencimiento({ rfc, regla_vencimiento: regla, dia_del_mes: dia, ...re
 }
 
 /**
- * GET /actividades?mes=AAAA-MM — Renglones del mes; sin `mes` usa el mes actual.
+ * GET /actividades?mes=AAAA-MM — Renglones del mes y festivos del mes (`festivos`); sin `mes` usa el mes actual.
  * @param {Object} req - Petición Express.
  * @param {Object} res - Respuesta Express.
  */
@@ -64,7 +64,12 @@ async function listarActividadesDelMes(req, res) {
   const mes = req.query.mes === undefined ? mesActual() : req.query.mes;
   if (!esMesValido(mes)) return res.status(400).json(ERROR_MES);
   const filas = await ActividadMesModel.listarDelMes(Number(req.user.id), mes);
-  return res.status(200).json({ mes, actividades: filas.map((fila) => conVencimiento(fila, mes)) });
+  const [anio, numeroMes] = mes.split('-').map(Number);
+  return res.status(200).json({
+    mes,
+    festivos: festivosDelMes(anio, numeroMes),
+    actividades: filas.map((fila) => conVencimiento(fila, mes)),
+  });
 }
 
 /**

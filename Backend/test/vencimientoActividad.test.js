@@ -1,6 +1,6 @@
 const assert = require('node:assert');
 const { describe, test } = require('node:test');
-const { calcularVencimiento, esDiaInhabil } = require('../src/utils/vencimientoActividad');
+const { calcularVencimiento, esDiaInhabil, festivosDelMes } = require('../src/utils/vencimientoActividad');
 
 /**
  * Pruebas de la utilidad de vencimientos de actividades (rebanada 12).
@@ -144,5 +144,29 @@ describe('calcularVencimiento: día 17 según el RFC', () => {
   test('el 17 en sábado pasa al lunes y luego suma (octubre de 2026)', () => {
     assert.strictEqual(calcularVencimiento(entrada('ABCD260101AB1', '2026-10')), '2026-10-20'); // lun 19 + 1
     assert.strictEqual(calcularVencimiento(entrada('ABCD260107AB1', '2026-10')), '2026-10-23'); // lun 19 + 4
+  });
+});
+
+describe('festivosDelMes', () => {
+  test('lista los festivos del mes como AAAA-MM-DD, en orden', () => {
+    assert.deepStrictEqual(festivosDelMes(2026, 11), ['2026-11-16']); // tercer lunes
+    assert.deepStrictEqual(festivosDelMes(2026, 12), ['2026-12-25']);
+    assert.deepStrictEqual(festivosDelMes(2026, 1), ['2026-01-01']);
+    assert.deepStrictEqual(festivosDelMes(2026, 2), ['2026-02-02']); // primer lunes
+    assert.deepStrictEqual(festivosDelMes(2026, 3), ['2026-03-16']);
+  });
+
+  test('un mes sin festivos da una lista vacía y no cuenta los fines de semana', () => {
+    assert.deepStrictEqual(festivosDelMes(2026, 4), []);
+    assert.deepStrictEqual(festivosDelMes(2026, 6), []);
+  });
+
+  test('el 1 de octubre solo sale en los años del cambio de Poder Ejecutivo', () => {
+    assert.deepStrictEqual(festivosDelMes(2024, 10), ['2024-10-01']);
+    assert.deepStrictEqual(festivosDelMes(2025, 10), []);
+  });
+
+  test('coincide con esDiaInhabil en un festivo que cae en fin de semana (1 de mayo de 2027 es sábado)', () => {
+    assert.deepStrictEqual(festivosDelMes(2027, 5), ['2027-05-01']);
   });
 });

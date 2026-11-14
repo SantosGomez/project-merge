@@ -304,3 +304,123 @@ export const diagnosticoVacio = ({ clientes, tipos }) => {
   if (tiposActivos.every((tipo) => tipo.total_clientes === 0)) return 'sin-cartera'
   return 'sin-renglones'
 }
+
+// ---------- Calendario de vencimientos ----------
+
+/**
+ * AAAA-MM-DD como la pide `q-date` (AAAA/MM/DD), cambiando solo los separadores.
+ * @param {string} fecha - Fecha AAAA-MM-DD.
+ * @returns {string}
+ */
+export const fechaParaCalendario = (fecha) => fecha.replaceAll('-', '/')
+
+/**
+ * AAAA/MM/DD de `q-date` a AAAA-MM-DD, cambiando solo los separadores.
+ * @param {string} fecha - Fecha AAAA/MM/DD.
+ * @returns {string}
+ */
+export const fechaDeCalendario = (fecha) => fecha.replaceAll('/', '-')
+
+/**
+ * Renglones del calendario del mes mostrado: por su fecha de vencimiento, así que entran los del mes
+ * anterior cuyo vencimiento cayó en el mes mostrado. Cada renglón lleva `mes`, el mes de la lista
+ * al que pertenece (es el que se envía al marcarlo como hecho).
+ * @param {string} mes - Mes mostrado AAAA-MM.
+ * @param {Array<Object>} delMes - Renglones de la lista del mes mostrado.
+ * @param {Array<Object>} delAnterior - Renglones de la lista del mes anterior.
+ * @returns {{ conFecha: Array<Object>, sinFecha: number }} sinFecha cuenta solo los del mes mostrado.
+ */
+export const renglonesDelCalendario = (mes, delMes, delAnterior) => {
+  const marcar = (lista, mesDeLista) => lista.map((renglon) => ({ ...renglon, mes: mesDeLista }))
+  const todos = [...marcar(delMes, mes), ...marcar(delAnterior, mesAnterior(mes))]
+  return {
+    conFecha: todos.filter((renglon) => renglon.vence?.startsWith(`${mes}-`)),
+    sinFecha: delMes.filter((renglon) => !renglon.vence).length,
+  }
+}
+
+/**
+ * Estado de un día del calendario según sus renglones: «vencida» si hay pendientes ya vencidas,
+ * «por-vencer» si hay pendientes que aún no vencen, «hecha» si todo está hecho.
+ * @param {Array<Object>} renglones - Renglones que vencen ese día.
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @returns {'vencida'|'por-vencer'|'hecha'|null} null si el día no tiene vencimientos.
+ */
+export const estadoDelDia = (renglones, hoy) => {
+  if (renglones.length === 0) return null
+  if (renglones.some((renglon) => estadoDeVencimiento(renglon, hoy) === 'vencida')) return 'vencida'
+  return renglones.some((renglon) => !renglon.hecha) ? 'por-vencer' : 'hecha'
+}
+
+/**
+ * Estado de cada día que tiene vencimientos.
+ * @param {Array<Object>} renglones - Renglones con fecha de vencimiento.
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @returns {Object<string, 'vencida'|'por-vencer'|'hecha'>} Un estado por fecha AAAA-MM-DD.
+ */
+export const resumenDeDias = (renglones, hoy) => {
+  const porDia = {}
+  for (const renglon of renglones) (porDia[renglon.vence] ??= []).push(renglon)
+  return Object.fromEntries(
+    Object.entries(porDia).map(([dia, delDia]) => [dia, estadoDelDia(delDia, hoy)]),
+  )
+}
+
+/**
+ * Día de la semana (0 = domingo) de una fecha AAAA-MM-DD, con el constructor local de `Date`.
+ * @param {string} fecha - Fecha AAAA-MM-DD.
+ * @returns {number}
+ */
+const diaDeLaSemana = (fecha) => {
+  const [anio, mes, dia] = fecha.split('-').map(Number)
+  return new Date(anio, mes - 1, dia).getDay()
+}
+
+/**
+ * Si un día es inhábil: sábado, domingo o festivo.
+ * @param {string} fecha - Fecha AAAA-MM-DD.
+ * @param {Array<string>} festivos - Festivos del mes que entrega el backend (AAAA-MM-DD).
+ * @returns {boolean}
+ */
+export const esDiaInhabil = (fecha, festivos) =>
+  [0, 6].includes(diaDeLaSemana(fecha)) || festivos.includes(fecha)
+
+const NOMBRES_DE_DIA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+/**
+ * Día escrito para mostrarlo, como «Viernes 13 de noviembre de 2026».
+ * @param {string} fecha - Fecha AAAA-MM-DD.
+ * @returns {string}
+ */
+export const tituloDeDia = (fecha) => {
+  const [anio, mes, dia] = fecha.split('-').map(Number)
+  const nombreDeMes = NOMBRES_DE_MES[mes - 1].toLowerCase()
+  return `${NOMBRES_DE_DIA[diaDeLaSemana(fecha)]} ${dia} de ${nombreDeMes} de ${anio}`
+}
+
+/**
+ * Día que está elegido al abrir el calendario: hoy si es del mes mostrado; si no, el primer día
+ * con vencimientos; y si no hay ninguno, el día 1.
+ * @param {string} mes - Mes mostrado AAAA-MM.
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @param {Object<string, string>} dias - Salida de `resumenDeDias`.
+ * @returns {string} Fecha AAAA-MM-DD.
+ */
+export const diaInicialDelCalendario = (mes, hoy, dias) => {
+  if (hoy.startsWith(`${mes}-`)) return hoy
+  return Object.keys(dias).sort()[0] ?? `${mes}-01`
+}
+
+/**
+ * Aviso de cuántas actividades del mes no salen en el calendario por no tener fecha de vencimiento.
+ * @param {number} cantidad - Actividades sin fecha del mes mostrado.
+ * @returns {string} Texto vacío si no hay ninguna.
+ */
+export const textoSinFecha = (cantidad) => {
+  if (cantidad === 0) return ''
+  const sujeto =
+    cantidad === 1
+      ? '1 actividad de este mes no tiene fecha de vencimiento'
+      : `${cantidad} actividades de este mes no tienen fecha de vencimiento`
+  return `${sujeto} y no ${cantidad === 1 ? 'sale' : 'salen'} en el calendario. Búscala${cantidad === 1 ? '' : 's'} en la «Lista del mes».`
+}

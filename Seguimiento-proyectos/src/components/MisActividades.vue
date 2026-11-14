@@ -13,12 +13,18 @@
       @update:model-value="cambiarVista"
     >
       <q-tooltip>
-        «Lista del mes» muestra lo que te toca hacer este mes. «Clientes y tipos» es donde armas tus
-        clientes, tus tipos de actividad y a quién le haces cada uno.
+        «Lista del mes» muestra lo que te toca hacer este mes. «Calendario» muestra qué vence cada
+        día. «Clientes y tipos» es donde armas tus clientes, tus tipos de actividad y a quién le
+        haces cada uno.
       </q-tooltip>
     </q-btn-toggle>
 
     <ListaDelMes v-if="vista === 'lista'" @ir-a-catalogos="cambiarVista('catalogos')" />
+
+    <CalendarioActividades
+      v-else-if="vista === 'calendario'"
+      @ir-a-catalogos="cambiarVista('catalogos')"
+    />
 
     <template v-else>
       <p class="mis-actividades__lead">
@@ -39,24 +45,28 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import CalendarioActividades from './CalendarioActividades.vue'
 import ListaDelMes from './ListaDelMes.vue'
 import MisClientes from './MisClientes.vue'
 import MisTiposActividad from './MisTiposActividad.vue'
 
 const OPCIONES_DE_VISTA = [
   { label: 'Lista del mes', value: 'lista', icon: 'checklist' },
+  { label: 'Calendario', value: 'calendario', icon: 'calendar_month' },
   { label: 'Clientes y tipos', value: 'catalogos', icon: 'groups' },
 ]
 
 const route = useRoute()
 const router = useRouter()
 
-// La vista va en la dirección (?vista=catalogos), como la pestaña (?tab=); sin parámetro, la lista del mes.
-const vista = computed(() => (route.query.vista === 'catalogos' ? 'catalogos' : 'lista'))
+// La vista va en la dirección (?vista=calendario o ?vista=catalogos), como la pestaña (?tab=); sin
+// parámetro, la lista del mes. El mes (?mes=) lo comparten la lista y el calendario.
+const VISTAS = ['calendario', 'catalogos']
+const vista = computed(() => (VISTAS.includes(route.query.vista) ? route.query.vista : 'lista'))
 
 const cambiarVista = (valor) => {
   const consulta = { ...route.query }
-  if (valor === 'catalogos') consulta.vista = 'catalogos'
+  if (VISTAS.includes(valor)) consulta.vista = valor
   else delete consulta.vista
   router.replace({ query: consulta })
 }

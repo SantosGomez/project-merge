@@ -132,6 +132,13 @@ async function testCadaReglaDaSuFechaDeVencimientoEnElMes() {
   assert.strictEqual(renglon(marzo2024, cliente, diecisiete).vence, '2024-03-22', 'domingo 17 y lunes 18 festivo: martes 19 más 3');
 }
 
+async function testEntregaLosFestivosDelMes() {
+  assert.deepStrictEqual((await listar(tokenContador, '2026-11')).body.festivos, ['2026-11-16'], 'tercer lunes de noviembre');
+  assert.deepStrictEqual((await listar(tokenContador, '2026-12')).body.festivos, ['2026-12-25']);
+  assert.deepStrictEqual((await listar(tokenContador, '2026-04')).body.festivos, [], 'un mes sin festivos da lista vacía');
+  assert.deepStrictEqual((await listar(tokenContador, '2024-10')).body.festivos, ['2024-10-01'], 'cambio de Poder Ejecutivo');
+}
+
 async function testSinRfcLaReglaDel17NoDaFechaYAvisaFaltaRfc() {
   const tipo17 = await nuevoTipo(tokenContador, undefined, { regla_vencimiento: 'dia_17_rfc' });
   const tipoFin = await nuevoTipo(tokenContador, undefined, { regla_vencimiento: 'fin_de_mes' });
@@ -356,6 +363,7 @@ describe('/actividades (lista del mes)', () => {
   test('el seed crea actividades_mes y se puede repetir', testSeedCreaLaTablaDeFormaIdempotente);
   test('lista un renglón por tipo y cliente, agrupado por tipo y ordenado', testListaUnRenglonPorTipoYClienteAgrupadoPorTipoYOrdenado);
   test('cada regla da su fecha de vencimiento dentro del mes', testCadaReglaDaSuFechaDeVencimientoEnElMes);
+  test('entrega los festivos del mes para pintar el calendario', testEntregaLosFestivosDelMes);
   test('sin RFC la regla del 17 no da fecha y avisa que falta el RFC', testSinRfcLaReglaDel17NoDaFechaYAvisaFaltaRfc);
   test('sin mes usa el mes actual y rechaza meses inválidos', testSinMesUsaElMesActualYRechazaMesesInvalidos);
   test('marcar y desmarcar se guarda y se ve en la lista', testMarcarYDesmarcarSeGuardaYSeVeEnLaLista);

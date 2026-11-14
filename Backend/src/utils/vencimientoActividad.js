@@ -52,6 +52,22 @@ function numeroDeLunes(dia) {
 }
 
 /**
+ * Indica si un día es festivo de la LFT (los fines de semana no cuentan aquí).
+ * @param {number} anio
+ * @param {number} mes - 1 a 12.
+ * @param {number} dia
+ * @returns {boolean}
+ */
+function esFestivo(anio, mes, dia) {
+  const semana = diaDeLaSemana(anio, mes, dia);
+  if (FESTIVOS_FIJOS.some(([m, d]) => m === mes && d === dia)) return true;
+  if (semana === 1 && FESTIVOS_EN_LUNES.some(([m, n]) => m === mes && n === numeroDeLunes(dia))) return true;
+  const esCambioDePoder =
+    anio >= PRIMER_ANIO_CAMBIO_DE_PODER && (anio - PRIMER_ANIO_CAMBIO_DE_PODER) % ANIOS_ENTRE_CAMBIOS_DE_PODER === 0;
+  return esCambioDePoder && mes === 10 && dia === 1;
+}
+
+/**
  * Indica si un día es inhábil: sábado, domingo o festivo de la LFT.
  * @param {number} anio
  * @param {number} mes - 1 a 12.
@@ -60,12 +76,22 @@ function numeroDeLunes(dia) {
  */
 function esDiaInhabil(anio, mes, dia) {
   const semana = diaDeLaSemana(anio, mes, dia);
-  if (semana === 0 || semana === 6) return true;
-  if (FESTIVOS_FIJOS.some(([m, d]) => m === mes && d === dia)) return true;
-  if (semana === 1 && FESTIVOS_EN_LUNES.some(([m, n]) => m === mes && n === numeroDeLunes(dia))) return true;
-  const esCambioDePoder =
-    anio >= PRIMER_ANIO_CAMBIO_DE_PODER && (anio - PRIMER_ANIO_CAMBIO_DE_PODER) % ANIOS_ENTRE_CAMBIOS_DE_PODER === 0;
-  return esCambioDePoder && mes === 10 && dia === 1;
+  return semana === 0 || semana === 6 || esFestivo(anio, mes, dia);
+}
+
+/**
+ * Festivos de un mes como AAAA-MM-DD, en orden (misma lista que usa el cálculo de vencimientos).
+ * @param {number} anio
+ * @param {number} mes - 1 a 12.
+ * @returns {string[]}
+ */
+function festivosDelMes(anio, mes) {
+  const ultimoDia = new Date(anio, mes, 0).getDate();
+  const festivos = [];
+  for (let dia = 1; dia <= ultimoDia; dia += 1) {
+    if (esFestivo(anio, mes, dia)) festivos.push(formatear({ anio, mes, dia }));
+  }
+  return festivos;
 }
 
 /**
@@ -150,4 +176,4 @@ function calcularVencimiento({ regla, dia, mes, rfc } = {}) {
   return null;
 }
 
-module.exports = { REGLAS, calcularVencimiento, esDiaInhabil };
+module.exports = { REGLAS, calcularVencimiento, esDiaInhabil, festivosDelMes };

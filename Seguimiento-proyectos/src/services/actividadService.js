@@ -20,7 +20,11 @@ export const crearActividadService = (opciones = {}) => {
   const listarActividades = async (mes) => {
     const { data } = await api.get('/actividades', { params: { mes } })
     if (!Array.isArray(data?.actividades)) throw crearErrorInesperado('la lista del mes')
-    return { mes: data.mes, actividades: data.actividades }
+    return {
+      mes: data.mes,
+      festivos: Array.isArray(data.festivos) ? data.festivos : [],
+      actividades: data.actividades,
+    }
   }
 
   /**
