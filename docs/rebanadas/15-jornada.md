@@ -62,11 +62,15 @@ Fuera de esta lista, el implementer para y pregunta.
 
 ## Reporte del implementer
 
-1. Rebanada completada:
-2. Archivos modificados:
-3. Prueba en rojo y por qué falló:
-4. Puertas (verde / rojo / no aplica):
-5. Decisiones no cubiertas:
-6. Para la memoria:
+1. Rebanada completada: los 11 criterios (2026-11-13).
+2. Archivos: backend nuevos `utils/jornada.js`, `JornadaModel.js`, `JornadaController.js`, `jornadaRoutes.js`, `test/jornadaUtils.test.js` (7), `test/jornadas.test.js` (14); modificados `seed.js` (`migrarJornadas`), `app.js`, `MINIMOS`. Frontend nuevos `utils/jornada.js`, `jornadaService.js`, `JornadaDeHoy.vue`, `JornadaFormDialog.vue`, `test/jornada.test.js` (24); modificado `MisActividades.vue`.
+3. Prueba en rojo y por qué falló: módulos y tablas inexistentes y `/jornadas` en 404; en el frontend, servicios y componentes inexistentes.
+4. Puertas: frontend lint, build y 1310/1310; backend `jornadas` 14, `jornadaUtils` 7, `seed` 26, `registrosTiempo` 13 y `verificarPruebas.js` OK (54 archivos, 521 pruebas); navegador en escritorio y en un marco de 375 px. Sin verificar: emulador móvil real, «Corregir horas» completo en móvil, `visibilitychange`, teclado, lector de pantalla, selector de fecha del diálogo.
+5. Decisiones no cubiertas: DATE y TIME se leen con `DATE_FORMAT` / `TIME_FORMAT` para que el driver no los desplace; marcar va en transacción con `FOR UPDATE` sobre el usuario; en descanso solo se puede regresar; la corrección rechaza cualquier hora sin entrada (más estricta que el criterio 5); descanso sin regreso cuenta solo el tramo previo; jornada base 60–960 en múltiplos de 30; minutos de actividades = bloques terminados con `DATE(inicio)` = hoy (un bloque a mano cerca de la medianoche puede caer en el día anterior); `GET /jornadas?mes` no trae minutos por día; el plegado se guarda en `localStorage` (`delgrow_jornada_plegada`); horas con máscara `##:##`, no `type=time`.
+6. Para la memoria: ver MEMORY.md.
 
 ## Veredicto del reviewer (vuelta 1)
+
+**APROBADO** (reviewer con Opus, 2026-11-13, sin modificar archivos). Privacidad comprobada: el usuario sale siempre de `req.user.id`, ninguna ruta acepta id y un `usuario_id` en el cuerpo se ignora; administrador y sistema 403. Hora del servidor, concurrencia (20 rondas de marcas simultáneas, siempre ganó una), fechas sin desplazamiento, cálculo de minutos, validaciones, orden de rutas y migración correctos.
+
+Opcionales sin aplicar: concordancia «llevas 1 min trabajadas» en `utils/jornada.js` (frontend); al cambiar el día en el diálogo se pierden las horas escritas sin preguntar; si falla la lectura del día, guardar todo vacío avisa «no tenía horas»; un 400 del backend sale en el banner general; `validarHoras` usa su propia expresión regular; las pruebas calculan «hoy» en el proceso de prueba (podrían fallar a medianoche).

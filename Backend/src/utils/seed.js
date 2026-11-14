@@ -172,6 +172,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarCarteraYActividadesMes();
   await migrarVencimientoDeTipos();
   await migrarRegistrosTiempo();
+  await migrarJornadas();
 
   if (!cuentasDemo) return;
 
@@ -521,6 +522,34 @@ async function migrarRegistrosTiempo() {
       CONSTRAINT fk_registros_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
       CONSTRAINT fk_registros_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
       CONSTRAINT fk_registros_tipo FOREIGN KEY (tipo_id) REFERENCES tipos_actividad(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+}
+
+/**
+ * Crea las tablas de la jornada (rebanada 15) si no existen; solo CREATE, nunca borra nada:
+ * - `jornadas`: las cuatro horas del día de cada usuario (TIME NULL; lo vacío es lo que no ocurrió).
+ * - `ajustes_actividades`: ajustes propios de «Mis actividades» (por ahora la jornada base en minutos).
+ */
+async function migrarJornadas() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS jornadas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      fecha DATE NOT NULL,
+      entrada TIME NULL,
+      salida_descanso TIME NULL,
+      regreso_descanso TIME NULL,
+      salida TIME NULL,
+      UNIQUE KEY uq_jornadas_usuario_fecha (usuario_id, fecha),
+      CONSTRAINT fk_jornadas_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS ajustes_actividades (
+      usuario_id INT NOT NULL PRIMARY KEY,
+      jornada_base_minutos INT NOT NULL DEFAULT 480,
+      CONSTRAINT fk_ajustes_actividades_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
 }

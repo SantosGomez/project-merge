@@ -1,5 +1,7 @@
 <template>
   <div class="mis-actividades">
+    <JornadaDeHoy />
+
     <CronometroActivo />
 
     <q-btn-toggle
@@ -49,6 +51,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import CalendarioActividades from './CalendarioActividades.vue'
 import CronometroActivo from './CronometroActivo.vue'
+import JornadaDeHoy from './JornadaDeHoy.vue'
 import ListaDelMes from './ListaDelMes.vue'
 import MisClientes from './MisClientes.vue'
 import MisTiposActividad from './MisTiposActividad.vue'
