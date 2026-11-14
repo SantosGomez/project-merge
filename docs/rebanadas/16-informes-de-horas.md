@@ -53,11 +53,15 @@ Fuera de esta lista, el implementer para y pregunta.
 
 ## Reporte del implementer
 
-1. Rebanada completada:
-2. Archivos modificados:
-3. Prueba en rojo y por qué falló:
-4. Puertas (verde / rojo / no aplica):
-5. Decisiones no cubiertas:
-6. Para la memoria:
+1. Rebanada completada: los 12 criterios (2026-11-13). Cierra el feature (rebanadas 10 a 16).
+2. Archivos: backend nuevos `InformeTiempoModel.js`, `InformeTiempoController.js`, `informeRoutes.js`, `test/informesTiempo.test.js` (14); modificados `app.js` y `MINIMOS`. Frontend nuevos `InformesActividades.vue`, `informeService.js`, `utils/informes.js`, `test/informesActividades.test.js` (28); modificado `MisActividades.vue` (cuarta vista).
+3. Prueba en rojo y por qué falló: `GET /informes/tiempo` devolvía 404; en el frontend, `informeService.js` inexistente. Las pruebas del componente se escribieron junto con las de utilidades.
+4. Puertas: backend `informesTiempo` 14 y `verificarPruebas.js` OK (55 archivos, 535 pruebas); frontend 1337/1337, build y lint; navegador en escritorio y 375 px, con el resumen comparado contra SQL independiente. Sin verificar: el CSV abierto en Excel, Electron, anchos menores a 375 px, tableta, cuenta de auxiliar.
+5. Decisiones no cubiertas: `resumen.jornada` es un objeto o `null` si no hay jornadas; la jornada y «sin asignar» no dependen de los filtros de cliente ni de tipo (la pantalla lo avisa); porcentajes enteros por mayor residuo (suman 100); un `cliente_id` o `tipo_id` ajeno devuelve 200 vacío, igual que uno inexistente; 366 días pasa y 367 da 400; el CSV lleva fechas `AAAA-MM-DD`, horas decimales con punto y neutraliza también tabulador y retorno de carro; los selectores ofrecen todos los clientes y tipos con «(desactivado)»; los filtros se aplican solos.
+6. Para la memoria: ver MEMORY.md.
 
 ## Veredicto del reviewer (vuelta 1)
+
+**APROBADO** (reviewer con Sonnet, 2026-11-13, sin modificar archivos). Privacidad correcta; exactitud comprobada con SQL independiente sobre 82 bloques y 12 jornadas (totales, cobrables, por cliente, por tipo, trabajado, extra y sin asignar coinciden); límites del rango, SQL parametrizado, CSV y ausencia de XSS correctos.
+
+Bajo, sin aplicar aquí (pasa a la revisión de UI/UX): en móvil las tarjetas del detalle de bloques salen con anchos desiguales. Opcionales: al cambiar un filtro se sigue viendo el informe anterior sin indicador de carga; una línea de comentario larga en `MisActividades.vue`. Sin verificar: descarga real del CSV, error con «Reintentar» en navegador y tablas en escritorio ancho.

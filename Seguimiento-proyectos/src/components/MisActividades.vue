@@ -19,7 +19,8 @@
       <q-tooltip>
         «Lista del mes» muestra lo que te toca hacer este mes. «Calendario» muestra qué vence cada
         día. «Clientes y tipos» es donde armas tus clientes, tus tipos de actividad y a quién le
-        haces cada uno.
+        haces cada uno. «Informes» muestra cuántas horas dedicaste a cada cliente y tipo de
+        actividad en un periodo, y descarga el detalle en CSV.
       </q-tooltip>
     </q-btn-toggle>
 
@@ -29,6 +30,8 @@
       v-else-if="vista === 'calendario'"
       @ir-a-catalogos="cambiarVista('catalogos')"
     />
+
+    <InformesActividades v-else-if="vista === 'informes'" />
 
     <template v-else>
       <p class="mis-actividades__lead">
@@ -51,6 +54,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import CalendarioActividades from './CalendarioActividades.vue'
 import CronometroActivo from './CronometroActivo.vue'
+import InformesActividades from './InformesActividades.vue'
 import JornadaDeHoy from './JornadaDeHoy.vue'
 import ListaDelMes from './ListaDelMes.vue'
 import MisClientes from './MisClientes.vue'
@@ -61,6 +65,7 @@ const OPCIONES_DE_VISTA = [
   { label: 'Lista del mes', value: 'lista', icon: 'checklist' },
   { label: 'Calendario', value: 'calendario', icon: 'calendar_month' },
   { label: 'Clientes y tipos', value: 'catalogos', icon: 'groups' },
+  { label: 'Informes', value: 'informes', icon: 'bar_chart' },
 ]
 
 const route = useRoute()
@@ -78,9 +83,9 @@ onMounted(() => {
 })
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverALaVentana))
 
-// La vista va en la dirección (?vista=calendario o ?vista=catalogos), como la pestaña (?tab=); sin
+// La vista va en la dirección (?vista=calendario, ?vista=catalogos o ?vista=informes), como la pestaña (?tab=); sin
 // parámetro, la lista del mes. El mes (?mes=) lo comparten la lista y el calendario.
-const VISTAS = ['calendario', 'catalogos']
+const VISTAS = ['calendario', 'catalogos', 'informes']
 const vista = computed(() => (VISTAS.includes(route.query.vista) ? route.query.vista : 'lista'))
 
 const cambiarVista = (valor) => {

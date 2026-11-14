@@ -50,6 +50,7 @@ const MINIMOS = {
   'fallosPersistencia.test.js': 7,
   'idsContador.test.js': 6,
   'importarCuentas.test.js': 3,
+  'informesTiempo.test.js': 14,
   'jornadaUtils.test.js': 7,
   'jornadas.test.js': 14,
   'miPerfil.test.js': 3,
