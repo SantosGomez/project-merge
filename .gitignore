@@ -39,3 +39,6 @@ Thumbs.db
 
 # Grafo generado por la skill graphify (se reconstruye a partir del código)
 graphify-out/
+
+# Respaldos cifrados de la base (se guardan fuera del proyecto)
+*.sql.cifrado
