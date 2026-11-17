@@ -80,6 +80,7 @@ npm run build
 
 - **Tests:**
   - Para pruebas unitarias de utilidades y lógica (Node.js nativo sin dependencias adicionales):
+  
     ```bash
     node --test
     ```
