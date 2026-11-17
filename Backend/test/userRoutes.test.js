@@ -108,7 +108,7 @@ async function testAltaUsuarioComoContadorEsDenegado() {
 // ---------- RF-30: datos inválidos al dar de alta ----------
 async function testAltaUsuarioDatosInvalidos() {
   const token = await loginAdmin();
-  const valida = { nombre: 'Cuenta de prueba', password: 'Pass1234', rol: 'contador' };
+  const valida = { nombre: 'Cuenta de prueba', password: 'Clave-Prueba-1234', rol: 'contador' };
 
   const sinNombre = await altaPorApi({ ...valida, nombre: '   ', correo: correoDePrueba('sin_nombre') }, token);
   assert.strictEqual(sinNombre.statusCode, 400, 'debe responder 400 sin nombre');
@@ -127,6 +127,13 @@ async function testAltaUsuarioDatosInvalidos() {
   assert.strictEqual(corta.statusCode, 400, 'debe responder 400 con contraseña corta');
   assert.ok(corta.body.mensaje.includes('contraseña'), 'mensaje debe mencionar contraseña');
 
+  const comun = await altaPorApi({ ...valida, correo: correoDePrueba('clave_comun'), password: 'password1234' }, token);
+  assert.strictEqual(comun.statusCode, 400, 'debe responder 400 con contraseña común');
+  assert.match(comun.body.mensaje, /demasiado común/);
+
+  const once = await altaPorApi({ ...valida, correo: correoDePrueba('clave_once'), password: 'Clave123456' }, token);
+  assert.strictEqual(once.statusCode, 400, 'debe responder 400 con 11 caracteres');
+
   const rol = await altaPorApi({ ...valida, correo: correoDePrueba('rol_invalido'), rol: 'invitado' }, token);
   assert.strictEqual(rol.statusCode, 400, 'debe responder 400 con rol inválido');
   assert.ok(rol.body.mensaje.includes('rol'), 'mensaje debe mencionar rol');
@@ -141,7 +148,7 @@ async function testAltaDuplicadaConOtraCapitalizacionRechaza() {
   const token = await loginAdmin();
 
   const respuesta = await altaPorApi(
-    { nombre: 'Duplicado', correo: contador.correo.toUpperCase(), password: 'Pass1234', rol: 'contador' },
+    { nombre: 'Duplicado', correo: contador.correo.toUpperCase(), password: 'Clave-Prueba-1234', rol: 'contador' },
     token
   );
 
@@ -164,7 +171,7 @@ function correoDeLongitud(longitud) {
 // ---------- RF-30: máximo de 150 caracteres del nombre y del correo ----------
 async function testAltaConNombreDemasiadoLargoRechaza() {
   const token = await loginAdmin();
-  const base = { password: 'Pass12345', rol: 'contador' };
+  const base = { password: 'Clave-Prueba-12345', rol: 'contador' };
 
   const correoLargo = correoDeLongitud(151);
   const largo = await altaPorApi({ ...base, nombre: 'Correo largo', correo: correoLargo }, token);
@@ -362,7 +369,8 @@ async function testRestablecerConContrasenaInvalida() {
     ['solo espacios', { password: '        ' }],
     ['número', { password: 12345678 }],
     ['lista', { password: ['ClaveLarga1'] }],
-    ['de 7 caracteres', { password: 'Clave12' }],
+    ['de 11 caracteres', { password: 'Clave123456' }],
+    ['común', { password: 'password1234' }],
   ];
   for (const [descripcion, cuerpo] of casos) {
     const respuesta = await restablecer(cuenta.correo, cuerpo, tokenAdmin);

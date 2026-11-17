@@ -9,7 +9,7 @@ const {
   limpiarDatosDePrueba,
   cerrarBaseDeDatos,
 } = require('../soporte-pruebas/bd');
-const { seedDatabase, debeSembrarCuentasDemo } = require('../src/utils/seed');
+const { seedDatabase, debeSembrarCuentasDemo, verificarSeedDemoEnProduccion } = require('../src/utils/seed');
 const { findByCorreo, findAll } = require('../src/models/UserModel');
 const { pool, query } = require('../src/config/db');
 
@@ -436,4 +436,18 @@ describe('seed de datos maestros', () => {
   test('la migración deja el rol auxiliar en minúscula y se puede repetir', testMigracionAgregaElRolAuxiliar);
   test('se guarda un usuario con rol auxiliar', testSeGuardaUnUsuarioConRolAuxiliar);
   test('una base nueva crea usuarios con el rol auxiliar', testCreateTableDeUsuariosIncluyeAuxiliar);
+});
+
+describe('cuentas demo en producción (S2)', () => {
+  test('con NODE_ENV=production y SEED_CUENTAS_DEMO=true no se puede arrancar', () => {
+    assert.throws(
+      () => verificarSeedDemoEnProduccion({ NODE_ENV: 'production', SEED_CUENTAS_DEMO: 'true' }),
+      /SEED_CUENTAS_DEMO/
+    );
+  });
+
+  test('en producción sin la bandera, o en desarrollo con ella, no falla', () => {
+    assert.doesNotThrow(() => verificarSeedDemoEnProduccion({ NODE_ENV: 'production' }));
+    assert.doesNotThrow(() => verificarSeedDemoEnProduccion({ NODE_ENV: 'development', SEED_CUENTAS_DEMO: 'true' }));
+  });
 });

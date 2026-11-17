@@ -122,8 +122,8 @@ async function testValidacionesDeLaNueva() {
   const token = await iniciarSesion(servidor.puerto, correo, CONTRASENA_ASIGNADA);
 
   const corta = await cambiarContrasena(token, { password: 'Corta1' });
-  assert.strictEqual(corta.statusCode, 400, 'menos de 8 caracteres');
-  assert.match(corta.body.mensaje, /al menos 8 caracteres/);
+  assert.strictEqual(corta.statusCode, 400, 'menos de 12 caracteres');
+  assert.match(corta.body.mensaje, /al menos 12 caracteres/);
 
   const igual = await cambiarContrasena(token, { password: CONTRASENA_ASIGNADA });
   assert.strictEqual(igual.statusCode, 400, 'igual a la que dio el administrador');

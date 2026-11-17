@@ -103,3 +103,26 @@ describe('tokenUtils', () => {
   test('testIsTokenExpiredTokenValido', testIsTokenExpiredTokenValido);
   test('testDosTokensDelMismoInstanteSonDistintos', testDosTokensDelMismoInstanteSonDistintos);
 });
+
+// S2: el algoritmo queda fijo en HS256
+describe('algoritmo HS256 fijo', () => {
+  const jwt = require('jsonwebtoken');
+  const secreto = 'a'.repeat(32);
+
+  test('el token se firma con HS256', () => {
+    const token = generateAccessToken({ id: 1, rol: 'contador' }, secreto, '1h');
+    assert.strictEqual(jwt.decode(token, { complete: true }).header.alg, 'HS256');
+  });
+
+  test('un token firmado con otro algoritmo (HS512) se rechaza', () => {
+    const token = jwt.sign({ id: 1, rol: 'contador', jti: 'x' }, secreto, { algorithm: 'HS512', expiresIn: '1h' });
+    const r = verifyAccessToken(token, secreto);
+    assert.strictEqual(r.valido, false);
+    assert.strictEqual(r.error, 'token_invalido');
+  });
+
+  test('un token sin firma (alg none) se rechaza', () => {
+    const token = jwt.sign({ id: 1, rol: 'administrador', jti: 'x' }, '', { algorithm: 'none' });
+    assert.strictEqual(verifyAccessToken(token, secreto).valido, false);
+  });
+});

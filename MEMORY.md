@@ -44,5 +44,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 - **Subagentes:** pedir que no dejen procesos en segundo plano, que no toquen MEMORY.md y que usen solo cuentas `zz_test_`.
 - **Otros:** `session.id` es texto (comparar con `Number(...)`). Si una tabla de XAMPP da «doesn't exist in engine», no borrar tablas sueltas.
 
+- **S2 seguridad (rama cs-s2-sesiones):** contraseña ≥12 y no común (`validarPasswordNueva`), revocar sesiones + cerrar SSE al cambiar, bloqueo 5 fallos/15 min por correo (en memoria), JWT HS256 y secreto ≥32, sin seed demo en producción. Probar con `node --test --test-concurrency=1` (en paralelo falla al azar por la BD compartida).
+
 ---
 Nada sensible en esta memoria.

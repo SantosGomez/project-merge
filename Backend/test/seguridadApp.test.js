@@ -13,6 +13,7 @@ const { iniciarServidor, peticion } = require('../soporte-pruebas/http');
  * (400) antes de consultarla, y esas respuestas cuentan como intentos fallidos.
  */
 
+const SECRETO_LARGO = 'a'.repeat(32);
 const LOGIN_INVALIDO = { correo: '', contrasena: '' };
 
 /**
@@ -80,7 +81,12 @@ describe('límite de intentos de inicio de sesión', () => {
 
 describe('secreto JWT', () => {
   test('usa JWT_SECRET cuando está definido', () => {
-    assert.strictEqual(obtenerSecretoJwt({ JWT_SECRET: 'secreto-propio' }), 'secreto-propio');
+    assert.strictEqual(obtenerSecretoJwt({ JWT_SECRET: SECRETO_LARGO }), SECRETO_LARGO);
+  });
+
+  test('un JWT_SECRET de menos de 32 caracteres falla al arrancar', () => {
+    assert.throws(() => obtenerSecretoJwt({ JWT_SECRET: 'secreto-corto' }), /32 caracteres/);
+    assert.throws(() => obtenerSecretoJwt({ JWT_SECRET: 'corto', NODE_ENV: 'production' }), /32 caracteres/);
   });
 
   test('en producción sin JWT_SECRET falla al arrancar', () => {

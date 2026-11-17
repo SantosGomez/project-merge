@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
+const { limitarIntentosPorCuenta } = require('./middlewares/limiteCuentaMiddleware');
 const { parseAllowedOrigins } = require('./utils/originUtils');
 const { createOriginGuard, buildCorsOptions } = require('./middlewares/originMiddleware');
 const authRoutes = require('./routes/authRoutes');
@@ -71,6 +72,8 @@ function crearApp(opciones) {
         ),
       })
     );
+    // Además, máximo 5 intentos fallidos por correo cada 15 minutos (exista o no la cuenta)
+    app.use('/auth/login', limitarIntentosPorCuenta());
   }
 
   // Montaje de rutas de la API

@@ -147,7 +147,7 @@ async function testServidorSigueAtendiendo() {
 // ---------- RF-37, criterio 32: correo numérico con JSON bien formado → 400 ----------
 async function testLoginUsuarioNumerico() {
   const respuesta = await conLimite(
-    peticion(servidor.puerto, 'POST', '/auth/login', { correo: 12345, password: 'Secreta123' })
+    peticion(servidor.puerto, 'POST', '/auth/login', { correo: 12345, password: 'Secreta-Larga-123' })
   );
 
   assert.strictEqual(respuesta.statusCode, 400, 'un dato que no es texto debe responder 400');
@@ -164,7 +164,7 @@ async function testLoginUsuarioNumerico() {
 async function testLoginNombraElDatoNoTextual() {
   const noTextuales = [{ clave: 'valor' }, ['Secreta123'], true];
   const casos = [
-    { dato: 'correo', cuerpo: (valor) => ({ correo: valor, password: 'Secreta123' }) },
+    { dato: 'correo', cuerpo: (valor) => ({ correo: valor, password: 'Secreta-Larga-123' }) },
     { dato: 'contraseña', cuerpo: (valor) => ({ correo: 'zz_test_login@prueba.local', password: valor }) },
     { dato: 'correo y contraseña', cuerpo: (valor) => ({ correo: valor, password: valor }) },
   ];
@@ -268,7 +268,7 @@ async function testAltaConRolNoTextual() {
   const correo = `zz_test_rol_${administrador.id}@prueba.local`;
 
   const respuesta = await conLimite(
-    peticion(servidor.puerto, 'POST', '/usuarios', { nombre: 'Rol no textual', correo, password: 'Secreta123', rol: 5 }, token)
+    peticion(servidor.puerto, 'POST', '/usuarios', { nombre: 'Rol no textual', correo, password: 'Secreta-Larga-123', rol: 5 }, token)
   );
   afirmarDatoNoTextual(respuesta, 'rol');
 
@@ -283,7 +283,7 @@ async function testAltaConUsuarioOContrasenaNoTextuales() {
   const administrador = await crearUsuarioDePrueba('administrador');
   const token = await iniciarSesion(servidor.puerto, administrador.correo, administrador.password);
   const correo = `zz_test_alta_${administrador.id}@prueba.local`;
-  const base = { nombre: 'Dato no textual', correo, password: 'Secreta123', rol: 'contador' };
+  const base = { nombre: 'Dato no textual', correo, password: 'Secreta-Larga-123', rol: 'contador' };
 
   for (const valor of NO_TEXTUALES) {
     const conNombre = await conLimite(peticion(servidor.puerto, 'POST', '/usuarios', { ...base, nombre: valor }, token));

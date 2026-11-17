@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { validateLoginInput, validarCampoTexto } = require('../utils/validationUtils');
+const { validateLoginInput, validarPasswordNueva } = require('../utils/validationUtils');
 const { generateAccessToken } = require('../utils/tokenUtils');
 const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
@@ -103,18 +103,11 @@ async function cambiarContrasena(req, res) {
     );
   }
 
-  // 1. La nueva sigue la misma regla que el alta: texto de al menos 8 caracteres (RF-37, RF-44)
+  // 1. La nueva sigue la misma regla que el alta: al menos 12 caracteres y no común (RF-37, RF-44)
   const { password } = req.body;
-  const campo = validarCampoTexto(password, 'contraseña');
-  if (campo.estado === 'tipo_invalido') {
-    return res.status(400).json(
-      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe enviarse como texto')
-    );
-  }
-  if (campo.estado !== 'valido' || password.length < 8) {
-    return res.status(400).json(
-      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')
-    );
+  const politica = validarPasswordNueva(password);
+  if (!politica.valida) {
+    return res.status(400).json(politica.error);
   }
 
   // 2. Debe ser distinta a la que asignó el administrador
@@ -136,7 +129,7 @@ async function cambiarContrasena(req, res) {
 
 /**
  * La persona cambia su contraseña por voluntad propia escribiendo la actual.
- * La sesión actual sigue abierta; las demás sesiones no se tocan.
+ * La sesión actual sigue abierta; las demás sesiones se revocan.
  * @param {Object} req - Petición Express con cuerpo { password_actual, password }.
  * @param {Object} res - Respuesta Express.
  */
@@ -150,17 +143,10 @@ async function cambiarMiContrasena(req, res) {
     );
   }
 
-  // 2. La nueva sigue la misma regla que el alta: texto de al menos 8 caracteres
-  const campo = validarCampoTexto(password, 'contraseña');
-  if (campo.estado === 'tipo_invalido') {
-    return res.status(400).json(
-      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe enviarse como texto')
-    );
-  }
-  if (campo.estado !== 'valido' || password.length < 8) {
-    return res.status(400).json(
-      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')
-    );
+  // 2. La nueva sigue la misma regla que el alta: al menos 12 caracteres y no común
+  const politica = validarPasswordNueva(password);
+  if (!politica.valida) {
+    return res.status(400).json(politica.error);
   }
 
   // 3. La actual debe ser la guardada
@@ -178,8 +164,11 @@ async function cambiarMiContrasena(req, res) {
     );
   }
 
-  // 5. Guardar con Argon2id; la sesión actual sigue abierta
+  // 5. Guardar con Argon2id; la sesión actual sigue abierta y las demás se revocan (también su tiempo real)
   await UserModel.updatePassword(cuenta.id, await hashPassword(password), false);
+  const jtiActual = jwt.decode(req.headers.authorization.substring(7)).jti;
+  await SessionModel.revocarSesionesDeUsuario(cuenta.id, jtiActual);
+  eventos.cerrarSesionesDeUsuario(cuenta.id, jtiActual);
   return res.status(200).json({ mensaje: 'Contraseña actualizada correctamente' });
 }
 

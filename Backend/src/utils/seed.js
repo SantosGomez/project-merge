@@ -157,11 +157,23 @@ function debeSembrarCuentasDemo(env) {
 }
 
 /**
+ * Impide arrancar en producción con las cuentas demo activas: sus contraseñas están en el código.
+ * @param {Object} env - Variables de entorno (process.env).
+ * @throws {Error} Si NODE_ENV es production y SEED_CUENTAS_DEMO es true.
+ */
+function verificarSeedDemoEnProduccion(env) {
+  if (env.NODE_ENV === 'production' && debeSembrarCuentasDemo(env)) {
+    throw new Error('SEED_CUENTAS_DEMO=true no se permite en producción: apáguelo en .env antes de iniciar el servidor');
+  }
+}
+
+/**
  * Seed de datos maestros: crea las tablas y migra la de usuarios. Las cuentas demo (un administrador y un
  * contador con contraseñas hasheadas) solo se crean si se piden; si ya existen no hace nada (idempotente). RF-27.
  * @param {{ cuentasDemo?: boolean }} [opciones] - cuentasDemo: por defecto sale de SEED_CUENTAS_DEMO.
  */
 async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) } = {}) {
+  verificarSeedDemoEnProduccion(process.env);
   await crearTablasSiNoExisten();
   await migrarUsuarios();
   await migrarCasos();
@@ -554,4 +566,4 @@ async function migrarJornadas() {
   `);
 }
 
-module.exports = { seedDatabase, debeSembrarCuentasDemo };
+module.exports = { seedDatabase, debeSembrarCuentasDemo, verificarSeedDemoEnProduccion };
