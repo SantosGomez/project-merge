@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
 const { requireAdminOrSistema } = require('../middlewares/roleMiddleware');
-const { createUser, resetPassword, listUsers } = require('../controllers/UserController');
+const { createUser, resetPassword, listUsers, updateUser } = require('../controllers/UserController');
 const { listarContadoresDeAuxiliar, ajustarContadoresDeAuxiliar } = require('../controllers/AuxiliarController');
 const { asyncHandler } = require('../utils/asyncHandler');
 
@@ -23,5 +23,8 @@ router.patch(
   requireAdminOrSistema,
   asyncHandler(resetPassword)
 );
+
+// PATCH /usuarios/:id — Edita nombre, correo, rol y contador que apoya (nunca la contraseña)
+router.patch('/:id', authenticateToken, requireAdminOrSistema, asyncHandler(updateUser));
 
 module.exports = router;

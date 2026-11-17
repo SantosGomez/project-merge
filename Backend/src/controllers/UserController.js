@@ -1,8 +1,8 @@
-const { esCorreoValido, validarCampoTexto, validateRol, parseListaDeIds } = require('../utils/validationUtils');
+const { esCorreoValido, validarCampoTexto, validateRol, parseListaDeIds, parseCounterId } = require('../utils/validationUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 const AuxiliarModel = require('../models/AuxiliarModel');
-const { avisarNuevosVinculos, ERROR_LISTA_CONTADORES } = require('./AuxiliarController');
+const { avisarNuevosVinculos, avisarVinculosQuitados, ERROR_LISTA_CONTADORES } = require('./AuxiliarController');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 const { formatLocalDate } = require('../utils/dateUtils');
@@ -179,4 +179,151 @@ async function listUsers(req, res) {
   return res.status(200).json({ usuarios });
 }
 
-module.exports = { createUser, resetPassword, listUsers };
+/** Roles que trabajan casos: solo ellos pueden conservar los casos de una cuenta. */
+const ROLES_CON_CASOS = ['contador', 'auxiliar'];
+
+/**
+ * Valida nombre, correo y rol con las mismas reglas y avisos que el alta.
+ * @param {{ nombre: *, correo: *, rol: * }} datos - Datos recibidos en el cuerpo.
+ * @returns {{ error: Object } | { nombre: string, correo: string, rol: string }} El error a responder (400)
+ *   o los datos limpios (nombre recortado, correo recortado y en minúsculas).
+ */
+function validarDatosDeCuenta({ nombre, correo, rol }) {
+  const tipoInvalido = [validarCampoTexto(nombre, 'nombre'), validarCampoTexto(correo, 'correo')]
+    .filter((campo) => campo.estado === 'tipo_invalido')
+    .map((campo) => campo.campo);
+  if (tipoInvalido.length > 0) {
+    return { error: buildError('Dato inválido', tipoInvalido.join(' y '), 'debe enviarse como texto') };
+  }
+
+  const nombreLimpio = (nombre ?? '').trim();
+  const correoLimpio = (correo ?? '').trim().toLowerCase();
+  if (!nombreLimpio) return { error: buildError('Falta el nombre', 'nombre', 'Escribe el nombre de la persona') };
+  if (!correoLimpio) return { error: buildError('Falta el correo', 'correo', 'Escribe el correo de la cuenta') };
+  if (nombreLimpio.length > MAX_NOMBRE_Y_CORREO) {
+    return {
+      error: buildError('El nombre supera el máximo de caracteres', 'nombre', 'El nombre debe tener máximo 150 caracteres'),
+    };
+  }
+  if (correoLimpio.length > MAX_NOMBRE_Y_CORREO) {
+    return {
+      error: buildError('El correo supera el máximo de caracteres', 'correo', 'El correo debe tener máximo 150 caracteres'),
+    };
+  }
+  if (!esCorreoValido(correoLimpio)) {
+    return { error: buildError('Correo no válido', 'correo', 'Escribe un correo como nombre@delgrow.mx') };
+  }
+
+  if (validarCampoTexto(rol, 'rol').estado === 'tipo_invalido') {
+    return { error: buildError('Dato inválido', 'rol', 'El rol debe enviarse como texto') };
+  }
+  if (!rol || !validateRol(rol)) {
+    return {
+      error: buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador, auxiliar o usuario de sistema'),
+    };
+  }
+  return { nombre: nombreLimpio, correo: correoLimpio, rol };
+}
+
+/**
+ * Edita una cuenta existente desde el directorio (solo administrador o usuarios_de_sistema):
+ * nombre, correo, rol y, si es auxiliar, el contador que apoya. Nunca cambia la contraseña
+ * (para eso está el restablecimiento).
+ * Reglas del rol: nadie cambia el suyo; un contador con auxiliares no deja de ser contador;
+ * una cuenta con casos solo puede ser contador o auxiliar; un auxiliar que deja de serlo
+ * pierde su vínculo (se avisa a los dos); y al cambiar el rol se cierran sus sesiones,
+ * porque el rol viaja en el token.
+ * @param {Object} req - Petición Express con params.id y cuerpo { nombre, correo, rol, contadores? }.
+ * @param {Object} res - Respuesta Express.
+ */
+async function updateUser(req, res) {
+  const noEncontrada = buildError('No se encontró la cuenta', 'cuenta', 'Actualiza el directorio y vuelve a intentarlo');
+  const id = parseCounterId(req.params.id);
+  if (!id) return res.status(404).json(noEncontrada);
+  const cuenta = await UserModel.findById(id);
+  if (!cuenta) return res.status(404).json(noEncontrada);
+
+  const datos = validarDatosDeCuenta(req.body);
+  if (datos.error) return res.status(400).json(datos.error);
+  const { nombre, correo, rol } = datos;
+  const cambiaRol = rol !== cuenta.rol;
+
+  if (cambiaRol && id === req.user.id) {
+    return res.status(400).json(
+      buildError('No puedes cambiar tu propio rol', 'rol', 'Pide a otro usuario de sistema que lo cambie')
+    );
+  }
+
+  const otraCuenta = await UserModel.findByCorreo(correo);
+  if (otraCuenta && otraCuenta.id !== id) {
+    return res.status(400).json(
+      buildError('El correo ya existe', 'correo', 'Usa otro correo o restablece la contraseña de esa cuenta')
+    );
+  }
+
+  if (cambiaRol) {
+    const { casos, auxiliares } = await UserModel.contarCasosYAuxiliares(id);
+    if (cuenta.rol === 'contador' && auxiliares > 0) {
+      return res.status(409).json(
+        buildError('El contador tiene auxiliares', 'rol', 'Cambia primero el contador que apoya cada uno de sus auxiliares')
+      );
+    }
+    if (casos > 0 && !ROLES_CON_CASOS.includes(rol)) {
+      return res.status(409).json(
+        buildError('La cuenta tiene casos', 'rol', 'Elige contador o auxiliar, o reasigna sus casos antes de cambiar el rol')
+      );
+    }
+  }
+
+  // El contador que apoya (solo si queda como auxiliar y el campo llega); mismas reglas que el alta
+  let contadoresIds = null;
+  if (rol === 'auxiliar' && req.body.contadores !== undefined) {
+    contadoresIds = parseListaDeIds(req.body.contadores);
+    if (!contadoresIds) return res.status(400).json(ERROR_LISTA_CONTADORES);
+    if (contadoresIds.length > 1) {
+      return res.status(400).json(
+        buildError('Un auxiliar solo puede apoyar a un contador', 'contadores', 'Elige un solo contador')
+      );
+    }
+    for (const contadorId of contadoresIds) {
+      if (contadorId === id || !(await UserModel.findCounterById(contadorId))) {
+        return res.status(400).json(
+          buildError('La cuenta no es un contador', 'contadores', 'Elige solo cuentas con rol de contador')
+        );
+      }
+    }
+  }
+
+  // Un auxiliar que deja de serlo se desvincula antes de cambiar el rol (el modelo exige rol auxiliar)
+  const actuales = cuenta.rol === 'auxiliar' ? await AuxiliarModel.idsDeContadoresDe(id) : [];
+  if (cuenta.rol === 'auxiliar' && rol !== 'auxiliar' && actuales.length > 0) {
+    const { quitados } = await AuxiliarModel.ajustarContadoresDeAuxiliar(id, { agregar: [], quitar: actuales });
+    await avisarVinculosQuitados(id, quitados);
+  }
+
+  try {
+    await UserModel.update(id, { nombre, correo, rol });
+  } catch (error) {
+    // Otra alta o edición tomó el mismo correo un instante antes
+    if (error?.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json(
+        buildError('El correo ya existe', 'correo', 'Usa otro correo o restablece la contraseña de esa cuenta')
+      );
+    }
+    throw error;
+  }
+
+  if (contadoresIds) {
+    const agregar = contadoresIds.filter((contadorId) => !actuales.includes(contadorId));
+    const quitar = actuales.filter((contadorId) => !contadoresIds.includes(contadorId));
+    const { agregados, quitados } = await AuxiliarModel.ajustarContadoresDeAuxiliar(id, { agregar, quitar });
+    await avisarVinculosQuitados(id, quitados);
+    await avisarNuevosVinculos(id, agregados);
+  }
+
+  if (cambiaRol) await SessionModel.revocarSesionesDeUsuario(id);
+
+  return res.status(200).json({ mensaje: 'Usuario actualizado correctamente', usuario: { id, nombre, correo, rol } });
+}
+
+module.exports = { createUser, resetPassword, listUsers, updateUser };

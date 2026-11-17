@@ -203,6 +203,7 @@ async function ajustarContadoresDeAuxiliar(auxiliarId, { agregar, quitar }) {
 
 module.exports = {
   ajustarContadoresDeAuxiliar,
+  idsDeContadoresDe,
   asignarAuxiliar,
   quitarAuxiliar,
   listarAuxiliares,

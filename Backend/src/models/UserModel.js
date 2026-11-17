@@ -120,7 +120,39 @@ async function findContadorOAuxiliarById(id) {
   return rows.length > 0 ? rows[0] : null;
 }
 
+/**
+ * Guarda el nombre, el correo y el rol de una cuenta existente (edición desde el directorio).
+ * Nunca toca la contraseña.
+ * @param {number} id - ID del usuario.
+ * @param {{ nombre: string, correo: string, rol: string }} datos - Datos ya validados.
+ */
+async function update(id, { nombre, correo, rol }) {
+  await query('UPDATE usuarios SET nombre = ?, correo = ?, rol = ?, actualizado_en = ? WHERE id = ?', [
+    nombre,
+    correo,
+    rol,
+    formatLocalDate(nowLocal()),
+    id,
+  ]);
+}
+
+/**
+ * Cuenta los casos de una cuenta y los auxiliares que la apoyan, para decidir si puede cambiar de rol.
+ * @param {number} id - ID del usuario.
+ * @returns {Promise<{ casos: number, auxiliares: number }>}
+ */
+async function contarCasosYAuxiliares(id) {
+  const filas = await query(
+    `SELECT (SELECT COUNT(*) FROM casos WHERE contador_id = ?) AS casos,
+            (SELECT COUNT(*) FROM contador_auxiliar WHERE contador_id = ?) AS auxiliares`,
+    [id, id]
+  );
+  return { casos: Number(filas[0].casos), auxiliares: Number(filas[0].auxiliares) };
+}
+
 module.exports = {
+  update,
+  contarCasosYAuxiliares,
   findByCorreo,
   registrarUltimoAcceso,
   updatePassword,
