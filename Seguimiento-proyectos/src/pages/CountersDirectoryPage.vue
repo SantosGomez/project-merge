@@ -31,7 +31,9 @@
         v-if="session.esUsuarioSistema"
         v-model="dialogoNuevoAbierto"
         :contadores="contadores"
+        :cuenta="cuentaEditar"
         @creado="alCrearUsuario"
+        @actualizado="alActualizarUsuario"
       />
       <ContadoresDeAuxiliarDialog v-model="dialogoContadoresAbierto" :cuenta="cuentaAuxiliar" :contadores="contadores" />
       <CasosDeAuxiliarDialog
@@ -198,6 +200,20 @@
                 flat
                 no-caps
                 color="primary"
+                icon="edit"
+                label="Editar"
+                aria-haspopup="dialog"
+                :aria-label="`Editar la cuenta de ${props.row.nombre}`"
+                class="control-touch boton-presionable"
+                @click="abrirEditar(props.row)"
+              >
+                <q-tooltip>Cambia el nombre, el correo o el rol de esta cuenta.</q-tooltip>
+              </q-btn>
+              <q-btn
+                v-if="session.esUsuarioSistema"
+                flat
+                no-caps
+                color="primary"
                 icon="lock_reset"
                 label="Restablecer contraseña"
                 :aria-label="`Restablecer contraseña de ${props.row.nombre}`"
@@ -269,6 +285,20 @@
                     flat
                     no-caps
                     color="primary"
+                    icon="edit"
+                    label="Editar"
+                    aria-haspopup="dialog"
+                    :aria-label="`Editar la cuenta de ${props.row.nombre}`"
+                    class="control-touch boton-presionable"
+                    @click="abrirEditar(props.row)"
+                  >
+                    <q-tooltip>Cambia el nombre, el correo o el rol de esta cuenta.</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    v-if="session.esUsuarioSistema"
+                    flat
+                    no-caps
+                    color="primary"
                     icon="lock_reset"
                     label="Restablecer contraseña"
                     :aria-label="`Restablecer contraseña de ${props.row.nombre}`"
@@ -334,7 +364,13 @@ const columnas = [
     // Se ordena con el valor crudo y se muestra legible.
     format: (_valor, fila) => fila.ultimoAccesoTexto,
   },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'left' },
+  {
+    name: 'acciones',
+    label: 'Acciones',
+    field: 'id',
+    align: 'left',
+    classes: 'directory-acciones',
+  },
 ]
 
 const paginacion = ref({ rowsPerPage: 10 })
@@ -411,8 +447,32 @@ const retry = () => {
 
 const dialogoNuevoAbierto = ref(false)
 
+// El mismo diálogo da de alta (sin cuenta) o edita la cuenta elegida.
+const cuentaEditar = ref(null)
+
 const abrirNuevoUsuario = () => {
+  cuentaEditar.value = null
   dialogoNuevoAbierto.value = true
+}
+
+const abrirEditar = (fila) => {
+  cuentaEditar.value = { id: fila.id, nombre: fila.nombre, correo: fila.correo, rol: fila.rolClave }
+  dialogoNuevoAbierto.value = true
+}
+
+const alActualizarUsuario = ({ usuario, cambioRol }) => {
+  $q.notify({
+    type: 'positive',
+    message: cambioRol
+      ? `Cuenta de ${usuario.nombre} actualizada; tendrá que volver a iniciar sesión con su nuevo rol.`
+      : `Cuenta de ${usuario.nombre} actualizada.`,
+  })
+  // La fila cambia al instante; la recarga trae además lo que otros hayan cambiado.
+  usuarios.value = usuarios.value.map((u) => (u.id === usuario.id ? { ...u, ...usuario } : u))
+  refrescar({
+    avisarFallo: true,
+    mensajeFallo: 'Los cambios se guardaron, pero no se pudo actualizar el directorio.',
+  })
 }
 
 const dialogoRestablecerAbierto = ref(false)
@@ -457,7 +517,10 @@ const tieneAccionesTarjeta = (fila) =>
  * Recarga sin cargador: la tabla no parpadea. Si falla tras crear una cuenta, se conserva la
  * lista y se ofrece reintentar; al volver a la ventana, un fallo se ignora en silencio.
  */
-const refrescar = async ({ avisarFallo = false } = {}) => {
+const refrescar = async ({
+  avisarFallo = false,
+  mensajeFallo = 'La cuenta se creó, pero no se pudo actualizar el directorio.',
+} = {}) => {
   if (cargando.value || error.value) return
   try {
     usuarios.value = await listarUsuarios()
@@ -465,8 +528,15 @@ const refrescar = async ({ avisarFallo = false } = {}) => {
     if (avisarFallo) {
       $q.notify({
         type: 'negative',
-        message: 'La cuenta se creó, pero no se pudo actualizar el directorio.',
-        actions: [{ label: 'Reintentar', color: 'dg-texto-claro', noCaps: true, handler: () => refrescar({ avisarFallo: true }) }],
+        message: mensajeFallo,
+        actions: [
+          {
+            label: 'Reintentar',
+            color: 'dg-texto-claro',
+            noCaps: true,
+            handler: () => refrescar({ avisarFallo: true, mensajeFallo }),
+          },
+        ],
       })
     }
   }
@@ -553,6 +623,11 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolver)
 
 .directory-table :deep(.directory-cell) {
   overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* Con varios botones (un auxiliar tiene tres), bajan de línea en vez de ensanchar la tabla. */
+.directory-table :deep(.directory-acciones) {
   white-space: normal;
 }
 

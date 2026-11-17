@@ -132,6 +132,16 @@ export const validarAltaUsuario = (nombre, correo, password, rol) => {
   return { valido: Object.values(errores).every((error) => error === null), errores }
 }
 
+/** Valida la edición de una cuenta desde el directorio: como el alta, pero sin contraseña
+ * (para eso está «Restablecer contraseña»).
+ * @returns {{ valido: boolean, errores: { nombre: string|null, correo: string|null, rol: string|null } }}
+ */
+export const validarEdicionUsuario = (nombre, correo, rol) => {
+  const { errores } = validarAltaUsuario(nombre, correo, 'ignorada', rol)
+  delete errores.password
+  return { valido: Object.values(errores).every((error) => error === null), errores }
+}
+
 /** Valida la contraseña propia que crea la persona tras entrar con la asignada:
  * de al menos 8 (sin contar espacios extremos, como el login) y confirmada igual.
  * Que sea distinta a la asignada lo comprueba el backend.

@@ -95,13 +95,39 @@ export const crearUserService = (opciones = {}) => {
     return data.usuarios
   }
 
-  return { crearUsuario, restablecerContrasena, listarUsuarios, listarContadoresDeAuxiliar, guardarContadoresDeAuxiliar }
+  /**
+   * PATCH /usuarios/:id: edita nombre, correo y rol de una cuenta; nunca la contraseña.
+   * El contador que apoya (`contadores`: ids) solo se envía si la cuenta queda como auxiliar
+   * y el diálogo lo pudo cargar; sin él, el backend no toca el vínculo.
+   * @param {number} id
+   * @param {{ nombre: string, correo: string, rol: string, contadores?: Array<number> }} cuenta
+   * @returns {Promise<{ id: number, nombre: string, correo: string, rol: string }>} la cuenta guardada.
+   */
+  const actualizarUsuario = async (id, { nombre, correo, rol, contadores }) => {
+    const { data } = await api.patch(`/usuarios/${id}`, {
+      nombre: nombre.trim(),
+      correo: correo.trim().toLowerCase(),
+      rol,
+      ...(rol === 'auxiliar' && contadores ? { contadores } : {}),
+    })
+    return data.usuario
+  }
+
+  return {
+    crearUsuario,
+    actualizarUsuario,
+    restablecerContrasena,
+    listarUsuarios,
+    listarContadoresDeAuxiliar,
+    guardarContadoresDeAuxiliar,
+  }
 }
 
 // Servicio por defecto con la instancia de axios real.
 const servicioPorDefecto = crearUserService()
 
 export const crearUsuario = servicioPorDefecto.crearUsuario
+export const actualizarUsuario = servicioPorDefecto.actualizarUsuario
 export const restablecerContrasena = servicioPorDefecto.restablecerContrasena
 export const listarUsuarios = servicioPorDefecto.listarUsuarios
 export const listarContadoresDeAuxiliar = servicioPorDefecto.listarContadoresDeAuxiliar

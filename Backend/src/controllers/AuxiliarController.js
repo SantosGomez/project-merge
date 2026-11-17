@@ -332,6 +332,7 @@ module.exports = {
   listarContadoresDeAuxiliar,
   ajustarContadoresDeAuxiliar,
   avisarNuevosVinculos,
+  avisarVinculosQuitados,
   ERROR_LISTA_CONTADORES,
   listarAuxiliares,
   asignarAuxiliar,

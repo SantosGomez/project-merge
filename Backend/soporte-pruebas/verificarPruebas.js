@@ -45,6 +45,7 @@ const MINIMOS = {
   'counterRoutes.test.js': 6,
   'dateUtils.test.js': 4,
   'errorHandlerGlobal.test.js': 12,
+  'editarUsuario.test.js': 13,
   'errorUtils.test.js': 2,
   'entregasAuditoriaCalendario.test.js': 3,
   'escalarCasosDeAuxiliar.test.js': 8,

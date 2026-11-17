@@ -13,12 +13,20 @@
       <q-form
         class="nuevo-usuario__form"
         novalidate
-        aria-label="Formulario de alta de usuario"
-        @submit="darDeAlta"
+        :aria-label="
+          esEdicion ? 'Formulario de edición de usuario' : 'Formulario de alta de usuario'
+        "
+        @submit="guardar"
       >
         <q-card-section>
-          <h2 id="nuevo-usuario-titulo" class="nuevo-usuario__title">Nuevo usuario</h2>
-          <p class="nuevo-usuario__help">
+          <h2 id="nuevo-usuario-titulo" class="nuevo-usuario__title">
+            {{ esEdicion ? 'Editar usuario' : 'Nuevo usuario' }}
+          </h2>
+          <p v-if="esEdicion" class="nuevo-usuario__help">
+            Cambia el nombre, el correo o el rol de la cuenta. La contraseña no se cambia aquí: usa
+            «Restablecer contraseña» en el directorio. Los campos con * son obligatorios.
+          </p>
+          <p v-else class="nuevo-usuario__help">
             La persona entrará con este correo y esta contraseña, y verá las pantallas del rol que
             elijas. Los campos con * son obligatorios.
           </p>
@@ -81,7 +89,7 @@
             <p id="nuevo-correo-ayuda" class="form-help">Máximo 150 caracteres. No puede estar ya en uso.</p>
           </div>
 
-          <div class="form-group">
+          <div v-if="!esEdicion" class="form-group">
             <label for="nuevo-password" class="form-label"
               >Contraseña <span aria-hidden="true" class="required-mark">*</span></label
             >
@@ -157,6 +165,7 @@
               map-options
               aria-required="true"
               aria-describedby="nuevo-rol-ayuda"
+              :disable="guardando || esCuentaPropia"
               :error="!!errores.rol"
               :error-message="errores.rol"
               @update:model-value="alEditar('rol')"
@@ -177,8 +186,18 @@
                   </q-item-section>
                 </q-item>
               </template>
-              <q-tooltip>El rol decide qué pantallas verá la persona al iniciar sesión.</q-tooltip>
+              <q-tooltip>{{
+                esCuentaPropia
+                  ? 'No puedes cambiar tu propio rol; pídeselo a otro usuario de sistema.'
+                  : 'El rol decide qué pantallas verá la persona al iniciar sesión.'
+              }}</q-tooltip>
             </q-select>
+            <p v-if="esCuentaPropia" class="form-help">
+              No puedes cambiar tu propio rol; pídeselo a otro usuario de sistema.
+            </p>
+            <p v-else-if="esEdicion && rol !== cuenta.rol" class="form-help">
+              Al guardar con otro rol, la persona tendrá que volver a iniciar sesión.
+            </p>
             <p id="nuevo-rol-ayuda" class="form-help">
               Administrador ve el dashboard; Contador registra sus casos; Auxiliar apoya a un contador
               (tiene sus casos y cambia el estado de los de su contador); Usuario de sistema administra
@@ -205,12 +224,17 @@
               transition-hide="jump-up"
               :transition-duration="180"
               class="selector-moderno"
-              :disable="guardando"
+              :disable="guardando || cargandoContador || contadorSinCargar"
+              :loading="cargandoContador"
               aria-describedby="nuevo-contadores-ayuda"
             >
               <template #prepend><q-icon name="groups" aria-hidden="true" /></template>
               <q-tooltip>Elige a quién apoyará (solo un contador); también puedes hacerlo después desde el directorio.</q-tooltip>
             </q-select>
+            <p v-if="contadorSinCargar" class="form-help">
+              No se pudo cargar el contador que apoya; al guardar no se cambiará. Puedes cambiarlo
+              con «Contador que apoya» en el directorio.
+            </p>
             <p id="nuevo-contadores-ayuda" class="form-help">
               El auxiliar verá los casos de este contador y podrá cambiar su estado. Se le avisará al contador y al auxiliar.
             </p>
@@ -229,20 +253,26 @@
             :disable="guardando"
             @click="cerrar"
           >
-            <q-tooltip>Cierra sin crear la cuenta.</q-tooltip>
+            <q-tooltip>{{
+              esEdicion ? 'Cierra sin guardar los cambios.' : 'Cierra sin crear la cuenta.'
+            }}</q-tooltip>
           </q-btn>
           <q-btn
             type="submit"
             color="primary"
-            label="Dar de alta"
-            icon="person_add"
+            :label="esEdicion ? 'Guardar cambios' : 'Dar de alta'"
+            :icon="esEdicion ? 'save' : 'person_add'"
             no-caps
             unelevated
             class="control-touch boton-presionable"
             :loading="guardando"
             :disable="guardando"
           >
-            <q-tooltip>Crea la cuenta con los datos del formulario.</q-tooltip>
+            <q-tooltip>{{
+              esEdicion
+                ? 'Guarda los cambios de esta cuenta.'
+                : 'Crea la cuenta con los datos del formulario.'
+            }}</q-tooltip>
           </q-btn>
         </q-card-actions>
       </q-form>
@@ -254,21 +284,41 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 
-import { crearUsuario } from '../services/userService.js'
+import {
+  actualizarUsuario,
+  crearUsuario,
+  listarContadoresDeAuxiliar,
+} from '../services/userService.js'
+import { useSessionStore } from '../stores/session.js'
 import { MENSAJES_VALIDACION, PROFILES } from '../utils/constants.js'
 import { formatearRol } from '../utils/formateadores.js'
-import { validarAltaUsuario } from '../utils/validators.js'
+import { validarAltaUsuario, validarEdicionUsuario } from '../utils/validators.js'
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
 const props = defineProps({
   /** Contadores del directorio `{ id, nombre }`, para vincular a un auxiliar al crearlo. */
   contadores: { type: Array, default: () => [] },
+  /**
+   * Cuenta a editar `{ id, nombre, correo, rol }`; sin ella el diálogo da de alta.
+   * Igual que CaseFormDialog.vue con `caso`: un solo formulario para alta y edición.
+   */
+  cuenta: { type: Object, default: null },
 })
 
-const emit = defineEmits(['creado'])
+const emit = defineEmits(['creado', 'actualizado'])
 
-const opcionesContador = computed(() => props.contadores.map((c) => ({ label: c.nombre, value: c.id })))
+const session = useSessionStore()
+const esEdicion = computed(() => props.cuenta !== null)
+// Nadie cambia su propio rol (el backend también lo rechaza).
+const esCuentaPropia = computed(() => esEdicion.value && props.cuenta.id === Number(session.id))
+
+// Una cuenta que pasa de contador a auxiliar no puede apoyarse a sí misma.
+const opcionesContador = computed(() =>
+  props.contadores
+    .filter((c) => c.id !== props.cuenta?.id)
+    .map((c) => ({ label: c.nombre, value: c.id })),
+)
 // Un auxiliar apoya a un solo contador; la API recibe la lista (vacía o con ese contador).
 const contadorElegido = ref(null)
 const contadoresElegidos = computed(() => (contadorElegido.value === null ? [] : [contadorElegido.value]))
@@ -286,9 +336,37 @@ const errores = reactive({ nombre: null, correo: null, password: null, rol: null
 const errorGeneral = ref('')
 const guardando = ref(false)
 
-const hayDatosSinGuardar = computed(
-  () => [nombre.value, correo.value, password.value].some((v) => v.trim() !== '') || rol.value !== null,
+// En edición: datos con los que abrió el diálogo, para saber si algo cambió.
+const originales = ref({ nombre: '', correo: '', rol: null, contador: null })
+const cargandoContador = ref(false)
+// El contador que apoya no se pudo leer: el campo queda bloqueado y no se envía.
+const contadorSinCargar = ref(false)
+let cargaDeContador = 0
+
+const hayDatosSinGuardar = computed(() =>
+  esEdicion.value
+    ? nombre.value.trim() !== originales.value.nombre ||
+      correo.value.trim().toLowerCase() !== originales.value.correo.toLowerCase() ||
+      rol.value !== originales.value.rol ||
+      (rol.value === 'auxiliar' && contadorElegido.value !== originales.value.contador)
+    : [nombre.value, correo.value, password.value].some((v) => v.trim() !== '') || rol.value !== null,
 )
+
+/** Lee el contador que apoya el auxiliar que se va a editar. */
+const cargarContadorDeLaCuenta = async () => {
+  const carga = ++cargaDeContador
+  cargandoContador.value = true
+  try {
+    const contadores = await listarContadoresDeAuxiliar(props.cuenta.id)
+    if (carga !== cargaDeContador) return
+    contadorElegido.value = contadores[0]?.id ?? null
+    originales.value = { ...originales.value, contador: contadorElegido.value }
+  } catch {
+    if (carga === cargaDeContador) contadorSinCargar.value = true
+  } finally {
+    if (carga === cargaDeContador) cargandoContador.value = false
+  }
+}
 
 const $q = useQuasar()
 const tarjeta = ref(null)
@@ -335,7 +413,7 @@ const copiarPassword = () =>
     .then(() => $q.notify({ type: 'positive', message: 'Contraseña copiada.' }))
     .catch(() => $q.notify({ type: 'negative', message: 'No se pudo copiar; selecciónala y cópiala a mano.' }))
 
-// Cada apertura empieza con el formulario vacío y sin errores de la vez anterior.
+// Cada apertura empieza sin errores de la vez anterior: vacía en el alta y con la cuenta en la edición.
 watch(dialogoAbierto, (abierto) => {
   if (abierto) {
     nombre.value = ''
@@ -346,6 +424,21 @@ watch(dialogoAbierto, (abierto) => {
     for (const campo of Object.keys(errores)) errores[campo] = null
     errorGeneral.value = ''
     verPassword.value = false
+    cargaDeContador++
+    cargandoContador.value = false
+    contadorSinCargar.value = false
+    if (esEdicion.value) {
+      nombre.value = props.cuenta.nombre
+      correo.value = props.cuenta.correo
+      rol.value = props.cuenta.rol
+      originales.value = {
+        nombre: props.cuenta.nombre,
+        correo: props.cuenta.correo,
+        rol: props.cuenta.rol,
+        contador: null,
+      }
+      if (props.cuenta.rol === 'auxiliar') cargarContadorDeLaCuenta()
+    }
   } else {
     password.value = ''
     verPassword.value = false
@@ -354,6 +447,53 @@ watch(dialogoAbierto, (abierto) => {
 
 const alEditar = (campo) => {
   errores[campo] = null
+}
+
+const guardar = () => (esEdicion.value ? guardarCambios() : darDeAlta())
+
+const guardarCambios = async () => {
+  if (guardando.value || cargandoContador.value) return
+
+  errorGeneral.value = ''
+
+  const validacion = validarEdicionUsuario(nombre.value, correo.value, rol.value)
+  for (const campo of Object.keys(errores)) {
+    const codigo = validacion.errores[campo]
+    errores[campo] = codigo ? MENSAJES_VALIDACION[codigo] : null
+  }
+  if (!validacion.valido) {
+    enfocarPrimerError()
+    return
+  }
+
+  guardando.value = true
+  try {
+    const usuario = await actualizarUsuario(props.cuenta.id, {
+      nombre: nombre.value,
+      correo: correo.value,
+      rol: rol.value,
+      contadores:
+        rol.value === 'auxiliar' && !contadorSinCargar.value ? contadoresElegidos.value : undefined,
+    })
+    dialogoAbierto.value = false
+    emit('actualizado', { usuario, cambioRol: rol.value !== originales.value.rol })
+  } catch (error) {
+    // El backend dice «… sobre {campo}: …»: el aviso va bajo ese campo; si no es de un campo, al aviso general.
+    const mensaje = error?.mensaje ?? ''
+    const campo = / sobre (nombre|correo|rol)\b/.exec(mensaje)?.[1]
+    if (error?.codigoHttp === 400 && /ya existe/i.test(mensaje)) {
+      errores.correo = 'Ese correo ya es de otra cuenta. Usa otro.'
+      enfocarPrimerError()
+    } else if (campo) {
+      // Bajo el campo sobra «sobre rol»: «El contador tiene auxiliares. Cambia primero…».
+      errores[campo] = mensaje.replace(` sobre ${campo}: `, '. ')
+      enfocarPrimerError()
+    } else {
+      errorGeneral.value = mensaje || 'No se pudieron guardar los cambios de la cuenta. Intenta de nuevo.'
+    }
+  } finally {
+    guardando.value = false
+  }
 }
 
 const darDeAlta = async () => {
