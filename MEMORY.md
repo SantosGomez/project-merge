@@ -51,3 +51,4 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 
 ---
 Nada sensible en esta memoria.
+- **S5 seguridad (rama cs-s5-autorizacion):** `test/autorizacionMatriz.test.js` (36 pruebas) = matriz rol×endpoint que falla si una ruta nueva no está en su tabla, IDOR A/B, sesiones, pases `/eventos` y escalada por `/usuarios`. Sin huecos de código. Dudoso (sin cambiar): `usuarios_de_sistema` puede crear/promover administradores y restablecer la contraseña de un administrador; `GET /eventos` no revisa la sesión al canjear el pase.

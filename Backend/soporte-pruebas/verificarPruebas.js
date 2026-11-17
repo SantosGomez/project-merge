@@ -23,6 +23,7 @@ const MINIMOS = {
   'appCors.test.js': 4,
   'asignarCaso.test.js': 2,
   'auditoriaEventos.test.js': 10,
+  'autorizacionMatriz.test.js': 36,
   'auditoriaMensajes.test.js': 5,
   'auditoriaRoutes.test.js': 19,
   'auditoriaSeguimiento.test.js': 6,
