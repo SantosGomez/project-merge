@@ -1,7 +1,59 @@
+const { buildError } = require('./errorUtils');
+
 const ESTADOS_VALIDOS = ['Pendiente', 'En proceso', 'Finalizado'];
 const PRIORIDADES_VALIDAS = ['Alta', 'Media', 'Baja'];
 const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar'];
 const LONGITUD_MAX_CLIENTE = 80;
+const LONGITUD_MIN_PASSWORD = 12;
+// Contraseñas triviales (base sin dígitos ni símbolos finales); lista pequeña, sin dependencias.
+const PASSWORDS_COMUNES = new Set([
+  'password', 'contrasena', 'contraseña', 'qwerty', 'qwertyuiop', 'qwertyuiopasdf', 'asdfghjkl', 'zxcvbnm',
+  'abcdefgh', 'abcdefghijkl', 'iloveyou', 'letmein', 'welcome', 'admin', 'administrador', 'administrator',
+  'contador', 'auxiliar', 'delgrow', 'grupodelgrow', 'seguimiento', 'cambiame', 'cambiar', 'changeme',
+  'bienvenido', 'bienvenida', 'monkey', 'dragon', 'football', 'baseball', 'mexico', 'usuario', 'prueba',
+  'passw0rd', 'p4ssword', 'secreto', 'secret', 'clave', 'claveclave', 'temporal', 'default', 'test',
+]);
+
+/**
+ * Regla única de contraseña nueva (alta, restablecimiento, cambio asignado y cambio propio):
+ * texto de al menos 12 caracteres que no sea una contraseña común o trivial.
+ * @param {*} password - Contraseña propuesta.
+ * @returns {{ valida: true } | { valida: false, error: { mensaje: string } }} Resultado; el error ya va en tres partes.
+ */
+function validarPasswordNueva(password) {
+  if (typeof password !== 'string') {
+    const faltante = password === undefined || password === null;
+    return {
+      valida: false,
+      error: buildError(
+        'Contraseña inválida',
+        'contraseña',
+        faltante ? 'Escribe una contraseña de al menos 12 caracteres' : 'La contraseña debe enviarse como texto'
+      ),
+    };
+  }
+  if (password.length < LONGITUD_MIN_PASSWORD || password.trim() === '') {
+    return {
+      valida: false,
+      error: buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 12 caracteres'),
+    };
+  }
+  const minusculas = password.toLowerCase();
+  const base = minusculas.replace(/[\d\s!@#$%&*._-]+$/u, '');
+  const todoIgual = /^(.)\1+$/u.test(minusculas);
+  const soloDigitos = /^\d+$/u.test(minusculas);
+  if (todoIgual || soloDigitos || PASSWORDS_COMUNES.has(minusculas) || PASSWORDS_COMUNES.has(base) || base === '') {
+    return {
+      valida: false,
+      error: buildError(
+        'Contraseña inválida',
+        'contraseña',
+        'Esa contraseña es demasiado común: elige una menos predecible, por ejemplo tres palabras con un número'
+      ),
+    };
+  }
+  return { valida: true };
+}
 
 /**
  * Clasifica un campo de texto recibido en el cuerpo de una petición sin llamar
@@ -195,6 +247,7 @@ function parseCounterId(valor) {
 
 module.exports = {
   validarCampoTexto,
+  validarPasswordNueva,
   validarTextoOpcional,
   validateLoginInput,
   validateNewCaseInput,

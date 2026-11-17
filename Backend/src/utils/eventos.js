@@ -71,6 +71,12 @@ function crearRegistroEventos({ ahora = () => Date.now() } = {}) {
         if (conexion.jti === jti) conexion.res.end();
       }
     },
+    /** Cierra las conexiones de una cuenta, salvo la sesión indicada (al cambiar o restablecer su contraseña). */
+    cerrarSesionesDeUsuario: (usuarioId, exceptoJti) => {
+      for (const conexion of conexiones) {
+        if (conexion.usuarioId === usuarioId && conexion.jti !== exceptoJti) conexion.res.end();
+      }
+    },
     /** Cambia el intervalo de latido (solo pruebas); sin valor vuelve a 25 s. */
     configurarLatido: (ms = LATIDO_MS) => {
       latidoMs = ms;

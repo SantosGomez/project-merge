@@ -1,10 +1,11 @@
-const { esCorreoValido, validarCampoTexto, validateRol, parseListaDeIds, parseCounterId } = require('../utils/validationUtils');
+const { esCorreoValido, validarCampoTexto, validarPasswordNueva, validateRol, parseListaDeIds, parseCounterId } = require('../utils/validationUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
 const AuxiliarModel = require('../models/AuxiliarModel');
 const { avisarNuevosVinculos, avisarVinculosQuitados, ERROR_LISTA_CONTADORES } = require('./AuxiliarController');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
+const { eventos } = require('../utils/eventos');
 const { formatLocalDate } = require('../utils/dateUtils');
 
 /** Máximo de caracteres del nombre y del correo (columnas VARCHAR(150)). */
@@ -55,10 +56,9 @@ async function createUser(req, res) {
     );
   }
 
-  if (!password || password.length < 8) {
-    return res.status(400).json(
-      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')
-    );
+  const politica = validarPasswordNueva(password);
+  if (!politica.valida) {
+    return res.status(400).json(politica.error);
   }
 
   // RF-37: un rol que no es texto se indica como tal
@@ -130,16 +130,9 @@ async function resetPassword(req, res) {
   }
 
   // 1. La contraseña nueva sigue la misma regla que el alta (RF-44, RF-37)
-  const campo = validarCampoTexto(password, 'contraseña');
-  if (campo.estado === 'tipo_invalido') {
-    return res.status(400).json(
-      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe enviarse como texto')
-    );
-  }
-  if (campo.estado !== 'valido' || password.length < 8) {
-    return res.status(400).json(
-      buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 8 caracteres')
-    );
+  const politica = validarPasswordNueva(password);
+  if (!politica.valida) {
+    return res.status(400).json(politica.error);
   }
 
   // 2. La cuenta se identifica por su correo de acceso, como en el login (RF-43, historia 9b)
@@ -155,6 +148,7 @@ async function resetPassword(req, res) {
   const hash = await hashPassword(password);
   await UserModel.updatePassword(cuenta.id, hash, true);
   await SessionModel.revocarSesionesDeUsuario(cuenta.id);
+  eventos.cerrarSesionesDeUsuario(cuenta.id);
 
   // 4. Aviso de éxito sin ningún dato de acceso (RF-33); `cuentaPropia` avisa al frontend que su sesión ya se revocó
   return res.status(200).json({

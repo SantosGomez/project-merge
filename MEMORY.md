@@ -47,5 +47,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 
 - **Nginx (S1):** cabeceras de seguridad en `nginx/cabeceras-seguridad.conf` (include en cada location estático, no en `/api/`); `CF-Connecting-IP` solo se confía en el puerto interno 8081 (el túnel apunta ahí, no se publica). El puerto 80 publicado la ignora.
 
+- **S2 seguridad (rama cs-s2-sesiones):** contraseña ≥12 y no común (`validarPasswordNueva`), revocar sesiones + cerrar SSE al cambiar, bloqueo 5 fallos/15 min por correo (en memoria), JWT HS256 y secreto ≥32, sin seed demo en producción. Probar con `node --test --test-concurrency=1` (en paralelo falla al azar por la BD compartida).
+
 ---
 Nada sensible en esta memoria.

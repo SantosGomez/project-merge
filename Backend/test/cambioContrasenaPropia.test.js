@@ -135,7 +135,7 @@ describe('PATCH /auth/mi-contrasena', () => {
   test('actual que no es texto: 400 sobre «contraseña actual»', testActualQueNoEsTexto);
   test('nueva ausente: 400 sobre «contraseña»', testNuevaAusente);
   test('nueva que no es texto: 400 sobre «contraseña»', testNuevaQueNoEsTexto);
-  test('nueva de menos de 8 caracteres: 400 sobre «contraseña»', testNuevaCorta);
+  test('nueva de menos de 12 caracteres: 400 sobre «contraseña»', testNuevaCorta);
   test('nueva igual a la actual: 400 sobre «contraseña»', testNuevaIgualALaActual);
   test('sin token responde 401', testSinTokenResponde401);
   test('PATCH /auth/contrasena no cambia de comportamiento', testLaRutaDeLaContrasenaAsignadaNoCambia);

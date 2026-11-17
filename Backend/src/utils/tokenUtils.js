@@ -13,7 +13,7 @@ const jwt = require('jsonwebtoken');
  * @returns {string} token JWT firmado.
  */
 function generateAccessToken(payload, secreto, expiresIn) {
-  return jwt.sign({ ...payload, jti: crypto.randomBytes(16).toString('hex') }, secreto, { expiresIn });
+  return jwt.sign({ ...payload, jti: crypto.randomBytes(16).toString('hex') }, secreto, { expiresIn, algorithm: 'HS256' });
 }
 
 /**
@@ -26,7 +26,7 @@ function generateAccessToken(payload, secreto, expiresIn) {
  */
 function verifyAccessToken(token, secreto) {
   try {
-    const decodificado = jwt.verify(token, secreto);
+    const decodificado = jwt.verify(token, secreto, { algorithms: ['HS256'] });
     // Se descartan iat y exp: el payload devuelto son los datos del usuario y su jti.
     const { iat, exp, ...payload } = decodificado;
     return { valido: true, payload, error: null };

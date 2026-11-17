@@ -60,11 +60,16 @@ async function revocar(token) {
 }
 
 /**
- * Revoca todas las sesiones de un usuario, p. ej. tras restablecer su contraseña (RF-42, RF-05).
+ * Revoca las sesiones de un usuario, p. ej. tras cambiar su contraseña (RF-42, RF-05).
  * Un fallo de la base de datos se propaga.
  * @param {number} usuarioId - ID del usuario.
+ * @param {string} [exceptoJti] - Sesión que se conserva (la actual); sin valor se revocan todas.
  */
-async function revocarSesionesDeUsuario(usuarioId) {
+async function revocarSesionesDeUsuario(usuarioId, exceptoJti) {
+  if (exceptoJti) {
+    await query('UPDATE sesiones SET revocado = 1 WHERE usuario_id = ? AND jti <> ?', [usuarioId, exceptoJti]);
+    return;
+  }
   await query('UPDATE sesiones SET revocado = 1 WHERE usuario_id = ?', [usuarioId]);
 }
 
