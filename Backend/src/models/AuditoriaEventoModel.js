@@ -112,4 +112,40 @@ async function listFases() {
   return query('SELECT IdFase, Fase, Descripcion FROM fases_aud ORDER BY IdFase');
 }
 
-module.exports = { create, update, remove, findById, findByAuditoria, faseExiste, listFases };
+/**
+ * Eventos pendientes de la bitácora de todas las auditorías abiertas (calendario del administrador):
+ * con fecha límite, sin entrega y no cerrados (Completado o Rechazado, como el seguimiento).
+ * Cada uno trae los datos de su auditoría y sus contadores asignados.
+ * @returns {Promise<Array<Object>>} Eventos por fecha límite; `fecha_limite` en AAAA-MM-DD.
+ */
+async function findPendientesParaCalendario() {
+  const eventos = await query(
+    `SELECT d.Id_AudDtl AS id, d.AudHdr_Id AS auditoria_id, a.Cliente AS cliente, a.No_Expediente AS no_expediente,
+            d.Evento AS evento, f.Fase AS fase, DATE_FORMAT(d.FechaLimite, '%Y-%m-%d') AS fecha_limite,
+            d.Estado AS estado
+     FROM auditoria_dtl d
+     JOIN auditorias a ON a.IdAuditoria = d.AudHdr_Id
+     JOIN fases_aud f ON f.IdFase = d.Fase_Id
+     WHERE d.FechaLimite IS NOT NULL AND d.FechaEntrega IS NULL
+       AND d.Estado NOT IN ('Completado', 'Rechazado') AND a.Estado <> 'Completado'
+     ORDER BY d.FechaLimite, d.Id_AudDtl`
+  );
+  if (eventos.length === 0) return [];
+
+  const ids = [...new Set(eventos.map((evento) => evento.auditoria_id))];
+  const asignaciones = await query(
+    `SELECT ac.IdAuditoria, u.id, u.nombre
+     FROM aud_conta ac JOIN usuarios u ON u.id = ac.IdContador
+     WHERE ac.IdAuditoria IN (${ids.map(() => '?').join(', ')})
+     ORDER BY u.nombre`,
+    ids
+  );
+  return eventos.map((evento) => ({
+    ...evento,
+    contadores: asignaciones
+      .filter((asignacion) => asignacion.IdAuditoria === evento.auditoria_id)
+      .map(({ id, nombre }) => ({ id, nombre })),
+  }));
+}
+
+module.exports = { create, update, remove, findById, findByAuditoria, faseExiste, listFases, findPendientesParaCalendario };

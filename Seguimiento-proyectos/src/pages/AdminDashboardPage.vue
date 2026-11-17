@@ -11,6 +11,10 @@
             Revisa cuántos casos importantes tiene cada contador en cada estado y selecciona uno para
             ver sus casos.
           </p>
+          <p v-else-if="pestana === 'calendario'" class="dashboard-page__lead">
+            Mira qué vence cada día: casos importantes, auditorías y entregas de auditoría. Elige un
+            día para ver el detalle.
+          </p>
           <p v-else class="dashboard-page__lead">
             Revisa el avance de todas las auditorías: sus indicadores, en qué fase va cada una y qué
             vence después. Haz clic en una auditoría para abrir su ficha.
@@ -47,7 +51,7 @@
           >
         </q-btn>
         <q-btn
-          v-else
+          v-else-if="pestana === 'auditorias'"
           class="dashboard-page__asignar-btn control-touch boton-presionable"
           color="primary"
           no-caps
@@ -79,6 +83,9 @@
         </q-tab>
         <q-tab name="auditorias" icon="fact_check" label="Auditorías">
           <q-tooltip>Indicadores y avance por fase de todas las auditorías.</q-tooltip>
+        </q-tab>
+        <q-tab name="calendario" icon="event" label="Calendario">
+          <q-tooltip>Qué vence cada día: casos importantes, auditorías y entregas.</q-tooltip>
         </q-tab>
       </q-tabs>
 
@@ -245,6 +252,10 @@
         <q-tab-panel name="auditorias" class="dashboard-page__panel">
           <TableroAuditorias ref="tablero" />
         </q-tab-panel>
+
+        <q-tab-panel name="calendario" class="dashboard-page__panel">
+          <CalendarioAdministrador />
+        </q-tab-panel>
       </q-tab-panels>
 
       <!--
@@ -314,6 +325,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
+import CalendarioAdministrador from '../components/CalendarioAdministrador.vue'
 import CaseFormDialog from '../components/CaseFormDialog.vue'
 import CounterCountsRow from '../components/CounterCountsRow.vue'
 import DetalleContador from '../components/DetalleContador.vue'
@@ -358,7 +370,7 @@ const route = useRoute()
 const router = useRouter()
 
 // Pestaña en la URL (?tab=auditorias): al volver de una ficha se regresa a la misma pestaña.
-const PESTANAS = ['casos', 'auditorias']
+const PESTANAS = ['casos', 'auditorias', 'calendario']
 const pestana = computed({
   get: () => (PESTANAS.includes(route.query.tab) ? route.query.tab : 'casos'),
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),

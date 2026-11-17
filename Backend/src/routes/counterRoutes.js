@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
 const { requireAdmin, requireContador, requireContadorOAuxiliar } = require('../middlewares/roleMiddleware');
-const { listCounters, teamSummary, countCasesByStatus, getCasesByCounter } = require('../controllers/CounterController');
+const { listCounters, teamSummary, countCasesByStatus, getCasesByCounter, casosImportantesParaCalendario } =require('../controllers/CounterController');
 const {
   listarAuxiliares,
   asignarAuxiliar,
@@ -18,6 +18,9 @@ router.get('/', authenticateToken, requireAdmin, asyncHandler(listCounters));
 
 // GET /contadores/resumen — Resumen de casos del equipo y por contador para los KPIs (solo administrador)
 router.get('/resumen', authenticateToken, requireAdmin, asyncHandler(teamSummary));
+
+// GET /contadores/casos-importantes — Casos importantes de todos para el calendario (solo administrador)
+router.get('/casos-importantes', authenticateToken, requireAdmin, asyncHandler(casosImportantesParaCalendario));
 
 // Auxiliares: solo el contador dueño ve y cambia los suyos (RF-AX-01 a RF-AX-06)
 router.get('/:id/auxiliares', authenticateToken, requireContador, asyncHandler(listarAuxiliares));

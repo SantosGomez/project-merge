@@ -52,6 +52,31 @@ async function findParaAdministrador(usuarioId, { soloImportantes = false } = {}
 }
 
 /**
+ * Casos importantes de todos los contadores y los escalados de sus auxiliares (calendario del
+ * administrador). Un auxiliar sin contador no escala nada. Cada caso trae `nombre_contador` (su
+ * dueño) y, si el dueño es auxiliar, el contador que apoya. Las fechas DATE salen en AAAA-MM-DD.
+ * @returns {Promise<Array>} Casos importantes, del más reciente al más antiguo.
+ */
+async function findImportantesParaCalendario() {
+  return query(
+    `SELECT c.id, c.contador_id, c.cliente, c.estado, c.prioridad, c.importante, c.descripcion, c.observaciones,
+            DATE_FORMAT(c.fecha_inicio, '%Y-%m-%d') AS fecha_inicio,
+            DATE_FORMAT(c.fecha_vencimiento, '%Y-%m-%d') AS fecha_vencimiento,
+            c.creado_en, c.actualizado_en, c.en_proceso_en,
+            u.nombre AS nombre_contador,
+            apoyado.id AS contador_que_apoya_id,
+            apoyado.nombre AS contador_que_apoya
+     FROM casos c
+     JOIN usuarios u ON u.id = c.contador_id
+     LEFT JOIN contador_auxiliar ca ON ca.auxiliar_id = c.contador_id
+     LEFT JOIN usuarios apoyado ON apoyado.id = ca.contador_id
+     WHERE c.importante = 1
+       AND (u.rol = 'contador' OR (u.rol = 'auxiliar' AND apoyado.id IS NOT NULL))
+     ORDER BY c.id DESC`
+  );
+}
+
+/**
  * Devuelve los casos del equipo de un contador (casos en conjunto): los suyos, los de sus
  * auxiliares y los de los contadores a los que apoya como auxiliar, sin duplicados.
  * `solo_estado` es true en los casos de un contador al que apoya: ahí solo cambia el estado.
@@ -257,4 +282,4 @@ async function updatePatch(id, campos = {}, ejecutar = query) {
   await ejecutar(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
-module.exports = { findById, findByCounter, findParaAdministrador, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
+module.exports = { findById, findByCounter, findParaAdministrador, findImportantesParaCalendario, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };

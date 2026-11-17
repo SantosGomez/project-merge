@@ -105,7 +105,24 @@ export const crearCounterService = (opciones = {}) => {
     }
   }
 
-  return { listCounters, getConteosPorEstado, getCasosPorContador, getResumenEquipo }
+  /**
+   * GET /contadores/casos-importantes: casos importantes de todos los contadores y los escalados
+   * de sus auxiliares, ya traducidos, para el calendario del administrador.
+   * @returns {Promise<Array<Object>>}
+   */
+  const getCasosImportantesCalendario = async () => {
+    const { data } = await api.get('/contadores/casos-importantes')
+    const casos = leerLista(data, 'casos', 'los casos importantes del calendario')
+    return traducirCasos(casos, 'los casos importantes del calendario')
+  }
+
+  return {
+    listCounters,
+    getConteosPorEstado,
+    getCasosPorContador,
+    getResumenEquipo,
+    getCasosImportantesCalendario,
+  }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -115,3 +132,4 @@ export const listCounters = servicioPorDefecto.listCounters
 export const getConteosPorEstado = servicioPorDefecto.getConteosPorEstado
 export const getCasosPorContador = servicioPorDefecto.getCasosPorContador
 export const getResumenEquipo = servicioPorDefecto.getResumenEquipo
+export const getCasosImportantesCalendario = servicioPorDefecto.getCasosImportantesCalendario

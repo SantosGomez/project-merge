@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
-const { requireAdminOrContador } = require('../middlewares/roleMiddleware');
-const { createAuditoria, listAuditorias, getAuditoria, updateAuditoria } = require('../controllers/AuditoriaController');
+const { requireAdmin, requireAdminOrContador } = require('../middlewares/roleMiddleware');
+const { createAuditoria, listAuditorias, getAuditoria, updateAuditoria, entregasParaCalendario } = require('../controllers/AuditoriaController');
 const {
   createEvento,
   listEventos,
@@ -15,6 +15,9 @@ const { asyncHandler } = require('../utils/asyncHandler');
 
 // GET /auditorias — Listar auditorías (el contador solo ve aquellas donde está asignado)
 router.get('/', authenticateToken, requireAdminOrContador, asyncHandler(listAuditorias));
+
+// GET /auditorias/calendario — Eventos pendientes de todas las auditorías (solo administrador); antes de /:id
+router.get('/calendario', authenticateToken, requireAdmin, asyncHandler(entregasParaCalendario));
 
 // POST /auditorias — Registrar una auditoría (administrador o contador)
 router.post('/', authenticateToken, requireAdminOrContador, asyncHandler(createAuditoria));

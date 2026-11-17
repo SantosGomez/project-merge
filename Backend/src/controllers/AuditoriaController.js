@@ -1,4 +1,5 @@
 const AuditoriaModel = require('../models/AuditoriaModel');
+const AuditoriaEventoModel = require('../models/AuditoriaEventoModel');
 const { formatLocalDate, formatearFechaISO, nowLocal, parseFechaInicio } = require('../utils/dateUtils');
 const { calcularSeguimiento } = require('../utils/seguimientoAuditoria');
 const { buildError } = require('../utils/errorUtils');
@@ -261,4 +262,12 @@ async function getAuditoria(req, res) {
   return res.status(200).json({ auditoria: auditoriaParaApi(fila) });
 }
 
-module.exports = { createAuditoria, listAuditorias, getAuditoria, updateAuditoria };
+/**
+ * GET /auditorias/calendario — Eventos pendientes de todas las auditorías (solo administrador).
+ */
+async function entregasParaCalendario(req, res) {
+  const eventos = await AuditoriaEventoModel.findPendientesParaCalendario();
+  return res.status(200).json({ eventos });
+}
+
+module.exports = { createAuditoria, listAuditorias, getAuditoria, updateAuditoria, entregasParaCalendario };

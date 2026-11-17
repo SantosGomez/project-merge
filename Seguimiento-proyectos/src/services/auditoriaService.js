@@ -319,8 +319,32 @@ export const crearAuditoriaService = (opciones = {}) => {
     return mensajeDeBackend(data.nuevo_mensaje)
   }
 
+  /**
+   * GET /auditorias/calendario (solo administrador): eventos pendientes de todas las auditorías,
+   * con su auditoría y contadores. `fechaLimite` queda en AAAA-MM-DD.
+   * @returns {Promise<Array<Object>>}
+   */
+  const listarEntregasCalendario = async () => {
+    const { data } = await api.get('/auditorias/calendario')
+    if (!Array.isArray(data?.eventos)) {
+      throw crearErrorInesperado('las entregas de auditoría del calendario')
+    }
+    return data.eventos.map((evento) => ({
+      id: evento.id,
+      auditoriaId: evento.auditoria_id,
+      cliente: evento.cliente,
+      noExpediente: evento.no_expediente,
+      evento: evento.evento,
+      fase: evento.fase,
+      fechaLimite: evento.fecha_limite,
+      estado: evento.estado,
+      contadores: Array.isArray(evento.contadores) ? evento.contadores : [],
+    }))
+  }
+
   return {
     listarAuditorias,
+    listarEntregasCalendario,
     obtenerAuditoria,
     registrarAuditoria,
     actualizarAuditoria,
@@ -338,6 +362,7 @@ export const crearAuditoriaService = (opciones = {}) => {
 const servicioPorDefecto = crearAuditoriaService()
 
 export const listarAuditorias = servicioPorDefecto.listarAuditorias
+export const listarEntregasCalendario = servicioPorDefecto.listarEntregasCalendario
 export const obtenerAuditoria = servicioPorDefecto.obtenerAuditoria
 export const registrarAuditoria = servicioPorDefecto.registrarAuditoria
 export const actualizarAuditoria = servicioPorDefecto.actualizarAuditoria

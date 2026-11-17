@@ -2,7 +2,7 @@ const UserModel = require('../models/UserModel');
 const CaseModel = require('../models/CaseModel');
 const { buildError } = require('../utils/errorUtils');
 const { parseCounterId } = require('../utils/validationUtils');
-const { casoConFechasLocales, formatearFechaISO, nowLocal } = require('../utils/dateUtils');
+const { casoConFechasLocales, formatLocalDate, formatearFechaISO, nowLocal } = require('../utils/dateUtils');
 
 // Devuelve el caso con sus fechas como texto en hora local YYYY-MM-DD HH:mm:ss (RF-48, RNF-2).
 // Serializador compartido de dateUtils (mismo que usa CaseController).
@@ -105,6 +105,25 @@ async function getCasesByCounter(req, res) {
 }
 
 /**
+ * Casos importantes de todos los contadores (y los escalados de sus auxiliares) para el
+ * calendario del administrador. Las fechas DATE ya salen como AAAA-MM-DD desde el modelo.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function casosImportantesParaCalendario(req, res) {
+  const casos = await CaseModel.findImportantesParaCalendario();
+  return res.status(200).json({
+    casos: casos.map((caso) => ({
+      ...caso,
+      creado_en: formatLocalDate(caso.creado_en),
+      actualizado_en: formatLocalDate(caso.actualizado_en),
+      en_proceso_en: caso.en_proceso_en ? formatLocalDate(caso.en_proceso_en) : null,
+      importante: Boolean(caso.importante),
+    })),
+  });
+}
+
+/**
  * Devuelve los casos del equipo del contador autenticado: los suyos, los de sus auxiliares
  * y los de los contadores a los que apoya (casos en conjunto, con `solo_estado`).
  * RF-15, RF-24, RF-AX-07.
@@ -122,4 +141,4 @@ async function getMyCases(req, res) {
   return res.status(200).json({ casos: casos.map(conFechasLocales) });
 }
 
-module.exports = { listCounters, teamSummary, countCasesByStatus, getCasesByCounter, getMyCases };
+module.exports = { listCounters, teamSummary, countCasesByStatus, getCasesByCounter, getMyCases, casosImportantesParaCalendario };
