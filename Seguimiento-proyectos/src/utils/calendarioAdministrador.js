@@ -3,7 +3,7 @@
 // AAAA-MM-DD y nunca se leen con `new Date(texto)` (se desplazaría un día).
 
 import { fechaADominioBackend } from './fechasCaso.js'
-import { esCasoProximoAVencer, esCasoVencido } from './filtrosCasos.js'
+import { esCasoProximoAVencer, esCasoVencido, hoyLocal } from './filtrosCasos.js'
 
 const TEXTOS_DE_URGENCIA = Object.freeze({
   vencido: 'Vencido',
@@ -171,4 +171,197 @@ export const agruparDelDia = (elementos, dia) => {
     lista.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' }))
   }
   return grupos
+}
+
+// ---- Rebanada 19: franja «Requiere atención», modo día/rango, estado en la URL y tira de la semana ----
+
+/** Días después de hoy que cuenta «Esta semana» (hoy incluido). */
+const DIAS_DE_LA_SEMANA = 7
+
+/** Rangos que abre cada cifra de la franja. */
+export const RANGOS = Object.freeze(['vencidos', 'hoy', 'semana', 'entregas'])
+
+const TITULOS_DE_RANGO = Object.freeze({
+  vencidos: 'Lo vencido hasta hoy',
+  hoy: 'Lo que vence hoy',
+  semana: 'Lo que vence en los próximos 7 días',
+  entregas: 'Entregas de auditoría de los próximos 7 días',
+})
+
+/**
+ * Título del modo rango (lo que abre una cifra de la franja).
+ * @param {'vencidos'|'hoy'|'semana'|'entregas'} rango
+ * @returns {string}
+ */
+export const tituloDeRango = (rango) => TITULOS_DE_RANGO[rango] ?? ''
+
+// Fecha AAAA-MM-DD sumando días con calendario local (nunca `new Date('AAAA-MM-DD')`).
+const sumarDias = (fecha, dias) => {
+  const [anio, mes, dia] = fecha.split('-').map(Number)
+  return hoyLocal(new Date(anio, mes - 1, dia + dias))
+}
+
+const ENTRE_HOY_Y_SEMANA = (vence, hoy) =>
+  vence >= hoy && vence <= sumarDias(hoy, DIAS_DE_LA_SEMANA)
+
+const FILTROS_DE_RANGO = Object.freeze({
+  vencidos: (elemento, hoy) => elemento.vence < hoy,
+  hoy: (elemento, hoy) => elemento.vence === hoy,
+  semana: (elemento, hoy) => ENTRE_HOY_Y_SEMANA(elemento.vence, hoy),
+  entregas: (elemento, hoy) =>
+    elemento.tipo === 'entrega' && ENTRE_HOY_Y_SEMANA(elemento.vence, hoy),
+})
+
+/**
+ * Elementos de un rango de la franja, por fecha y luego por cliente.
+ * @param {Array<Object>} elementos - Salida de `elementosDelCalendario` (ya filtrada).
+ * @param {'vencidos'|'hoy'|'semana'|'entregas'} rango
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @returns {Array<Object>}
+ */
+export const elementosDeRango = (elementos, rango, hoy) =>
+  elementos
+    .filter((elemento) => FILTROS_DE_RANGO[rango](elemento, hoy))
+    .sort(
+      (a, b) =>
+        a.vence.localeCompare(b.vence) ||
+        a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' }),
+    )
+
+/**
+ * Las cuatro cifras de la franja «Requiere atención»; cada una cuenta lo mismo que lista su rango.
+ * @param {Array<Object>} elementos - Salida de `elementosDelCalendario` (ya filtrada).
+ * @param {string} hoy - Fecha local de hoy en AAAA-MM-DD.
+ * @returns {{ vencidos: number, hoy: number, semana: number, entregas: number }}
+ */
+export const cifrasDeAtencion = (elementos, hoy) =>
+  Object.fromEntries(RANGOS.map((rango) => [rango, elementosDeRango(elementos, rango, hoy).length]))
+
+/**
+ * Reparte elementos en las pestañas del modo día: Casos y Auditorías (vencimientos y entregas
+ * en dos subgrupos). Conserva el orden recibido.
+ * @param {Array<Object>} elementos
+ * @returns {{ casos: Array<Object>, vencimientos: Array<Object>, entregas: Array<Object>, auditorias: Array<Object> }}
+ */
+export const agruparPorPestana = (elementos) => {
+  const casos = elementos.filter((e) => e.tipo === 'caso')
+  const vencimientos = elementos.filter((e) => e.tipo === 'auditoria')
+  const entregas = elementos.filter((e) => e.tipo === 'entrega')
+  return { casos, vencimientos, entregas, auditorias: [...vencimientos, ...entregas] }
+}
+
+/**
+ * Pestaña que se abre en el modo día: la preferida, salvo que esté vacía y la otra no.
+ * @param {{ casos: Array<Object>, auditorias: Array<Object> }} grupos - Salida de `agruparPorPestana`.
+ * @param {'casos'|'auditorias'} preferida
+ * @returns {'casos'|'auditorias'}
+ */
+export const pestanaDelDia = (grupos, preferida) => {
+  const otra = preferida === 'casos' ? 'auditorias' : 'casos'
+  return grupos[preferida].length === 0 && grupos[otra].length > 0 ? otra : preferida
+}
+
+const MESES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+]
+
+const partesDeDia = (dia) => {
+  const [, mes, numero] = dia.split('-').map(Number)
+  return { mes: MESES[mes - 1], numero }
+}
+
+/** «Lo que vence el 12 de noviembre». */
+export const encabezadoDeDia = (dia) => {
+  const { mes, numero } = partesDeDia(dia)
+  return `Lo que vence el ${numero} de ${mes}`
+}
+
+/** «12 nov», para el chip que regresa a la vista general. */
+export const etiquetaCortaDeDia = (dia) => {
+  const { mes, numero } = partesDeDia(dia)
+  return `${numero} ${mes.slice(0, 3)}`
+}
+
+/**
+ * Vista elegida según `?dia` y `?rango`. Un valor inválido o repetido se ignora (vista general);
+ * si vienen los dos, gana el día.
+ * @param {Object} consulta - `route.query`.
+ * @returns {{ dia: string|null, rango: string|null }}
+ */
+export const leerVista = (consulta) => {
+  const dia = typeof consulta.dia === 'string' ? fechaADominioBackend(consulta.dia) : null
+  if (dia) return { dia, rango: null }
+  const rango = RANGOS.includes(consulta.rango) ? consulta.rango : null
+  return { dia: null, rango }
+}
+
+/**
+ * Consulta de la URL con la vista elegida, sin perder `tab` ni lo demás.
+ * @param {Object} consulta - `route.query` actual.
+ * @param {{ dia?: string, rango?: string }|null} vista - null vuelve a la vista general.
+ * @returns {Object}
+ */
+export const consultaConVista = (consulta, vista) => {
+  const resto = { ...consulta }
+  delete resto.dia
+  delete resto.rango
+  return {
+    ...resto,
+    ...(vista?.dia ? { dia: vista.dia } : {}),
+    ...(vista?.rango ? { rango: vista.rango } : {}),
+  }
+}
+
+/**
+ * Días de la tira de la semana: la semana anterior, la del día elegido y la siguiente
+ * (21 días, de lunes a domingo).
+ * @param {string} dia - Fecha AAAA-MM-DD elegida.
+ * @returns {Array<string>}
+ */
+export const diasDeTira = (dia) => {
+  const [anio, mes, numero] = dia.split('-').map(Number)
+  const desdeElLunes = (new Date(anio, mes - 1, numero).getDay() + 6) % 7
+  const inicio = sumarDias(dia, -desdeElLunes - 7)
+  return Array.from({ length: 21 }, (_, i) => sumarDias(inicio, i))
+}
+
+/** Ayuda del dashboard mientras se ve un día o un grupo. */
+export const TEXTO_AYUDA_MODO_DIA =
+  'Para volver a la vista general, quita la fecha elegida o pulsa la tecla Esc.'
+
+/** «12 de noviembre», para el resumen que lee el lector de pantalla. */
+export const etiquetaLargaDeDia = (dia) => {
+  const { mes, numero } = partesDeDia(dia)
+  return `${numero} de ${mes}`
+}
+
+const cuantos = (cantidad, singular, plural) =>
+  cantidad === 1 ? `1 ${singular}` : `${cantidad} ${plural}`
+
+/**
+ * Línea corta para anunciar el cambio de vista: «12 de noviembre: 1 caso y 2 auditorías».
+ * Las entregas cuentan como auditorías.
+ * @param {string} etiqueta - Día o grupo elegido.
+ * @param {Array<Object>} elementos - Lo que se muestra.
+ * @returns {string}
+ */
+export const resumenParaLector = (etiqueta, elementos) => {
+  const casos = elementos.filter((e) => e.tipo === 'caso').length
+  const auditorias = elementos.length - casos
+  const partes = [
+    ...(casos > 0 ? [cuantos(casos, 'caso', 'casos')] : []),
+    ...(auditorias > 0 ? [cuantos(auditorias, 'auditoría', 'auditorías')] : []),
+  ]
+  return `${etiqueta}: ${partes.length > 0 ? partes.join(' y ') : 'nada que mostrar'}`
 }

@@ -7,18 +7,19 @@
             Hola<template v-if="session.nombreVisible">, {{ session.nombreVisible }}</template>
           </h2>
           <!-- El texto de ayuda describe la pestaña abierta -->
-          <p v-if="pestana === 'casos'" class="dashboard-page__lead">
-            Revisa cuántos casos importantes tiene cada contador en cada estado y selecciona uno para
-            ver sus casos.
+          <p v-if="enModoDia" class="dashboard-page__lead">
+            {{ TEXTO_AYUDA_MODO_DIA }}
           </p>
-          <p v-else-if="pestana === 'calendario'" class="dashboard-page__lead">
-            Mira qué vence cada día: casos importantes, auditorías y entregas de auditoría. Elige un
-            día para ver el detalle.
-          </p>
-          <p v-else class="dashboard-page__lead">
-            Revisa el avance de todas las auditorías: sus indicadores, en qué fase va cada una y qué
-            vence después. Haz clic en una auditoría para abrir su ficha.
-          </p>
+          <template v-else>
+            <p v-if="pestana === 'casos'" class="dashboard-page__lead">
+              Revisa cuántos casos importantes tiene cada contador en cada estado y selecciona uno para
+              ver sus casos.
+            </p>
+            <p v-else class="dashboard-page__lead">
+              Revisa el avance de todas las auditorías: sus indicadores, en qué fase va cada una y qué
+              vence después. Haz clic en una auditoría para abrir su ficha.
+            </p>
+          </template>
         </div>
         <q-btn
           class="dashboard-page__directory-btn control-touch boton-presionable"
@@ -34,229 +35,298 @@
           >
         </q-btn>
         <!-- El botón de asignar cambia con la pestaña: caso en «Casos», auditoría en «Auditorías» -->
-        <q-btn
-          v-if="pestana === 'casos'"
-          class="dashboard-page__asignar-btn control-touch boton-presionable"
-          color="primary"
-          no-caps
-          unelevated
-          icon="add_circle"
-          label="Asignar caso"
-          aria-haspopup="dialog"
-          :disable="contadores.length === 0"
-          @click="dialogoAsignarAbierto = true"
-        >
-          <q-tooltip
-            >Abre el formulario para registrar un caso nuevo y asignárselo a un contador.</q-tooltip
+        <template v-if="!enModoDia">
+          <q-btn
+            v-if="pestana === 'casos'"
+            class="dashboard-page__asignar-btn control-touch boton-presionable"
+            color="primary"
+            no-caps
+            unelevated
+            icon="add_circle"
+            label="Asignar caso"
+            aria-haspopup="dialog"
+            :disable="contadores.length === 0"
+            @click="dialogoAsignarAbierto = true"
           >
-        </q-btn>
-        <q-btn
-          v-else-if="pestana === 'auditorias'"
-          class="dashboard-page__asignar-btn control-touch boton-presionable"
-          color="primary"
-          no-caps
-          unelevated
-          icon="add_circle"
-          label="Asignar auditoría"
-          aria-haspopup="dialog"
-          :disable="contadores.length === 0"
-          @click="dialogoAuditoriaAbierto = true"
-        >
-          <q-tooltip
-            >Abre el formulario para registrar una auditoría y asignarla a uno o más
-            contadores.</q-tooltip
+            <q-tooltip
+              >Abre el formulario para registrar un caso nuevo y asignárselo a un contador.</q-tooltip
+            >
+          </q-btn>
+          <q-btn
+            v-else-if="pestana === 'auditorias'"
+            class="dashboard-page__asignar-btn control-touch boton-presionable"
+            color="primary"
+            no-caps
+            unelevated
+            icon="add_circle"
+            label="Asignar auditoría"
+            aria-haspopup="dialog"
+            :disable="contadores.length === 0"
+            @click="dialogoAuditoriaAbierto = true"
           >
-        </q-btn>
+            <q-tooltip
+              >Abre el formulario para registrar una auditoría y asignarla a uno o más
+              contadores.</q-tooltip
+            >
+          </q-btn>
+        </template>
       </div>
 
-      <q-tabs
-        v-model="pestana"
-        no-caps
-        inline-label
-        align="left"
-        active-color="primary"
-        indicator-color="primary"
-        class="dashboard-page__tabs"
+      <!-- Anuncia el cambio de vista a los lectores de pantalla; siempre está montada para que se lea -->
+      <p class="sr-only" role="status">{{ anuncioDeVista }}</p>
+
+      <q-banner
+        v-if="fallosCalendario.length > 0 && !(todasFallaron && !tuvoDatos)"
+        dense
+        rounded
+        class="dashboard-page__aviso"
+        role="alert"
       >
-        <q-tab name="casos" icon="assignment" label="Casos">
-          <q-tooltip>Casos de cada contador por estado.</q-tooltip>
-        </q-tab>
-        <q-tab name="auditorias" icon="fact_check" label="Auditorías">
-          <q-tooltip>Indicadores y avance por fase de todas las auditorías.</q-tooltip>
-        </q-tab>
-        <q-tab name="calendario" icon="event" label="Calendario">
-          <q-tooltip>Qué vence cada día: casos importantes, auditorías y entregas.</q-tooltip>
-        </q-tab>
-      </q-tabs>
+        No se pudo cargar: {{ nombresDeFallos }}. Se muestra lo demás. Pulsa «Reintentar» para volver
+        a pedirlo.
+        <template #action>
+          <q-btn
+            flat
+            no-caps
+            icon="refresh"
+            label="Reintentar"
+            color="primary"
+            class="control-touch boton-presionable"
+            @click="cargarCalendario()"
+          />
+        </template>
+      </q-banner>
 
-      <!-- keep-alive: al cambiar de pestaña no se pierde el contador elegido en «Casos» -->
-      <q-tab-panels
-        v-model="pestana"
-        keep-alive
-        animated
-        transition-prev="fade"
-        transition-next="fade"
-        :transition-duration="150"
-        class="dashboard-page__paneles"
-      >
-        <q-tab-panel name="casos" class="dashboard-page__panel">
-          <ResumenEquipo
-            seleccionable
-            :resumen="resumen"
-            :cargando="cargandoResumen"
-            :error="errorResumen"
-            :activa="filtroKpi"
-            @reintentar="cargarResumen"
-            @seleccionar="alternarFiltroKpi"
+      <ErrorState
+        v-if="todasFallaron && !tuvoDatos"
+        :detail="`${nombresDeFallos}.`"
+        @retry="cargarCalendario()"
+      />
+      <q-linear-progress
+        v-else-if="cargandoCalendario && !tuvoDatos"
+        indeterminate
+        color="primary"
+        class="dashboard-page__progreso"
+        aria-label="Cargando lo que requiere atención"
+      />
+      <ResumenAtencion
+        v-else
+        :cifras="cifras"
+        :activo="vista.rango"
+        @elegir="elegirRango"
+      />
+
+      <div class="dashboard-page__cuerpo">
+        <CalendarioAdministrador
+          v-model:contador="contadorElegido"
+          class="dashboard-page__calendario"
+          :marcas="marcas"
+          :dia-elegido="vista.dia"
+          :hoy="hoy"
+          :opciones="opcionesDeContadores"
+          :compacto="calendarioCompacto"
+          @elegir-dia="elegirDia"
+        />
+
+        <div class="dashboard-page__principal">
+          <VencimientosDelDia
+            v-if="enModoDia"
+            ref="vencimientos"
+            :elementos="elementosDeLaVista"
+            :titulo="tituloDeLaVista"
+            :etiqueta-chip="etiquetaDeLaVista"
+            :hoy="hoy"
+            :mostrar-fecha="vista.rango !== null"
+            :texto-vacio="vista.dia ? 'Nada vence este día.' : 'No hay nada en este grupo.'"
+            @volver="volverALaVistaGeneral"
           />
 
-          <ScreenLoader
-            v-if="estadoPantalla === SCREEN_STATES.loading"
-            text="Cargando los contadores del equipo y los conteos de sus casos…"
-          />
-
-          <ErrorState
-            v-else-if="estadoPantalla === SCREEN_STATES.error"
-            :detail="mensajeError"
-            @retry="reintentar"
-          />
-
-          <EmptyState
-            v-else-if="estadoPantalla === SCREEN_STATES.empty"
-            title="No hay contadores registrados"
-            message="El equipo todavía no tiene contadores registrados, por eso no hay conteos ni casos que mostrar."
-          />
-
-          <div v-else class="dashboard-page__grid">
-            <section class="dashboard-panel" aria-labelledby="counter-list-title">
-              <div class="dashboard-panel__head">
-                <h2 id="counter-list-title" class="dashboard-panel__title">
-                  Contadores del equipo
-                </h2>
-                <p class="dashboard-panel__help">
-                  Cada número es la cantidad de casos importantes del contador en ese estado. Haz
-                  clic en el nombre para ver todos sus casos o en un número para ver solo ese
-                  estado.
-                </p>
-              </div>
-
-              <div class="dashboard-panel__body">
-                <q-input
-                  v-model="busqueda"
-                  dense
-                  outlined
-                  clearable
-                  debounce="150"
-                  type="search"
-                  label="Buscar contador por nombre"
-                  aria-label="Buscar contador por nombre"
-                  class="counter-search input-moderno"
-                >
-                  <template #prepend>
-                    <q-icon name="search" aria-hidden="true" />
-                  </template>
-                  <q-tooltip
-                    >Escribe parte del nombre; no importan mayúsculas ni acentos.</q-tooltip
-                  >
-                </q-input>
-                <div class="counter-search__resultado" aria-live="polite">
-                  <span
-                    >{{ contadoresVisibles.length }} de {{ contadores.length }}
-                    {{ contadores.length === 1 ? 'contador' : 'contadores' }}</span
-                  >
-                  <q-chip
-                    v-if="filtroKpi"
-                    removable
-                    dense
-                    color="primary"
-                    text-color="dg-superficie"
-                    class="counter-search__filtro"
-                    :label="`Filtrando: ${ETIQUETAS_KPI[filtroKpi]}`"
-                    remove-aria-label="Quitar el filtro de la lista"
-                    @remove="filtroKpi = null"
-                  >
-                    <q-tooltip
-                      >Solo se ven los contadores con casos importantes de este tipo, de más a
-                      menos. Quita el filtro con el botón del chip para ver a todos. Las tarjetas y
-                      la gráfica de arriba también filtran esta lista.</q-tooltip
-                    >
-                  </q-chip>
-                </div>
-
-                <p
-                  v-if="contadoresVisibles.length === 0"
-                  class="dashboard-panel__prompt"
-                  role="status"
-                >
-                  <template v-if="busqueda"
-                    >Ningún contador coincide con «{{ busqueda }}»<template v-if="filtroKpi">
-                      y tiene casos «{{ ETIQUETAS_KPI[filtroKpi] }}»</template
-                    >. Revisa el nombre o borra la búsqueda.</template
-                  >
-                  <template v-else
-                    >Ningún contador tiene casos importantes «{{ ETIQUETAS_KPI[filtroKpi] }}». Quita
-                    el filtro para ver a todos.</template
-                  >
-                </p>
-
-                <q-list v-else tag="ul" class="counter-list">
-                  <CounterCountsRow
-                    v-for="contador in contadoresVisibles"
-                    :key="contador.id"
-                    :counter="contadorAFila(contador)"
-                    :counts="contadoresStore.conteosDe(contador.id)"
-                    :selected="contador.id === contadoresStore.contadorSeleccionadoId"
-                    :cifra="filtroKpi ? textoCifraKpi(filtroKpi, cifraKpi(contador.id)) : null"
-                    :estado-activo="
-                      contador.id === contadoresStore.contadorSeleccionadoId
-                        ? estadoConteoActivo
-                        : null
-                    "
-                    @select="seleccionar(contador.id)"
-                    @filtrar="(estado) => filtrarPorConteo(contador.id, estado)"
-                  />
-                </q-list>
-              </div>
-            </section>
-
-            <!-- Escritorio: el detalle queda al lado de la lista. -->
-            <section
-              v-if="!pantallaChica"
-              class="dashboard-panel"
-              aria-labelledby="counter-detail-title"
+          <!-- v-show: al volver de un día o rango no se pierde el contador ni la pestaña abierta -->
+          <div v-show="!enModoDia">
+            <q-tabs
+              v-model="pestana"
+              no-caps
+              inline-label
+              align="left"
+              active-color="primary"
+              indicator-color="primary"
+              class="dashboard-page__tabs"
             >
-              <div class="dashboard-panel__head">
-                <h2 id="counter-detail-title" class="dashboard-panel__title">
-                  Casos importantes<template v-if="contadorSeleccionado"> de {{ contadorSeleccionado.nombre }}</template>
-                </h2>
-              </div>
+              <q-tab name="casos" icon="assignment" label="Casos">
+                <q-tooltip>Casos de cada contador por estado.</q-tooltip>
+              </q-tab>
+              <q-tab name="auditorias" icon="fact_check" label="Auditorías">
+                <q-tooltip>Indicadores y avance por fase de todas las auditorías.</q-tooltip>
+              </q-tab>
+            </q-tabs>
 
-              <div class="dashboard-panel__body">
-                <DetalleContador
-                  v-model:filtros="filtrosDetalle"
-                  :contador="contadorSeleccionado"
-                  :estado="estadoDetalle"
-                  :filas="filasDetalle"
-                  :paginacion="paginacionDetalle"
-                  :guardando="guardandoPrioridad"
-                  :error="contadoresStore.errorDetalle"
-                  @cambiar-pagina="(p) => (paginaDetalle = p)"
-                  @cambiar-prioridad="cambiarPrioridad"
-                  @reintentar="reintentarDetalle"
+            <!-- keep-alive: al cambiar de pestaña no se pierde el contador elegido en «Casos» -->
+            <q-tab-panels
+              v-model="pestana"
+              keep-alive
+              animated
+              transition-prev="fade"
+              transition-next="fade"
+              :transition-duration="150"
+              class="dashboard-page__paneles"
+            >
+              <q-tab-panel name="casos" class="dashboard-page__panel">
+                <ResumenEquipo
+                  seleccionable
+                  :resumen="resumen"
+                  :cargando="cargandoResumen"
+                  :error="errorResumen"
+                  :activa="filtroKpi"
+                  @reintentar="cargarResumen"
+                  @seleccionar="alternarFiltroKpi"
                 />
-              </div>
-            </section>
+
+                <ScreenLoader
+                  v-if="estadoPantalla === SCREEN_STATES.loading"
+                  text="Cargando los contadores del equipo y los conteos de sus casos…"
+                />
+
+                <ErrorState
+                  v-else-if="estadoPantalla === SCREEN_STATES.error"
+                  :detail="mensajeError"
+                  @retry="reintentar"
+                />
+
+                <EmptyState
+                  v-else-if="estadoPantalla === SCREEN_STATES.empty"
+                  title="No hay contadores registrados"
+                  message="El equipo todavía no tiene contadores registrados, por eso no hay conteos ni casos que mostrar."
+                />
+
+                <div v-else class="dashboard-page__grid">
+                  <section class="dashboard-panel" aria-labelledby="counter-list-title">
+                    <div class="dashboard-panel__head">
+                      <h2 id="counter-list-title" class="dashboard-panel__title">
+                        Contadores del equipo
+                      </h2>
+                      <p class="dashboard-panel__help">
+                        Cada número es la cantidad de casos importantes del contador en ese estado. Haz
+                        clic en el nombre para ver todos sus casos o en un número para ver solo ese
+                        estado.
+                      </p>
+                    </div>
+
+                    <div class="dashboard-panel__body">
+                      <q-input
+                        v-model="busqueda"
+                        dense
+                        outlined
+                        clearable
+                        debounce="150"
+                        type="search"
+                        label="Buscar contador por nombre"
+                        aria-label="Buscar contador por nombre"
+                        class="counter-search input-moderno"
+                      >
+                        <template #prepend>
+                          <q-icon name="search" aria-hidden="true" />
+                        </template>
+                        <q-tooltip
+                          >Escribe parte del nombre; no importan mayúsculas ni acentos.</q-tooltip
+                        >
+                      </q-input>
+                      <div class="counter-search__resultado" aria-live="polite">
+                        <span
+                          >{{ contadoresVisibles.length }} de {{ contadores.length }}
+                          {{ contadores.length === 1 ? 'contador' : 'contadores' }}</span
+                        >
+                        <q-chip
+                          v-if="filtroKpi"
+                          removable
+                          dense
+                          color="primary"
+                          text-color="dg-superficie"
+                          class="counter-search__filtro"
+                          :label="`Filtrando: ${ETIQUETAS_KPI[filtroKpi]}`"
+                          remove-aria-label="Quitar el filtro de la lista"
+                          @remove="filtroKpi = null"
+                        >
+                          <q-tooltip
+                            >Solo se ven los contadores con casos importantes de este tipo, de más a
+                            menos. Quita el filtro con el botón del chip para ver a todos. Las tarjetas y
+                            la gráfica de arriba también filtran esta lista.</q-tooltip
+                          >
+                        </q-chip>
+                      </div>
+
+                      <p
+                        v-if="contadoresVisibles.length === 0"
+                        class="dashboard-panel__prompt"
+                        role="status"
+                      >
+                        <template v-if="busqueda"
+                          >Ningún contador coincide con «{{ busqueda }}»<template v-if="filtroKpi">
+                            y tiene casos «{{ ETIQUETAS_KPI[filtroKpi] }}»</template
+                          >. Revisa el nombre o borra la búsqueda.</template
+                        >
+                        <template v-else
+                          >Ningún contador tiene casos importantes «{{ ETIQUETAS_KPI[filtroKpi] }}». Quita
+                          el filtro para ver a todos.</template
+                        >
+                      </p>
+
+                      <q-list v-else tag="ul" class="counter-list">
+                        <CounterCountsRow
+                          v-for="contador in contadoresVisibles"
+                          :key="contador.id"
+                          :counter="contadorAFila(contador)"
+                          :counts="contadoresStore.conteosDe(contador.id)"
+                          :selected="contador.id === contadoresStore.contadorSeleccionadoId"
+                          :cifra="filtroKpi ? textoCifraKpi(filtroKpi, cifraKpi(contador.id)) : null"
+                          :estado-activo="
+                            contador.id === contadoresStore.contadorSeleccionadoId
+                              ? estadoConteoActivo
+                              : null
+                          "
+                          @select="seleccionar(contador.id)"
+                          @filtrar="(estado) => filtrarPorConteo(contador.id, estado)"
+                        />
+                      </q-list>
+                    </div>
+                  </section>
+
+                  <!-- Escritorio: el detalle queda al lado de la lista. -->
+                  <section
+                    v-if="!pantallaChica"
+                    class="dashboard-panel"
+                    aria-labelledby="counter-detail-title"
+                  >
+                    <div class="dashboard-panel__head">
+                      <h2 id="counter-detail-title" class="dashboard-panel__title">
+                        Casos importantes<template v-if="contadorSeleccionado"> de {{ contadorSeleccionado.nombre }}</template>
+                      </h2>
+                    </div>
+
+                    <div class="dashboard-panel__body">
+                      <DetalleContador
+                        v-model:filtros="filtrosDetalle"
+                        :contador="contadorSeleccionado"
+                        :estado="estadoDetalle"
+                        :filas="filasDetalle"
+                        :paginacion="paginacionDetalle"
+                        :guardando="guardandoPrioridad"
+                        :error="contadoresStore.errorDetalle"
+                        @cambiar-pagina="(p) => (paginaDetalle = p)"
+                        @cambiar-prioridad="cambiarPrioridad"
+                        @reintentar="reintentarDetalle"
+                      />
+                    </div>
+                  </section>
+                </div>
+              </q-tab-panel>
+
+              <q-tab-panel name="auditorias" class="dashboard-page__panel">
+                <TableroAuditorias ref="tablero" />
+              </q-tab-panel>
+            </q-tab-panels>
           </div>
-        </q-tab-panel>
-
-        <q-tab-panel name="auditorias" class="dashboard-page__panel">
-          <TableroAuditorias ref="tablero" />
-        </q-tab-panel>
-
-        <q-tab-panel name="calendario" class="dashboard-page__panel">
-          <CalendarioAdministrador />
-        </q-tab-panel>
-      </q-tab-panels>
+        </div>
+      </div>
 
       <!--
         Celular y tableta: el detalle sube desde abajo en un diálogo, así no hay que bajar
@@ -321,7 +391,7 @@
 
 <script setup>
 import { useQuasar } from 'quasar'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
@@ -332,13 +402,33 @@ import DetalleContador from '../components/DetalleContador.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import ResumenEquipo from '../components/ResumenEquipo.vue'
+import ResumenAtencion from '../components/ResumenAtencion.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import TableroAuditorias from '../components/TableroAuditorias.vue'
+import VencimientosDelDia from '../components/VencimientosDelDia.vue'
+import { listarAuditorias, listarEntregasCalendario } from '../services/auditoriaService.js'
 import { cambiarPrioridadComoAdmin } from '../services/caseService.js'
-import { getResumenEquipo } from '../services/counterService.js'
+import { getCasosImportantesCalendario, getResumenEquipo } from '../services/counterService.js'
 import { eventos } from '../services/eventosService.js'
 import { useSessionStore } from '../stores/session.js'
 import { useCountersStore } from '../stores/counters.js'
+import {
+  agruparDelDia,
+  cifrasDeAtencion,
+  TEXTO_AYUDA_MODO_DIA,
+  consultaConVista,
+  elementosDeRango,
+  elementosDelCalendario,
+  encabezadoDeDia,
+  etiquetaCortaDeDia,
+  etiquetaLargaDeDia,
+  filtrarPorContador,
+  leerVista,
+  marcasPorDia,
+  opcionesDeContador,
+  resumenParaLector,
+  tituloDeRango,
+} from '../utils/calendarioAdministrador.js'
 import { PRIORITY_LABELS } from '../utils/constants.js'
 import { casoAFila, contadorAFila } from '../utils/filasVista.js'
 import {
@@ -370,11 +460,176 @@ const route = useRoute()
 const router = useRouter()
 
 // Pestaña en la URL (?tab=auditorias): al volver de una ficha se regresa a la misma pestaña.
-const PESTANAS = ['casos', 'auditorias', 'calendario']
+// Un enlace viejo con ?tab=calendario abre la vista general (la pestaña ya no existe).
+const PESTANAS = ['casos', 'auditorias']
 const pestana = computed({
   get: () => (PESTANAS.includes(route.query.tab) ? route.query.tab : 'casos'),
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
 })
+
+/*
+ * Calendario y franja «Requiere atención»: casos importantes, auditorías y entregas se piden una
+ * sola vez aquí y alimentan la franja, el calendario y el modo día. Cada fuente se pide aparte: si
+ * una falla se dice cuál y se muestran las otras. Al releer en silencio un fallo no borra lo que
+ * ya se veía.
+ */
+const hoy = ref(hoyLocal())
+const casosCalendario = ref([])
+const auditoriasCalendario = ref([])
+const entregasCalendario = ref([])
+const fallosCalendario = ref([])
+const cargandoCalendario = ref(true)
+const tuvoDatos = ref(false)
+// 0 es «Todos los contadores»; el filtro aplica al calendario, a la franja y al modo día.
+const contadorElegido = ref(0)
+
+const todosLosElementos = computed(() =>
+  elementosDelCalendario({
+    casos: casosCalendario.value,
+    auditorias: auditoriasCalendario.value,
+    entregas: entregasCalendario.value,
+  }),
+)
+const opcionesDeContadores = computed(() => opcionesDeContador(todosLosElementos.value))
+const elementosVisibles = computed(() =>
+  filtrarPorContador(todosLosElementos.value, contadorElegido.value || null),
+)
+const marcas = computed(() => marcasPorDia(elementosVisibles.value, hoy.value))
+const cifras = computed(() => cifrasDeAtencion(elementosVisibles.value, hoy.value))
+
+// Si el contador elegido ya no aparece tras releer, se vuelve a «Todos».
+watch(opcionesDeContadores, (lista) => {
+  if (contadorElegido.value !== 0 && !lista.some((c) => c.id === contadorElegido.value)) {
+    contadorElegido.value = 0
+  }
+})
+
+const NOMBRES_DE_FUENTE = {
+  casos: 'los casos importantes',
+  auditorias: 'los vencimientos de las auditorías',
+  entregas: 'las entregas de auditoría',
+}
+const nombresDeFallos = computed(() =>
+  fallosCalendario.value.map((f) => NOMBRES_DE_FUENTE[f]).join(', '),
+)
+const todasFallaron = computed(() => fallosCalendario.value.length === 3)
+
+// Evita que una respuesta lenta pise a una más reciente.
+let secuenciaCalendario = 0
+
+const cargarCalendario = async ({ silencioso = false } = {}) => {
+  const actual = ++secuenciaCalendario
+  if (!silencioso) cargandoCalendario.value = true
+  const [losCasos, lasAuditorias, lasEntregas] = await Promise.allSettled([
+    getCasosImportantesCalendario(),
+    listarAuditorias(),
+    listarEntregasCalendario(),
+  ])
+  if (actual !== secuenciaCalendario) return
+  const nuevosFallos = []
+  const aplicar = (clave, resultado, destino) => {
+    if (resultado.status === 'fulfilled') destino.value = resultado.value
+    else nuevosFallos.push(clave)
+  }
+  aplicar('casos', losCasos, casosCalendario)
+  aplicar('auditorias', lasAuditorias, auditoriasCalendario)
+  aplicar('entregas', lasEntregas, entregasCalendario)
+  if (!silencioso || nuevosFallos.length === 0) fallosCalendario.value = nuevosFallos
+  if (nuevosFallos.length < 3) tuvoDatos.value = true
+  cargandoCalendario.value = false
+}
+
+/*
+ * Estado en la dirección: ?dia=AAAA-MM-DD o ?rango=vencidos|hoy|semana|entregas abren el modo día;
+ * recargar o compartir el enlace conserva lo elegido. Sin ellos se ve la vista general.
+ */
+const vista = computed(() => leerVista(route.query))
+const enModoDia = computed(() => vista.value.dia !== null || vista.value.rango !== null)
+
+const vencimientos = ref(null)
+
+// Qué abrió el modo (una cifra o un día) para devolverle el foco al volver a la vista general.
+const origenDeVista = ref(null)
+
+const irALaVista = async (nueva) => {
+  await router.replace({ query: consultaConVista(route.query, nueva) })
+  await nextTick()
+  // El router lleva la página arriba tras navegar: se espera al siguiente cuadro y se corrige.
+  requestAnimationFrame(() => {
+    if (nueva) {
+      vencimientos.value?.enfocar({ alInicio: calendarioCompacto.value })
+    } else {
+      devolverElFoco()
+    }
+  })
+}
+
+// Botón de un día en la tira de la semana o en el q-date (este se vuelve a pintar: se busca por nombre).
+const botonDeDia = (dia) => {
+  const [anio, mes, numero] = dia.split('-').map(Number)
+  const nombre = `${numero} ${$q.lang.date.months[mes - 1]} ${anio}`.toLowerCase()
+  const enTira = document.querySelector(`.semana__dia[data-dia="${dia}"]`)
+  if (enTira) return enTira
+  return [...document.querySelectorAll('.q-date__calendar-days .q-btn[aria-label]')].find((boton) =>
+    boton.getAttribute('aria-label').toLowerCase().startsWith(nombre),
+  )
+}
+
+const devolverElFoco = () => {
+  const origen = origenDeVista.value
+  origenDeVista.value = null
+  const control = origen?.rango
+    ? document.querySelector(`[data-rango="${origen.rango}"]`)
+    : origen?.dia
+      ? botonDeDia(origen.dia)
+      : null
+  const destino = control ?? document.querySelector('.dashboard-page__title')
+  // El título no es enfocable por sí solo: se le permite recibir el foco por código.
+  if (destino && !control) destino.setAttribute('tabindex', '-1')
+  destino?.focus()
+}
+
+// Solo se recuerda el control que abrió el modo desde la vista general, no los cambios de día.
+const recordarOrigen = (origen) => {
+  if (!enModoDia.value) origenDeVista.value = origen
+}
+const elegirDia = (dia) => {
+  recordarOrigen({ dia })
+  return irALaVista({ dia })
+}
+const elegirRango = (rango) => {
+  recordarOrigen({ rango })
+  return irALaVista({ rango })
+}
+const volverALaVistaGeneral = () => irALaVista(null)
+
+const ETIQUETAS_DE_RANGO = {
+  vencidos: 'Vencidos',
+  hoy: 'Vencen hoy',
+  semana: 'Esta semana',
+  entregas: 'Entregas',
+}
+
+const elementosDeLaVista = computed(() => {
+  if (vista.value.dia) {
+    const delDia = agruparDelDia(elementosVisibles.value, vista.value.dia)
+    return [...delDia.casos, ...delDia.auditorias, ...delDia.entregas]
+  }
+  return vista.value.rango ? elementosDeRango(elementosVisibles.value, vista.value.rango, hoy.value) : []
+})
+const anuncioDeVista = computed(() => {
+  if (!enModoDia.value) return ''
+  const etiqueta = vista.value.dia
+    ? etiquetaLargaDeDia(vista.value.dia)
+    : ETIQUETAS_DE_RANGO[vista.value.rango]
+  return resumenParaLector(etiqueta, elementosDeLaVista.value)
+})
+const tituloDeLaVista = computed(() =>
+  vista.value.dia ? encabezadoDeDia(vista.value.dia) : tituloDeRango(vista.value.rango),
+)
+const etiquetaDeLaVista = computed(() =>
+  vista.value.dia ? etiquetaCortaDeDia(vista.value.dia) : ETIQUETAS_DE_RANGO[vista.value.rango],
+)
 
 /** Contadores registrados, tal como los entrega el servicio (`{ id, nombre }`). */
 const contadores = computed(() => contadoresStore.contadores)
@@ -453,6 +708,8 @@ const mensajeError = computed(
 /** Celular y tableta (menos de 1024 px): el detalle se abre en un diálogo en vez del panel. */
 const $q = useQuasar()
 const pantallaChica = computed(() => $q.screen.lt.md)
+// Las dos columnas empiezan en 1280 px; por debajo el calendario es la tira de la semana.
+const calendarioCompacto = computed(() => $q.screen.width < 1280)
 const dialogoDetalle = ref(false)
 
 // Sin contador seleccionado (falló la carga y se reintentó) no hay detalle que mostrar.
@@ -551,6 +808,7 @@ const alAsignar = (caso) => {
   const nota = caso.importante ? '' : ' No aparece en el dashboard porque no está marcado como importante.'
   $q.notify({ type: 'positive', message: `Caso asignado. Se avisó a ${nombreContador}.${nota}` })
   cargarResumen()
+  cargarCalendario({ silencioso: true })
   contadoresStore.refrescarEnSilencio(caso.contador_id)
 }
 
@@ -563,6 +821,7 @@ const alAsignarAuditoria = (auditoria) => {
   const nombres = auditoria.contadores.map((c) => c.nombre).join(', ') || 'los contadores'
   $q.notify({ type: 'positive', message: `Auditoría asignada a ${nombres}.` })
   tablero.value?.cargar()
+  cargarCalendario({ silencioso: true })
 }
 
 /*
@@ -605,7 +864,9 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 // Al volver a la pestaña (por ejemplo, al día siguiente) se refrescan cifras y conteos sin loader.
 const alVolver = () => {
   if (document.visibilityState !== 'visible') return
+  hoy.value = hoyLocal()
   cargarResumen()
+  cargarCalendario({ silencioso: true })
   contadoresStore.refrescarEnSilencio()
 }
 document.addEventListener('visibilitychange', alVolver)
@@ -613,6 +874,7 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolver)
 
 onMounted(async () => {
   cargarResumen()
+  cargarCalendario()
 
   /*
    * RF-17: P-3 deja el contador elegido en el store antes de abrir P-2. La carga de P-2
@@ -695,6 +957,29 @@ onMounted(async () => {
 .dashboard-page__asignar-btn:focus-visible {
   outline: 3px solid var(--dg-foco) !important;
   outline-offset: 2px;
+}
+
+.dashboard-page__progreso {
+  margin-bottom: 16px;
+}
+
+.dashboard-page__aviso {
+  margin-bottom: 16px;
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
+}
+
+/* Móvil y tableta: calendario (tira de la semana) y, debajo, las pestañas o el modo día */
+.dashboard-page__cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.dashboard-page__principal {
+  min-width: 0;
+  container-type: inline-size;
 }
 
 .dashboard-page__grid {
@@ -819,6 +1104,14 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
+/* La columna derecha es más angosta: lista y detalle van lado a lado solo si caben */
+@container (min-width: 820px) {
+  .dashboard-page__grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+  }
+}
+
 /* RNF-02: una columna con 720 px de ancho como máximo, centrada, entre 600 y 1023 px. */
 @media (min-width: 600px) and (max-width: 1023px) {
   .dashboard-page__inner {
@@ -836,15 +1129,35 @@ onMounted(async () => {
     padding: 20px 24px;
   }
 
-  .dashboard-page__grid {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    align-items: start;
-  }
-
   .dashboard-panel__body {
     max-height: 52vh;
     overflow-y: auto;
     padding-right: 4px;
+  }
+}
+
+/* Dos columnas: calendario compacto a la izquierda; pestañas o modo día a la derecha */
+@media (min-width: 1280px) {
+  .dashboard-page__cuerpo {
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .dashboard-page__calendario {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+/* Con la columna derecha angosta el resumen del equipo baja la dona y las tarjetas a su propia fila */
+@container (max-width: 1000px) {
+  .dashboard-page__principal :deep(.resumen-equipo__contenido) {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-page__principal :deep(.resumen-equipo__tarjetas),
+  .dashboard-page__principal :deep(.dona-estados) {
+    flex: 1 1 100%;
   }
 }
 </style>

@@ -224,11 +224,13 @@ const enProcesoDesde = computed(() => fechaParaFormulario(props.caso.en_proceso_
 const vencido = computed(() => esCasoVencido(props.caso, hoyLocal()))
 const proximo = computed(() => esCasoProximoAVencer(props.caso, hoyLocal()))
 
-// En los casos del contador al que apoyas no existe «Editar»: la ayuda no debe mencionarlo.
+// Al administrador y en los casos del contador al que apoyas no existe «Editar»: la ayuda no lo menciona.
 const textoAyuda = computed(() =>
-  props.caso.solo_estado === true
-    ? 'Ficha de solo lectura. Este caso es del contador al que apoyas: solo puedes cambiar su estado desde la lista.'
-    : 'Ficha de solo lectura: para cambiar algo usa «Editar».',
+  session.esAdministrador
+    ? 'Ficha de solo lectura. Es un caso importante del contador: aquí solo puedes consultarlo.'
+    : props.caso.solo_estado === true
+      ? 'Ficha de solo lectura. Este caso es del contador al que apoyas: solo puedes cambiar su estado desde la lista.'
+      : 'Ficha de solo lectura: para cambiar algo usa «Editar».',
 )
 
 // El caso propio se muestra como «Tú»; los demás con el nombre del contador o «Sin asignar».
