@@ -17,13 +17,45 @@ const pool = mysql.createPool({
 });
 
 /**
+ * Comprueba que todos los parámetros sean primitivos. `pool.query` de mysql2 expande objetos
+ * y arreglos (`{a:1}` → `` `a` = 1 ``, `[1,2]` → `1, 2`), lo que permitiría inyectar SQL si un
+ * campo llegara sin validar su tipo. Para listas (`IN`, `VALUES`) se arman los marcadores a mano.
+ * @param {Array} params - Parámetros de la consulta.
+ * @throws {Error} Si algún parámetro no es string, number finito, boolean, bigint, null, Date o Buffer
+ *   (`undefined` se admite: mysql2 lo envía como NULL y no se expande).
+ */
+function validarParametros(params) {
+  if (!Array.isArray(params)) {
+    throw new TypeError('Parámetro SQL no permitido: los parámetros deben ir en un arreglo.');
+  }
+  params.forEach((valor, indice) => {
+    const permitido =
+      valor === null ||
+      valor === undefined ||
+      typeof valor === 'string' ||
+      typeof valor === 'boolean' ||
+      typeof valor === 'bigint' ||
+      (typeof valor === 'number' && Number.isFinite(valor)) ||
+      valor instanceof Date ||
+      Buffer.isBuffer(valor);
+    if (!permitido) {
+      throw new TypeError(
+        `Parámetro SQL no permitido en la posición ${indice}: solo se aceptan texto, número, booleano, nulo, fecha o buffer.`
+      );
+    }
+  });
+}
+
+/**
  * Ejecuta una consulta SQL con parámetros opcionales y devuelve las filas.
  * @param {string} sql - Sentencia SQL.
  * @param {Array} params - Parámetros de la consulta (opcional).
  * @returns {Promise<Array>} Filas resultantes.
  */
 async function query(sql, params) {
-  const [rows] = await pool.query(sql, params || []);
+  const parametros = params || [];
+  validarParametros(parametros);
+  const [rows] = await pool.query(sql, parametros);
   return rows;
 }
 
@@ -38,7 +70,9 @@ async function conTransaccion(trabajo) {
   try {
     await conexion.beginTransaction();
     const resultado = await trabajo(async (sql, params) => {
-      const [rows] = await conexion.query(sql, params || []);
+      const parametros = params || [];
+      validarParametros(parametros);
+      const [rows] = await conexion.query(sql, parametros);
       return rows;
     });
     await conexion.commit();
@@ -51,4 +85,4 @@ async function conTransaccion(trabajo) {
   }
 }
 
-module.exports = { query, pool, conTransaccion };
+module.exports = { query, pool, conTransaccion, validarParametros };

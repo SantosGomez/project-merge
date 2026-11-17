@@ -51,7 +51,7 @@ async function testCreateCreaLaCuentaPorCorreo() {
       assert.strictEqual(cuenta.usuario ?? null, null, 'no escribe la columna usuario');
     }
   } finally {
-    if (ids.length > 0) await query('DELETE FROM usuarios WHERE id IN (?)', [ids]);
+    if (ids.length > 0) await query(`DELETE FROM usuarios WHERE id IN (${ids.map(() => '?').join(', ')})`, ids);
   }
 }
 

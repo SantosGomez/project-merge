@@ -17,6 +17,15 @@ async function listarClienteIds(tipoId) {
 }
 
 /**
+ * Arma los marcadores `?, ?, ?` de una lista (la guardia de `db.js` no admite arreglos como parámetro).
+ * @param {Array} lista - Valores que irán como parámetros.
+ * @returns {string}
+ */
+function marcadores(lista) {
+  return lista.map(() => '?').join(', ');
+}
+
+/**
  * Devuelve de los ids recibidos los que son clientes del usuario, con su estado activo.
  * @param {number} usuarioId - Dueño esperado.
  * @param {Array<number>} ids - Ids de cliente a comprobar.
@@ -24,7 +33,7 @@ async function listarClienteIds(tipoId) {
  */
 async function clientesDeUsuario(usuarioId, ids) {
   if (ids.length === 0) return [];
-  const filas = await query('SELECT id, activo FROM clientes WHERE usuario_id = ? AND id IN (?)', [usuarioId, ids]);
+  const filas = await query(`SELECT id, activo FROM clientes WHERE usuario_id = ? AND id IN (${marcadores(ids)})`, [usuarioId, ...ids]);
   return filas.map((fila) => ({ id: fila.id, activo: Boolean(fila.activo) }));
 }
 
@@ -41,12 +50,17 @@ async function aplicarCambios(usuarioId, tipoId, agregar, quitar) {
   const creadoEn = formatLocalDate(nowLocal());
   await conTransaccion(async (ejecutar) => {
     if (agregar.length > 0) {
-      await ejecutar('INSERT IGNORE INTO cartera_actividad (usuario_id, cliente_id, tipo_id, creado_en) VALUES ?', [
-        agregar.map((clienteId) => [usuarioId, clienteId, tipoId, creadoEn]),
-      ]);
+      const filas = agregar.map(() => '(?, ?, ?, ?)').join(', ');
+      await ejecutar(
+        `INSERT IGNORE INTO cartera_actividad (usuario_id, cliente_id, tipo_id, creado_en) VALUES ${filas}`,
+        agregar.flatMap((clienteId) => [usuarioId, clienteId, tipoId, creadoEn])
+      );
     }
     if (quitar.length > 0) {
-      await ejecutar('DELETE FROM cartera_actividad WHERE tipo_id = ? AND cliente_id IN (?)', [tipoId, quitar]);
+      await ejecutar(`DELETE FROM cartera_actividad WHERE tipo_id = ? AND cliente_id IN (${marcadores(quitar)})`, [
+        tipoId,
+        ...quitar,
+      ]);
     }
   });
   return listarClienteIds(tipoId);

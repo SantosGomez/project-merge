@@ -49,5 +49,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 
 - **S2 seguridad (rama cs-s2-sesiones):** contraseña ≥12 y no común (`validarPasswordNueva`), revocar sesiones + cerrar SSE al cambiar, bloqueo 5 fallos/15 min por correo (en memoria), JWT HS256 y secreto ≥32, sin seed demo en producción. Probar con `node --test --test-concurrency=1` (en paralelo falla al azar por la BD compartida).
 
+- **S3 SQL (rama cs-s3-sql):** `db.js` solo acepta parámetros primitivos (`validarParametros`; `undefined` pasa como NULL): para `IN`/`VALUES` armar los `?` a mano. `pool.execute` es viable en esta MariaDB pero no se migró (cambia tipos y no sirve para `SHOW`/`GET_LOCK`/DDL del seed). Suite `inyeccionSql.test.js` sin fallos reales.
+
 ---
 Nada sensible en esta memoria.
