@@ -45,5 +45,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 - **Otros:** `session.id` es texto (comparar con `Number(...)`). Si una tabla de XAMPP da «doesn't exist in engine», no borrar tablas sueltas.
 - **Revisión de seguridad (rama `revision-CS`, 2026-11-17):** S0 hecha (`.htaccess` bloquea `.env`, `.sql`, `.git` en Apache; faltan rotar secretos y mover respaldos fuera de `htdocs`). S1 (nginx) y S2 (contraseñas/sesiones) en sesiones aparte; siguen S3 a S8. Apache de XAMPP sirve todo `htdocs` en la LAN: no dejar secretos dentro del proyecto.
 
+- **Nginx (S1):** cabeceras de seguridad en `nginx/cabeceras-seguridad.conf` (include en cada location estático, no en `/api/`); `CF-Connecting-IP` solo se confía en el puerto interno 8081 (el túnel apunta ahí, no se publica). El puerto 80 publicado la ignora.
+
 ---
 Nada sensible en esta memoria.
