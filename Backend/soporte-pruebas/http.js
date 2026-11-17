@@ -12,7 +12,7 @@ const { crearApp } = require('../src/app');
  * @param {import('express').Express} [app] - Aplicación a servir; por defecto la real.
  * @returns {Promise<{servidor: Object, puerto: number, cerrar: Function}>} Servidor, puerto y función de cierre.
  */
-async function iniciarServidor(app = crearApp({ limitarLogin: false })) {
+async function iniciarServidor(app = crearApp({ limitarLogin: false, limitarPeticiones: false })) {
   const servidor = http.createServer(app);
 
   await new Promise((resolve, reject) => {

@@ -20,15 +20,22 @@ const jornadaRoutes = require('./routes/jornadaRoutes');
 const informeRoutes = require('./routes/informeRoutes');
 const { buildError } = require('./utils/errorUtils');
 
+// Topes por IP en una ventana de un minuto: general y, más estricto, para escrituras
+const LIMITES_PETICIONES = { global: 300, escritura: 60 };
+const VENTANA_PETICIONES_MS = 60 * 1000;
+const METODOS_DE_LECTURA = ['GET', 'HEAD', 'OPTIONS'];
+
 /**
  * Crea y configura la aplicación Express.
  * Solo configuración, middlewares globales, CORS y montaje de rutas.
  * No contiene lógica de negocio (Constitución: Estándar de Arquitectura del Backend).
  * RF-34: el backend solo acepta peticiones de los orígenes locales de desarrollo
  * del frontend web, y acepta las peticiones que no declaran origen (RF-04 sigue aplicando).
- * @param {{ origenesPermitidos?: string[], limitarLogin?: boolean }} [opciones] - orígenes
- * permitidos (si no se pasan, se leen de CORS_ORIGENES) y si se limita el inicio de sesión
- * (por defecto sí; las pruebas lo apagan porque inician sesión muchas veces).
+ * @param {{ origenesPermitidos?: string[], limitarLogin?: boolean, limitarPeticiones?: boolean,
+ * limitesPeticiones?: { global?: number, escritura?: number } }} [opciones] - orígenes
+ * permitidos (si no se pasan, se leen de CORS_ORIGENES), si se limita el inicio de sesión
+ * (por defecto sí; las pruebas lo apagan porque inician sesión muchas veces) y si se limitan
+ * las peticiones por IP (por defecto sí; `limitesPeticiones` cambia los topes por minuto).
  * @returns {import('express').Express} La aplicación Express configurada.
  */
 function crearApp(opciones) {
@@ -36,6 +43,8 @@ function crearApp(opciones) {
   const opcionesApp = opciones || {};
   const origenesPermitidos = opcionesApp.origenesPermitidos ?? parseAllowedOrigins(process.env.CORS_ORIGENES);
   const limitarLogin = opcionesApp.limitarLogin ?? true;
+  const limitarPeticiones = opcionesApp.limitarPeticiones ?? true;
+  const limitesPeticiones = { ...LIMITES_PETICIONES, ...(opcionesApp.limitesPeticiones || {}) };
 
   // Cabeceras de seguridad; helmet también quita x-powered-by, se deja explícito
   app.disable('x-powered-by');
@@ -52,8 +61,28 @@ function crearApp(opciones) {
   // 2.º Añade las cabeceras CORS solo a los orígenes permitidos (RF-34)
   app.use(cors(buildCorsOptions(origenesPermitidos)));
 
-  // Parsear cuerpos JSON de las peticiones entrantes
-  app.use(express.json());
+  // Límite de peticiones por IP: uno general y otro más estricto para escrituras (POST/PUT/PATCH/DELETE)
+  if (limitarPeticiones) {
+    const comunes = { windowMs: VENTANA_PETICIONES_MS, standardHeaders: 'draft-7', legacyHeaders: false };
+    app.use(
+      rateLimit({
+        ...comunes,
+        limit: limitesPeticiones.global,
+        message: buildError('Demasiadas peticiones', 'tu conexión', 'Espera un minuto antes de volver a intentarlo'),
+      })
+    );
+    app.use(
+      rateLimit({
+        ...comunes,
+        limit: limitesPeticiones.escritura,
+        skip: (req) => METODOS_DE_LECTURA.includes(req.method),
+        message: buildError('Demasiadas escrituras', 'tu conexión', 'Espera un minuto antes de volver a guardar cambios'),
+      })
+    );
+  }
+
+  // Parsear cuerpos JSON de las peticiones entrantes (tope explícito de 100 kb)
+  app.use(express.json({ limit: '100kb' }));
 
   // Máximo 10 intentos fallidos de inicio de sesión por IP cada 15 minutos (los exitosos no cuentan)
   if (limitarLogin) {
@@ -102,6 +131,12 @@ function crearApp(opciones) {
   app.use((err, req, res, next) => {
     // eslint-disable-next-line no-console
     console.error(err);
+    // Cuerpo mayor al límite de express.json()
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json(
+        buildError('Cuerpo de la petición demasiado grande', 'cuerpo JSON', 'Envía un cuerpo de máximo 100 kb')
+      );
+    }
     // express.json() marca el JSON mal formado con status 400 y type 'entity.parse.failed'
     if (err.status === 400 || err.type === 'entity.parse.failed') {
       return res.status(400).json(

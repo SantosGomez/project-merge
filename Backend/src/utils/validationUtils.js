@@ -5,6 +5,9 @@ const PRIORIDADES_VALIDAS = ['Alta', 'Media', 'Baja'];
 const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar'];
 const LONGITUD_MAX_CLIENTE = 80;
 const LONGITUD_MIN_PASSWORD = 12;
+// Tope de contraseña: evita gastar Argon2id con textos enormes
+const LONGITUD_MAX_PASSWORD = 128;
+const MAX_IDS_POR_LISTA = 500;
 // Contraseñas triviales (base sin dígitos ni símbolos finales); lista pequeña, sin dependencias.
 const PASSWORDS_COMUNES = new Set([
   'password', 'contrasena', 'contraseña', 'qwerty', 'qwertyuiop', 'qwertyuiopasdf', 'asdfghjkl', 'zxcvbnm',
@@ -36,6 +39,12 @@ function validarPasswordNueva(password) {
     return {
       valida: false,
       error: buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener al menos 12 caracteres'),
+    };
+  }
+  if (password.length > LONGITUD_MAX_PASSWORD) {
+    return {
+      valida: false,
+      error: buildError('Contraseña inválida', 'contraseña', 'La contraseña debe tener máximo 128 caracteres'),
     };
   }
   const minusculas = password.toLowerCase();
@@ -214,7 +223,7 @@ function esMesValido(valor) {
  * @returns {Array<number>|null} Los ids, o null si no es una lista o algún id no es válido.
  */
 function parseListaDeIds(valor) {
-  if (!Array.isArray(valor)) return null;
+  if (!Array.isArray(valor) || valor.length > MAX_IDS_POR_LISTA) return null;
   const ids = valor.map(parseCounterId);
   return ids.includes(null) ? null : [...new Set(ids)];
 }

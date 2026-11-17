@@ -62,6 +62,7 @@ const MINIMOS = {
   'misCasosEnEquipo.test.js': 7,
   'originMiddleware.test.js': 3,
   'limiteIntentosCuenta.test.js': 4,
+  'limitesEntrada.test.js': 10,
   'originUtils.test.js': 7,
   'ownershipMiddleware.test.js': 4,
   'ownershipMiddlewareAuxiliar.test.js': 3,
