@@ -43,6 +43,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 - **Navegador:** `backend-experimento-3011` + `frontend-experimento-9012`, con cuentas `zz_test_` que se borran al final. El 3011 puede figurar «running» estando caído. Con el panel oculto, `requestAnimationFrame` va a ~1 cuadro/s; en Playwright, esperar 3 s antes de capturar.
 - **Subagentes:** pedir que no dejen procesos en segundo plano, que no toquen MEMORY.md y que usen solo cuentas `zz_test_`.
 - **Otros:** `session.id` es texto (comparar con `Number(...)`). Si una tabla de XAMPP da «doesn't exist in engine», no borrar tablas sueltas.
+- **Revisión de seguridad (rama `revision-CS`, 2026-11-17):** S0 hecha (`.htaccess` bloquea `.env`, `.sql`, `.git` en Apache; faltan rotar secretos y mover respaldos fuera de `htdocs`). S1 (nginx) y S2 (contraseñas/sesiones) en sesiones aparte; siguen S3 a S8. Apache de XAMPP sirve todo `htdocs` en la LAN: no dejar secretos dentro del proyecto.
 
 ---
 Nada sensible en esta memoria.
