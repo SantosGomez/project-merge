@@ -44,5 +44,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 - **Subagentes:** pedir que no dejen procesos en segundo plano, que no toquen MEMORY.md y que usen solo cuentas `zz_test_`.
 - **Otros:** `session.id` es texto (comparar con `Number(...)`). Si una tabla de XAMPP da «doesn't exist in engine», no borrar tablas sueltas.
 
+- **Nginx (S1):** cabeceras de seguridad en `nginx/cabeceras-seguridad.conf` (include en cada location estático, no en `/api/`); `CF-Connecting-IP` solo se confía en el puerto interno 8081 (el túnel apunta ahí, no se publica). El puerto 80 publicado la ignora.
+
 ---
 Nada sensible en esta memoria.

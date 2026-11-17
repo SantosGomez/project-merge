@@ -12,5 +12,6 @@ RUN npx quasar build -m pwa
 # Etapa 2: servir los archivos estáticos con Nginx
 FROM nginx:1.27-alpine
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY nginx/cabeceras-seguridad.conf /etc/nginx/cabeceras-seguridad.conf
 COPY --from=compilacion /app/dist/pwa /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 80 8081
