@@ -217,7 +217,7 @@ export default defineRouter((/* { store, ssrContext } */) => {
 
     accessDenied.value = false
 
-    // El token y el perfil se leen de sessionStorage en cada navegación (RF-42).
+    // El perfil de la sesión se lee del almacén en cada navegación (RF-42); el token va en cookie HttpOnly.
     sesion.aplicarSesionGuardada()
 
     if (arranque === null) {
@@ -227,7 +227,7 @@ export default defineRouter((/* { store, ssrContext } */) => {
       const resultado = await arranque
 
       if (resultado.estado === 'caducada') {
-        // Token vencido o 401: P-1 muestra el aviso de sesión caducada (RF-07, RF-42/43).
+        // Sesión vencida o 401: P-1 muestra el aviso de sesión caducada (RF-07, RF-42/43).
         return { name: 'login', replace: true }
       }
 
@@ -242,7 +242,7 @@ export default defineRouter((/* { store, ssrContext } */) => {
         return { name: 'login', query: { aviso: 'perfil' }, replace: true }
       }
 
-      // Recarga con token vigente: se abre la pantalla principal del perfil (RF-44),
+      // Recarga con sesión vigente: se abre la pantalla principal del perfil (RF-44),
       // o la de crear contraseña si la cuenta aún usa la asignada.
       if (resultado.estado === 'valida' && to.name === 'login') {
         return { path: resultado.pantallaPrincipal, replace: true }

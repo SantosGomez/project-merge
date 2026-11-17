@@ -34,6 +34,8 @@ const MINIMOS = {
   'auxiliarModel.test.js': 9,
   'auxiliarRoutes.test.js': 14,
   'auxiliarSoloEstado.test.js': 5,
+  'cookieSesion.test.js': 16,
+  'cookieSesionUtils.test.js': 5,
   'cambioContrasena.test.js': 8,
   'cambioContrasenaPropia.test.js': 12,
   'carteraActividad.test.js': 8,
