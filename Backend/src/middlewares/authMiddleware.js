@@ -5,6 +5,14 @@ const SessionModel = require('../models/SessionModel');
 const bitacora = require('../utils/bitacoraSeguridad');
 const { JWT_SECRET } = require('../config/jwt');
 
+const {
+  NOMBRE_COOKIE_SESION,
+  CABECERA_CSRF,
+  VALOR_CSRF,
+  leerCookie,
+} = require('../utils/cookieSesion');
+
+const METODOS_DE_LECTURA = ['GET', 'HEAD', 'OPTIONS'];
 const INACTIVIDAD_MINUTOS = 30;
 // «Mantener sesión iniciada»: la sesión se cierra tras 7 días sin uso
 const INACTIVIDAD_PERSISTENTE_MINUTOS = 7 * 24 * 60;
@@ -29,23 +37,36 @@ function sesionInactiva(sesion, ahora) {
  * @param {boolean} permitirCambioPendiente - si deja pasar a una cuenta que aún debe crear su contraseña.
  */
 async function autenticar(req, res, next, permitirCambioPendiente) {
-  // 1. Extraer token de la cabecera Authorization: Bearer <token>
-  const authHeader = req.headers && req.headers.authorization;
-  if (!authHeader) {
-    res.status(401).json(
-      buildError('No se proporcionó credenciales', 'cabecera Authorization', 'Inicia sesión otra vez')
-    );
-    return;
+  // 1. Extraer el token: la cabecera Authorization: Bearer <token> tiene prioridad;
+  //    si no viene, se usa la cookie de sesión HttpOnly (S8).
+  const cabeceras = req.headers || {};
+  const authHeader = cabeceras.authorization;
+  let token;
+  if (authHeader) {
+    if (!authHeader.startsWith('Bearer ')) {
+      res.status(401).json(
+        buildError('Formato de credenciales inválido', 'cabecera Authorization', 'Inicia sesión otra vez')
+      );
+      return;
+    }
+    token = authHeader.substring(7);
+  } else {
+    token = leerCookie(cabeceras.cookie, NOMBRE_COOKIE_SESION);
+    if (!token) {
+      res.status(401).json(
+        buildError('No se proporcionó credenciales', 'cabecera Authorization', 'Inicia sesión otra vez')
+      );
+      return;
+    }
+    // Con cookie la autenticación es automática (CSRF): las escrituras exigen una cabecera
+    // personalizada que otro sitio no puede añadir. Con Bearer no hace falta.
+    if (!METODOS_DE_LECTURA.includes(req.method) && cabeceras[CABECERA_CSRF] !== VALOR_CSRF) {
+      res.status(403).json(
+        buildError('Falta la cabecera de seguridad', 'petición de escritura', 'Usa la aplicación web autorizada para guardar cambios')
+      );
+      return;
+    }
   }
-
-  if (!authHeader.startsWith('Bearer ')) {
-    res.status(401).json(
-      buildError('Formato de credenciales inválido', 'cabecera Authorization', 'Inicia sesión otra vez')
-    );
-    return;
-  }
-
-  const token = authHeader.substring(7);
 
   // 2. Verificar firma y expiración del JWT (RF-04, RF-05, criterio 30)
   const resultado = verifyAccessToken(token, JWT_SECRET);

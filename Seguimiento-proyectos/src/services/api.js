@@ -30,9 +30,18 @@ export const URL_BASE_API = (import.meta.env && import.meta.env.API_URL) || 'htt
 /** Límite de espera de cada petición: 15 s (decisión 13 del plan). */
 export const TIEMPO_LIMITE_MS = 15000
 
-/** Claves de la sesión en el almacén, con prefijo delgrow_ para no mezclarse. */
+/**
+ * Cabecera personalizada que el backend exige a las escrituras autenticadas por cookie
+ * (defensa CSRF): un formulario o una imagen de otro sitio no pueden añadirla.
+ */
+export const CABECERA_CSRF = Object.freeze({ nombre: 'X-Requested-With', valor: 'SeguimientoProyectos' })
+
+/**
+ * Claves de la sesión en el almacén, con prefijo delgrow_ para no mezclarse.
+ * Solo guarda el perfil no sensible: el token de acceso vive en una cookie HttpOnly que el
+ * JavaScript de la página no puede leer (S8), así que no hay clave de token.
+ */
 export const CLAVES_SESION = Object.freeze({
-  token: 'delgrow_token',
   rol: 'delgrow_rol',
   nombre: 'delgrow_nombre',
   id: 'delgrow_id',
@@ -267,20 +276,20 @@ const normalizarError = (error) => {
 // --- instancia de axios ----------------------------------------------------
 
 /**
- * Crea una instancia de axios con el token de sessionStorage y los errores
- * normalizados. Los ganchos son opcionales y propios de cada instancia.
+ * Crea una instancia de axios que envía la cookie de sesión (`withCredentials`) y la cabecera
+ * anti-CSRF, y normaliza los errores. No lee ni envía el token: no es accesible desde JavaScript.
+ * Los ganchos son opcionales y propios de cada instancia.
  * @param {Object} [opciones] - inyección para pruebas.
- * @param {Object} [opciones.almacen] - almacén con getItem/setItem/removeItem.
  * @param {Function} [opciones.adaptador] - adaptador de axios (en lugar de la red).
- * @param {Function} [opciones.leerToken] - lector del token para la cabecera.
  * @returns {Object} `{ api, registrarOnActividad, registrarOnSesionExpirada }`.
  */
 export const crearApi = (opciones = {}) => {
-  const almacen = opciones.almacen ?? obtenerAlmacenPredeterminado()
-  const leerToken =
-    opciones.leerToken ?? ((almacenUsado) => almacenUsado.getItem(CLAVES_SESION.token))
-
-  const configuracion = { baseURL: URL_BASE_API, timeout: TIEMPO_LIMITE_MS }
+  const configuracion = {
+    baseURL: URL_BASE_API,
+    timeout: TIEMPO_LIMITE_MS,
+    withCredentials: true,
+    headers: { [CABECERA_CSRF.nombre]: CABECERA_CSRF.valor },
+  }
   if (typeof opciones.adaptador === 'function') {
     configuracion.adapter = opciones.adaptador
   }
@@ -290,14 +299,8 @@ export const crearApi = (opciones = {}) => {
   let alActividad = null
   let alSesionExpirada = null
 
-  // Cabecera Authorization (RF-42) y reinicio del temporizador de inactividad
-  // al iniciar cada petición válida (RF-07, 4.2 del plan).
+  // Reinicio del temporizador de inactividad al iniciar cada petición válida (RF-07, 4.2 del plan).
   instancia.interceptors.request.use((config) => {
-    const token = leerToken(almacen)
-    if (token) {
-      config.headers = config.headers ?? {}
-      config.headers.Authorization = `Bearer ${token}`
-    }
     if (typeof alActividad === 'function') {
       alActividad()
     }

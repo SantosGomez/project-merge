@@ -70,13 +70,11 @@ test('la instancia usa la URL del backend y el límite de 15 s del plan', () => 
   assert.equal(api.defaults.timeout, 15000)
 })
 
-// --- cabecera Authorization (RF-42) ---------------------------------------
+// --- cookie de sesión y cabecera anti-CSRF (S8) ---------------------------
 
-test('el interceptor de petición añade Authorization: Bearer con el token del almacén', async () => {
-  const almacen = crearAlmacenFalso({ [CLAVES_SESION.token]: 'token-falso' })
+test('cada petición envía la cookie (withCredentials) y la cabecera X-Requested-With', async () => {
   const peticiones = []
   const { api } = crearApi({
-    almacen,
     adaptador: crearAdaptador((config) => {
       peticiones.push(config)
       return respuestaHttp(config)
@@ -84,15 +82,20 @@ test('el interceptor de petición añade Authorization: Bearer con el token del 
   })
 
   await api.get('/contadores')
+  await api.post('/casos', {})
 
-  assert.equal(peticiones.length, 1)
-  assert.equal(leerCabecera(peticiones[0], 'Authorization'), 'Bearer token-falso')
+  assert.equal(peticiones.length, 2)
+  for (const config of peticiones) {
+    assert.equal(config.withCredentials, true)
+    assert.equal(leerCabecera(config, 'X-Requested-With'), 'SeguimientoProyectos')
+  }
 })
 
-test('el interceptor de petición no añade Authorization si no hay token', async () => {
+test('la petición nunca lleva Authorization: el token no es accesible desde JavaScript', async () => {
+  const almacen = crearAlmacenFalso({ delgrow_token: 'token-falso' })
   const peticiones = []
   const { api } = crearApi({
-    almacen: crearAlmacenFalso(),
+    almacen,
     adaptador: crearAdaptador((config) => {
       peticiones.push(config)
       return respuestaHttp(config)
@@ -395,22 +398,22 @@ test('crearAlmacenSesion guarda en el temporal salvo que la sesión esté marcad
   const persistente = crearAlmacenFalso()
   const almacen = crearAlmacenSesion(temporal, persistente)
 
-  almacen.setItem(CLAVES_SESION.token, 'normal')
-  assert.equal(temporal.getItem(CLAVES_SESION.token), 'normal')
-  assert.equal(persistente.getItem(CLAVES_SESION.token), null)
+  almacen.setItem(CLAVES_SESION.rol, 'normal')
+  assert.equal(temporal.getItem(CLAVES_SESION.rol), 'normal')
+  assert.equal(persistente.getItem(CLAVES_SESION.rol), null)
 
   // La marca siempre vive en el persistente y desde ahí todo se guarda allá
-  almacen.removeItem(CLAVES_SESION.token)
+  almacen.removeItem(CLAVES_SESION.rol)
   almacen.setItem(CLAVES_SESION.persistente, '1')
-  almacen.setItem(CLAVES_SESION.token, 'recordada')
+  almacen.setItem(CLAVES_SESION.rol, 'recordada')
   assert.equal(persistente.getItem(CLAVES_SESION.persistente), '1')
-  assert.equal(persistente.getItem(CLAVES_SESION.token), 'recordada')
-  assert.equal(temporal.getItem(CLAVES_SESION.token), null)
-  assert.equal(almacen.getItem(CLAVES_SESION.token), 'recordada', 'se lee de donde esté')
+  assert.equal(persistente.getItem(CLAVES_SESION.rol), 'recordada')
+  assert.equal(temporal.getItem(CLAVES_SESION.rol), null)
+  assert.equal(almacen.getItem(CLAVES_SESION.rol), 'recordada', 'se lee de donde esté')
 
   // Borrar quita la clave de los dos
-  temporal.setItem(CLAVES_SESION.token, 'vieja')
-  almacen.removeItem(CLAVES_SESION.token)
-  assert.equal(temporal.getItem(CLAVES_SESION.token), null)
-  assert.equal(persistente.getItem(CLAVES_SESION.token), null)
+  temporal.setItem(CLAVES_SESION.rol, 'vieja')
+  almacen.removeItem(CLAVES_SESION.rol)
+  assert.equal(temporal.getItem(CLAVES_SESION.rol), null)
+  assert.equal(persistente.getItem(CLAVES_SESION.rol), null)
 })

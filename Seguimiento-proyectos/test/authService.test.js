@@ -5,7 +5,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { CLAVES_SESION } from '../src/services/api.js'
-import { crearAuthService, isTokenExpirado } from '../src/services/authService.js'
+import { crearAuthService } from '../src/services/authService.js'
 
 // --- ayudas ----------------------------------------------------------------
 
@@ -45,22 +45,14 @@ const crearApiFalsa = ({ datos, error } = {}) => {
   }
 }
 
-// Token con forma de JWT (cabecera.carga.firma) con la carga indicada.
-const tokenCon = (carga) => {
-  const cabecera = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
-  const cuerpo = Buffer.from(JSON.stringify(carga)).toString('base64url')
-  return `${cabecera}.${cuerpo}.firma-falsa`
-}
-
-const AHORA = new Date('2026-10-22T10:00:00.000Z')
-const AHORA_EN_SEGUNDOS = Math.floor(AHORA.getTime() / 1000)
-
 const DATOS_SESION = {
-  token: 'token-falso',
   rol: 'administrador',
   id: 5,
   nombre: 'Admin Seed',
 }
+
+// El backend sigue incluyendo `token` en el cuerpo del login (compatibilidad); el frontend lo ignora.
+const CUERPO_LOGIN = { ...DATOS_SESION, token: 'token-falso' }
 
 // --- login (RF-01 a RF-04, RF-08, RF-42) -----------------------------------
 
@@ -80,8 +72,8 @@ test('login entra con el correo y guarda también el nombre de la cuenta', async
   assert.equal(servicio.getNombre(), 'CPC. Admin Seed')
 })
 
-test('login hace POST /auth/login y guarda token, rol, id y nombre en el almacén, sin usuario (5b)', async () => {
-  const api = crearApiFalsa({ datos: DATOS_SESION })
+test('login hace POST /auth/login y guarda rol, id y nombre en el almacén, sin token ni usuario (5b, S8)', async () => {
+  const api = crearApiFalsa({ datos: CUERPO_LOGIN })
   const almacen = crearAlmacenFalso()
   const servicio = crearAuthService({ api, almacen })
 
@@ -95,10 +87,15 @@ test('login hace POST /auth/login y guarda token, rol, id y nombre en el almacé
     { ...DATOS_SESION, debeCambiarContrasena: false, persistente: false },
     'login devuelve los datos de la sesión',
   )
-  assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
   assert.equal(almacen.getItem(CLAVES_SESION.id), '5')
   assert.equal(almacen.getItem(CLAVES_SESION.nombre), 'Admin Seed')
+  assert.ok(!('token' in sesion), 'el resultado del login no expone el token')
+  assert.ok(!('token' in CLAVES_SESION), 'no hay clave de token en el almacén')
+  assert.equal(almacen.getItem('delgrow_token'), null, 'el token no se guarda en el almacén')
+  for (const clave of Object.values(CLAVES_SESION)) {
+    assert.notEqual(almacen.getItem(clave), 'token-falso', `"${clave}" no guarda el token`)
+  }
   assert.ok(!('usuario' in CLAVES_SESION), 'la sesión ya no tiene clave de usuario')
   assert.equal(almacen.getItem('delgrow_usuario'), null, 'no se guarda el usuario')
 })
@@ -166,12 +163,12 @@ test('login propaga el error del backend y no guarda nada si las credenciales no
     assert.equal(recibido, error, 'se propaga el error normalizado de api.js')
     return true
   })
-  assert.equal(almacen.getItem(CLAVES_SESION.token), null, 'no se guarda un token inválido')
+  assert.equal(almacen.getItem(CLAVES_SESION.rol), null, 'un login fallido no guarda sesión')
 })
 
-test('login rechaza con tres partes si el backend no devuelve token', async () => {
+test('login rechaza con tres partes si el backend no devuelve el rol', async () => {
   const almacen = crearAlmacenFalso()
-  const servicio = crearAuthService({ api: crearApiFalsa({ datos: { rol: 'contador' } }), almacen })
+  const servicio = crearAuthService({ api: crearApiFalsa({ datos: { token: 'x' } }), almacen })
 
   await assert.rejects(servicio.login('ana', 'clave'), (error) => {
     assert.equal(error.estado, 'respuesta_inesperada')
@@ -179,54 +176,48 @@ test('login rechaza con tres partes si el backend no devuelve token', async () =
     assert.ok(error.mensaje.includes('Qué hacer:'))
     return true
   })
-  assert.equal(almacen.getItem(CLAVES_SESION.token), null)
+  assert.equal(almacen.getItem(CLAVES_SESION.rol), null)
 })
 
 // --- lectura y escritura de la sesión -------------------------------------
 
-test('getToken, getRol, getNombre y getId leen del almacén y devuelven null si no hay sesión', () => {
+test('getRol, getNombre y getId leen del almacén y devuelven null si no hay sesión', () => {
   const almacen = crearAlmacenFalso({
-    [CLAVES_SESION.token]: 'token-falso',
     [CLAVES_SESION.rol]: 'contador',
     [CLAVES_SESION.id]: '7',
     [CLAVES_SESION.nombre]: 'Ana',
   })
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
 
-  assert.equal(servicio.getToken(), 'token-falso')
   assert.equal(servicio.getRol(), 'contador')
   assert.equal(servicio.getId(), '7')
   assert.equal(servicio.getNombre(), 'Ana')
 
   const vacio = crearAuthService({ api: crearApiFalsa(), almacen: crearAlmacenFalso() })
-  assert.equal(vacio.getToken(), null)
   assert.equal(vacio.getRol(), null)
   assert.equal(vacio.getId(), null)
   assert.equal(vacio.getNombre(), null)
 })
 
-test('setSesion escribe token, rol, id y nombre de una vez', () => {
+test('setSesion escribe rol, id y nombre de una vez', () => {
   const almacen = crearAlmacenFalso()
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
 
   servicio.setSesion(DATOS_SESION)
 
-  assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
   assert.equal(almacen.getItem(CLAVES_SESION.id), '5')
   assert.equal(almacen.getItem(CLAVES_SESION.nombre), 'Admin Seed')
 })
 
-test('setToken, setRol, setNombre y setId escriben cada dato por separado', () => {
+test('setRol, setNombre y setId escriben cada dato por separado', () => {
   const almacen = crearAlmacenFalso()
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
 
-  servicio.setToken('otro-token')
   servicio.setRol('contador')
   servicio.setNombre('Ana')
   servicio.setId(9)
 
-  assert.equal(servicio.getToken(), 'otro-token')
   assert.equal(servicio.getRol(), 'contador')
   assert.equal(servicio.getNombre(), 'Ana')
   assert.equal(servicio.getId(), '9')
@@ -234,7 +225,7 @@ test('setToken, setRol, setNombre y setId escriben cada dato por separado', () =
 
 test('limpiarSesion elimina todas las claves de la sesión y no toca otros datos', () => {
   const almacen = crearAlmacenFalso({
-    [CLAVES_SESION.token]: 'token-falso',
+    [CLAVES_SESION.rol]: 'contador',
     otra_clave: 'se queda',
   })
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
@@ -248,48 +239,11 @@ test('limpiarSesion elimina todas las claves de la sesión y no toca otros datos
   assert.equal(almacen.getItem('otra_clave'), 'se queda')
 })
 
-// --- caducidad del token por su campo exp (RF-42, RF-43) -------------------
-
-test('isTokenExpirado devuelve false si el token tiene exp en el futuro', () => {
-  assert.equal(isTokenExpirado(tokenCon({ exp: AHORA_EN_SEGUNDOS + 60 }), AHORA), false)
-})
-
-test('isTokenExpirado devuelve true si el token ya venció', () => {
-  assert.equal(isTokenExpirado(tokenCon({ exp: AHORA_EN_SEGUNDOS - 1 }), AHORA), true)
-})
-
-test('isTokenExpirado devuelve true justo en el límite de exp', () => {
-  assert.equal(isTokenExpirado(tokenCon({ exp: AHORA_EN_SEGUNDOS }), AHORA), true)
-})
-
-test('isTokenExpirado trata como expirado un token mal formado, sin exp o que no es texto', () => {
-  const invalidos = [
-    null,
-    undefined,
-    '',
-    'no-es-un-token',
-    'a.b',
-    'a.b.c.d',
-    '%%%.%%%.%%%',
-    tokenCon({ usuario: 'sin-exp' }),
-    tokenCon({ exp: '1700000000' }),
-    tokenCon({ exp: null }),
-  ]
-
-  for (const token of invalidos) {
-    assert.equal(
-      isTokenExpirado(token, AHORA),
-      true,
-      `el token ${JSON.stringify(token)} debe tratarse como expirado por seguridad`,
-    )
-  }
-})
-
 // --- logout (RF-10, RF-45 a RF-47) ---------------------------------------
 
 test('logout hace POST /auth/logout y devuelve un resultado de éxito', async () => {
   const api = crearApiFalsa({ datos: { mensaje: 'Sesión cerrada correctamente' } })
-  const almacen = crearAlmacenFalso({ [CLAVES_SESION.token]: 'token-falso' })
+  const almacen = crearAlmacenFalso({ [CLAVES_SESION.rol]: 'contador' })
   const servicio = crearAuthService({ api, almacen })
 
   const resultado = await servicio.logout()
@@ -299,12 +253,12 @@ test('logout hace POST /auth/logout y devuelve un resultado de éxito', async ()
 })
 
 test('logout no limpia la sesión por sí solo: el cierre local lo decide quien llama (4.8)', async () => {
-  const almacen = crearAlmacenFalso({ [CLAVES_SESION.token]: 'token-falso' })
+  const almacen = crearAlmacenFalso({ [CLAVES_SESION.rol]: 'contador' })
   const servicio = crearAuthService({ api: crearApiFalsa({ datos: {} }), almacen })
 
   await servicio.logout()
 
-  assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso')
+  assert.equal(almacen.getItem(CLAVES_SESION.rol), 'contador')
 })
 
 test('logout devuelve un fallo sin lanzar cuando el backend no responde (RF-47)', async () => {
@@ -314,14 +268,14 @@ test('logout devuelve un fallo sin lanzar cuando el backend no responde (RF-47)'
     codigoHttp: null,
     datos: null,
   }
-  const almacen = crearAlmacenFalso({ [CLAVES_SESION.token]: 'token-falso' })
+  const almacen = crearAlmacenFalso({ [CLAVES_SESION.rol]: 'contador' })
   const servicio = crearAuthService({ api: crearApiFalsa({ error }), almacen })
 
   const resultado = await servicio.logout()
 
   assert.equal(resultado.ok, false)
   assert.equal(resultado.error, error, 'el fallo se devuelve para que la pantalla decida el aviso')
-  assert.equal(almacen.getItem(CLAVES_SESION.token), 'token-falso', 'logout no limpia la sesión')
+  assert.equal(almacen.getItem(CLAVES_SESION.rol), 'contador', 'logout no limpia la sesión')
 })
 
 // --- «Mantener sesión iniciada» --------------------------------------------
@@ -355,9 +309,9 @@ test('setSesion borra lo de la sesión anterior antes de guardar la nueva', () =
   const almacen = crearAlmacenFalso({ [CLAVES_SESION.persistente]: '1', [CLAVES_SESION.cambioPendiente]: '1' })
   const servicio = crearAuthService({ api: crearApiFalsa(), almacen })
 
-  servicio.setSesion({ token: 't', rol: 'contador', id: 3, nombre: 'C', persistente: false })
+  servicio.setSesion({ rol: 'contador', id: 3, nombre: 'C', persistente: false })
 
   assert.equal(almacen.getItem(CLAVES_SESION.persistente), null)
   assert.equal(almacen.getItem(CLAVES_SESION.cambioPendiente), null)
-  assert.equal(servicio.getToken(), 't')
+  assert.equal(servicio.getRol(), 'contador')
 })

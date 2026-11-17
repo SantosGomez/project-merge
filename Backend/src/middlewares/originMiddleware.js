@@ -47,6 +47,8 @@ function buildCorsOptions(permitidos) {
     origin: (origen, callback) => {
       callback(null, !origen || isOriginAllowed(origen, permitidos));
     },
+    // La cookie de sesión viaja entre puertos en desarrollo; con origen reflejado, nunca con `*` (S8)
+    credentials: true,
   };
 }
 

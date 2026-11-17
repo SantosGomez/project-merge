@@ -26,16 +26,12 @@ import {
   getNombre as getNombrePorDefecto,
   getId as getIdPorDefecto,
   getRol as getRolPorDefecto,
-  getToken as getTokenPorDefecto,
-  isTokenExpirado,
+  obtenerPerfil as obtenerPerfilPorDefecto,
   limpiarSesion as limpiarSesionPorDefecto,
   login as loginPorDefecto,
   logout as logoutPorDefecto,
   setSesion as setSesionPorDefecto,
-  setToken as setTokenPorDefecto,
 } from '../services/authService.js'
-import { getMisCasos as getMisCasosPorDefecto } from '../services/caseService.js'
-import { listCounters as listCountersPorDefecto } from '../services/counterService.js'
 import { estaInactivo } from '../utils/inactividad.js'
 import { construirError } from '../utils/mensajes.js'
 import { RUTA_PRINCIPAL_POR_ROL } from '../utils/constants.js'
@@ -75,54 +71,21 @@ export const TEXTO_AVISO_REVOCACION = construirError(
   'iniciar sesión de nuevo cuando desee usar la aplicación',
 ).mensaje
 
-// Decodifica el campo `exp` del JWT sin librerías; null si no se puede leer.
-const expiracionDeToken = (token) => {
-  if (typeof token !== 'string') {
-    return null
-  }
-
-  const partes = token.split('.')
-  if (partes.length !== 3 || partes[1] === '') {
-    return null
-  }
-
-  try {
-    const base64 = partes[1].replace(/-/g, '+').replace(/_/g, '/')
-    const conRelleno = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
-    const texto =
-      typeof globalThis.Buffer === 'function'
-        ? globalThis.Buffer.from(conRelleno, 'base64').toString('utf8')
-        : new globalThis.TextDecoder().decode(
-            Uint8Array.from(globalThis.atob(conRelleno), (caracter) => caracter.charCodeAt(0)),
-          )
-    const carga = JSON.parse(texto)
-    return typeof carga.exp === 'number' ? carga.exp : null
-  } catch {
-    return null
-  }
-}
-
 const comoFecha = (valor) => (valor instanceof Date ? valor : new Date(valor))
 
 const authServicePorDefecto = {
   login: loginPorDefecto,
   logout: logoutPorDefecto,
   cambiarContrasena: cambiarContrasenaPorDefecto,
-  getToken: getTokenPorDefecto,
+  obtenerPerfil: obtenerPerfilPorDefecto,
   getRol: getRolPorDefecto,
   getNombre: getNombrePorDefecto,
   getId: getIdPorDefecto,
   getCambioPendiente: getCambioPendientePorDefecto,
   getPersistente: getPersistentePorDefecto,
-  setToken: setTokenPorDefecto,
   setSesion: setSesionPorDefecto,
   limpiarSesion: limpiarSesionPorDefecto,
-  isTokenExpirado,
 }
-
-const contadoresPorDefecto = { listCounters: listCountersPorDefecto }
-
-const casosPorDefecto = { getMisCasos: getMisCasosPorDefecto }
 
 /**
  * Crea la definición del store de sesión con dependencias inyectables.
@@ -131,8 +94,6 @@ const casosPorDefecto = { getMisCasos: getMisCasosPorDefecto }
  */
 export const crearSessionStore = (dependencias = {}) => {
   const authService = dependencias.authService ?? authServicePorDefecto
-  const contadores = dependencias.counterService ?? contadoresPorDefecto
-  const casos = dependencias.caseService ?? casosPorDefecto
   const registrarActividad = dependencias.registrarOnActividad ?? registrarActividadPorDefecto
   const registrarSesionExpirada =
     dependencias.registrarOnSesionExpirada ?? registrarSesionExpiradaPorDefecto
@@ -146,10 +107,7 @@ export const crearSessionStore = (dependencias = {}) => {
 
   return defineStore('session', {
     state: () => {
-      const token = authService.getToken()
       return {
-        /** Token JWT guardado en sessionStorage (RF-42). */
-        token,
         /** Perfil de la cuenta: administrador, contador u otro sin pantalla. */
         rol: authService.getRol(),
         /** Nombre de la persona para el menú (login por correo); null en sesiones anteriores. */
@@ -159,8 +117,6 @@ export const crearSessionStore = (dependencias = {}) => {
         debeCambiarContrasena: authService.getCambioPendiente(),
         /** Eligió «Mantener sesión iniciada»: la sesión sobrevive al cerrar la app. */
         persistente: authService.getPersistente(),
-        /** Expiración del token en segundos (campo `exp`), si se puede leer. */
-        exp: expiracionDeToken(token),
         /** Bandera de sesión caducada por inactividad, `exp` o 401 (RF-07/43). */
         sesionCaducada: false,
         /** Último momento de actividad en milisegundos (RF-07). */
@@ -171,8 +127,8 @@ export const crearSessionStore = (dependencias = {}) => {
     },
 
     getters: {
-      /** Hay token guardado; la pantalla decide además si el perfil tiene pantalla. */
-      autenticado: (state) => Boolean(state.token),
+      /** Hay perfil de sesión guardado; la pantalla decide además si el perfil tiene pantalla. */
+      autenticado: (state) => Boolean(state.rol),
       /** El perfil tiene pantalla asignada en esta spec (administrador o contador). */
       tienePantalla: (state) => Object.hasOwn(PANTALLA_PRINCIPAL, state.rol),
       /** Ruta de la pantalla principal del perfil, o null si no tiene. */
@@ -190,26 +146,22 @@ export const crearSessionStore = (dependencias = {}) => {
     },
 
     actions: {
-      /** Copia en el estado la sesión que authService tiene en sessionStorage. */
+      /** Copia en el estado el perfil de sesión que authService tiene guardado (sin token). */
       aplicarSesionGuardada() {
-        this.token = authService.getToken()
         this.rol = authService.getRol()
         this.nombre = authService.getNombre()
         this.id = authService.getId()
         this.debeCambiarContrasena = authService.getCambioPendiente()
         this.persistente = authService.getPersistente()
-        this.exp = expiracionDeToken(this.token)
       },
 
       /** Limpia solo el estado reactivo; no toca el almacén ni el temporizador. */
       limpiarEstadoLocal() {
-        this.token = null
         this.rol = null
         this.nombre = null
         this.id = null
         this.debeCambiarContrasena = false
         this.persistente = false
-        this.exp = null
         this.ultimaActividad = null
       },
 
@@ -249,7 +201,7 @@ export const crearSessionStore = (dependencias = {}) => {
        * @returns {boolean} true si la sesión acaba de caducar.
        */
       comprobarInactividad(hoy = ahora()) {
-        if (!this.token || this.ultimaActividad === null) {
+        if (!this.autenticado || this.ultimaActividad === null) {
           return false
         }
         if (
@@ -266,7 +218,7 @@ export const crearSessionStore = (dependencias = {}) => {
       },
 
       /**
-       * Caduca la sesión: elimina el token, detiene el temporizador y activa la
+       * Caduca la sesión: elimina el perfil guardado, detiene el temporizador y activa la
        * bandera que muestra el aviso de sesión caducada (RF-07, RF-43).
        */
       caducarSesion() {
@@ -305,15 +257,14 @@ export const crearSessionStore = (dependencias = {}) => {
       },
 
       /**
-       * Arranque y recarga de página (plan 4.3, RF-42, RF-44):
-       * sin token → sin sesión; token vencido → caducada sin llamar al backend;
-       * token vigente → lectura protegida según el perfil.
+       * Arranque y recarga de página (plan 4.3, RF-42, RF-44, S8):
+       * sin perfil guardado → sin sesión; con perfil, la cookie HttpOnly decide: se comprueba con
+       * GET /auth/perfil y, si responde 401 o es de otra cuenta (otra pestaña inició sesión con
+       * otro usuario), caduca sin dejar datos ajenos en pantalla.
        * @returns {Promise<{ estado: string, rol?: string, pantallaPrincipal?: string, error?: Object, reintentar?: boolean }>}
        */
       async restaurarSesion() {
-        const tokenGuardado = authService.getToken()
-
-        if (!tokenGuardado) {
+        if (!authService.getRol()) {
           this.limpiarEstadoLocal()
           this.detenerTemporizador()
           this.sesionCaducada = false
@@ -322,19 +273,14 @@ export const crearSessionStore = (dependencias = {}) => {
 
         const momento = comoFecha(ahora())
 
-        if (authService.isTokenExpirado(tokenGuardado, momento)) {
-          this.caducarSesion()
-          return { estado: 'caducada' }
-        }
-
         this.aplicarSesionGuardada()
 
         if (!this.tienePantalla) {
           return { estado: 'acceso_denegado', rol: this.rol }
         }
 
-        // Con la contraseña asignada la API responde 403 a toda lectura: se va directo a
-        // crearla. Si el token ya no sirve, el 401 al guardarla caduca la sesión.
+        // Con la contraseña asignada la API responde 403 a toda lectura (incluido el perfil): se va
+        // directo a crearla. Si la sesión ya no sirve, el 401 al guardarla caduca la sesión.
         if (this.debeCambiarContrasena) {
           this.sesionCaducada = false
           this.marcarActividad(momento)
@@ -343,12 +289,11 @@ export const crearSessionStore = (dependencias = {}) => {
         }
 
         try {
-          if (this.rol === 'administrador') {
-            await contadores.listCounters()
-          } else {
-            // El usuario de sistema no tiene lectura propia: «mis casos» acepta cualquier
-            // sesión, así que sirve para comprobar el token (su lista vacía no se muestra).
-            await casos.getMisCasos()
+          const perfil = await authService.obtenerPerfil()
+          if (String(perfil?.id) !== String(this.id)) {
+            // La cookie es de otra cuenta: la sesión de esta pestaña ya no es suya.
+            this.caducarSesion()
+            return { estado: 'caducada' }
           }
         } catch (error) {
           if (error?.estado === ESTADOS_ERROR.SIN_SESION) {
@@ -383,7 +328,6 @@ export const crearSessionStore = (dependencias = {}) => {
         // Enviar credenciales es la siguiente acción del usuario: limpia el aviso (RF-46/47).
         this.avisoSesion = null
 
-        const tokenPrevio = authService.getToken()
         let nueva
 
         try {
@@ -392,16 +336,7 @@ export const crearSessionStore = (dependencias = {}) => {
           return { ok: false, error }
         }
 
-        if (nueva && tokenPrevio && tokenPrevio !== nueva.token) {
-          try {
-            // logout usa el token del almacén: se restaura el anterior para revocarlo.
-            authService.setToken(tokenPrevio)
-            await authService.logout()
-          } catch {
-            // Best-effort: un fallo de revocación no impide el cambio de cuenta (RF-10).
-          }
-        }
-
+        // La sesión previa de la cookie la revoca el backend al iniciar la nueva (RF-10).
         if (nueva) {
           authService.setSesion(nueva)
         }

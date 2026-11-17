@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
 const { validateLoginInput, validarPasswordNueva } = require('../utils/validationUtils');
-const { generateAccessToken } = require('../utils/tokenUtils');
+const { generateAccessToken, verifyAccessToken } = require('../utils/tokenUtils');
+const {
+  NOMBRE_COOKIE_SESION,
+  leerCookie,
+  construirCookieSesion,
+  construirCookieBorrada,
+  esPeticionSegura,
+} = require('../utils/cookieSesion');
 const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
@@ -87,8 +94,25 @@ async function login(req, res) {
 
   bitacora.registrar('login_exitoso', { ip: req.ip, user: { id: cuenta.id, rol: cuenta.rol } }, { persistente });
 
-  // 6. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06), si debe crear su contraseña
-  //    y si la sesión es persistente (el frontend decide dónde guardarla)
+  // 6. Si la petición traía una sesión previa en la cookie, se revoca (RF-10): iniciar sesión
+  //    con otra cuenta en el mismo navegador no deja la anterior viva. Es de mejor esfuerzo.
+  const tokenPrevio = leerCookie(req.headers && req.headers.cookie, NOMBRE_COOKIE_SESION);
+  const previo = tokenPrevio ? verifyAccessToken(tokenPrevio, JWT_SECRET) : null;
+  if (previo && previo.valido) {
+    try {
+      await SessionModel.revocar(previo.payload.jti);
+      eventos.cerrarSesion(previo.payload.jti);
+    } catch (err) {
+      // La nueva sesión ya quedó registrada: se responde igual.
+    }
+  }
+
+  // 7. Entregar el token en una cookie HttpOnly (S8): el JavaScript de la página no puede leerla.
+  //    El cuerpo conserva `token` por compatibilidad con pruebas y herramientas; el frontend lo ignora.
+  res.setHeader('Set-Cookie', construirCookieSesion(token, { persistente, seguro: esPeticionSegura(req) }));
+
+  // 8. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06), si debe crear su contraseña
+  //    y si la sesión es persistente
   return res.status(200).json({
     token,
     rol: cuenta.rol,
@@ -178,34 +202,29 @@ async function cambiarMiContrasena(req, res) {
 
   // 5. Guardar con Argon2id; la sesión actual sigue abierta y las demás se revocan (también su tiempo real)
   await UserModel.updatePassword(cuenta.id, await hashPassword(password), false);
-  const jtiActual = jwt.decode(req.headers.authorization.substring(7)).jti;
-  await SessionModel.revocarSesionesDeUsuario(cuenta.id, jtiActual);
-  eventos.cerrarSesionesDeUsuario(cuenta.id, jtiActual);
+  await SessionModel.revocarSesionesDeUsuario(cuenta.id, req.jti);
+  eventos.cerrarSesionesDeUsuario(cuenta.id, req.jti);
   bitacora.registrar('password_cambiada_propia', req);
   return res.status(200).json({ mensaje: 'Contraseña actualizada correctamente' });
 }
 
 /**
- * Cierre de sesión: revoca el token de forma persistente en la base de datos.
+ * Cierre de sesión: revoca el token de forma persistente en la base de datos y borra la cookie.
  * RF-26, RF-31.
- * @param {Object} req - Petición Express con cabecera Authorization: Bearer <token>.
+ * @param {Object} req - Petición Express ya autenticada (Bearer o cookie; req.jti).
  * @param {Object} res - Respuesta Express.
  */
 async function logout(req, res) {
-  // 1. Extraer token de Authorization: Bearer <token>
-  const authHeader = req.headers && req.headers.authorization;
-  let token = null;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-  }
+  // 1. La sesión a cerrar es la que identificó el middleware (Bearer o cookie), por su jti
+  const jti = req.jti;
 
-  // 2. Revocar la sesión por su jti (RF-26, RF-31, RF-41); si no se pudo revocar,
-  //    no se confirma el cierre (RF-39). El token ya fue validado por authenticateToken.
-  if (token) {
+  // 2. Revocar la sesión (RF-26, RF-31, RF-41); si no se pudo revocar,
+  //    no se confirma el cierre (RF-39). El token ya fue validado por el middleware.
+  if (jti) {
     try {
-      await SessionModel.revocar(jwt.decode(token).jti);
+      await SessionModel.revocar(jti);
       // La conexión de tiempo real de esta sesión también se cierra
-      eventos.cerrarSesion(jwt.decode(token).jti);
+      eventos.cerrarSesion(jti);
     } catch (err) {
       return res.status(503).json(
         buildError(
@@ -218,6 +237,9 @@ async function logout(req, res) {
   }
 
   bitacora.registrar('logout', req);
+  // 3. Borrar la cookie de sesión del navegador (S8)
+  res.setHeader('Set-Cookie', construirCookieBorrada(esPeticionSegura(req)));
+
   // 3. Responder 200 (RF-26, RF-31)
   return res.status(200).json({ mensaje: 'Sesión cerrada correctamente' });
 }
