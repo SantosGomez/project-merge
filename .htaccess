@@ -1,0 +1,9 @@
+# Este proyecto no se sirve desde Apache: la app corre con Docker (nginx) o con los servidores de desarrollo.
+# Bloquea todo el contenido (.env, respaldos .sql, cuentas, .git) para que no se pueda descargar por HTTP.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order deny,allow
+  Deny from all
+</IfModule>
