@@ -70,6 +70,7 @@ const MINIMOS = {
   'respuestasApi.test.js': 3,
   'rolAuxiliar.test.js': 10,
   'roleMiddleware.test.js': 8,
+  'rotarSecretos.test.js': 5,
   'seed.test.js': 5,
   'seguridadApp.test.js': 8,
   'sesionesContrasena.test.js': 4,
