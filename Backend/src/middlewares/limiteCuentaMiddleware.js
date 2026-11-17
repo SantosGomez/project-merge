@@ -1,4 +1,5 @@
 const { buildError } = require('../utils/errorUtils');
+const bitacora = require('../utils/bitacoraSeguridad');
 
 const MAX_FALLOS = 5;
 const VENTANA_MS = 15 * 60 * 1000;
@@ -52,6 +53,7 @@ function limitarIntentosPorCuenta(limitador = crearLimitadorCuenta()) {
   return (req, res, next) => {
     const correo = req.body && req.body.correo;
     if (limitador.bloqueado(correo)) {
+      bitacora.registrar('login_bloqueado', req, { motivo: 'cuenta', correo }, 'warn');
       return res.status(429).json(
         buildError(
           'Demasiados intentos fallidos',

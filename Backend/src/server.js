@@ -21,7 +21,6 @@ async function iniciar() {
 }
 
 iniciar().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error('Error al iniciar el servidor:', err);
+  require('./utils/bitacoraSeguridad').registrarError(err);
   process.exit(1);
 });

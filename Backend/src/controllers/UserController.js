@@ -6,6 +6,7 @@ const { avisarNuevosVinculos, avisarVinculosQuitados, ERROR_LISTA_CONTADORES } =
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
 const { eventos } = require('../utils/eventos');
+const bitacora = require('../utils/bitacoraSeguridad');
 const { formatLocalDate } = require('../utils/dateUtils');
 
 /** Máximo de caracteres del nombre y del correo (columnas VARCHAR(150)). */
@@ -106,6 +107,8 @@ async function createUser(req, res) {
     await avisarNuevosVinculos(id, agregados);
   }
 
+  bitacora.registrar('usuario_creado', req, { usuarioNuevoId: id, rolNuevo: rol });
+
   // 5. Responder 201 con mensaje de alta exitosa (RF-28)
   return res.status(201).json({ mensaje: 'Usuario dado de alta correctamente' });
 }
@@ -149,6 +152,7 @@ async function resetPassword(req, res) {
   await UserModel.updatePassword(cuenta.id, hash, true);
   await SessionModel.revocarSesionesDeUsuario(cuenta.id);
   eventos.cerrarSesionesDeUsuario(cuenta.id);
+  bitacora.registrar('password_restablecida', req, { objetivoId: cuenta.id }, 'warn');
 
   // 4. Aviso de éxito sin ningún dato de acceso (RF-33); `cuentaPropia` avisa al frontend que su sesión ya se revocó
   return res.status(200).json({
@@ -316,6 +320,8 @@ async function updateUser(req, res) {
   }
 
   if (cambiaRol) await SessionModel.revocarSesionesDeUsuario(id);
+  if (cambiaRol) bitacora.registrar('usuario_rol_cambiado', req, { objetivoId: id, rolAnterior: cuenta.rol, rolNuevo: rol }, 'warn');
+  if (String(correo).trim().toLowerCase() !== String(cuenta.correo).toLowerCase()) bitacora.registrar('usuario_correo_cambiado', req, { objetivoId: id }, 'warn');
 
   return res.status(200).json({ mensaje: 'Usuario actualizado correctamente', usuario: { id, nombre, correo, rol } });
 }

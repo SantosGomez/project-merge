@@ -97,7 +97,7 @@ if (require.main === module) {
     process.exit(1);
   }
   ejecutarDesdeConsola(ruta).catch((error) => {
-    console.error(`No se pudo importar: ${error.message}`);
+    console.error(`No se pudo importar: ${require('./bitacoraSeguridad').limpiarMensaje(error.message)}`);
     process.exit(1);
   });
 }

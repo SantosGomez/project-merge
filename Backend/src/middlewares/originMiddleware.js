@@ -1,5 +1,6 @@
 const { buildError } = require('../utils/errorUtils');
 const { isOriginAllowed } = require('../utils/originUtils');
+const bitacora = require('../utils/bitacoraSeguridad');
 
 /**
  * Middleware que rechaza las peticiones de orígenes no permitidos (RF-34, criterios 24 y 28).
@@ -23,6 +24,7 @@ function createOriginGuard(permitidos) {
       return;
     }
 
+    bitacora.registrar('origen_rechazado', req, { origen: origen, metodo: req.method }, 'warn');
     // Sin cabeceras CORS: el navegador no deja leer la respuesta (RF-23, RNF-5, RNF-6).
     res.status(403).json(
       buildError(

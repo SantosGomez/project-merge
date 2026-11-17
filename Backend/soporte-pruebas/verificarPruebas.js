@@ -24,6 +24,7 @@ const MINIMOS = {
   'asignarCaso.test.js': 2,
   'auditoriaEventos.test.js': 10,
   'autorizacionMatriz.test.js': 36,
+  'bitacoraSeguridad.test.js': 12,
   'auditoriaMensajes.test.js': 5,
   'auditoriaRoutes.test.js': 19,
   'auditoriaSeguimiento.test.js': 6,

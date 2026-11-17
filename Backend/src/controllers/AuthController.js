@@ -7,6 +7,7 @@ const { buildError } = require('../utils/errorUtils');
 const { hashPassword, verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
 const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
 const { eventos } = require('../utils/eventos');
+const bitacora = require('../utils/bitacoraSeguridad');
 const { JWT_SECRET, JWT_EXPIRES_IN, JWT_EXPIRES_IN_PERSISTENTE } = require('../config/jwt');
 
 /**
@@ -53,6 +54,7 @@ async function login(req, res) {
     ? await verifyPassword(password, cuenta.password_hash)
     : await verificarContraHashFicticio(password);
   if (!cuenta || !contrasenaValida) {
+    bitacora.registrar('login_fallido', req, { correo, motivo: 'credenciales' }, 'warn');
     return res.status(401).json(
       buildError('Credenciales no válidas', 'correo o contraseña', 'Revisa tus datos y vuelve a intentarlo')
     );
@@ -82,6 +84,8 @@ async function login(req, res) {
   } catch (err) {
     // La sesión ya quedó registrada: se responde igual.
   }
+
+  bitacora.registrar('login_exitoso', { ip: req.ip, user: { id: cuenta.id, rol: cuenta.rol } }, { persistente });
 
   // 6. Responder 200 con token, rol, id, nombre y correo (RF-01, RF-06), si debe crear su contraseña
   //    y si la sesión es persistente (el frontend decide dónde guardarla)
@@ -131,6 +135,7 @@ async function cambiarContrasena(req, res) {
 
   // 3. Guardar con Argon2id y quitar la marca; la sesión actual sigue abierta (RNF-1)
   await UserModel.updatePassword(cuenta.id, await hashPassword(password), false);
+  bitacora.registrar('password_cambiada_asignada', req);
   return res.status(200).json({ mensaje: 'Contraseña actualizada correctamente' });
 }
 
@@ -176,6 +181,7 @@ async function cambiarMiContrasena(req, res) {
   const jtiActual = jwt.decode(req.headers.authorization.substring(7)).jti;
   await SessionModel.revocarSesionesDeUsuario(cuenta.id, jtiActual);
   eventos.cerrarSesionesDeUsuario(cuenta.id, jtiActual);
+  bitacora.registrar('password_cambiada_propia', req);
   return res.status(200).json({ mensaje: 'Contraseña actualizada correctamente' });
 }
 
@@ -211,6 +217,7 @@ async function logout(req, res) {
     }
   }
 
+  bitacora.registrar('logout', req);
   // 3. Responder 200 (RF-26, RF-31)
   return res.status(200).json({ mensaje: 'Sesión cerrada correctamente' });
 }

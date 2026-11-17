@@ -2,6 +2,7 @@ const { verifyAccessToken } = require('../utils/tokenUtils');
 const { isSessionInactive } = require('../utils/dateUtils');
 const { buildError } = require('../utils/errorUtils');
 const SessionModel = require('../models/SessionModel');
+const bitacora = require('../utils/bitacoraSeguridad');
 const { JWT_SECRET } = require('../config/jwt');
 
 const INACTIVIDAD_MINUTOS = 30;
@@ -51,12 +52,14 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
 
   if (!resultado.valido) {
     if (resultado.error === 'expirado') {
+      bitacora.registrar('sesion_rechazada', req, { motivo: 'token_expirado' }, 'warn');
       // Token expirado por su campo exp
       res.status(401).json(
         buildError('Sesión caducada', 'token de acceso', 'Inicia sesión otra vez')
       );
       return;
     }
+    bitacora.registrar('sesion_rechazada', req, { motivo: 'token_invalido' }, 'warn');
     // Valor fijo, inventado o mal formado: no es una credencial (criterio 30)
     res.status(401).json(
       buildError('Token no válido', 'token de acceso', 'Inicia sesión otra vez')
@@ -79,6 +82,7 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
     return;
   }
   if (!sesion || sesion.revocado) {
+    bitacora.registrar('sesion_rechazada', req, { motivo: 'revocada' }, 'warn');
     res.status(401).json(
       buildError('Sesión caducada', 'token de acceso', 'Inicia sesión otra vez')
     );
@@ -96,6 +100,7 @@ async function autenticar(req, res, next, permitirCambioPendiente) {
       );
       return;
     }
+    bitacora.registrar('sesion_rechazada', req, { motivo: 'inactividad' }, 'warn');
     res.status(401).json(
       buildError('Sesión caducada por inactividad', 'última actividad', 'Inicia sesión otra vez')
     );

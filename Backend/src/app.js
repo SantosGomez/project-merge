@@ -19,6 +19,7 @@ const tiempoRoutes = require('./routes/tiempoRoutes');
 const jornadaRoutes = require('./routes/jornadaRoutes');
 const informeRoutes = require('./routes/informeRoutes');
 const { buildError } = require('./utils/errorUtils');
+const bitacora = require('./utils/bitacoraSeguridad');
 
 // Topes por IP en una ventana de un minuto: general y, más estricto, para escrituras
 const LIMITES_PETICIONES = { global: 300, escritura: 60 };
@@ -61,6 +62,9 @@ function crearApp(opciones) {
   // 2.º Añade las cabeceras CORS solo a los orígenes permitidos (RF-34)
   app.use(cors(buildCorsOptions(origenesPermitidos)));
 
+  // Bitácora: registra cada 403 (rol o propiedad) al terminar la respuesta
+  app.use(bitacora.vigilarAccesoDenegado());
+
   // Límite de peticiones por IP: uno general y otro más estricto para escrituras (POST/PUT/PATCH/DELETE)
   if (limitarPeticiones) {
     const comunes = { windowMs: VENTANA_PETICIONES_MS, standardHeaders: 'draft-7', legacyHeaders: false };
@@ -68,6 +72,7 @@ function crearApp(opciones) {
       rateLimit({
         ...comunes,
         limit: limitesPeticiones.global,
+        handler: bitacora.manejadorLimite('rate_limit_global'),
         message: buildError('Demasiadas peticiones', 'tu conexión', 'Espera un minuto antes de volver a intentarlo'),
       })
     );
@@ -76,6 +81,7 @@ function crearApp(opciones) {
         ...comunes,
         limit: limitesPeticiones.escritura,
         skip: (req) => METODOS_DE_LECTURA.includes(req.method),
+        handler: bitacora.manejadorLimite('rate_limit_global', { motivo: 'escritura' }),
         message: buildError('Demasiadas escrituras', 'tu conexión', 'Espera un minuto antes de volver a guardar cambios'),
       })
     );
@@ -92,6 +98,7 @@ function crearApp(opciones) {
         windowMs: 15 * 60 * 1000,
         limit: 10,
         skipSuccessfulRequests: true,
+        handler: bitacora.manejadorLimite('login_bloqueado', { motivo: 'ip' }),
         standardHeaders: 'draft-7',
         legacyHeaders: false,
         message: buildError(
@@ -129,8 +136,7 @@ function crearApp(opciones) {
 
   // Middleware global de errores: entrada inválida → 400, fallo interno → 503 (RF-37, RF-47, RNF-8)
   app.use((err, req, res, next) => {
-    // eslint-disable-next-line no-console
-    console.error(err);
+    bitacora.registrarError(err, req);
     // Cuerpo mayor al límite de express.json()
     if (err.type === 'entity.too.large') {
       return res.status(413).json(
