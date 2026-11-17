@@ -54,6 +54,8 @@ const NOMBRES = [
   'error-aviso-texto', 'error-aviso-fondo',
   // Revisión de UI, rebanada 3: fondo de la fila de un caso importante (antes #fffaf0 suelto)
   'importante-fondo-suave',
+  // Calendario del administrador: «Vence pronto» en amarillo
+  'vence-pronto', 'vence-pronto-fondo',
 ]
 
 test('la paleta $dg-colores define cada color por su papel en formato #rrggbb', () => {
@@ -91,6 +93,8 @@ const PARES_DE_TEXTO = [
   ['texto', 'importante-fondo-suave'], ['texto-secundario', 'importante-fondo-suave'],
   ['texto-tenue', 'importante-fondo-suave'], ['importante-texto', 'importante-fondo-suave'],
   ['error', 'error-fondo'],
+  // Calendario del administrador: etiqueta «Vence pronto» en amarillo
+  ['aviso-texto', 'vence-pronto-fondo'],
 ]
 
 // Textos del menú lateral sobre su fondo oscuro ($primary de Quasar).

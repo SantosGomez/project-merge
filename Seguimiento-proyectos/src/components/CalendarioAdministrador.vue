@@ -122,14 +122,14 @@ const contador = defineModel('contador', { type: Number, default: 0 })
 const LEYENDA = [
   { color: 'dg-error', texto: 'Vencido', ayuda: 'Ese día hay algo cuya fecha ya pasó.' },
   {
-    color: 'dg-importante',
+    color: 'dg-vence-pronto',
     texto: 'Vence pronto',
     ayuda: 'Ese día hay algo que vence hoy o en los próximos 3 días.',
   },
   { color: 'dg-exito', texto: 'A tiempo', ayuda: 'Todo lo de ese día vence con tiempo de sobra.' },
 ]
 
-const COLOR_DEL_PUNTO = { vencido: 'dg-error', pronto: 'dg-importante', 'a-tiempo': 'dg-exito' }
+const COLOR_DEL_PUNTO = { vencido: 'dg-error', pronto: 'dg-vence-pronto', 'a-tiempo': 'dg-exito' }
 const TEXTOS_DE_MARCA = { vencido: 'vencidos', pronto: 'vencen pronto', 'a-tiempo': 'a tiempo' }
 
 const $q = useQuasar()

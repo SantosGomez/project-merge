@@ -192,7 +192,7 @@ watch(base, alinearSemana)
 }
 
 .semana__marca--pronto {
-  background: var(--dg-importante);
+  background: var(--dg-vence-pronto);
 }
 
 .semana__marca--a-tiempo {

@@ -193,7 +193,7 @@ const ESTILO_DE_URGENCIA = {
     ayuda: 'La fecha de vencimiento ya pasó.',
   },
   pronto: {
-    fondo: 'dg-aviso-fondo',
+    fondo: 'dg-vence-pronto-fondo',
     texto: 'dg-aviso-texto',
     icono: 'schedule',
     ayuda: 'Vence hoy o en los próximos 3 días.',
