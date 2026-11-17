@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+/**
+ * Hook pre-commit: rechaza el commit si lo preparado (staged) incluye archivos de secretos
+ * o líneas con claves. Activar con: git config core.hooksPath .githooks
+ * Para un falso positivo evidente (dato de prueba), añade «hook:permitir-secreto» en esa línea.
+ */
+const { spawnSync } = require('node:child_process');
+const { archivoProhibido, revisarDiff } = require('./detectarSecretos');
+
+function git(...args) {
+  const r = spawnSync('git', args, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  if (r.status !== 0) {
+    console.error(`pre-commit: falló «git ${args[0]}». Se bloquea el commit por precaución.`);
+    process.exit(1);
+  }
+  return r.stdout;
+}
+
+const archivos = git('diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z').split('\0').filter(Boolean);
+const problemas = [];
+
+for (const ruta of archivos) {
+  const motivo = archivoProhibido(ruta);
+  if (motivo) problemas.push(`${ruta}: ${motivo}`);
+}
+for (const h of revisarDiff(git('diff', '--cached', '--unified=0', '--no-color', '--no-ext-diff'))) {
+  problemas.push(`${h.archivo}:${h.linea}: ${h.motivo}`);
+}
+
+if (problemas.length > 0) {
+  console.error('\nCommit rechazado: posible secreto en lo que vas a subir.');
+  for (const p of problemas) console.error(`  - ${p}`);
+  console.error('\nQuita esos archivos o líneas del commit (git restore --staged <archivo>).');
+  console.error('Si es un dato de prueba evidente, añade «hook:permitir-secreto» en la línea.\n');
+  process.exit(1);
+}
