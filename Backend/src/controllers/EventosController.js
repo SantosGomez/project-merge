@@ -1,7 +1,7 @@
 const SessionModel = require('../models/SessionModel');
 const { sesionInactiva } = require('../middlewares/authMiddleware');
 const { buildError } = require('../utils/errorUtils');
-const { eventos } = require('../utils/eventos');
+const { eventos, MAX_CONEXIONES_POR_USUARIO } = require('../utils/eventos');
 
 /**
  * Entrega un pase de un solo uso (60 s) para abrir la conexión de tiempo real.
@@ -28,6 +28,16 @@ async function abrirEventos(req, res) {
   if (!datos) {
     return res.status(401).json(
       buildError('Pase no válido o vencido', 'pase de eventos', 'Recarga la página para volver a conectarte')
+    );
+  }
+
+  if (eventos.contarDeUsuario(datos.usuarioId) >= MAX_CONEXIONES_POR_USUARIO) {
+    return res.status(429).json(
+      buildError(
+        'Demasiadas conexiones abiertas',
+        'tiempo real',
+        `Cierra otras pestañas o equipos de tu cuenta (máximo ${MAX_CONEXIONES_POR_USUARIO}) y recarga la página`
+      )
     );
   }
 

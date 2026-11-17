@@ -4,6 +4,8 @@ const crypto = require('node:crypto');
 const LATIDO_MS = 25 * 1000;
 // Un pase sirve una sola vez y solo durante este tiempo
 const VIGENCIA_PASE_MS = 60 * 1000;
+// Máximo de conexiones de tiempo real abiertas a la vez por cuenta
+const MAX_CONEXIONES_POR_USUARIO = 5;
 
 /**
  * Registro en memoria de las conexiones de tiempo real (Server-Sent Events) y de sus pases.
@@ -59,6 +61,14 @@ function crearRegistroEventos({ ahora = () => Date.now() } = {}) {
     crearPase,
     canjearPase,
     escribir,
+    /** Cuántas conexiones abiertas tiene una cuenta (todas sus pestañas y equipos). */
+    contarDeUsuario: (usuarioId) => {
+      let total = 0;
+      for (const conexion of conexiones) {
+        if (conexion.usuarioId === usuarioId) total += 1;
+      }
+      return total;
+    },
     agregar: (conexion) => conexiones.add(conexion),
     quitar: (conexion) => conexiones.delete(conexion),
     /** Aviso para una cuenta (todas sus pestañas y equipos). */
@@ -88,4 +98,4 @@ function crearRegistroEventos({ ahora = () => Date.now() } = {}) {
 // Registro único del servidor
 const eventos = crearRegistroEventos();
 
-module.exports = { crearRegistroEventos, eventos };
+module.exports = { crearRegistroEventos, eventos, MAX_CONEXIONES_POR_USUARIO };

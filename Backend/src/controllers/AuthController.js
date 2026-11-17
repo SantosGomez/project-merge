@@ -39,6 +39,13 @@ async function login(req, res) {
     );
   }
 
+  // Textos más largos que cualquier cuenta real no llegan a la base ni a Argon2id
+  if (correo.trim().length > 150 || password.length > 128) {
+    return res.status(401).json(
+      buildError('Credenciales no válidas', 'correo o contraseña', 'Revisa tus datos y vuelve a intentarlo')
+    );
+  }
+
   // 2. Buscar la cuenta por correo y verificar contraseña (RF-03, mensaje genérico).
   //    Sin cuenta se verifica contra un hash ficticio: el tiempo no revela qué correos existen.
   const cuenta = await UserModel.findByCorreo(correo);
