@@ -142,7 +142,7 @@ describe('/juntas', () => {
     const junta = r.body.junta;
     assert.deepStrictEqual(
       Object.keys(junta).sort(),
-      ['creado_por', 'descripcion', 'fin', 'id', 'inicio', 'participantes', 'soy_organizador', 'titulo']
+      ['creado_por', 'descripcion', 'estado', 'fin', 'id', 'inicio', 'participantes', 'soy_organizador', 'titulo']
     );
     assert.strictEqual(junta.titulo, 'Cierre de mes');
     assert.strictEqual(junta.descripcion, 'Revisar pólizas');
@@ -261,15 +261,15 @@ describe('/juntas', () => {
     const r = await api('contador1', 'PATCH', `/juntas/${junta.id}`, {
       titulo: 'después',
       descripcion: 'nueva',
-      inicio: '2031-04-01 15:00',
-      fin: '2031-04-01 16:00',
+      inicio: '2031-03-10 09:00',
+      fin: '2031-03-10 10:00',
       participantes: [cuentas.admin.id, cuentas.auxiliar.id],
     });
     assert.strictEqual(r.statusCode, 200, JSON.stringify(r.body));
     const cambiada = r.body.junta;
     assert.strictEqual(cambiada.titulo, 'después');
     assert.strictEqual(cambiada.descripcion, 'nueva');
-    assert.strictEqual(cambiada.inicio, '2031-04-01 15:00:00');
+    assert.strictEqual(cambiada.inicio, '2031-03-10 09:00:00');
     const respuestas = Object.fromEntries(cambiada.participantes.map((p) => [p.id, p.respuesta]));
     assert.deepStrictEqual(respuestas, { [cuentas.admin.id]: 'aceptada', [cuentas.auxiliar.id]: 'pendiente' });
     const filas = await query('SELECT usuario_id, respondido_en FROM junta_participantes WHERE junta_id = ?', [junta.id]);

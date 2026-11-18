@@ -153,4 +153,19 @@ function validarRango(desde, hasta) {
   return { valor: { desde: `${formatearFechaISO(fechaDesde)} 00:00:00`, hastaExclusivo: `${formatearFechaISO(siguiente)} 00:00:00` } };
 }
 
-module.exports = { parseFechaHora, validarJunta, validarRango, MAX_PARTICIPANTES };
+/**
+ * Valida el cuerpo de la respuesta de un invitado.
+ * @param {*} cuerpo - Cuerpo recibido: `{ respuesta: 'aceptada' | 'rechazada' }`.
+ * @returns {{ valor?: 'aceptada'|'rechazada', error?: { mensaje: string } }}
+ */
+function validarRespuesta(cuerpo) {
+  const respuesta = cuerpo !== null && typeof cuerpo === 'object' ? cuerpo.respuesta : undefined;
+  if (respuesta === 'aceptada' || respuesta === 'rechazada') return { valor: respuesta };
+  return errorDeCampo(
+    'La respuesta no es válida',
+    'respuesta',
+    'Envía "aceptada" para aceptar la invitación o "rechazada" para rechazarla'
+  );
+}
+
+module.exports = { parseFechaHora, validarJunta, validarRango, validarRespuesta, MAX_PARTICIPANTES };

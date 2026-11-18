@@ -7,8 +7,17 @@
     :class="{ 'campana-avisos--clara': clara }"
     :aria-label="noLeidas > 0 ? `Avisos: ${noLeidas} sin leer` : 'Avisos'"
   >
-    <q-badge v-if="noLeidas > 0" floating rounded color="dg-error" :label="noLeidas > 9 ? '9+' : noLeidas" />
-    <q-tooltip>Avisos sobre tus casos, por ejemplo cuando el administrador cambia una prioridad.</q-tooltip>
+    <q-badge
+      v-if="noLeidas > 0"
+      floating
+      rounded
+      color="dg-error"
+      :label="noLeidas > 9 ? '9+' : noLeidas"
+    />
+    <q-tooltip
+      >Avisos sobre tus casos y juntas, por ejemplo una invitación o un cambio de
+      prioridad.</q-tooltip
+    >
 
     <q-menu
       anchor="bottom right"
@@ -33,15 +42,23 @@
           @click="irAlCaso(aviso)"
         >
           <q-item-section avatar>
-            <q-icon name="flag" :color="aviso.leida ? 'dg-texto-tenue' : 'dg-acento'" aria-hidden="true" />
+            <q-icon
+              :name="aviso.juntaId ? 'event' : 'flag'"
+              :color="aviso.leida ? 'dg-texto-tenue' : 'dg-acento'"
+              aria-hidden="true"
+            />
           </q-item-section>
           <q-item-section>
             <q-item-label class="campana-avisos__mensaje">{{ aviso.mensaje }}</q-item-label>
             <q-item-label caption class="campana-avisos__fecha">
               {{ aviso.fecha }}<span v-if="!aviso.leida"> · Nuevo</span>
             </q-item-label>
-            <q-item-label v-if="destinoDeAviso(aviso, session.rol)" caption class="campana-avisos__enlace">
-              Toca para ver el caso
+            <q-item-label
+              v-if="destinoDeAviso(aviso, session.rol)"
+              caption
+              class="campana-avisos__enlace"
+            >
+              {{ aviso.juntaId ? 'Toca para ver la junta' : 'Toca para ver el caso' }}
             </q-item-label>
           </q-item-section>
         </q-item>

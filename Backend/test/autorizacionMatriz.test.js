@@ -114,6 +114,7 @@ const MATRIZ = [
   ['POST', '/juntas', CALENDARIO, {}],
   ['GET', '/juntas/:x', CALENDARIO],
   ['PATCH', '/juntas/:x', CALENDARIO, {}],
+  ['PATCH', '/juntas/:x/respuesta', CALENDARIO, {}],
   ['DELETE', '/juntas/:x', CALENDARIO],
 ];
 

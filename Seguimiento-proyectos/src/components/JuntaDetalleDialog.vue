@@ -15,6 +15,16 @@
           </span>
           <div class="junta-detalle__head-texto">
             <h2 id="junta-detalle-titulo" class="junta-detalle__title">{{ junta.titulo }}</h2>
+            <q-chip
+              dense
+              square
+              :icon="ICONO_ESTADO[junta.estado] ?? ICONO_ESTADO.confirmada"
+              :class="CLASE_ESTADO[junta.estado] ?? CLASE_ESTADO.confirmada"
+              class="junta-detalle__estado"
+            >
+              {{ etiquetaEstadoJunta(junta.estado) }}
+              <q-tooltip>{{ AYUDA_ESTADO[junta.estado] ?? AYUDA_ESTADO.confirmada }}</q-tooltip>
+            </q-chip>
             <p class="junta-detalle__ayuda">{{ textoAyuda }}</p>
           </div>
         </div>
@@ -62,6 +72,46 @@
               {{ junta.descripcion || 'Sin descripción' }}
             </div>
           </div>
+        </section>
+
+        <section v-if="miRespuesta !== null" class="detalle-seccion">
+          <h3 class="detalle-seccion__titulo">Tu respuesta</h3>
+          <p class="junta-detalle__mi-respuesta">
+            {{ TEXTO_MI_RESPUESTA[miRespuesta] ?? TEXTO_MI_RESPUESTA.pendiente }}
+          </p>
+          <div class="junta-detalle__responder" role="group" aria-label="Responder a la invitación">
+            <q-btn
+              no-caps
+              unelevated
+              icon="check_circle"
+              label="Aceptar"
+              :color="miRespuesta === 'aceptada' ? 'primary' : 'dg-superficie'"
+              :text-color="miRespuesta === 'aceptada' ? 'white' : 'primary'"
+              :aria-pressed="miRespuesta === 'aceptada' ? 'true' : 'false'"
+              :loading="respondiendo === 'aceptada'"
+              :disable="respondiendo !== '' || borrando"
+              class="control-touch boton-presionable junta-detalle__boton-respuesta"
+              @click="responderInvitacion('aceptada')"
+            >
+              <q-tooltip>Confirma que asistirás a la junta. Puedes cambiarlo después.</q-tooltip>
+            </q-btn>
+            <q-btn
+              no-caps
+              unelevated
+              icon="cancel"
+              label="Rechazar"
+              :color="miRespuesta === 'rechazada' ? 'dg-error' : 'dg-superficie'"
+              :text-color="miRespuesta === 'rechazada' ? 'white' : 'dg-error'"
+              :aria-pressed="miRespuesta === 'rechazada' ? 'true' : 'false'"
+              :loading="respondiendo === 'rechazada'"
+              :disable="respondiendo !== '' || borrando"
+              class="control-touch boton-presionable junta-detalle__boton-respuesta"
+              @click="responderInvitacion('rechazada')"
+            >
+              <q-tooltip>Avisa que no podrás asistir. Puedes cambiarlo después.</q-tooltip>
+            </q-btn>
+          </div>
+          <p v-if="errorRespuesta" class="error-banner" role="alert">{{ errorRespuesta }}</p>
         </section>
 
         <section class="detalle-seccion">
@@ -187,22 +237,30 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 
-import { borrar } from '../services/juntaService.js'
+import { borrar, responder } from '../services/juntaService.js'
+import { useSessionStore } from '../stores/session.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { formatearRol } from '../utils/formateadores.js'
-import { etiquetaRespuesta, horarioDeJunta } from '../utils/juntas.js'
+import {
+  etiquetaEstadoJunta,
+  etiquetaRespuesta,
+  horarioDeJunta,
+  miRespuestaEnJunta,
+} from '../utils/juntas.js'
 
 /*
  * Ficha de solo lectura de una junta. Para cambiar algo, el organizador usa «Editar» (emit
  * `editar`, que abre el formulario) o «Borrar» (pide confirmación y avisa con `borrada`).
  * Las respuestas de los invitados se muestran con texto, no solo con color.
+ * Si la cuenta está invitada, puede aceptar o rechazar (y cambiarlo después): al guardar avisa con
+ * `respondida` y la junta nueva; si falla, muestra el error y la ficha queda como estaba.
  */
 const props = defineProps({
   /** Junta tal como la devuelve la API. */
   junta: { type: Object, required: true },
 })
 
-const emit = defineEmits(['editar', 'borrada'])
+const emit = defineEmits(['editar', 'borrada', 'respondida'])
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
@@ -222,9 +280,40 @@ const AYUDA_RESPUESTA = {
   rechazada: 'Rechazó la invitación.',
 }
 
+const ICONO_ESTADO = {
+  confirmada: 'check_circle',
+  por_confirmar: 'hourglass_empty',
+  cancelada: 'cancel',
+}
+const CLASE_ESTADO = {
+  confirmada: 'bg-dg-exito-fondo text-dg-exito',
+  por_confirmar: 'bg-dg-aviso-fondo text-dg-aviso-texto',
+  cancelada: 'bg-dg-error-fondo text-dg-error',
+}
+const AYUDA_ESTADO = {
+  confirmada: 'La junta va: no hay administradores pendientes de aceptarla.',
+  por_confirmar: 'Falta que los administradores invitados acepten la junta.',
+  cancelada: 'Un administrador invitado rechazó la junta.',
+}
+const TEXTO_MI_RESPUESTA = {
+  pendiente: 'Todavía no respondes a esta invitación. Elige una opción.',
+  aceptada: 'Aceptaste la invitación. Puedes cambiar tu respuesta.',
+  rechazada: 'Rechazaste la invitación. Puedes cambiar tu respuesta.',
+}
+
+const session = useSessionStore()
+
 const confirmacionAbierta = ref(false)
 const borrando = ref(false)
 const errorBorrado = ref('')
+// Respuesta que se está guardando ('' si ninguna) y error del último intento.
+const respondiendo = ref('')
+const errorRespuesta = ref('')
+
+// Respuesta de la cuenta a esta junta; null si la organiza (no responde su propia invitación).
+const miRespuesta = computed(() =>
+  props.junta.soy_organizador ? null : miRespuestaEnJunta(props.junta, session.id),
+)
 
 const textoAyuda = computed(() =>
   props.junta.soy_organizador
@@ -235,12 +324,29 @@ const textoAyuda = computed(() =>
 watch(dialogoAbierto, (abierto) => {
   if (abierto) {
     errorBorrado.value = ''
+    errorRespuesta.value = ''
     confirmacionAbierta.value = false
   }
 })
 
 const cerrar = () => {
   dialogoAbierto.value = false
+}
+
+const responderInvitacion = async (respuesta) => {
+  if (respondiendo.value) return
+  respondiendo.value = respuesta
+  errorRespuesta.value = ''
+  try {
+    const juntaNueva = await responder(props.junta.id, respuesta)
+    emit('respondida', juntaNueva)
+  } catch (error) {
+    errorRespuesta.value =
+      error?.mensaje ??
+      'Qué ocurrió: No se guardó tu respuesta. Sobre: la conexión con el servidor. Qué hacer: Revisa tu conexión y vuelve a pulsar «Aceptar» o «Rechazar».'
+  } finally {
+    respondiendo.value = ''
+  }
 }
 
 const borrarJunta = async () => {
@@ -308,6 +414,28 @@ const borrarJunta = async () => {
   font-size: 1.15rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+.junta-detalle__estado {
+  margin: 4px 0 0;
+}
+
+.junta-detalle__mi-respuesta {
+  margin: 0 0 8px;
+  color: var(--dg-texto-secundario);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.junta-detalle__responder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.junta-detalle__boton-respuesta {
+  min-width: 44px;
+  border: 1px solid var(--dg-borde-fuerte);
 }
 
 .junta-detalle__ayuda {

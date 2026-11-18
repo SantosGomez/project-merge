@@ -163,6 +163,7 @@ const ENDPOINTS = [
   ['POST', '/juntas', 'contador', true],
   ['GET', '/juntas/{P}', 'contador', false],
   ['PATCH', '/juntas/{P}', 'contador', true],
+  ['PATCH', '/juntas/{P}/respuesta', 'contador', true],
   ['DELETE', '/juntas/{P}', 'contador', false],
 ];
 

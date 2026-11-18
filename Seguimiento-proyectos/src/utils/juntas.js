@@ -163,6 +163,42 @@ const ETIQUETAS_RESPUESTA = { pendiente: 'Pendiente', aceptada: 'Aceptó', recha
 /** Respuesta de un invitado como texto; una desconocida se trata como pendiente. */
 export const etiquetaRespuesta = (respuesta) => ETIQUETAS_RESPUESTA[respuesta] ?? 'Pendiente'
 
+const ETIQUETAS_ESTADO = {
+  confirmada: 'Confirmada',
+  por_confirmar: 'Por confirmar',
+  cancelada: 'Cancelada',
+}
+
+/** Estado de la junta como texto; uno desconocido se trata como confirmada. */
+export const etiquetaEstadoJunta = (estado) =>
+  ETIQUETAS_ESTADO[estado] ?? ETIQUETAS_ESTADO.confirmada
+
+/**
+ * Respuesta de la cuenta a la invitación de la junta.
+ * @param {{ participantes: Array<{ id: number, respuesta: string }> }} junta
+ * @param {number|string|null} usuarioId - cuenta de la sesión.
+ * @returns {string|null} null si la cuenta organiza la junta o no está invitada.
+ */
+export const miRespuestaEnJunta = (junta, usuarioId) => {
+  if (usuarioId === null || usuarioId === undefined) return null
+  const yo = junta.participantes.find((p) => String(p.id) === String(usuarioId))
+  return yo ? yo.respuesta : null
+}
+
+/**
+ * Textos que acompañan a la junta en el calendario: su estado si no es «Confirmada» y «Responder»
+ * si la invitaron y todavía no contesta. Siempre con texto, nunca solo con color.
+ * @returns {string[]}
+ */
+export const marcasDeJunta = (junta, usuarioId) => {
+  const marcas = []
+  if (junta.estado === 'por_confirmar' || junta.estado === 'cancelada') {
+    marcas.push(etiquetaEstadoJunta(junta.estado))
+  }
+  if (miRespuestaEnJunta(junta, usuarioId) === 'pendiente') marcas.push('Responder')
+  return marcas
+}
+
 /** HH:mm de una fecha y hora de la API (`AAAA-MM-DD HH:mm:ss`). */
 export const horaDeFechaHora = (texto) => {
   const partes = FORMA_FECHA_HORA.exec(String(texto ?? ''))

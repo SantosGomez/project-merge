@@ -53,7 +53,7 @@ async function filaCaso(id) {
 // ---------- La tabla de avisos existe con sus columnas ----------
 async function testTablaNotificaciones() {
   const columnas = (await query('SHOW COLUMNS FROM notificaciones')).map((columna) => columna.Field);
-  assert.deepStrictEqual(columnas, ['id', 'usuario_id', 'caso_id', 'mensaje', 'leida', 'creado_en']);
+  assert.deepStrictEqual(columnas, ['id', 'usuario_id', 'caso_id', 'junta_id', 'mensaje', 'leida', 'creado_en']);
 }
 
 // ---------- El administrador cambia la prioridad: el vencimiento no se mueve y se avisa al dueño ----------
@@ -122,7 +122,7 @@ async function testListarAvisosPropios() {
   assert.match(masReciente.mensaje, /«zz_test Bimbo» de Alta a Baja\.$/);
   assert.strictEqual(masReciente.leida, false);
   assert.match(masReciente.creado_en, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, 'fecha en hora local');
-  assert.deepStrictEqual(Object.keys(masReciente).sort(), ['caso_id', 'creado_en', 'id', 'leida', 'mensaje']);
+  assert.deepStrictEqual(Object.keys(masReciente).sort(), ['caso_id', 'creado_en', 'id', 'junta_id', 'junta_inicio', 'leida', 'mensaje']);
 
   const ajena = await peticion(
     servidor.puerto,

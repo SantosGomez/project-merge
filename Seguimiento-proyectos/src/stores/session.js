@@ -144,10 +144,11 @@ export const crearSessionStore = (dependencias = {}) => {
       esAuxiliar: (state) => state.rol === 'auxiliar',
       /** Contador o auxiliar: tiene «Mis casos», «Mi resumen» y la campana de avisos. */
       trabajaCasos: (state) => ['contador', 'auxiliar'].includes(state.rol),
-      /** Administrador, contador o auxiliar ven la campana de avisos; el usuario de sistema no. */
-      veCampana: (state) => ['administrador', 'contador', 'auxiliar'].includes(state.rol),
+      /** Los 4 roles del calendario ven la campana de avisos; el usuario de sistema no. */
+      veCampana: (state) =>
+        ['administrador', 'contador', 'auxiliar', 'recepcionista'].includes(state.rol),
       esUsuarioSistema: (state) => state.rol === 'usuarios_de_sistema',
-      /** La recepcionista consulta el directorio; no trabaja casos ni ve la campana. */
+      /** La recepcionista consulta el directorio y usa el calendario; no trabaja casos. */
       esRecepcionista: (state) => state.rol === 'recepcionista',
       /** Nombre que se muestra en el menú; null si la sesión guardada no lo trae. */
       nombreVisible: (state) => state.nombre,
@@ -369,7 +370,8 @@ export const crearSessionStore = (dependencias = {}) => {
           rol: this.rol,
           id: this.id,
           // Con la contraseña asignada, primero se crea la propia.
-          pantallaPrincipal: pantalla !== null && this.debeCambiarContrasena ? RUTA_CAMBIO_CONTRASENA : pantalla,
+          pantallaPrincipal:
+            pantalla !== null && this.debeCambiarContrasena ? RUTA_CAMBIO_CONTRASENA : pantalla,
           accesoDenegado: pantalla === null,
         }
       },

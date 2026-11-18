@@ -93,6 +93,7 @@
         :vista="vista"
         :fecha="fecha"
         :juntas="juntas"
+        :usuario-id="session.id"
         @abrir-junta="abrirDetalle"
         @nueva-junta="abrirNueva"
       />
@@ -104,6 +105,7 @@
       :junta="juntaSeleccionada"
       @editar="abrirEdicion"
       @borrada="alBorrar"
+      @respondida="alResponder"
     />
 
     <JuntaFormDialog
@@ -126,7 +128,8 @@ import ErrorState from '../components/ErrorState.vue'
 import JuntaDetalleDialog from '../components/JuntaDetalleDialog.vue'
 import JuntaFormDialog from '../components/JuntaFormDialog.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
-import { listar } from '../services/juntaService.js'
+import { listar, obtener } from '../services/juntaService.js'
+import { useSessionStore } from '../stores/session.js'
 import {
   hoyISO,
   leerVistaDeUrl,
@@ -139,10 +142,12 @@ import {
  * Calendario de juntas del equipo. La vista y la fecha viajan en la URL
  * (`?vista=semana&fecha=2026-11-18`) para recargar sin perderlas. Cada cambio de periodo pide
  * `GET /juntas` con el rango visible; al volver a la pestaña se recarga en silencio.
+ * Con `?juntaId=` (enlace de un aviso de la campana) abre la ficha de esa junta.
  */
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
+const session = useSessionStore()
 
 const OPCIONES_DE_VISTA = [
   { label: 'Mes', value: 'mes' },
@@ -222,6 +227,7 @@ onMounted(() => {
     irA(vista.value, fecha.value)
   }
   cargar()
+  abrirJuntaDeLaUrl()
   document.addEventListener('visibilitychange', alVolverALaPestana)
 })
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolverALaPestana))
@@ -262,6 +268,39 @@ const alBorrar = () => {
   $q.notify({ type: 'positive', message: 'Junta borrada.' })
   cargar({ silencioso: true })
 }
+
+// La ficha abierta pasa a la versión nueva (con tu respuesta y el estado) y el calendario se recarga.
+const alResponder = (junta) => {
+  juntaSeleccionada.value = junta
+  $q.notify({ type: 'positive', message: 'Respuesta guardada.' })
+  cargar({ silencioso: true })
+}
+
+// --- enlace de un aviso ---------------------------------------------------------------------------
+
+/**
+ * Abre la ficha de la junta de `?juntaId=` aunque caiga fuera del periodo visible, y quita el
+ * parámetro de la URL para que recargar o volver a tocar el mismo aviso funcione de nuevo.
+ */
+const abrirJuntaDeLaUrl = async () => {
+  const juntaId = route.query.juntaId
+  if (juntaId === undefined) return
+  const resto = { ...route.query }
+  delete resto.juntaId
+  router.replace({ query: { ...resto, vista: vista.value, fecha: fecha.value } })
+  try {
+    abrirDetalle(await obtener(String(juntaId)))
+  } catch {
+    $q.notify({ type: 'warning', message: 'Esa junta ya no está disponible.' })
+  }
+}
+
+watch(
+  () => route.query.juntaId,
+  (juntaId) => {
+    if (juntaId !== undefined) abrirJuntaDeLaUrl()
+  },
+)
 </script>
 
 <style scoped>

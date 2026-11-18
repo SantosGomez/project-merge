@@ -1,5 +1,6 @@
 const { query, conTransaccion } = require('../config/db');
 const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
+const { calcularEstado } = require('../utils/estadoJunta');
 
 /**
  * Juntas del calendario y sus invitados. Las fechas se guardan y devuelven en hora local.
@@ -53,18 +54,22 @@ async function armarJuntas(filas, usuarioId) {
       ORDER BY u.nombre ASC, u.id ASC`,
     filas.map((fila) => fila.id)
   );
-  return filas.map((fila) => ({
-    id: fila.id,
-    titulo: fila.titulo,
-    descripcion: fila.descripcion,
-    inicio: formatLocalDate(fila.inicio),
-    fin: formatLocalDate(fila.fin),
-    creado_por: { id: fila.creado_por, nombre: fila.creador_nombre },
-    participantes: invitados
+  return filas.map((fila) => {
+    const participantes = invitados
       .filter((invitado) => invitado.junta_id === fila.id)
-      .map(({ id, nombre, rol, respuesta }) => ({ id, nombre, rol, respuesta })),
-    soy_organizador: fila.creado_por === usuarioId,
-  }));
+      .map(({ id, nombre, rol, respuesta }) => ({ id, nombre, rol, respuesta }));
+    return {
+      id: fila.id,
+      titulo: fila.titulo,
+      descripcion: fila.descripcion,
+      inicio: formatLocalDate(fila.inicio),
+      fin: formatLocalDate(fila.fin),
+      creado_por: { id: fila.creado_por, nombre: fila.creador_nombre },
+      participantes,
+      estado: calcularEstado(participantes),
+      soy_organizador: fila.creado_por === usuarioId,
+    };
+  });
 }
 
 const SELECT_JUNTA = `SELECT j.id, j.titulo, j.descripcion, j.inicio, j.fin, j.creado_por, u.nombre AS creador_nombre
@@ -105,9 +110,10 @@ async function listarEnRango(usuarioId, desde, hastaExclusivo) {
  * Crea una junta con sus invitados en `pendiente`, todo en una transacción.
  * @param {number} creadorId - Cuenta organizadora.
  * @param {{ titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[] }} datos - Datos ya validados.
+ * @param {Function} [avisos] - `async (ejecutar, juntaId)` que crea los avisos dentro de la misma transacción.
  * @returns {Promise<Object>} La junta creada.
  */
-async function crear(creadorId, { titulo, descripcion, inicio, fin, participantes }) {
+async function crear(creadorId, { titulo, descripcion, inicio, fin, participantes }, avisos) {
   const ahora = formatLocalDate(nowLocal());
   const id = await conTransaccion(async (ejecutar) => {
     const resultado = await ejecutar(
@@ -119,6 +125,7 @@ async function crear(creadorId, { titulo, descripcion, inicio, fin, participante
       `INSERT INTO junta_participantes (junta_id, usuario_id) VALUES ${marcas}`,
       participantes.flatMap((usuarioId) => [resultado.insertId, usuarioId])
     );
+    if (avisos) await avisos(ejecutar, resultado.insertId);
     return resultado.insertId;
   });
   return buscarPorId(id, creadorId);
@@ -130,9 +137,16 @@ async function crear(creadorId, { titulo, descripcion, inicio, fin, participante
  * @param {number} id - Id de la junta.
  * @param {number} usuarioId - Cuenta organizadora que consulta.
  * @param {{ titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[] }} datos - Datos ya validados.
+ * @param {{ reiniciarRespuestas?: boolean, avisos?: Function }} [opciones] - `reiniciarRespuestas` devuelve todas las
+ *   respuestas a `pendiente` (cambió la fecha o la hora); `avisos` es `async (ejecutar)` dentro de la misma transacción.
  * @returns {Promise<Object>} La junta actualizada.
  */
-async function actualizar(id, usuarioId, { titulo, descripcion, inicio, fin, participantes }) {
+async function actualizar(
+  id,
+  usuarioId,
+  { titulo, descripcion, inicio, fin, participantes },
+  { reiniciarRespuestas = false, avisos } = {}
+) {
   await conTransaccion(async (ejecutar) => {
     await ejecutar('UPDATE juntas SET titulo = ?, descripcion = ?, inicio = ?, fin = ?, actualizado_en = ? WHERE id = ?', [
       titulo,
@@ -152,17 +166,46 @@ async function actualizar(id, usuarioId, { titulo, descripcion, inicio, fin, par
       `INSERT IGNORE INTO junta_participantes (junta_id, usuario_id) VALUES ${marcasNuevos}`,
       participantes.flatMap((participanteId) => [id, participanteId])
     );
+    if (reiniciarRespuestas) {
+      await ejecutar("UPDATE junta_participantes SET respuesta = 'pendiente', respondido_en = NULL WHERE junta_id = ?", [id]);
+    }
+    if (avisos) await avisos(ejecutar);
   });
   return buscarPorId(id, usuarioId);
 }
 
 /**
- * Borra una junta; sus invitados se borran en cascada.
+ * Guarda la respuesta de un invitado (puede cambiarla después) con la hora local.
  * @param {number} id - Id de la junta.
+ * @param {number} usuarioId - Cuenta invitada que responde.
+ * @param {'aceptada'|'rechazada'} respuesta - Respuesta ya validada.
+ * @param {Function} [avisos] - `async (ejecutar)` que crea los avisos dentro de la misma transacción.
+ * @returns {Promise<Object>} La junta actualizada.
+ */
+async function responder(id, usuarioId, respuesta, avisos) {
+  await conTransaccion(async (ejecutar) => {
+    await ejecutar('UPDATE junta_participantes SET respuesta = ?, respondido_en = ? WHERE junta_id = ? AND usuario_id = ?', [
+      respuesta,
+      formatLocalDate(nowLocal()),
+      id,
+      usuarioId,
+    ]);
+    if (avisos) await avisos(ejecutar);
+  });
+  return buscarPorId(id, usuarioId);
+}
+
+/**
+ * Borra una junta; sus invitados y sus avisos con junta se borran en cascada.
+ * @param {number} id - Id de la junta.
+ * @param {Function} [avisos] - `async (ejecutar)` que crea los avisos (sin junta) dentro de la misma transacción.
  * @returns {Promise<void>}
  */
-async function eliminar(id) {
-  await query('DELETE FROM juntas WHERE id = ?', [id]);
+async function eliminar(id, avisos) {
+  await conTransaccion(async (ejecutar) => {
+    if (avisos) await avisos(ejecutar);
+    await ejecutar('DELETE FROM juntas WHERE id = ?', [id]);
+  });
 }
 
 module.exports = {
@@ -172,5 +215,6 @@ module.exports = {
   listarEnRango,
   crear,
   actualizar,
+  responder,
   eliminar,
 };

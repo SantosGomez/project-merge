@@ -21,7 +21,7 @@ export const crearNotificacionService = (opciones = {}) => {
 
   /**
    * GET /notificaciones: avisos de la cuenta, del más reciente al más antiguo.
-   * @returns {Promise<{ avisos: Array<{ id: number, casoId: number|null, mensaje: string, leida: boolean, fecha: string }>, noLeidas: number }>}
+   * @returns {Promise<{ avisos: Array<{ id: number, casoId: number|null, juntaId?: number, juntaInicio?: string|null, mensaje: string, leida: boolean, fecha: string }>, noLeidas: number }>}
    */
   const getNotificaciones = async () => {
     const { data } = await api.get('/notificaciones')
@@ -33,6 +33,10 @@ export const crearNotificacionService = (opciones = {}) => {
       avisos: data.notificaciones.map((aviso) => ({
         id: aviso.id,
         casoId: aviso.caso_id ?? null,
+        // Solo los avisos de una junta traen estos campos; los de casos conservan su forma.
+        ...(aviso.junta_id
+          ? { juntaId: aviso.junta_id, juntaInicio: aviso.junta_inicio ?? null }
+          : {}),
         mensaje: aviso.mensaje ?? '',
         leida: aviso.leida === true,
         fecha: fechaVisible(aviso.creado_en),

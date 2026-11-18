@@ -8,6 +8,7 @@ const {
   crearJunta,
   obtenerJunta,
   actualizarJunta,
+  responderJunta,
   eliminarJunta,
 } = require('../controllers/JuntaController');
 const { asyncHandler } = require('../utils/asyncHandler');
@@ -26,6 +27,9 @@ router.get('/:id', authenticateToken, requireCalendario, asyncHandler(obtenerJun
 
 // PATCH /juntas/:id — Solo el organizador cambia la junta
 router.patch('/:id', authenticateToken, requireCalendario, asyncHandler(actualizarJunta));
+
+// PATCH /juntas/:id/respuesta — Un invitado acepta o rechaza
+router.patch('/:id/respuesta', authenticateToken, requireCalendario, asyncHandler(responderJunta));
 
 // DELETE /juntas/:id — Solo el organizador borra la junta
 router.delete('/:id', authenticateToken, requireCalendario, asyncHandler(eliminarJunta));

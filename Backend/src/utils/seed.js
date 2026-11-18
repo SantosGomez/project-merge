@@ -601,6 +601,26 @@ async function migrarJuntas() {
       CONSTRAINT fk_junta_participantes_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
+
+  await migrarAvisosDeJuntas();
+}
+
+/**
+ * Rebanada 22: agrega `notificaciones.junta_id` (NULL) con su índice y su llave a `juntas` con borrado en cascada,
+ * para que los avisos de una junta se vayan con ella. Es idempotente y no toca las filas existentes.
+ */
+async function migrarAvisosDeJuntas() {
+  await query(
+    'ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS junta_id INT NULL AFTER caso_id, ADD INDEX IF NOT EXISTS idx_notificaciones_junta (junta_id)'
+  );
+  const [{ total }] = await query(
+    "SELECT COUNT(*) AS total FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'notificaciones' AND CONSTRAINT_NAME = 'fk_notificaciones_junta'"
+  );
+  if (Number(total) === 0) {
+    await query(
+      'ALTER TABLE notificaciones ADD CONSTRAINT fk_notificaciones_junta FOREIGN KEY (junta_id) REFERENCES juntas(id) ON DELETE CASCADE'
+    );
+  }
 }
 
 module.exports = { seedDatabase, debeSembrarCuentasDemo, verificarSeedDemoEnProduccion };

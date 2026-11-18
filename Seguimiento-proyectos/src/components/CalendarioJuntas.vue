@@ -29,12 +29,16 @@
               align="left"
               :ripple="false"
               class="junta-etiqueta boton-presionable"
+              :class="clasesDeEstado(junta, 'junta-etiqueta')"
               :aria-label="nombreAccesible(junta)"
               @click.stop="emit('abrir-junta', junta)"
             >
               <span class="junta-etiqueta__hora">{{ horaDeFechaHora(junta.inicio) }}</span>
+              <span v-if="textoDeMarcas(junta)" class="junta-etiqueta__marcas">{{
+                textoDeMarcas(junta)
+              }}</span>
               <span class="junta-etiqueta__titulo">{{ junta.titulo }}</span>
-              <q-tooltip>{{ junta.titulo }} · {{ horarioDeJunta(junta) }}</q-tooltip>
+              <q-tooltip>{{ textoCompleto(junta) }}</q-tooltip>
             </q-btn>
           </div>
         </template>
@@ -71,15 +75,21 @@
             align="left"
             :ripple="false"
             class="junta-bloque boton-presionable"
+            :class="clasesDeEstado(bloque.junta, 'junta-bloque')"
             :style="estiloDeBloque(bloque)"
             :aria-label="nombreAccesible(bloque.junta)"
             @click.stop="emit('abrir-junta', bloque.junta)"
           >
             <span class="junta-bloque__texto">
               <span class="junta-bloque__titulo">{{ bloque.junta.titulo }}</span>
-              <span class="junta-bloque__horario">{{ horarioDeJunta(bloque.junta) }}</span>
+              <span class="junta-bloque__horario">
+                {{ horarioDeJunta(bloque.junta) }}
+                <span v-if="textoDeMarcas(bloque.junta)" class="junta-bloque__marcas">
+                  {{ textoDeMarcas(bloque.junta) }}
+                </span>
+              </span>
             </span>
-            <q-tooltip>{{ bloque.junta.titulo }} · {{ horarioDeJunta(bloque.junta) }}</q-tooltip>
+            <q-tooltip>{{ textoCompleto(bloque.junta) }}</q-tooltip>
           </q-btn>
         </template>
       </QCalendarDay>
@@ -101,6 +111,7 @@ import {
   horaDeFechaHora,
   horarioDeJunta,
   juntasDelDia,
+  marcasDeJunta,
   segmentoDelDia,
   textoPeriodo,
 } from '../utils/juntas.js'
@@ -109,7 +120,8 @@ import {
  * Calendario de juntas con QCalendar (importado solo aquí, no como plugin global). No pide datos:
  * recibe la vista, la fecha y las juntas del periodo; avisa con `abrir-junta` (clic en una junta)
  * y `nueva-junta` (clic en un hueco vacío de semana o día). El idioma es es-MX y los colores salen
- * de la paleta `--dg-*` (ver los estilos de abajo).
+ * de la paleta `--dg-*` (ver los estilos de abajo). Cada junta lleva con texto su estado («Por
+ * confirmar», «Cancelada», con el título tachado) y «Responder» si te invitaron y aún no contestas.
  */
 const props = defineProps({
   /** 'mes', 'semana' o 'dia'. */
@@ -118,6 +130,8 @@ const props = defineProps({
   fecha: { type: String, required: true },
   /** Juntas del periodo, tal como las devuelve la API. */
   juntas: { type: Array, default: () => [] },
+  /** Cuenta de la sesión, para saber si una invitación sigue sin respuesta. */
+  usuarioId: { type: [Number, String], default: null },
 })
 
 const emit = defineEmits(['abrir-junta', 'nueva-junta'])
@@ -134,8 +148,22 @@ const ALTO_MINIMO_DE_BLOQUE = 24
 
 const textoDeVista = computed(() => textoPeriodo(props.vista, props.fecha))
 
+// «Por confirmar · Responder»: lo que acompaña a la junta, o '' si no lleva marcas.
+const textoDeMarcas = (junta) => marcasDeJunta(junta, props.usuarioId).join(' · ')
+
+const textoCompleto = (junta) =>
+  [junta.titulo, horarioDeJunta(junta), textoDeMarcas(junta)].filter(Boolean).join(' · ')
+
 const nombreAccesible = (junta) =>
-  `Junta ${junta.titulo}, ${horarioDeJunta(junta)}. Abre los datos de la junta.`
+  `Junta ${junta.titulo}, ${horarioDeJunta(junta)}${
+    textoDeMarcas(junta) ? `, ${textoDeMarcas(junta)}` : ''
+  }. Abre los datos de la junta.`
+
+// Clase de color según el estado (el texto de las marcas ya lo dice; el color solo refuerza).
+const clasesDeEstado = (junta, base) => ({
+  [`${base}--por-confirmar`]: junta.estado === 'por_confirmar',
+  [`${base}--cancelada`]: junta.estado === 'cancelada',
+})
 
 // Bloques de un día con su columna, para que las juntas que se cruzan no se tapen.
 const bloquesDelDia = (dia) =>
@@ -284,6 +312,11 @@ const alElegirHueco = ({ scope }) => {
   white-space: nowrap;
 }
 
+.junta-etiqueta__marcas {
+  flex: none;
+  font-weight: 700;
+}
+
 /* Junta en semana y día: un bloque sobre su franja horaria. */
 .junta-bloque {
   position: absolute;
@@ -300,6 +333,25 @@ const alElegirHueco = ({ scope }) => {
 
 .junta-bloque:hover {
   background: var(--dg-fondo-hover);
+}
+
+.junta-etiqueta--por-confirmar,
+.junta-bloque--por-confirmar {
+  border-left-color: var(--dg-aviso-borde);
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
+}
+
+.junta-etiqueta--cancelada,
+.junta-bloque--cancelada {
+  border-left-color: var(--dg-error);
+  background: var(--dg-error-fondo);
+  color: var(--dg-error);
+}
+
+.junta-etiqueta--cancelada .junta-etiqueta__titulo,
+.junta-bloque--cancelada .junta-bloque__titulo {
+  text-decoration: line-through;
 }
 
 .junta-bloque :deep(.q-btn__content) {
@@ -325,6 +377,12 @@ const alElegirHueco = ({ scope }) => {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.junta-bloque__marcas {
+  display: block;
+  white-space: normal;
+  font-weight: 700;
 }
 
 .junta-bloque__horario {

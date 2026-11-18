@@ -1,7 +1,18 @@
 const JuntaModel = require('../models/JuntaModel');
+const NotificacionModel = require('../models/NotificacionModel');
+const UserModel = require('../models/UserModel');
 const { buildError } = require('../utils/errorUtils');
+const { eventos } = require('../utils/eventos');
 const { parseCounterId } = require('../utils/validationUtils');
-const { validarJunta, validarRango } = require('../utils/validacionJuntas');
+const { validarJunta, validarRango, validarRespuesta } = require('../utils/validacionJuntas');
+const {
+  calcularEstado,
+  mensajeDeInvitacion,
+  mensajeDeCambio,
+  mensajeDeBorrado,
+  mensajeDeRespuesta,
+  mensajeDeEstado,
+} = require('../utils/estadoJunta');
 
 /**
  * Controladores de /juntas: cada cuenta del calendario ve las juntas que organiza o a las que la invitaron.
@@ -22,11 +33,38 @@ const ERROR_NO_ORGANIZADOR = buildError(
   'junta solicitada',
   'Pide a la persona que la organiza que haga el cambio'
 );
+const ERROR_ORGANIZADOR_NO_RESPONDE = buildError(
+  'Quien organiza la junta no responde su propia invitación',
+  'junta solicitada',
+  'Solo los invitados aceptan o rechazan; para cambiar la junta usa «Editar»'
+);
 const ERROR_INVITADOS_NO_VALIDOS = buildError(
   'Algún invitado no existe o no usa el calendario',
   'participantes',
   'Actualiza la lista de invitados y elígelos de nuevo'
 );
+
+/**
+ * Arma el registro de avisos de una operación: `avisar` los crea dentro de la transacción
+ * y `enviar` avisa a la campana en tiempo real, solo después de que se guardó todo.
+ * Nadie recibe aviso de su propia acción.
+ * @param {number} autorId - Cuenta que hace la acción.
+ * @returns {{ avisar: Function, enviar: Function }}
+ */
+function crearAvisos(autorId) {
+  const destinatarios = new Set();
+  return {
+    async avisar(ejecutar, usuarioIds, mensaje, juntaId = null) {
+      for (const usuarioId of usuarioIds.filter((id) => id !== autorId)) {
+        await NotificacionModel.crear({ usuarioId, casoId: null, juntaId, mensaje }, ejecutar);
+        destinatarios.add(usuarioId);
+      }
+    },
+    enviar() {
+      for (const usuarioId of destinatarios) eventos.enviarAUsuario(usuarioId, 'aviso-nuevo', {});
+    },
+  };
+}
 
 /**
  * GET /juntas/participantes-disponibles — Cuentas que se pueden invitar, sin quien pide.
@@ -115,7 +153,13 @@ async function leerDatosDeJunta(req, res) {
 async function crearJunta(req, res) {
   const datos = await leerDatosDeJunta(req, res);
   if (!datos) return undefined;
-  const junta = await JuntaModel.crear(Number(req.user.id), datos);
+  const usuarioId = Number(req.user.id);
+  const { avisar, enviar } = crearAvisos(usuarioId);
+  const organizador = (await UserModel.findById(usuarioId)).nombre;
+  const junta = await JuntaModel.crear(usuarioId, datos, async (ejecutar, juntaId) => {
+    await avisar(ejecutar, datos.participantes, mensajeDeInvitacion(organizador, datos.titulo, datos.inicio), juntaId);
+  });
+  enviar();
   return res.status(201).json({ junta });
 }
 
@@ -140,7 +184,22 @@ async function actualizarJunta(req, res) {
   if (!existente) return undefined;
   const datos = await leerDatosDeJunta(req, res);
   if (!datos) return undefined;
-  const junta = await JuntaModel.actualizar(existente.id, Number(req.user.id), datos);
+  const usuarioId = Number(req.user.id);
+  const cambioElHorario = datos.inicio !== existente.inicio || datos.fin !== existente.fin;
+  const siguen = existente.participantes.map((p) => p.id).filter((id) => datos.participantes.includes(id));
+  const nuevos = datos.participantes.filter((id) => !siguen.includes(id));
+  const organizador = existente.creado_por.nombre;
+  const { avisar, enviar } = crearAvisos(usuarioId);
+  const junta = await JuntaModel.actualizar(existente.id, usuarioId, datos, {
+    reiniciarRespuestas: cambioElHorario,
+    avisos: async (ejecutar) => {
+      await avisar(ejecutar, nuevos, mensajeDeInvitacion(organizador, datos.titulo, datos.inicio), existente.id);
+      if (cambioElHorario) {
+        await avisar(ejecutar, siguen, mensajeDeCambio(organizador, datos.titulo, datos.inicio), existente.id);
+      }
+    },
+  });
+  enviar();
   return res.status(200).json({ junta });
 }
 
@@ -152,8 +211,46 @@ async function actualizarJunta(req, res) {
 async function eliminarJunta(req, res) {
   const existente = await buscarComoOrganizador(req, res);
   if (!existente) return undefined;
-  await JuntaModel.eliminar(existente.id);
+  const { avisar, enviar } = crearAvisos(Number(req.user.id));
+  const mensaje = mensajeDeBorrado(existente.creado_por.nombre, existente.titulo, existente.inicio);
+  await JuntaModel.eliminar(existente.id, (ejecutar) =>
+    avisar(ejecutar, existente.participantes.map((p) => p.id), mensaje)
+  );
+  enviar();
   return res.status(200).json({ ok: true });
+}
+
+/**
+ * PATCH /juntas/:id/respuesta — Un invitado acepta o rechaza (y puede cambiarlo después).
+ * Avisa al organizador y, si la respuesta de un administrador confirma o cancela la junta, a todos los demás.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function responderJunta(req, res) {
+  const existente = await buscarConAcceso(req, res);
+  if (!existente) return undefined;
+  if (existente.soy_organizador) return res.status(403).json(ERROR_ORGANIZADOR_NO_RESPONDE);
+  const datos = validarRespuesta(req.body);
+  if (datos.error) return res.status(400).json(datos.error);
+
+  const usuarioId = Number(req.user.id);
+  const yo = existente.participantes.find((p) => p.id === usuarioId);
+  const despues = existente.participantes.map((p) => (p.id === usuarioId ? { ...p, respuesta: datos.valor } : p));
+  const estado = calcularEstado(despues);
+  const cambioElEstado = yo.rol === 'administrador' && estado !== existente.estado && estado !== 'por_confirmar';
+  const { avisar, enviar } = crearAvisos(usuarioId);
+  const repetida = yo.respuesta === datos.valor;
+  const junta = await JuntaModel.responder(existente.id, usuarioId, datos.valor, async (ejecutar) => {
+    if (repetida) return;
+    const organizadorId = existente.creado_por.id;
+    await avisar(ejecutar, [organizadorId], mensajeDeRespuesta(yo.nombre, existente.titulo, datos.valor), existente.id);
+    if (cambioElEstado) {
+      const todos = [organizadorId, ...existente.participantes.map((p) => p.id)];
+      await avisar(ejecutar, todos, mensajeDeEstado(existente.titulo, estado), existente.id);
+    }
+  });
+  enviar();
+  return res.status(200).json({ junta });
 }
 
 module.exports = {
@@ -162,5 +259,6 @@ module.exports = {
   crearJunta,
   obtenerJunta,
   actualizarJunta,
+  responderJunta,
   eliminarJunta,
 };

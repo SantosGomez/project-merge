@@ -11,7 +11,7 @@ const leer = (relativa) => readFileSync(fileURLToPath(new URL(relativa, import.m
 // Evalúa el getter `veCampana` tal como está escrito en el store, para cada rol.
 function veCampanaPara(rol) {
   const store = leer('../src/stores/session.js')
-  const coincidencia = store.match(/veCampana:\s*(\(state\)\s*=>[^\n]+?),?\r?\n/)
+  const coincidencia = store.match(/veCampana:\s*(\(state\)\s*=>\s*[^\n]+?),?\r?\n/)
   assert.ok(coincidencia, 'el store define el getter veCampana')
   return new Function(`return (${coincidencia[1]})`)()({ rol })
 }

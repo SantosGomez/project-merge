@@ -70,6 +70,17 @@ export const crearJuntaService = (opciones = {}) => {
   }
 
   /**
+   * PATCH /juntas/:id/respuesta: un invitado acepta o rechaza (y puede cambiarlo después).
+   * @param {number} id
+   * @param {'aceptada'|'rechazada'} respuesta
+   * @returns {Promise<Object>} la junta actualizada, con su estado.
+   */
+  const responder = async (id, respuesta) => {
+    const { data } = await api.patch(`/juntas/${id}/respuesta`, { respuesta })
+    return leerJunta(data, 'tu respuesta')
+  }
+
+  /**
    * DELETE /juntas/:id: borra la junta y sus invitaciones.
    * @param {number} id
    * @returns {Promise<void>}
@@ -90,7 +101,7 @@ export const crearJuntaService = (opciones = {}) => {
     return data.usuarios
   }
 
-  return { listar, obtener, crear, actualizar, borrar, participantesDisponibles }
+  return { listar, obtener, crear, actualizar, responder, borrar, participantesDisponibles }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -100,5 +111,6 @@ export const listar = servicioPorDefecto.listar
 export const obtener = servicioPorDefecto.obtener
 export const crear = servicioPorDefecto.crear
 export const actualizar = servicioPorDefecto.actualizar
+export const responder = servicioPorDefecto.responder
 export const borrar = servicioPorDefecto.borrar
 export const participantesDisponibles = servicioPorDefecto.participantesDisponibles

@@ -17,6 +17,8 @@ async function listarMisNotificaciones(req, res) {
   const notificaciones = filas.map((fila) => ({
     id: fila.id,
     caso_id: fila.caso_id,
+    junta_id: fila.junta_id,
+    junta_inicio: fila.junta_inicio ? formatLocalDate(fila.junta_inicio) : null,
     mensaje: fila.mensaje,
     leida: Boolean(fila.leida),
     creado_en: formatLocalDate(fila.creado_en),

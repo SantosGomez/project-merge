@@ -66,9 +66,12 @@ describe('rol recepcionista: pantallas', () => {
   const directorio = leer('../src/pages/CountersDirectoryPage.vue')
   const sesion = leer('../src/stores/session.js')
 
-  it('la sesión la reconoce y no le da campana de avisos ni «Mis casos»', () => {
+  it('la sesión la reconoce, le da campana de avisos (invitaciones a juntas) y no «Mis casos»', () => {
     assert.match(sesion, /esRecepcionista: \(state\) => state\.rol === 'recepcionista'/)
-    assert.doesNotMatch(sesion, /veCampana: [^\n]*recepcionista/)
+    assert.match(
+      sesion,
+      /veCampana: \(state\) =>\s+\['administrador', 'contador', 'auxiliar', 'recepcionista'\]\.includes\(state\.rol\)/,
+    )
     assert.doesNotMatch(sesion, /trabajaCasos: [^\n]*recepcionista/)
   })
 

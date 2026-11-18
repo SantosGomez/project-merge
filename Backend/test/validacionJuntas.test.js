@@ -1,6 +1,6 @@
 const assert = require('node:assert');
 const { describe, test } = require('node:test');
-const { parseFechaHora, validarJunta, validarRango } = require('../src/utils/validacionJuntas');
+const { parseFechaHora, validarJunta, validarRango, validarRespuesta } = require('../src/utils/validacionJuntas');
 
 /**
  * Pruebas unitarias de las validaciones puras de juntas (rebanada 21a): sin base de datos.
@@ -122,5 +122,18 @@ describe('validarRango', () => {
     }
     assert.ok(validarRango('2026-01-01', '2027-02-05').valor, '400 días exactos entran');
     assert.ok(validarRango('2026-01-01', '2027-02-06').error, '401 días no entran');
+  });
+});
+
+describe('validarRespuesta', () => {
+  test('acepta solo aceptada o rechazada', () => {
+    assert.deepStrictEqual(validarRespuesta({ respuesta: 'aceptada' }), { valor: 'aceptada' });
+    assert.deepStrictEqual(validarRespuesta({ respuesta: 'rechazada' }), { valor: 'rechazada' });
+  });
+
+  test('rechaza cualquier otro valor con tres partes sobre respuesta', () => {
+    for (const cuerpo of [{ respuesta: 'pendiente' }, { respuesta: 'Aceptada' }, { respuesta: 1 }, { respuesta: null }, {}, null, undefined, 'aceptada']) {
+      assert.strictEqual(campoDelError(validarRespuesta(cuerpo)), 'respuesta');
+    }
   });
 });
