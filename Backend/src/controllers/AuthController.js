@@ -16,7 +16,20 @@ const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
 const { eventos } = require('../utils/eventos');
 const bitacora = require('../utils/bitacoraSeguridad');
 const { usuarioTieneActividades } = require('../config/modulos');
+const JuntaModel = require('../models/JuntaModel');
+const { esSecretaria } = require('../utils/accesoJuntas');
 const { JWT_SECRET, JWT_EXPIRES_IN, JWT_EXPIRES_IN_PERSISTENTE } = require('../config/jwt');
+
+/**
+ * Llave `administradores_atendidos` del login y del perfil: solo la recepcionista la recibe
+ * (puede ir vacía); para los demás roles no hay llave.
+ * @param {{ rol: string }} cuenta - Cuenta de la sesión.
+ * @returns {Promise<{ administradores_atendidos?: Array<{ id: number, nombre: string }> }>}
+ */
+async function llaveAdministradoresAtendidos(cuenta) {
+  if (!esSecretaria(cuenta)) return {};
+  return { administradores_atendidos: await JuntaModel.administradoresAtendidos() };
+}
 
 /**
  * Inicio de sesión con correo: valida credenciales, genera token JWT, registra sesión,
@@ -124,6 +137,7 @@ async function login(req, res) {
     sesion_persistente: persistente,
     // El frontend muestra «Mis actividades» solo si el módulo está habilitado para esta cuenta
     actividades_habilitadas: usuarioTieneActividades(cuenta.id),
+    ...(await llaveAdministradoresAtendidos(cuenta)),
   });
 }
 
@@ -266,6 +280,7 @@ async function obtenerPerfil(req, res) {
     correo: cuenta.correo,
     rol: cuenta.rol,
     actividades_habilitadas: usuarioTieneActividades(cuenta.id),
+    ...(await llaveAdministradoresAtendidos(cuenta)),
     creado_en: cuenta.creado_en ? formatLocalDate(cuenta.creado_en) : null,
     ultimo_acceso_en: cuenta.ultimo_acceso_en ? formatLocalDate(cuenta.ultimo_acceso_en) : null,
   });

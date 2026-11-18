@@ -50,6 +50,8 @@ services:
       CORS_ORIGENES: ${CORS_ORIGENES}
       # Ids con acceso al módulo «Mis actividades» (vacío = nadie; * = todos)
       USUARIOS_CON_ACTIVIDADES: ${USUARIOS_CON_ACTIVIDADES-}
+      # Ids de los administradores que atiende la recepcionista (vacío = ninguno)
+      ADMINISTRADORES_DE_RECEPCION: ${ADMINISTRADORES_DE_RECEPCION-}
       TRUST_PROXY: "1"
       TZ: ${TZ}
     # Endurecimiento: sin capacidades de Linux, sistema de archivos de solo lectura

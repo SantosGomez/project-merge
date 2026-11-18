@@ -19,6 +19,7 @@ const RANGO = '?desde=2035-03-01&hasta=2035-03-31';
 const LLAVES_OCUPADO = ['fin', 'id', 'inicio', 'ocupado', 'privada', 'titulo'];
 
 let servidor;
+let listaOriginal;
 const cuentas = {};
 const tokens = {};
 let contador = 0;
@@ -68,6 +69,9 @@ async function mensajesDe(quien, titulo) {
 
 describe('la recepcionista como secretaria del administrador', () => {
   before(async () => {
+    // Estas pruebas usan varios administradores: se deja sin definir para que la recepcionista atienda a todos.
+    listaOriginal = process.env.ADMINISTRADORES_DE_RECEPCION;
+    delete process.env.ADMINISTRADORES_DE_RECEPCION;
     await prepararBaseDeDatos();
     for (const [nombre, rol] of [
       ['admin', 'administrador'],
@@ -87,6 +91,8 @@ describe('la recepcionista como secretaria del administrador', () => {
   });
 
   after(async () => {
+    if (listaOriginal === undefined) delete process.env.ADMINISTRADORES_DE_RECEPCION;
+    else process.env.ADMINISTRADORES_DE_RECEPCION = listaOriginal;
     await servidor.cerrar();
     await limpiarDatosDePrueba();
     await cerrarBaseDeDatos();

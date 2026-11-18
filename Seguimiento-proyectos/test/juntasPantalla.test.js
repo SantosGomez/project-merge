@@ -182,8 +182,14 @@ describe('recepcionista como secretaria del administrador (rebanada 27)', () => 
   it('la pantalla pasa el organizador al formulario y deja de invitar al administrador de la agenda', () => {
     assert.match(plantillaDe(pagina), /:invitado-inicial="invitadoInicial"/)
     assert.match(plantillaDe(pagina), /:organizador="organizadorDeLaJunta"/)
-    assert.match(pagina, /organizadorDeAlta\(session\.rol, personaDeLaAgenda\.value\)/)
-    assert.match(pagina, /invitadoInicialDeAlta\(session\.rol, personaDeLaAgenda\.value\)/)
+    assert.match(
+      pagina,
+      /organizadorDeAlta\(session\.rol, personaDeLaAgenda\.value, atendidos\.value\)/,
+    )
+    assert.match(
+      pagina,
+      /invitadoInicialDeAlta\(session\.rol, personaDeLaAgenda\.value, atendidos\.value\)/,
+    )
   })
 
   it('el formulario muestra «Organiza: {nombre}» en texto de solo lectura y crea con organizadorId', () => {
@@ -207,5 +213,41 @@ describe('recepcionista como secretaria del administrador (rebanada 27)', () => 
 
   it('el calendario sigue sin tooltips', () => {
     assert.doesNotMatch(leer('../src/components/CalendarioJuntas.vue'), /q-tooltip/)
+  })
+})
+
+describe('administrador que atiende la recepcionista (rebanada 28)', () => {
+  const plantillaDe = (texto) => texto.split('<script')[0]
+  const pagina = leer('../src/pages/JuntasPage.vue')
+  const plantilla = plantillaDe(pagina)
+
+  it('muestra el aviso de a quién administra, con «Ver su agenda», solo a la recepcionista', () => {
+    assert.match(pagina, /const atendidos = computed\(\(\) => session\.administradoresAtendidos\)/)
+    assert.match(
+      plantilla,
+      /<q-banner[^>]*v-if="session\.esRecepcionista"[^>]*class="juntas-page__atiende"/,
+    )
+    assert.match(plantilla, /\{\{ textoAviso \}\}/)
+    assert.match(pagina, /textoAdministradoresAtendidos\(atendidos\.value\)/)
+    assert.match(plantilla, /Ver su agenda/)
+    assert.match(plantilla, /@click="cambiarAgenda\(String\(administrador\.id\)\)"/)
+  })
+
+  it('al entrar sin agenda, con un solo administrador abre la agenda de él', () => {
+    assert.match(pagina, /agendaInicialDeRecepcion\(session\.rol, atendidos\.value, route\.query\)/)
+  })
+
+  it('«Ver agenda de» marca con «(lo administras)» al administrador que atiende', () => {
+    assert.match(pagina, /administraAAdministrador\(p, atendidos\.value\)/)
+    assert.match(pagina, /lo administras/)
+  })
+
+  it('el aviso usa colores de la paleta y no un hexadecimal suelto', () => {
+    const aviso = plantilla.slice(
+      plantilla.indexOf('juntas-page__atiende'),
+      plantilla.indexOf('juntas-page__head'),
+    )
+    assert.ok(aviso.length > 0)
+    assert.doesNotMatch(aviso, /#[0-9a-fA-F]{3,8}\b/)
   })
 })

@@ -1,7 +1,9 @@
 const assert = require('node:assert');
-const { describe, test } = require('node:test');
+const { describe, test, before, after } = require('node:test');
 const {
   esSecretaria,
+  esAdministradorAtendido,
+  puedeAgendarANombreDe,
   permisosDeJunta,
   puedeVerCompleta,
   veAgendaCompleta,
@@ -10,8 +12,31 @@ const {
 
 /**
  * Pruebas de la regla pura de la recepcionista como secretaria de los administradores (rebanada 27).
- * No necesitan base de datos.
+ * No necesitan base de datos. La lista de administradores atendidos (rebanada 28) se fija en cada prueba
+ * que la usa; las demás corren con la variable sin definir, es decir, con todos los administradores atendidos.
  */
+
+let listaOriginal;
+before(() => {
+  listaOriginal = process.env.ADMINISTRADORES_DE_RECEPCION;
+  delete process.env.ADMINISTRADORES_DE_RECEPCION;
+});
+after(() => {
+  if (listaOriginal === undefined) delete process.env.ADMINISTRADORES_DE_RECEPCION;
+  else process.env.ADMINISTRADORES_DE_RECEPCION = listaOriginal;
+});
+
+/** Corre `fn` con la lista de administradores atendidos fijada y la deja como estaba. */
+function conLista(valor, fn) {
+  const anterior = process.env.ADMINISTRADORES_DE_RECEPCION;
+  process.env.ADMINISTRADORES_DE_RECEPCION = valor;
+  try {
+    fn();
+  } finally {
+    if (anterior === undefined) delete process.env.ADMINISTRADORES_DE_RECEPCION;
+    else process.env.ADMINISTRADORES_DE_RECEPCION = anterior;
+  }
+}
 
 const recepcionista = { id: 1, rol: 'recepcionista' };
 const administrador = { id: 2, rol: 'administrador' };
@@ -89,11 +114,18 @@ describe('puedeVerCompleta', () => {
 
 describe('veAgendaCompleta', () => {
   test('solo la recepcionista que consulta la agenda de un administrador la ve completa', () => {
-    assert.strictEqual(veAgendaCompleta(recepcionista, 'administrador'), true);
-    assert.strictEqual(veAgendaCompleta(recepcionista, 'contador'), false);
-    assert.strictEqual(veAgendaCompleta(recepcionista, 'auxiliar'), false);
-    assert.strictEqual(veAgendaCompleta(contador, 'administrador'), false);
-    assert.strictEqual(veAgendaCompleta(administrador, 'administrador'), false);
+    assert.strictEqual(veAgendaCompleta(recepcionista, administrador), true);
+    assert.strictEqual(veAgendaCompleta(recepcionista, contador), false);
+    assert.strictEqual(veAgendaCompleta(recepcionista, auxiliar), false);
+    assert.strictEqual(veAgendaCompleta(contador, administrador), false);
+    assert.strictEqual(veAgendaCompleta(administrador, administrador), false);
+  });
+
+  test('solo ve completa la agenda de un administrador atendido', () => {
+    conLista('2', () => {
+      assert.strictEqual(veAgendaCompleta(recepcionista, administrador), true);
+      assert.strictEqual(veAgendaCompleta(recepcionista, { id: 9, rol: 'administrador' }), false);
+    });
   });
 });
 
@@ -120,5 +152,60 @@ describe('resolverRespuestaEnNombre', () => {
     for (const usuario of [administrador, contador, auxiliar]) {
       assert.deepStrictEqual(resolverRespuestaEnNombre(usuario, invitados, 20), { error: 'prohibido' });
     }
+  });
+});
+
+describe('administradores atendidos por la recepción', () => {
+  const adminAtendido = { id: 20, nombre: 'Atendido', rol: 'administrador', respuesta: 'pendiente' };
+  const adminOtro = { id: 21, nombre: 'Otro', rol: 'administrador', respuesta: 'pendiente' };
+
+  test('esAdministradorAtendido exige el rol de administrador y que el id esté en la lista', () => {
+    conLista('20,30', () => {
+      assert.strictEqual(esAdministradorAtendido(adminAtendido), true);
+      assert.strictEqual(esAdministradorAtendido(adminOtro), false);
+      assert.strictEqual(esAdministradorAtendido(contadorInvitado), false);
+    });
+  });
+
+  test('puedeAgendarANombreDe solo acepta administradores atendidos', () => {
+    conLista('20', () => {
+      assert.strictEqual(puedeAgendarANombreDe(adminAtendido), true);
+      assert.strictEqual(puedeAgendarANombreDe(adminOtro), false);
+      assert.strictEqual(puedeAgendarANombreDe({ id: 20, rol: 'contador' }), false);
+    });
+  });
+
+  test('permisos: edita y responde solo por el administrador atendido', () => {
+    conLista('20', () => {
+      const deAtendido = permisosDeJunta(recepcionista, junta(20, 'administrador', [adminOtro]));
+      assert.strictEqual(deAtendido.puede_editar, true);
+      assert.deepStrictEqual(deAtendido.responder_por, []);
+      const deOtro = permisosDeJunta(recepcionista, junta(21, 'administrador', [adminAtendido, adminOtro]));
+      assert.strictEqual(deOtro.puede_editar, false);
+      assert.deepStrictEqual(deOtro.responder_por.map((p) => p.id), [20]);
+    });
+  });
+
+  test('con la lista vacía no ve completas las juntas de ningún administrador', () => {
+    conLista('', () => {
+      const permisos = permisosDeJunta(recepcionista, junta(20, 'administrador', [adminAtendido]));
+      assert.strictEqual(permisos.puede_editar, false);
+      assert.deepStrictEqual(permisos.responder_por, []);
+      assert.strictEqual(
+        puedeVerCompleta(recepcionista, { soy_organizador: false, participantes: [adminAtendido], ...permisos }),
+        false
+      );
+    });
+  });
+
+  test('resolverRespuestaEnNombre rechaza a un administrador no atendido', () => {
+    conLista('20', () => {
+      assert.deepStrictEqual(resolverRespuestaEnNombre(recepcionista, [adminAtendido, adminOtro], 21), {
+        error: 'no_invitado',
+      });
+      assert.deepStrictEqual(resolverRespuestaEnNombre(recepcionista, [adminAtendido, adminOtro], 20), {
+        participante: adminAtendido,
+      });
+    });
   });
 });

@@ -874,3 +874,65 @@ test('«Mis actividades»: al caducar la sesión el estado vuelve a «no habilit
 
   assert.equal(store.actividadesHabilitadas, false)
 })
+
+// --- administradores que atiende la recepcionista (rebanada 28) -----------------
+
+const ATENDIDOS = [{ id: 11, nombre: 'Ana Administradora' }]
+
+test('administradores atendidos: sin sesión nueva no hay ninguno', () => {
+  const auth = crearAuthFalsa({
+    inicial: almacenConSesion({ rol: 'recepcionista', id: 7, nombre: 'r' }),
+  })
+  const { store } = montarSesion({ auth })
+
+  assert.deepEqual(store.administradoresAtendidos, [])
+})
+
+test('administradores atendidos: el login los guarda en el store', async () => {
+  const auth = crearAuthFalsa({
+    sesionLogin: { rol: 'recepcionista', id: 7, nombre: 'r', administradoresAtendidos: ATENDIDOS },
+  })
+  const { store } = montarSesion({ auth })
+
+  await store.iniciarSesion('rosa@delgrow.mx', 'clave')
+
+  assert.deepEqual(store.administradoresAtendidos, ATENDIDOS)
+})
+
+test('administradores atendidos: al restaurar la sesión el perfil del backend los fija', async () => {
+  const auth = crearAuthFalsa({
+    inicial: almacenConSesion({ rol: 'recepcionista', id: 7, nombre: 'r' }),
+  })
+  auth.obtenerPerfil = async () => ({ id: 7, administradores_atendidos: ATENDIDOS })
+  const { store } = montarSesion({ auth })
+
+  await store.restaurarSesion()
+
+  assert.deepEqual(store.administradoresAtendidos, ATENDIDOS)
+})
+
+test('administradores atendidos: un perfil sin la llave los deja vacíos', async () => {
+  const auth = crearAuthFalsa({
+    inicial: almacenConSesion({ rol: 'contador', id: 7, nombre: 'c' }),
+  })
+  const { store } = montarSesion({ auth })
+
+  await store.restaurarSesion()
+
+  assert.deepEqual(store.administradoresAtendidos, [])
+})
+
+test('administradores atendidos: al cerrar o caducar la sesión se limpian', async () => {
+  const auth = crearAuthFalsa({
+    sesionLogin: { rol: 'recepcionista', id: 7, nombre: 'r', administradoresAtendidos: ATENDIDOS },
+  })
+  const { store } = montarSesion({ auth })
+  await store.iniciarSesion('rosa@delgrow.mx', 'clave')
+
+  await store.cerrarSesionVoluntaria()
+  assert.deepEqual(store.administradoresAtendidos, [])
+
+  await store.iniciarSesion('rosa@delgrow.mx', 'clave')
+  store.caducarSesion()
+  assert.deepEqual(store.administradoresAtendidos, [])
+})

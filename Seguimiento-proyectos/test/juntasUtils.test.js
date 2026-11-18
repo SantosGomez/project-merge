@@ -6,6 +6,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  administraAAdministrador,
+  agendaInicialDeRecepcion,
   armarFechaHora,
   campoDeErrorJunta,
   claveDeJunta,
@@ -28,6 +30,7 @@ import {
   parsearFechaISO,
   rangoVisible,
   segmentoDelDia,
+  textoAdministradoresAtendidos,
   textoDiaConJuntas,
   textoDiaDelMes,
   textoPeriodo,
@@ -642,25 +645,87 @@ describe('vista de año (rebanada 25)', () => {
 })
 
 describe('recepcionista como secretaria en la agenda de un administrador (rebanada 27)', () => {
+  const ATENDIDOS = [{ id: 7, nombre: 'Ana Administradora' }]
   const admin = { id: 7, nombre: 'Ana Administradora', rol: 'administrador' }
   const contador = { id: 8, nombre: 'Carlos Contador', rol: 'contador' }
 
   it('organizadorDeAlta: solo la recepcionista con la agenda de un administrador agenda a su nombre', () => {
-    assert.deepEqual(organizadorDeAlta('recepcionista', admin), {
+    assert.deepEqual(organizadorDeAlta('recepcionista', admin, ATENDIDOS), {
       id: 7,
       nombre: 'Ana Administradora',
     })
-    assert.equal(organizadorDeAlta('recepcionista', contador), null)
-    assert.equal(organizadorDeAlta('recepcionista', null), null)
-    assert.equal(organizadorDeAlta('contador', admin), null)
-    assert.equal(organizadorDeAlta('administrador', admin), null)
-    assert.equal(organizadorDeAlta('auxiliar', admin), null)
+    assert.equal(organizadorDeAlta('recepcionista', contador, ATENDIDOS), null)
+    assert.equal(organizadorDeAlta('recepcionista', null, ATENDIDOS), null)
+    assert.equal(organizadorDeAlta('contador', admin, ATENDIDOS), null)
+    assert.equal(organizadorDeAlta('administrador', admin, ATENDIDOS), null)
+    assert.equal(organizadorDeAlta('auxiliar', admin, ATENDIDOS), null)
   })
 
   it('invitadoInicialDeAlta: invita a la persona de la agenda, salvo que se agende a nombre de ella', () => {
-    assert.equal(invitadoInicialDeAlta('recepcionista', admin), null)
-    assert.deepEqual(invitadoInicialDeAlta('recepcionista', contador), contador)
-    assert.deepEqual(invitadoInicialDeAlta('contador', admin), admin)
-    assert.equal(invitadoInicialDeAlta('contador', null), null)
+    assert.equal(invitadoInicialDeAlta('recepcionista', admin, ATENDIDOS), null)
+    assert.deepEqual(invitadoInicialDeAlta('recepcionista', contador, ATENDIDOS), contador)
+    assert.deepEqual(invitadoInicialDeAlta('contador', admin, ATENDIDOS), admin)
+    assert.equal(invitadoInicialDeAlta('contador', null, ATENDIDOS), null)
+  })
+})
+
+describe('administrador que atiende la recepcionista (rebanada 28)', () => {
+  const admin = { id: 7, nombre: 'Ana Administradora', rol: 'administrador' }
+  const otroAdmin = { id: 9, nombre: 'Beto Administrador', rol: 'administrador' }
+  const contador = { id: 8, nombre: 'Carlos Contador', rol: 'contador' }
+  const atendidos = [{ id: 7, nombre: 'Ana Administradora' }]
+
+  it('administraAAdministrador: la persona es administrador y está en la lista de atendidos', () => {
+    assert.equal(administraAAdministrador(admin, atendidos), true)
+    assert.equal(administraAAdministrador(otroAdmin, atendidos), false)
+    assert.equal(administraAAdministrador(contador, [{ id: 8, nombre: 'Carlos Contador' }]), false)
+    assert.equal(administraAAdministrador(null, atendidos), false)
+    assert.equal(administraAAdministrador(admin, []), false)
+    assert.equal(administraAAdministrador(admin, undefined), false)
+  })
+
+  it('organizadorDeAlta e invitadoInicialDeAlta: con un administrador que no atiende, es una persona más', () => {
+    assert.equal(organizadorDeAlta('recepcionista', otroAdmin, atendidos), null)
+    assert.deepEqual(invitadoInicialDeAlta('recepcionista', otroAdmin, atendidos), otroAdmin)
+    assert.deepEqual(organizadorDeAlta('recepcionista', admin, atendidos), {
+      id: 7,
+      nombre: 'Ana Administradora',
+    })
+    assert.equal(organizadorDeAlta('recepcionista', admin, []), null)
+  })
+
+  it('textoAdministradoresAtendidos: uno, varios o ninguno', () => {
+    assert.equal(
+      textoAdministradoresAtendidos(atendidos),
+      'Administras la agenda de Ana Administradora',
+    )
+    assert.equal(
+      textoAdministradoresAtendidos([...atendidos, { id: 9, nombre: 'Beto Administrador' }]),
+      'Administras la agenda de Ana Administradora y Beto Administrador',
+    )
+    assert.equal(
+      textoAdministradoresAtendidos([
+        { id: 1, nombre: 'A' },
+        { id: 2, nombre: 'B' },
+        { id: 3, nombre: 'C' },
+      ]),
+      'Administras la agenda de A, B y C',
+    )
+    assert.equal(
+      textoAdministradoresAtendidos([]),
+      'No tienes asignada la agenda de ningún administrador. Pídele al despacho que la configure.',
+    )
+  })
+
+  it('agendaInicialDeRecepcion: solo con exactamente un administrador y sin agenda ni junta en la URL', () => {
+    assert.equal(agendaInicialDeRecepcion('recepcionista', atendidos, {}), '7')
+    assert.equal(agendaInicialDeRecepcion('recepcionista', atendidos, { agenda: '9' }), null)
+    assert.equal(agendaInicialDeRecepcion('recepcionista', atendidos, { juntaId: '5' }), null)
+    assert.equal(agendaInicialDeRecepcion('recepcionista', [], {}), null)
+    assert.equal(
+      agendaInicialDeRecepcion('recepcionista', [...atendidos, { id: 9, nombre: 'Beto' }], {}),
+      null,
+    )
+    assert.equal(agendaInicialDeRecepcion('contador', atendidos, {}), null)
   })
 })

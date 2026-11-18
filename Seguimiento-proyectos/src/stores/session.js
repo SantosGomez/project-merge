@@ -123,6 +123,8 @@ export const crearSessionStore = (dependencias = {}) => {
         persistente: authService.getPersistente(),
         /** La cuenta tiene el módulo «Mis actividades» (pestaña de «Mis casos»). */
         actividadesHabilitadas: authService.getActividades(),
+        /** Administradores cuya agenda administra la recepcionista (`[{ id, nombre }]`); solo en memoria. */
+        administradoresAtendidos: [],
         /** Bandera de sesión caducada por inactividad, `exp` o 401 (RF-07/43). */
         sesionCaducada: false,
         /** Último momento de actividad en milisegundos (RF-07). */
@@ -173,6 +175,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.debeCambiarContrasena = false
         this.persistente = false
         this.actividadesHabilitadas = false
+        this.administradoresAtendidos = []
         this.ultimaActividad = null
       },
 
@@ -310,6 +313,9 @@ export const crearSessionStore = (dependencias = {}) => {
           const habilitado = perfil?.actividades_habilitadas === true
           authService.setActividades(habilitado)
           this.actividadesHabilitadas = habilitado
+          this.administradoresAtendidos = Array.isArray(perfil?.administradores_atendidos)
+            ? perfil.administradores_atendidos
+            : []
         } catch (error) {
           if (error?.estado === ESTADOS_ERROR.SIN_SESION) {
             this.caducarSesion()
@@ -356,6 +362,7 @@ export const crearSessionStore = (dependencias = {}) => {
           authService.setSesion(nueva)
         }
         this.aplicarSesionGuardada()
+        this.administradoresAtendidos = nueva?.administradoresAtendidos ?? []
         this.sesionCaducada = false
         this.marcarActividad()
 

@@ -1,7 +1,7 @@
 const { query, conTransaccion } = require('../config/db');
 const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 const { calcularEstado } = require('../utils/estadoJunta');
-const { permisosDeJunta, veAgendaCompleta } = require('../utils/accesoJuntas');
+const { esAdministradorAtendido, permisosDeJunta, veAgendaCompleta } = require('../utils/accesoJuntas');
 
 /**
  * Juntas del calendario y sus invitados. Las fechas se guardan y devuelven en hora local.
@@ -124,6 +124,16 @@ async function buscarUsuarioDelCalendario(id) {
 }
 
 /**
+ * Administradores que atiende la recepcionista (ADMINISTRADORES_DE_RECEPCION), por nombre.
+ * Los ids de la lista que no son administradores o no existen simplemente no aparecen.
+ * @returns {Promise<Array<{ id: number, nombre: string }>>}
+ */
+async function administradoresAtendidos() {
+  const filas = await query("SELECT id, nombre, rol FROM usuarios WHERE rol = 'administrador' ORDER BY nombre ASC, id ASC");
+  return filas.filter(esAdministradorAtendido).map(({ id, nombre }) => ({ id, nombre }));
+}
+
+/**
  * Juntas que ocupan la agenda de una cuenta en el rango (donde organiza o está invitada, sin las que rechazó),
  * ya sin las canceladas. Quien consulta recibe completas las suyas; de las ajenas, solo lo que su privacidad permite:
  * pública → título, horario y organizador; privada → solo «Ocupado». Nunca id, descripción ni invitados.
@@ -145,7 +155,7 @@ async function agendaDe(dueno, consultante, desde, hastaExclusivo) {
     [hastaExclusivo, desde, dueno.id, dueno.id]
   );
   const juntas = (await armarJuntas(filas, consultante)).filter((junta) => junta.estado !== 'cancelada');
-  const todoCompleto = veAgendaCompleta(consultante, dueno.rol);
+  const todoCompleto = veAgendaCompleta(consultante, dueno);
   return juntas.map((junta) => {
     const esPropia = junta.soy_organizador || junta.participantes.some((p) => p.id === consultante.id);
     if (esPropia || todoCompleto) return junta;
@@ -280,6 +290,7 @@ module.exports = {
   buscarPorId,
   listarEnRango,
   buscarUsuarioDelCalendario,
+  administradoresAtendidos,
   agendaDe,
   crear,
   actualizar,

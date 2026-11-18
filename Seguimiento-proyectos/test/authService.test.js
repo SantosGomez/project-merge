@@ -84,7 +84,13 @@ test('login hace POST /auth/login y guarda rol, id y nombre en el almacén, sin 
   ])
   assert.deepEqual(
     sesion,
-    { ...DATOS_SESION, debeCambiarContrasena: false, persistente: false, actividades: false },
+    {
+      ...DATOS_SESION,
+      debeCambiarContrasena: false,
+      persistente: false,
+      actividades: false,
+      administradoresAtendidos: [],
+    },
     'login devuelve los datos de la sesión',
   )
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
@@ -328,4 +334,29 @@ test('login guarda la marca de «Mis actividades» solo si el backend la envía 
     assert.equal(almacen.getItem(CLAVES_SESION.actividades), esperado)
     assert.equal(servicio.getActividades(), esperado === '1')
   }
+})
+
+test('login entrega los administradores que atiende la recepcionista y no los guarda en el almacén', async () => {
+  const atendidos = [{ id: 11, nombre: 'Ana Administradora' }]
+  const api = crearApiFalsa({ datos: { ...CUERPO_LOGIN, administradores_atendidos: atendidos } })
+  const almacen = crearAlmacenFalso()
+  const servicio = crearAuthService({ api, almacen })
+
+  const sesion = await servicio.login('rosa@delgrow.mx', 'clave-falsa')
+
+  assert.deepEqual(sesion.administradoresAtendidos, atendidos)
+  for (const clave of Object.values(CLAVES_SESION)) {
+    assert.ok(!String(almacen.getItem(clave) ?? '').includes('Ana'), `${clave} no guarda la lista`)
+  }
+})
+
+test('login sin administradores_atendidos entrega una lista vacía', async () => {
+  const servicio = crearAuthService({
+    api: crearApiFalsa({ datos: CUERPO_LOGIN }),
+    almacen: crearAlmacenFalso(),
+  })
+
+  const sesion = await servicio.login('admin_seed', 'clave-falsa')
+
+  assert.deepEqual(sesion.administradoresAtendidos, [])
 })

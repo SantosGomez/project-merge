@@ -217,14 +217,25 @@ export const marcasDeJunta = (junta, usuarioId) => {
 export const esJuntaOcupada = (junta) => junta?.ocupado === true
 
 /**
- * La recepcionista que ve la agenda de un administrador actúa como su secretaria: la junta nueva
+ * Indica si la persona de una agenda es un administrador cuya agenda administra la recepcionista.
+ * @param {{ id: number, rol: string }|null|undefined} persona - persona de cuya agenda se parte.
+ * @param {Array<{ id: number }>|undefined} atendidos - administradores atendidos (de la sesión).
+ * @returns {boolean}
+ */
+export const administraAAdministrador = (persona, atendidos) =>
+  persona?.rol === 'administrador' &&
+  (atendidos ?? []).some((administrador) => administrador.id === persona.id)
+
+/**
+ * La recepcionista que ve la agenda de un administrador que atiende actúa como su secretaria: la junta nueva
  * se agenda a nombre de él. Con cualquier otra persona o rol, no hay organizador distinto de quien llama.
  * @param {string} rolSesion - rol de la cuenta que usa la pantalla.
  * @param {{ id: number, nombre: string, rol: string }|null} usuarioAgenda - persona de cuya agenda se parte.
+ * @param {Array<{ id: number }>} [atendidos] - administradores atendidos (de la sesión).
  * @returns {{ id: number, nombre: string }|null}
  */
-export const organizadorDeAlta = (rolSesion, usuarioAgenda) =>
-  rolSesion === 'recepcionista' && usuarioAgenda?.rol === 'administrador'
+export const organizadorDeAlta = (rolSesion, usuarioAgenda, atendidos = []) =>
+  rolSesion === 'recepcionista' && administraAAdministrador(usuarioAgenda, atendidos)
     ? { id: usuarioAgenda.id, nombre: usuarioAgenda.nombre }
     : null
 
@@ -233,10 +244,41 @@ export const organizadorDeAlta = (rolSesion, usuarioAgenda) =>
  * se agende a nombre de ella (entonces es la organizadora, no una invitada).
  * @param {string} rolSesion - rol de la cuenta que usa la pantalla.
  * @param {{ id: number, nombre: string, rol: string }|null} usuarioAgenda
+ * @param {Array<{ id: number }>} [atendidos] - administradores atendidos (de la sesión).
  * @returns {{ id: number, nombre: string, rol: string }|null}
  */
-export const invitadoInicialDeAlta = (rolSesion, usuarioAgenda) =>
-  organizadorDeAlta(rolSesion, usuarioAgenda) ? null : (usuarioAgenda ?? null)
+export const invitadoInicialDeAlta = (rolSesion, usuarioAgenda, atendidos = []) =>
+  organizadorDeAlta(rolSesion, usuarioAgenda, atendidos) ? null : (usuarioAgenda ?? null)
+
+/**
+ * Aviso de a quién atiende la recepcionista: «Administras la agenda de A», «de A y B» o «de A, B y C».
+ * Sin ninguno, indica pedirle al despacho que la configure.
+ * @param {Array<{ nombre: string }>} atendidos - administradores atendidos (de la sesión).
+ * @returns {string}
+ */
+export const textoAdministradoresAtendidos = (atendidos) => {
+  const nombres = (atendidos ?? []).map((administrador) => administrador.nombre)
+  if (nombres.length === 0) {
+    return 'No tienes asignada la agenda de ningún administrador. Pídele al despacho que la configure.'
+  }
+  const ultimo = nombres.pop()
+  const lista = nombres.length === 0 ? ultimo : `${nombres.join(', ')} y ${ultimo}`
+  return `Administras la agenda de ${lista}`
+}
+
+/**
+ * Agenda que abre sola la pantalla de la recepcionista: la del administrador que atiende, si es exactamente
+ * uno y la URL no pide ya una agenda ni una junta concreta.
+ * @param {string} rolSesion - rol de la cuenta que usa la pantalla.
+ * @param {Array<{ id: number }>} atendidos - administradores atendidos (de la sesión).
+ * @param {Object|undefined} query - query de la ruta.
+ * @returns {string|null} el id del administrador como texto, o null si no corresponde abrirla.
+ */
+export const agendaInicialDeRecepcion = (rolSesion, atendidos, query) => {
+  if (rolSesion !== 'recepcionista' || (atendidos ?? []).length !== 1) return null
+  if (query?.agenda !== undefined || query?.juntaId !== undefined) return null
+  return String(atendidos[0].id)
+}
 
 /** Texto del bloque ajeno: «Ocupado» si es privada; si es pública, «Título · organiza Nombre». */
 export const etiquetaDeJuntaOcupada = (junta) =>

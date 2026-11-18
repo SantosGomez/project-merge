@@ -1,5 +1,37 @@
 <template>
   <q-page class="juntas-page">
+    <q-banner
+      v-if="session.esRecepcionista"
+      dense
+      rounded
+      class="juntas-page__atiende"
+      :class="{ 'juntas-page__atiende--sin': atendidos.length === 0 }"
+      role="status"
+    >
+      <template #avatar>
+        <q-icon :name="atendidos.length === 0 ? 'event_busy' : 'support_agent'" />
+      </template>
+      {{ textoAviso }}
+      <template v-if="atendidos.length > 0" #action>
+        <q-btn
+          v-for="administrador in atendidos"
+          :key="administrador.id"
+          flat
+          no-caps
+          dense
+          color="primary"
+          icon="event_note"
+          :label="
+            atendidos.length === 1 ? 'Ver su agenda' : `Ver agenda de ${administrador.nombre}`
+          "
+          class="control-touch boton-presionable"
+          @click="cambiarAgenda(String(administrador.id))"
+        >
+          <q-tooltip>Abre la agenda de {{ administrador.nombre }} para administrarla.</q-tooltip>
+        </q-btn>
+      </template>
+    </q-banner>
+
     <div class="juntas-page__head">
       <p class="juntas-page__lead">
         Consulta tus juntas por año, mes, semana o día. Pulsa un hueco libre del calendario para
@@ -219,6 +251,8 @@ import { agendaDe, listar, obtener, participantesDisponibles } from '../services
 import { useSessionStore } from '../stores/session.js'
 import { formatearRol } from '../utils/formateadores.js'
 import {
+  administraAAdministrador,
+  agendaInicialDeRecepcion,
   esJuntaOcupada,
   hoyISO,
   invitadoInicialDeAlta,
@@ -227,6 +261,7 @@ import {
   moverPeriodo,
   organizadorDeAlta,
   rangoVisible,
+  textoAdministradoresAtendidos,
   textoPeriodo,
 } from '../utils/juntas.js'
 import {
@@ -247,7 +282,9 @@ import {
  * salen completas y las demás como «Ocupado», sin ficha. Desde esa agenda, «Nueva junta» y los huecos
  * abren el formulario con esa persona ya invitada. La recepcionista es secretaria de los administradores:
  * en la agenda de uno de ellos ve sus juntas completas (también las privadas) y la junta nueva se agenda
- * a nombre de él, sin invitarlo.
+ * a nombre de él, sin invitarlo. Solo atiende a los administradores que le configura el despacho
+ * (`session.administradoresAtendidos`): arriba se avisa de quién es la agenda que administra y, con uno solo,
+ * al entrar sin `?agenda=` se abre la de él. Con los demás administradores es una persona más: «Ocupado».
  * En `?vista=anio` se ven los 12 meses con la cantidad de juntas de cada día; un clic en un día abre la
  * vista Día. En mes, semana y día, el administrador, el contador y el auxiliar ven además el vencimiento
  * de sus casos (no los finalizados) con el interruptor «Mostrar vencimientos» y el contador también el de
@@ -300,10 +337,16 @@ const cargandoPersonas = ref(false)
 // Persona cuya agenda se ve, tal como la devolvió la API ({ id, nombre, rol }); null en la propia.
 const usuarioAgenda = ref(null)
 
+// Administradores cuya agenda administra la recepcionista (vacío para los demás roles).
+const atendidos = computed(() => session.administradoresAtendidos)
+const textoAviso = computed(() => textoAdministradoresAtendidos(atendidos.value))
+
 const opcionesDeAgenda = computed(() => [
   { label: 'Mi agenda', value: null },
   ...personas.value.map((p) => ({
-    label: `${p.nombre} (${formatearRol(p.rol)})`,
+    label: administraAAdministrador(p, atendidos.value)
+      ? `${p.nombre} (${formatearRol(p.rol)}) (lo administras)`
+      : `${p.nombre} (${formatearRol(p.rol)})`,
     value: String(p.id),
   })),
 ])
@@ -326,8 +369,12 @@ const textoVacio = computed(() =>
 
 // Persona de la agenda que se ve ahora (null en la propia, aunque quede un valor viejo mientras recarga).
 const personaDeLaAgenda = computed(() => (agendaId.value ? usuarioAgenda.value : null))
-const organizadorDeLaJunta = computed(() => organizadorDeAlta(session.rol, personaDeLaAgenda.value))
-const invitadoInicial = computed(() => invitadoInicialDeAlta(session.rol, personaDeLaAgenda.value))
+const organizadorDeLaJunta = computed(() =>
+  organizadorDeAlta(session.rol, personaDeLaAgenda.value, atendidos.value),
+)
+const invitadoInicial = computed(() =>
+  invitadoInicialDeAlta(session.rol, personaDeLaAgenda.value, atendidos.value),
+)
 
 const cambiarAgenda = (id) => {
   const query = { ...route.query }
@@ -463,10 +510,19 @@ const alVolverALaPestana = () => {
 
 onMounted(() => {
   // Sin vista y fecha en la URL se escriben, para que recargar la página conserve lo que se ve.
-  if (route.query.vista !== vista.value || route.query.fecha !== fecha.value) {
-    irA(vista.value, fecha.value)
+  // La recepcionista que atiende a un solo administrador entra directo a la agenda de él; el cambio de
+  // `?agenda=` ya dispara la carga, por eso no se pide la propia antes.
+  const agendaInicial = agendaInicialDeRecepcion(session.rol, atendidos.value, route.query)
+  if (agendaInicial) {
+    router.replace({
+      query: { ...route.query, vista: vista.value, fecha: fecha.value, agenda: agendaInicial },
+    })
+  } else {
+    if (route.query.vista !== vista.value || route.query.fecha !== fecha.value) {
+      irA(vista.value, fecha.value)
+    }
+    cargar()
   }
-  cargar()
   if (vencimientosActivos.value) cargarVencimientos()
   cargarPersonas()
   abrirJuntaDeLaUrl()
@@ -550,6 +606,19 @@ watch(
 <style scoped>
 .juntas-page {
   padding: 16px;
+}
+
+.juntas-page__atiende {
+  margin-bottom: 12px;
+  border: 1px solid var(--dg-info-borde);
+  background: var(--dg-info-fondo);
+  color: var(--dg-info-texto);
+}
+
+.juntas-page__atiende--sin {
+  border-color: var(--dg-aviso-borde);
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
 }
 
 .juntas-page__head {

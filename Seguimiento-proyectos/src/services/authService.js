@@ -93,7 +93,8 @@ export const crearAuthService = (opciones = {}) => {
    * @param {string} correo
    * @param {string} password
    * @param {boolean} [mantenerSesion] - casilla «Mantener sesión iniciada».
-   * @returns {Promise<{ rol: string, id: number, nombre: string|null, persistente: boolean }>}
+   * @returns {Promise<{ rol: string, id: number, nombre: string|null, persistente: boolean,
+   *   administradoresAtendidos: Array<{ id: number, nombre: string }> }>}
    */
   const login = async (correo, password, mantenerSesion = false) => {
     const cuerpo = mantenerSesion ? { correo, password, mantener_sesion: true } : { correo, password }
@@ -112,7 +113,13 @@ export const crearAuthService = (opciones = {}) => {
       actividades: data.actividades_habilitadas === true,
     }
     setSesion(sesion)
-    return sesion
+    // Solo la recepcionista la recibe; vive en memoria (store), no en el almacén.
+    return {
+      ...sesion,
+      administradoresAtendidos: Array.isArray(data.administradores_atendidos)
+        ? data.administradores_atendidos
+        : [],
+    }
   }
 
   /**
@@ -138,7 +145,8 @@ export const crearAuthService = (opciones = {}) => {
    * Datos de la cuenta de la sesión (GET /auth/perfil) para «Mi perfil».
    * Si falla, rechaza con el error normalizado de api.js.
    * @returns {Promise<{ id: number, nombre: string, correo: string, rol: string,
-   *   actividades_habilitadas: boolean, creado_en: string|null, ultimo_acceso_en: string|null }>}
+   *   actividades_habilitadas: boolean, administradores_atendidos?: Array<{ id: number, nombre: string }>,
+   *   creado_en: string|null, ultimo_acceso_en: string|null }>}
    */
   const obtenerPerfil = async () => {
     const { data } = await api.get('/auth/perfil')

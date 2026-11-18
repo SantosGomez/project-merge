@@ -730,6 +730,17 @@ describe('escalada de privilegios por la API de usuarios', () => {
 });
 
 describe('juntas: organizador_id y en_nombre_de son solo de la recepcionista', () => {
+  // La recepcionista solo atiende al administrador configurado (rebanada 28): aquí, el de la matriz.
+  let listaOriginal;
+  before(() => {
+    listaOriginal = process.env.ADMINISTRADORES_DE_RECEPCION;
+    process.env.ADMINISTRADORES_DE_RECEPCION = String(cuentas[ADMIN].id);
+  });
+  after(() => {
+    if (listaOriginal === undefined) delete process.env.ADMINISTRADORES_DE_RECEPCION;
+    else process.env.ADMINISTRADORES_DE_RECEPCION = listaOriginal;
+  });
+
   const cuerpoJunta = (extra) => ({
     titulo: 'zz_test junta de matriz',
     inicio: '2036-01-12 09:00',

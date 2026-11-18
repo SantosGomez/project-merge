@@ -5,7 +5,7 @@ const { buildError } = require('../utils/errorUtils');
 const { eventos } = require('../utils/eventos');
 const { parseCounterId } = require('../utils/validationUtils');
 const { validarJunta, validarOrganizador, validarRango, validarRespuesta } = require('../utils/validacionJuntas');
-const { esSecretaria, puedeVerCompleta, resolverRespuestaEnNombre } = require('../utils/accesoJuntas');
+const { esSecretaria, puedeAgendarANombreDe, puedeVerCompleta, resolverRespuestaEnNombre } = require('../utils/accesoJuntas');
 const {
   calcularEstado,
   mensajeDeInvitacion,
@@ -65,9 +65,9 @@ const ERROR_SOLO_SECRETARIA_ORGANIZADOR = buildError(
   'Quita el organizador: la junta quedará a tu nombre'
 );
 const ERROR_ORGANIZADOR_NO_ADMINISTRADOR = buildError(
-  'La persona elegida no es un administrador',
+  'La persona elegida no es un administrador que atiendas',
   'organizador',
-  'Elige a un administrador de la lista'
+  'Elige a uno de los administradores que administras'
 );
 const ERROR_SOLO_SECRETARIA_RESPONDE = buildError(
   'Solo la recepcionista puede responder en nombre de un administrador',
@@ -248,7 +248,7 @@ async function resolverOrganizador(req, res) {
     return null;
   }
   const cuenta = await JuntaModel.buscarUsuarioDelCalendario(organizador.valor);
-  if (!cuenta || cuenta.rol !== 'administrador') {
+  if (!cuenta || !puedeAgendarANombreDe(cuenta)) {
     res.status(400).json(ERROR_ORGANIZADOR_NO_ADMINISTRADOR);
     return null;
   }

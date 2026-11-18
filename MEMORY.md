@@ -34,6 +34,12 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
     - la recepcionista es secretaria de todos los administradores (`organizador_id`, `en_nombre_de`);
     - las reglas viven solo en `utils/accesoJuntas.js`;
     - `JuntaModel` recibe al consultante como `{id, rol}`.
+  - 28, la recepcionista solo atiende a los administradores de `ADMINISTRADORES_DE_RECEPCION` (`config/recepcion.js`):
+    - local `1` (`Backend/.env`), producción `7947` (`.env` de la raíz);
+    - sin definir: todos fuera de producción y nadie en producción;
+    - la recepcionista ve el aviso «Administras la agenda de…»;
+    - trampa: dotenv carga `Backend/.env` en las pruebas, así que la prueba que necesite a todos los administradores debe quitar la variable;
+    - **antes de desplegar**, confirmar que el 7947 es administrador en la base de Docker.
   - Commits de la 21b a la 27: sin push hasta que el usuario los revise.
   - Pendientes:
     - formatear `MaquetaLayout.vue` y `router/index.js` (ya fallaban `prettier --check`);
