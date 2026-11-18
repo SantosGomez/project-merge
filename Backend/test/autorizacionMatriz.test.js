@@ -111,6 +111,7 @@ const MATRIZ = [
   // juntas del calendario
   ['GET', '/juntas/participantes-disponibles', CALENDARIO],
   ['GET', '/juntas', CALENDARIO],
+  ['GET', '/juntas/agenda/:x', CALENDARIO],
   ['POST', '/juntas', CALENDARIO, {}],
   ['GET', '/juntas/:x', CALENDARIO],
   ['PATCH', '/juntas/:x', CALENDARIO, {}],

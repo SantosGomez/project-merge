@@ -78,8 +78,12 @@ describe('/juntas', () => {
     const juntas = await query('SHOW COLUMNS FROM juntas');
     assert.deepStrictEqual(
       juntas.map((c) => c.Field),
-      ['id', 'titulo', 'descripcion', 'inicio', 'fin', 'creado_por', 'creado_en', 'actualizado_en']
+      ['id', 'titulo', 'descripcion', 'inicio', 'fin', 'creado_por', 'creado_en', 'actualizado_en', 'privada']
     );
+    const privada = juntas.find((c) => c.Field === 'privada');
+    assert.match(privada.Type, /^tinyint\(1\)/);
+    assert.strictEqual(privada.Null, 'NO');
+    assert.strictEqual(String(privada.Default), '0');
     const participantes = await query('SHOW COLUMNS FROM junta_participantes');
     assert.deepStrictEqual(
       participantes.map((c) => c.Field),
@@ -142,8 +146,9 @@ describe('/juntas', () => {
     const junta = r.body.junta;
     assert.deepStrictEqual(
       Object.keys(junta).sort(),
-      ['creado_por', 'descripcion', 'estado', 'fin', 'id', 'inicio', 'participantes', 'soy_organizador', 'titulo']
+      ['creado_por', 'descripcion', 'estado', 'fin', 'id', 'inicio', 'participantes', 'privada', 'soy_organizador', 'titulo']
     );
+    assert.strictEqual(junta.privada, false);
     assert.strictEqual(junta.titulo, 'Cierre de mes');
     assert.strictEqual(junta.descripcion, 'Revisar pólizas');
     assert.strictEqual(junta.inicio, '2031-03-10 09:00:00');
@@ -182,6 +187,7 @@ describe('/juntas', () => {
       [{ participantes: [ID_INEXISTENTE] }, 'id inexistente'],
       [{ participantes: [c.sistema.id] }, 'usuarios_de_sistema como invitado'],
       [{ participantes: ['abc'] }, 'id no numérico'],
+      [{ privada: 'si' }, 'privada que no es booleano'],
       [{ participantes: Array.from({ length: 51 }, (_, i) => i + 1000000) }, 'más de 50'],
     ];
     for (const [extra, descripcion] of casos) {
@@ -189,6 +195,23 @@ describe('/juntas', () => {
       assert.strictEqual(r.statusCode, 400, `${descripcion}: ${JSON.stringify(r.body)}`);
       assert.match(r.body.mensaje, / sobre .+: /, descripcion);
     }
+  });
+
+  test('privada: el alta la guarda, el PATCH la cambia y las juntas existentes quedan públicas', async () => {
+    const privada = await crear('contador1', { titulo: 'reservada', privada: true });
+    assert.strictEqual(privada.privada, true);
+    assert.strictEqual((await api('contador1', 'GET', `/juntas/${privada.id}`)).body.junta.privada, true);
+    const publica = await crear('contador1', { titulo: 'abierta' });
+    assert.strictEqual(publica.privada, false);
+    const cuerpo = cuerpoJunta({ titulo: 'abierta', privada: true });
+    const cambiada = await api('contador1', 'PATCH', `/juntas/${publica.id}`, cuerpo);
+    assert.strictEqual(cambiada.statusCode, 200, JSON.stringify(cambiada.body));
+    assert.strictEqual(cambiada.body.junta.privada, true);
+    const sinMarca = await api('contador1', 'PATCH', `/juntas/${publica.id}`, cuerpoJunta({ titulo: 'abierta' }));
+    assert.strictEqual(sinMarca.body.junta.privada, false);
+    const mala = await api('contador1', 'PATCH', `/juntas/${publica.id}`, cuerpoJunta({ privada: 'true' }));
+    assert.strictEqual(mala.statusCode, 400);
+    assert.match(mala.body.mensaje, / sobre privada: /);
   });
 
   test('GET /juntas respeta los bordes del rango y el orden por inicio', async () => {

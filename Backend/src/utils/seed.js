@@ -603,6 +603,15 @@ async function migrarJuntas() {
   `);
 
   await migrarAvisosDeJuntas();
+  await migrarJuntasPrivadas();
+}
+
+/**
+ * Rebanada 23: agrega `juntas.privada` (0 por omisión) para que las juntas ya guardadas queden públicas.
+ * Es idempotente y no toca las filas existentes.
+ */
+async function migrarJuntasPrivadas() {
+  await query('ALTER TABLE juntas ADD COLUMN IF NOT EXISTS privada TINYINT(1) NOT NULL DEFAULT 0');
 }
 
 /**

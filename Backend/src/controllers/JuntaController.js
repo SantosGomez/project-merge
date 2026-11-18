@@ -28,6 +28,16 @@ const ERROR_ID_INVALIDO = buildError(
   'junta solicitada',
   'Actualiza el calendario y elige una de tus juntas'
 );
+const ERROR_USUARIO_INVALIDO = buildError(
+  'El identificador de la persona no es válido',
+  'persona solicitada',
+  'Elige a la persona de la lista «Ver agenda de»'
+);
+const ERROR_USUARIO_NO_ENCONTRADO = buildError(
+  'No se encontró a la persona',
+  'persona solicitada',
+  'Elige a la persona de la lista «Ver agenda de»'
+);
 const ERROR_NO_ORGANIZADOR = buildError(
   'Solo quien organiza la junta puede cambiarla o borrarla',
   'junta solicitada',
@@ -86,6 +96,23 @@ async function listarJuntas(req, res) {
   if (rango.error) return res.status(400).json(rango.error);
   const juntas = await JuntaModel.listarEnRango(Number(req.user.id), rango.valor.desde, rango.valor.hastaExclusivo);
   return res.status(200).json({ juntas });
+}
+
+/**
+ * GET /juntas/agenda/:usuarioId?desde&hasta — Agenda de otra cuenta del calendario: sus juntas completas si
+ * quien consulta participa y, si no, solo «Ocupado» o el título, el horario y el organizador.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function obtenerAgenda(req, res) {
+  const usuarioId = parseCounterId(req.params.usuarioId);
+  if (usuarioId === null) return res.status(400).json(ERROR_USUARIO_INVALIDO);
+  const rango = validarRango(req.query.desde, req.query.hasta);
+  if (rango.error) return res.status(400).json(rango.error);
+  const usuario = await JuntaModel.buscarUsuarioDelCalendario(usuarioId);
+  if (!usuario) return res.status(404).json(ERROR_USUARIO_NO_ENCONTRADO);
+  const juntas = await JuntaModel.agendaDe(usuarioId, Number(req.user.id), rango.valor.desde, rango.valor.hastaExclusivo);
+  return res.status(200).json({ usuario, juntas });
 }
 
 /**
@@ -256,6 +283,7 @@ async function responderJunta(req, res) {
 module.exports = {
   listarParticipantesDisponibles,
   listarJuntas,
+  obtenerAgenda,
   crearJunta,
   obtenerJunta,
   actualizarJunta,

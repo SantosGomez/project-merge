@@ -79,8 +79,54 @@ describe('juntaService', () => {
         inicio: '2026-11-18 09:00',
         fin: '2026-11-18 10:00',
         participantes: [4, 7],
+        privada: false,
       },
     })
+  })
+
+  it('crear y actualizar envían privada como booleano (false si no se indica)', async () => {
+    const api = crearApiFalsa({ POST: { junta }, PATCH: { junta } })
+    const servicio = crearJuntaService({ api })
+    const base = { titulo: 'a', inicio: 'x', fin: 'y', participantes: [4] }
+    await servicio.crear({ ...base, privada: true })
+    await servicio.actualizar(5, { ...base, privada: 'si' })
+    await servicio.crear(base)
+    assert.deepEqual(
+      api.llamadas.map((llamada) => llamada.segundo.privada),
+      [true, false, false],
+    )
+  })
+
+  it('agendaDe pide GET /juntas/agenda/:id con el rango y devuelve usuario y juntas', async () => {
+    const usuario = { id: 3, nombre: 'Ana', rol: 'administrador' }
+    const ocupada = { id: null, titulo: 'Ocupado', ocupado: true }
+    const api = crearApiFalsa({ GET: { usuario, juntas: [ocupada] } })
+    const agenda = await crearJuntaService({ api }).agendaDe(3, {
+      desde: '2026-11-16',
+      hasta: '2026-11-22',
+    })
+    assert.deepEqual(agenda, { usuario, juntas: [ocupada] })
+    assert.deepEqual(api.llamadas[0], {
+      metodo: 'GET',
+      url: '/juntas/agenda/3',
+      segundo: { params: { desde: '2026-11-16', hasta: '2026-11-22' } },
+    })
+  })
+
+  it('agendaDe rechaza una respuesta sin usuario o sin la lista de juntas', async () => {
+    for (const data of [
+      { juntas: [] },
+      { usuario: { id: 3 } },
+      { usuario: { id: 3 }, juntas: 1 },
+    ]) {
+      await assert.rejects(
+        crearJuntaService({ api: crearApiFalsa({ GET: data }) }).agendaDe(3, {
+          desde: 'a',
+          hasta: 'b',
+        }),
+        (e) => e.estado === 'respuesta_inesperada',
+      )
+    }
   })
 
   it('actualizar envía el cuerpo completo por PATCH /juntas/:id', async () => {
@@ -100,6 +146,7 @@ describe('juntaService', () => {
       'inicio',
       'fin',
       'participantes',
+      'privada',
     ])
   })
 

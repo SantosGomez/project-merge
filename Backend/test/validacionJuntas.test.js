@@ -31,6 +31,15 @@ describe('parseFechaHora', () => {
 });
 
 describe('validarJunta', () => {
+  test('privada: si falta es false, acepta solo booleanos y cualquier otro tipo se rechaza sobre privada', () => {
+    assert.strictEqual(validarJunta({ ...BASE, privada: true }, CREADOR).valor.privada, true);
+    assert.strictEqual(validarJunta({ ...BASE, privada: false }, CREADOR).valor.privada, false);
+    assert.strictEqual(validarJunta({ ...BASE, privada: undefined }, CREADOR).valor.privada, false);
+    for (const malo of [1, 0, 'true', 'false', null, {}, []]) {
+      assert.strictEqual(campoDelError(validarJunta({ ...BASE, privada: malo }, CREADOR)), 'privada', JSON.stringify(malo));
+    }
+  });
+
   test('devuelve los valores limpios: texto recortado, fechas con segundos en cero y descripción nula si falta', () => {
     const r = validarJunta({ ...BASE, titulo: '  Revisión mensual  ' }, CREADOR);
     assert.deepStrictEqual(r.valor, {
@@ -39,6 +48,7 @@ describe('validarJunta', () => {
       inicio: '2026-12-01 09:00:00',
       fin: '2026-12-01 10:30:00',
       participantes: [2, 3],
+      privada: false,
     });
     assert.strictEqual(validarJunta({ ...BASE, descripcion: '  Agenda  ' }, CREADOR).valor.descripcion, 'Agenda');
     assert.strictEqual(validarJunta({ ...BASE, descripcion: '   ' }, CREADOR).valor.descripcion, null);

@@ -77,7 +77,36 @@
       <h2 class="juntas-page__periodo" aria-live="polite">{{ periodo }}</h2>
     </div>
 
-    <ScreenLoader v-if="cargando" text="Cargando tus juntas…" />
+    <div class="juntas-page__agenda">
+      <q-select
+        :model-value="agendaId"
+        :options="opcionesDeAgenda"
+        emit-value
+        map-options
+        outlined
+        dense
+        options-dense
+        label="Ver agenda de"
+        dropdown-icon="expand_more"
+        popup-content-class="menu-seleccion-custom"
+        transition-show="jump-down"
+        transition-hide="jump-up"
+        :transition-duration="180"
+        class="selector-moderno juntas-page__selector"
+        :loading="cargandoPersonas"
+        @update:model-value="cambiarAgenda"
+      >
+        <template #prepend>
+          <q-icon name="event_note" />
+        </template>
+        <q-tooltip>
+          Elige a otra persona para ver cuándo está ocupada y agendar una junta con ella.
+        </q-tooltip>
+      </q-select>
+      <h2 v-if="agendaId" class="juntas-page__agenda-titulo">{{ tituloAgenda }}</h2>
+    </div>
+
+    <ScreenLoader v-if="cargando" :text="textoCarga" />
 
     <ErrorState v-else-if="errorCarga" :detail="errorCarga" @retry="cargar()" />
 
@@ -86,7 +115,7 @@
         <template #avatar>
           <q-icon name="event_available" color="dg-acento" />
         </template>
-        No tienes juntas en este periodo.
+        {{ textoVacio }}
       </q-banner>
 
       <CalendarioJuntas
@@ -113,6 +142,7 @@
       :junta="juntaEnEdicion"
       :fecha-inicial="precarga.fecha"
       :hora-inicial="precarga.hora"
+      :invitado-inicial="agendaId ? usuarioAgenda : null"
       @guardada="alGuardar"
     />
   </q-page>
@@ -128,10 +158,13 @@ import ErrorState from '../components/ErrorState.vue'
 import JuntaDetalleDialog from '../components/JuntaDetalleDialog.vue'
 import JuntaFormDialog from '../components/JuntaFormDialog.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
-import { listar, obtener } from '../services/juntaService.js'
+import { agendaDe, listar, obtener, participantesDisponibles } from '../services/juntaService.js'
 import { useSessionStore } from '../stores/session.js'
+import { formatearRol } from '../utils/formateadores.js'
 import {
+  esJuntaOcupada,
   hoyISO,
+  leerAgendaDeUrl,
   leerVistaDeUrl,
   moverPeriodo,
   rangoVisible,
@@ -143,6 +176,9 @@ import {
  * (`?vista=semana&fecha=2026-11-18`) para recargar sin perderlas. Cada cambio de periodo pide
  * `GET /juntas` con el rango visible; al volver a la pestaña se recarga en silencio.
  * Con `?juntaId=` (enlace de un aviso de la campana) abre la ficha de esa junta.
+ * Con `?agenda=ID` se ve la agenda de otra persona (`GET /juntas/agenda/:id`): las juntas donde participas
+ * salen completas y las demás como «Ocupado», sin ficha. Desde esa agenda, «Nueva junta» y los huecos
+ * abren el formulario con esa persona ya invitada.
  */
 const $q = useQuasar()
 const route = useRoute()
@@ -166,6 +202,9 @@ const fecha = computed(() => estado.value.fecha)
 const periodo = computed(() => textoPeriodo(vista.value, fecha.value))
 const rango = computed(() => rangoVisible(vista.value, fecha.value))
 
+// Persona de `?agenda=` (id como texto) o null si se ve la propia agenda.
+const agendaId = computed(() => leerAgendaDeUrl(route.query, session.id))
+
 const irA = (nuevaVista, nuevaFecha) =>
   router.replace({ query: { ...route.query, vista: nuevaVista, fecha: nuevaFecha } })
 
@@ -174,6 +213,55 @@ const moverA = (direccion) => irA(vista.value, moverPeriodo(vista.value, fecha.v
 const irAHoy = () => {
   hoy.value = hoyISO()
   irA(vista.value, hoy.value)
+}
+
+// --- agenda de otra persona --------------------------------------------------------------------------
+
+const personas = ref([])
+const cargandoPersonas = ref(false)
+// Persona cuya agenda se ve, tal como la devolvió la API ({ id, nombre, rol }); null en la propia.
+const usuarioAgenda = ref(null)
+
+const opcionesDeAgenda = computed(() => [
+  { label: 'Mi agenda', value: null },
+  ...personas.value.map((p) => ({
+    label: `${p.nombre} (${formatearRol(p.rol)})`,
+    value: String(p.id),
+  })),
+])
+
+const nombreDeLaAgenda = computed(
+  () =>
+    usuarioAgenda.value?.nombre ??
+    personas.value.find((p) => String(p.id) === agendaId.value)?.nombre ??
+    'la persona elegida',
+)
+const tituloAgenda = computed(() => `Agenda de ${nombreDeLaAgenda.value}`)
+const textoCarga = computed(() =>
+  agendaId.value ? `Cargando la agenda de ${nombreDeLaAgenda.value}…` : 'Cargando tus juntas…',
+)
+const textoVacio = computed(() =>
+  agendaId.value
+    ? `${nombreDeLaAgenda.value} no tiene juntas en este periodo.`
+    : 'No tienes juntas en este periodo.',
+)
+
+const cambiarAgenda = (id) => {
+  const query = { ...route.query }
+  if (id) query.agenda = id
+  else delete query.agenda
+  router.replace({ query })
+}
+
+const cargarPersonas = async () => {
+  cargandoPersonas.value = true
+  try {
+    personas.value = await participantesDisponibles()
+  } catch {
+    personas.value = []
+  } finally {
+    cargandoPersonas.value = false
+  }
 }
 
 // --- datos ----------------------------------------------------------------------------------------
@@ -185,7 +273,7 @@ const errorCarga = ref('')
 let peticionActual = 0
 
 const MENSAJE_DE_CARGA =
-  'Qué ocurrió: No se pudieron cargar tus juntas. Sobre: tus juntas. Qué hacer: Pulsa «Reintentar»; si el error continúa, revisa tu conexión.'
+  'Qué ocurrió: No se pudieron cargar las juntas. Sobre: el calendario de juntas. Qué hacer: Pulsa «Reintentar»; si el error continúa, revisa tu conexión.'
 
 /**
  * Carga las juntas del periodo visible. En silencio (al volver a la pestaña) no muestra el
@@ -198,9 +286,12 @@ const cargar = async ({ silencioso = false } = {}) => {
     errorCarga.value = ''
   }
   try {
-    const lista = await listar(rango.value)
+    const pedida = agendaId.value
+    const respuesta = pedida ? await agendaDe(pedida, rango.value) : null
+    const lista = respuesta ? respuesta.juntas : await listar(rango.value)
     if (numero !== peticionActual) return
     juntas.value = lista
+    usuarioAgenda.value = respuesta ? respuesta.usuario : null
     errorCarga.value = ''
   } catch (error) {
     if (numero !== peticionActual || silencioso) return
@@ -211,7 +302,7 @@ const cargar = async ({ silencioso = false } = {}) => {
 }
 
 watch(
-  () => `${rango.value.desde}|${rango.value.hasta}`,
+  () => `${rango.value.desde}|${rango.value.hasta}|${agendaId.value}`,
   () => cargar(),
 )
 
@@ -227,6 +318,7 @@ onMounted(() => {
     irA(vista.value, fecha.value)
   }
   cargar()
+  cargarPersonas()
   abrirJuntaDeLaUrl()
   document.addEventListener('visibilitychange', alVolverALaPestana)
 })
@@ -240,7 +332,9 @@ const formularioAbierto = ref(false)
 const juntaEnEdicion = ref(null)
 const precarga = ref({ fecha: '', hora: '' })
 
+// Los bloques ajenos de la agenda de otra persona no tienen ficha.
 const abrirDetalle = (junta) => {
+  if (esJuntaOcupada(junta)) return
   juntaSeleccionada.value = junta
   detalleAbierto.value = true
 }
@@ -352,6 +446,28 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.juntas-page__agenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.juntas-page__selector {
+  flex: 0 1 320px;
+  min-width: min(100%, 240px);
+}
+
+.juntas-page__agenda-titulo {
+  flex: 1 1 220px;
+  margin: 0;
+  color: var(--dg-texto);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .juntas-page__periodo {

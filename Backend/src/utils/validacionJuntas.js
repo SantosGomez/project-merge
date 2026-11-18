@@ -97,9 +97,9 @@ function validarParticipantes(valor, creadorId) {
 
 /**
  * Valida el cuerpo para crear o reemplazar una junta.
- * @param {*} cuerpo - Cuerpo recibido: `{ titulo, descripcion?, inicio, fin, participantes }`.
+ * @param {*} cuerpo - Cuerpo recibido: `{ titulo, descripcion?, inicio, fin, participantes, privada? }`.
  * @param {number} creadorId - Cuenta que organiza la junta (no puede invitarse).
- * @returns {{ valor?: { titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[] }, error?: { mensaje: string } }}
+ * @returns {{ valor?: { titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[], privada: boolean }, error?: { mensaje: string } }}
  */
 function validarJunta(cuerpo, creadorId) {
   const datos = cuerpo !== null && typeof cuerpo === 'object' ? cuerpo : {};
@@ -120,6 +120,10 @@ function validarJunta(cuerpo, creadorId) {
   const participantes = validarParticipantes(datos.participantes, creadorId);
   if (participantes.error) return participantes;
 
+  if (datos.privada !== undefined && typeof datos.privada !== 'boolean') {
+    return errorDeCampo('La marca de junta privada no es válida', 'privada', 'Envía privada como true o false');
+  }
+
   return {
     valor: {
       titulo: titulo.valor,
@@ -127,6 +131,7 @@ function validarJunta(cuerpo, creadorId) {
       inicio: aDatetime(inicio),
       fin: aDatetime(fin),
       participantes: participantes.valor,
+      privada: datos.privada === true,
     },
   };
 }

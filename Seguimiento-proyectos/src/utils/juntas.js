@@ -181,7 +181,7 @@ export const etiquetaEstadoJunta = (estado) =>
  */
 export const miRespuestaEnJunta = (junta, usuarioId) => {
   if (usuarioId === null || usuarioId === undefined) return null
-  const yo = junta.participantes.find((p) => String(p.id) === String(usuarioId))
+  const yo = (junta.participantes ?? []).find((p) => String(p.id) === String(usuarioId))
   return yo ? yo.respuesta : null
 }
 
@@ -191,12 +191,38 @@ export const miRespuestaEnJunta = (junta, usuarioId) => {
  * @returns {string[]}
  */
 export const marcasDeJunta = (junta, usuarioId) => {
+  if (esJuntaOcupada(junta)) return []
   const marcas = []
   if (junta.estado === 'por_confirmar' || junta.estado === 'cancelada') {
     marcas.push(etiquetaEstadoJunta(junta.estado))
   }
   if (miRespuestaEnJunta(junta, usuarioId) === 'pendiente') marcas.push('Responder')
   return marcas
+}
+
+/**
+ * Bloque ajeno de la agenda de otra persona: la API lo marca con `ocupado` y no trae id, descripción
+ * ni invitados, así que no tiene ficha que abrir.
+ */
+export const esJuntaOcupada = (junta) => junta?.ocupado === true
+
+/** Texto del bloque ajeno: «Ocupado» si es privada; si es pública, «Título · organiza Nombre». */
+export const etiquetaDeJuntaOcupada = (junta) =>
+  junta.privada ? 'Ocupado' : `${junta.titulo} · organiza ${junta.organizador?.nombre ?? ''}`.trim()
+
+/** Clave estable para pintar una junta: su id o, en los bloques ajenos (sin id), su inicio y su posición. */
+export const claveDeJunta = (junta, indice) => junta.id ?? `ocupado-${junta.inicio}-${indice}`
+
+/**
+ * Persona de `?agenda=` de la URL.
+ * @param {Object|undefined} query - query de la ruta.
+ * @param {number|string|null} miId - cuenta de la sesión: su propia agenda es «Mi agenda».
+ * @returns {string|null} el id como texto, o null si falta, no es un entero positivo o es la propia cuenta.
+ */
+export const leerAgendaDeUrl = (query, miId) => {
+  const valor = query?.agenda
+  if (typeof valor !== 'string' || !/^[1-9]\d*$/.test(valor)) return null
+  return valor === String(miId) ? null : valor
 }
 
 /** HH:mm de una fecha y hora de la API (`AAAA-MM-DD HH:mm:ss`). */

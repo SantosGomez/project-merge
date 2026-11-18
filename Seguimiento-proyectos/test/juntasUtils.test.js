@@ -8,13 +8,18 @@ import { describe, it } from 'node:test'
 import {
   armarFechaHora,
   campoDeErrorJunta,
+  claveDeJunta,
   distribuirSolapadas,
+  esJuntaOcupada,
+  etiquetaDeJuntaOcupada,
   etiquetaRespuesta,
   formatearFechaISO,
   horaDeFechaHora,
   horarioDeJunta,
   juntasDelDia,
+  leerAgendaDeUrl,
   leerVistaDeUrl,
+  marcasDeJunta,
   moverPeriodo,
   parsearFechaISO,
   rangoVisible,
@@ -452,5 +457,64 @@ describe('validarFormularioJunta', () => {
       validarFormularioJunta({ ...valido, horaInicio: '9:5' }).horaInicio,
       'Escribe la hora como HH:mm, por ejemplo 09:30.',
     )
+  })
+})
+
+describe('agenda de otra persona', () => {
+  const publica = {
+    id: null,
+    titulo: 'Cierre de mes',
+    inicio: '2026-11-18 09:00:00',
+    fin: '2026-11-18 10:00:00',
+    organizador: { nombre: 'Ana Pérez' },
+    privada: false,
+    ocupado: true,
+  }
+  const privada = {
+    id: null,
+    titulo: 'Ocupado',
+    inicio: '2026-11-18 11:00:00',
+    fin: '2026-11-18 12:00:00',
+    privada: true,
+    ocupado: true,
+  }
+  const completa = { id: 7, titulo: 'Mía', participantes: [], estado: 'confirmada' }
+
+  it('esJuntaOcupada solo es verdadera para los bloques ajenos de la agenda', () => {
+    assert.equal(esJuntaOcupada(publica), true)
+    assert.equal(esJuntaOcupada(privada), true)
+    assert.equal(esJuntaOcupada(completa), false)
+    assert.equal(esJuntaOcupada(null), false)
+  })
+
+  it('etiquetaDeJuntaOcupada dice «Ocupado» si es privada y «título · organiza nombre» si es pública', () => {
+    assert.equal(etiquetaDeJuntaOcupada(privada), 'Ocupado')
+    assert.equal(etiquetaDeJuntaOcupada(publica), 'Cierre de mes · organiza Ana Pérez')
+  })
+
+  it('claveDeJunta usa el id y, sin él, distingue los bloques ajenos por su posición', () => {
+    assert.equal(claveDeJunta(completa, 0), 7)
+    assert.notEqual(claveDeJunta(publica, 0), claveDeJunta(publica, 1))
+    assert.notEqual(claveDeJunta(publica, 0), claveDeJunta(completa, 0))
+  })
+
+  it('claveDeJunta distingue bloques ajenos de días distintos aunque tengan el mismo índice', () => {
+    const otroDia = { ...publica, inicio: '2026-11-19 09:00:00', fin: '2026-11-19 10:00:00' }
+    assert.notEqual(claveDeJunta(publica, 0), claveDeJunta(otroDia, 0))
+  })
+
+  it('un bloque ajeno no lleva marcas de estado ni «Responder» y su horario se calcula', () => {
+    assert.deepEqual(marcasDeJunta(publica, 5), [])
+    assert.equal(horarioDeJunta(privada), '11:00 – 12:00')
+  })
+
+  it('leerAgendaDeUrl devuelve el id de otra persona y null para lo inválido o la propia cuenta', () => {
+    assert.equal(leerAgendaDeUrl({ agenda: '12' }, 5), '12')
+    assert.equal(leerAgendaDeUrl({ agenda: '5' }, 5), null)
+    assert.equal(leerAgendaDeUrl({ agenda: 5 }, '5'), null)
+    for (const malo of ['abc', '0', '-3', '1.5', '', '12abc', ['3', '4'], undefined, null]) {
+      assert.equal(leerAgendaDeUrl({ agenda: malo }, 5), null, String(malo))
+    }
+    assert.equal(leerAgendaDeUrl(undefined, 5), null)
   })
 })

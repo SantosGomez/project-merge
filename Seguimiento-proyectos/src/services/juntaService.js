@@ -25,6 +25,7 @@ export const crearJuntaService = (opciones = {}) => {
     inicio: datos.inicio,
     fin: datos.fin,
     participantes: datos.participantes,
+    privada: datos.privada === true,
   })
 
   /**
@@ -39,6 +40,21 @@ export const crearJuntaService = (opciones = {}) => {
   }
 
   /**
+   * GET /juntas/agenda/:usuarioId?desde&hasta: agenda de otra persona. Las juntas en las que participas
+   * vienen completas; las demás, como bloques `ocupado` sin id, sin descripción y sin invitados.
+   * @param {number|string} usuarioId
+   * @param {{ desde: string, hasta: string }} rango
+   * @returns {Promise<{ usuario: { id: number, nombre: string, rol: string }, juntas: Array<Object> }>}
+   */
+  const agendaDe = async (usuarioId, { desde, hasta }) => {
+    const { data } = await api.get(`/juntas/agenda/${usuarioId}`, { params: { desde, hasta } })
+    if (!data?.usuario || typeof data.usuario !== 'object' || !Array.isArray(data?.juntas)) {
+      throw crearErrorInesperado('la agenda de la persona')
+    }
+    return { usuario: data.usuario, juntas: data.juntas }
+  }
+
+  /**
    * GET /juntas/:id: una junta propia.
    * @param {number} id
    * @returns {Promise<Object>}
@@ -50,7 +66,7 @@ export const crearJuntaService = (opciones = {}) => {
 
   /**
    * POST /juntas: crea una junta; los invitados quedan en «pendiente».
-   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[] }} datos
+   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean }} datos
    * @returns {Promise<Object>} la junta creada.
    */
   const crear = async (datos) => {
@@ -61,7 +77,7 @@ export const crearJuntaService = (opciones = {}) => {
   /**
    * PATCH /juntas/:id: reemplaza los datos de la junta (la API pide el cuerpo completo).
    * @param {number} id
-   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[] }} datos
+   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean }} datos
    * @returns {Promise<Object>} la junta actualizada.
    */
   const actualizar = async (id, datos) => {
@@ -101,13 +117,23 @@ export const crearJuntaService = (opciones = {}) => {
     return data.usuarios
   }
 
-  return { listar, obtener, crear, actualizar, responder, borrar, participantesDisponibles }
+  return {
+    listar,
+    agendaDe,
+    obtener,
+    crear,
+    actualizar,
+    responder,
+    borrar,
+    participantesDisponibles,
+  }
 }
 
 // Servicio por defecto con la instancia de axios real.
 const servicioPorDefecto = crearJuntaService()
 
 export const listar = servicioPorDefecto.listar
+export const agendaDe = servicioPorDefecto.agendaDe
 export const obtener = servicioPorDefecto.obtener
 export const crear = servicioPorDefecto.crear
 export const actualizar = servicioPorDefecto.actualizar

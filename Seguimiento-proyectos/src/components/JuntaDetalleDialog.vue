@@ -25,6 +25,16 @@
               {{ etiquetaEstadoJunta(junta.estado) }}
               <q-tooltip>{{ AYUDA_ESTADO[junta.estado] ?? AYUDA_ESTADO.confirmada }}</q-tooltip>
             </q-chip>
+            <q-chip
+              v-if="junta.privada"
+              dense
+              square
+              icon="lock"
+              class="junta-detalle__estado bg-dg-info-fondo text-dg-info-texto"
+            >
+              Privada
+              <q-tooltip>Quien no está invitado solo ve «Ocupado» en las agendas.</q-tooltip>
+            </q-chip>
             <p class="junta-detalle__ayuda">{{ textoAyuda }}</p>
           </div>
         </div>

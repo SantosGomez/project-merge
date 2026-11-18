@@ -20,26 +20,46 @@
       >
         <template #day="{ scope }">
           <div class="calendario-juntas__dia">
-            <q-btn
-              v-for="junta in juntasDelDia(juntas, scope.timestamp.date)"
-              :key="junta.id"
-              unelevated
-              no-caps
-              dense
-              align="left"
-              :ripple="false"
-              class="junta-etiqueta boton-presionable"
-              :class="clasesDeEstado(junta, 'junta-etiqueta')"
-              :aria-label="nombreAccesible(junta)"
-              @click.stop="emit('abrir-junta', junta)"
+            <template
+              v-for="(junta, indice) in juntasDelDia(juntas, scope.timestamp.date)"
+              :key="claveDeJunta(junta, indice)"
             >
-              <span class="junta-etiqueta__hora">{{ horaDeFechaHora(junta.inicio) }}</span>
-              <span v-if="textoDeMarcas(junta)" class="junta-etiqueta__marcas">{{
-                textoDeMarcas(junta)
-              }}</span>
-              <span class="junta-etiqueta__titulo">{{ junta.titulo }}</span>
-              <q-tooltip>{{ textoCompleto(junta) }}</q-tooltip>
-            </q-btn>
+              <div
+                v-if="esJuntaOcupada(junta)"
+                tabindex="0"
+                role="group"
+                class="junta-etiqueta junta-etiqueta--ocupada"
+                :aria-label="nombreAccesibleOcupada(junta)"
+                @focus="enfocada = claveDeJunta(junta, indice)"
+                @blur="enfocada = null"
+                @click.stop
+              >
+                <span class="junta-etiqueta__hora">{{ horaDeFechaHora(junta.inicio) }}</span>
+                <span class="junta-etiqueta__titulo">{{ etiquetaDeJuntaOcupada(junta) }}</span>
+                <q-tooltip v-bind="ayudaDeOcupada(claveDeJunta(junta, indice))">{{
+                  AYUDA_OCUPADA
+                }}</q-tooltip>
+              </div>
+              <q-btn
+                v-else
+                unelevated
+                no-caps
+                dense
+                align="left"
+                :ripple="false"
+                class="junta-etiqueta boton-presionable"
+                :class="clasesDeEstado(junta, 'junta-etiqueta')"
+                :aria-label="nombreAccesible(junta)"
+                @click.stop="emit('abrir-junta', junta)"
+              >
+                <span class="junta-etiqueta__hora">{{ horaDeFechaHora(junta.inicio) }}</span>
+                <span v-if="textoDeMarcas(junta)" class="junta-etiqueta__marcas">{{
+                  textoDeMarcas(junta)
+                }}</span>
+                <span class="junta-etiqueta__titulo">{{ junta.titulo }}</span>
+                <q-tooltip>{{ textoCompleto(junta) }}</q-tooltip>
+              </q-btn>
+            </template>
           </div>
         </template>
       </QCalendarMonth>
@@ -66,31 +86,54 @@
         @click-time="alElegirHueco"
       >
         <template #day-body="{ scope }">
-          <q-btn
-            v-for="bloque in bloquesDelDia(scope.timestamp.date)"
-            :key="bloque.junta.id"
-            unelevated
-            no-caps
-            dense
-            align="left"
-            :ripple="false"
-            class="junta-bloque boton-presionable"
-            :class="clasesDeEstado(bloque.junta, 'junta-bloque')"
-            :style="estiloDeBloque(bloque)"
-            :aria-label="nombreAccesible(bloque.junta)"
-            @click.stop="emit('abrir-junta', bloque.junta)"
+          <template
+            v-for="(bloque, indice) in bloquesDelDia(scope.timestamp.date)"
+            :key="claveDeJunta(bloque.junta, indice)"
           >
-            <span class="junta-bloque__texto">
-              <span class="junta-bloque__titulo">{{ bloque.junta.titulo }}</span>
-              <span class="junta-bloque__horario">
-                {{ horarioDeJunta(bloque.junta) }}
-                <span v-if="textoDeMarcas(bloque.junta)" class="junta-bloque__marcas">
-                  {{ textoDeMarcas(bloque.junta) }}
+            <div
+              v-if="esJuntaOcupada(bloque.junta)"
+              tabindex="0"
+              role="group"
+              class="junta-bloque junta-bloque--ocupada"
+              :style="estiloDeBloque(bloque)"
+              :aria-label="nombreAccesibleOcupada(bloque.junta)"
+              @focus="enfocada = claveDeJunta(bloque.junta, indice)"
+              @blur="enfocada = null"
+              @click.stop
+            >
+              <span class="junta-bloque__texto">
+                <span class="junta-bloque__titulo">{{ etiquetaDeJuntaOcupada(bloque.junta) }}</span>
+                <span class="junta-bloque__horario">{{ horarioDeJunta(bloque.junta) }}</span>
+              </span>
+              <q-tooltip v-bind="ayudaDeOcupada(claveDeJunta(bloque.junta, indice))">{{
+                AYUDA_OCUPADA
+              }}</q-tooltip>
+            </div>
+            <q-btn
+              v-else
+              unelevated
+              no-caps
+              dense
+              align="left"
+              :ripple="false"
+              class="junta-bloque boton-presionable"
+              :class="clasesDeEstado(bloque.junta, 'junta-bloque')"
+              :style="estiloDeBloque(bloque)"
+              :aria-label="nombreAccesible(bloque.junta)"
+              @click.stop="emit('abrir-junta', bloque.junta)"
+            >
+              <span class="junta-bloque__texto">
+                <span class="junta-bloque__titulo">{{ bloque.junta.titulo }}</span>
+                <span class="junta-bloque__horario">
+                  {{ horarioDeJunta(bloque.junta) }}
+                  <span v-if="textoDeMarcas(bloque.junta)" class="junta-bloque__marcas">
+                    {{ textoDeMarcas(bloque.junta) }}
+                  </span>
                 </span>
               </span>
-            </span>
-            <q-tooltip>{{ textoCompleto(bloque.junta) }}</q-tooltip>
-          </q-btn>
+              <q-tooltip>{{ textoCompleto(bloque.junta) }}</q-tooltip>
+            </q-btn>
+          </template>
         </template>
       </QCalendarDay>
     </div>
@@ -98,7 +141,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { QCalendarDay } from '@quasar/quasar-ui-qcalendar/QCalendarDay'
 import { QCalendarMonth } from '@quasar/quasar-ui-qcalendar/QCalendarMonth'
 import '@quasar/quasar-ui-qcalendar/QCalendarDay.css'
@@ -107,7 +150,10 @@ import '@quasar/quasar-ui-qcalendar/QCalendarMonth.css'
 import {
   HORA_FIN_VISTA,
   HORA_INICIO_VISTA,
+  claveDeJunta,
   distribuirSolapadas,
+  esJuntaOcupada,
+  etiquetaDeJuntaOcupada,
   horaDeFechaHora,
   horarioDeJunta,
   juntasDelDia,
@@ -135,6 +181,24 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['abrir-junta', 'nueva-junta'])
+
+const AYUDA_OCUPADA = 'No estás invitado a esta junta'
+
+// Los bloques ajenos (agenda de otra persona) no abren ficha. Se enfocan con el teclado y su ayuda se
+// muestra al pasar el cursor o al enfocarlos; `enfocada` y `encima` guardan cuál es.
+const enfocada = ref(null)
+const encima = ref(null)
+
+const ayudaDeOcupada = (clave) => ({
+  modelValue: enfocada.value === clave || encima.value === clave,
+  'onUpdate:modelValue': (visible) => {
+    if (visible) encima.value = clave
+    else if (encima.value === clave) encima.value = null
+  },
+})
+
+const nombreAccesibleOcupada = (junta) =>
+  `${etiquetaDeJuntaOcupada(junta)}, ${horarioDeJunta(junta)}. ${AYUDA_OCUPADA}.`
 
 // Días de la semana de QCalendar: 0 es domingo.
 const DIAS_DEL_MES = [1, 2, 3, 4, 5, 6, 0]
@@ -315,6 +379,33 @@ const alElegirHueco = ({ scope }) => {
 .junta-etiqueta__marcas {
   flex: none;
   font-weight: 700;
+}
+
+/* Bloque ajeno de la agenda de otra persona: sin ficha, con borde discontinuo (no solo color) y texto «Ocupado». */
+.junta-etiqueta.junta-etiqueta--ocupada,
+.junta-bloque.junta-bloque--ocupada {
+  border-left: 3px dashed var(--dg-borde-discontinuo);
+  background: var(--dg-fondo-panel);
+  color: var(--dg-texto-secundario);
+  cursor: default;
+}
+
+.junta-etiqueta--ocupada {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.junta-etiqueta.junta-etiqueta--ocupada:hover,
+.junta-bloque.junta-bloque--ocupada:hover {
+  background: var(--dg-fondo-panel);
+}
+
+.junta-etiqueta--ocupada:focus-visible,
+.junta-bloque--ocupada:focus-visible {
+  outline: 2px solid var(--dg-foco);
+  outline-offset: 1px;
 }
 
 /* Junta en semana y día: un bloque sobre su franja horaria. */

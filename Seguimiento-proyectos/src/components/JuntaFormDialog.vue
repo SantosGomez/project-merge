@@ -254,6 +254,23 @@
             </q-input>
           </div>
 
+          <div class="form-group junta-form__ancho-completo">
+            <q-toggle
+              v-model="privada"
+              label="Junta privada"
+              color="primary"
+              class="control-touch"
+              aria-describedby="junta-privada-ayuda"
+            >
+              <q-tooltip>
+                Si la activas, quien no esté invitado solo verá «Ocupado» en las agendas.
+              </q-tooltip>
+            </q-toggle>
+            <p id="junta-privada-ayuda" class="form-help">
+              Quien no esté invitado solo verá «Ocupado» en las agendas.
+            </p>
+          </div>
+
           <ErrorState
             v-if="errorGuardado"
             class="junta-form__ancho-completo"
@@ -366,6 +383,8 @@ const props = defineProps({
   fechaInicial: { type: String, default: '' },
   /** Hora precargada al crear (HH:mm); vacío deja los campos en blanco. */
   horaInicial: { type: String, default: '' },
+  /** Persona a invitar de entrada al crear ({ id, nombre, rol }), p. ej. de cuya agenda se parte. */
+  invitadoInicial: { type: Object, default: null },
 })
 
 const emit = defineEmits(['guardada'])
@@ -416,6 +435,7 @@ const titulo = ref('')
 const fecha = ref('')
 const horas = ref({ horaInicio: '', horaFin: '' })
 const descripcion = ref('')
+const privada = ref(false)
 // Invitados elegidos, como opciones del selector ({ valor, nombre, rol, etiqueta }).
 const invitados = ref([])
 
@@ -470,6 +490,7 @@ const fotoDelFormulario = () =>
     fecha.value,
     horas.value,
     descripcion.value,
+    privada.value,
     idsDeInvitados().sort((a, b) => a - b),
   ])
 
@@ -533,7 +554,12 @@ const reiniciarFormulario = () => {
   const j = props.junta
   titulo.value = j?.titulo ?? ''
   descripcion.value = j?.descripcion ?? ''
-  invitados.value = (j?.participantes ?? []).map(opcionDePersona)
+  privada.value = j?.privada === true
+  invitados.value = j
+    ? j.participantes.map(opcionDePersona)
+    : props.invitadoInicial
+      ? [opcionDePersona(props.invitadoInicial)]
+      : []
   if (j) {
     fecha.value = fechaParaFormulario(j.inicio)
     horas.value = { horaInicio: horaDeFechaHora(j.inicio), horaFin: horaDeFechaHora(j.fin) }
@@ -600,6 +626,7 @@ const submit = async () => {
       inicio: armarFechaHora(fecha.value, horas.value.horaInicio),
       fin: armarFechaHora(fecha.value, horas.value.horaFin),
       participantes: idsDeInvitados(),
+      privada: privada.value,
     }
     const guardada = modoEdicion.value
       ? await actualizar(props.junta.id, datos)

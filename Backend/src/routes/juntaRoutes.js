@@ -5,6 +5,7 @@ const { requireCalendario } = require('../middlewares/roleMiddleware');
 const {
   listarParticipantesDisponibles,
   listarJuntas,
+  obtenerAgenda,
   crearJunta,
   obtenerJunta,
   actualizarJunta,
@@ -18,6 +19,9 @@ router.get('/participantes-disponibles', authenticateToken, requireCalendario, a
 
 // GET /juntas?desde=&hasta= — Juntas propias que se cruzan con el rango
 router.get('/', authenticateToken, requireCalendario, asyncHandler(listarJuntas));
+
+// GET /juntas/agenda/:usuarioId?desde=&hasta= — Agenda de otra persona del calendario (va antes que /:id)
+router.get('/agenda/:usuarioId', authenticateToken, requireCalendario, asyncHandler(obtenerAgenda));
 
 // POST /juntas — Crea una junta con invitados
 router.post('/', authenticateToken, requireCalendario, asyncHandler(crearJunta));

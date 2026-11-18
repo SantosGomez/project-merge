@@ -64,7 +64,8 @@ const MINIMOS = {
   'jornadaUtils.test.js': 7,
   'jornadas.test.js': 14,
   'estadoJunta.test.js': 7,
-  'juntas.test.js': 14,
+  'juntas.test.js': 15,
+  'agendaJuntas.test.js': 9,
   'miPerfil.test.js': 3,
   'moduloActividades.test.js': 13,
   'misCasosEnEquipo.test.js': 7,
@@ -92,7 +93,7 @@ const MINIMOS = {
   'userModel.test.js': 5,
   'userRoutes.test.js': 10,
   'respuestasJuntas.test.js': 16,
-  'validacionJuntas.test.js': 11,
+  'validacionJuntas.test.js': 12,
   'validationUtils.test.js': 23,
   'vencimientoActividad.test.js': 24,
 };

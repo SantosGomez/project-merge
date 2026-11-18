@@ -66,13 +66,14 @@ async function armarJuntas(filas, usuarioId) {
       fin: formatLocalDate(fila.fin),
       creado_por: { id: fila.creado_por, nombre: fila.creador_nombre },
       participantes,
+      privada: fila.privada === 1,
       estado: calcularEstado(participantes),
       soy_organizador: fila.creado_por === usuarioId,
     };
   });
 }
 
-const SELECT_JUNTA = `SELECT j.id, j.titulo, j.descripcion, j.inicio, j.fin, j.creado_por, u.nombre AS creador_nombre
+const SELECT_JUNTA = `SELECT j.id, j.titulo, j.descripcion, j.inicio, j.fin, j.privada, j.creado_por, u.nombre AS creador_nombre
                         FROM juntas j JOIN usuarios u ON u.id = j.creado_por`;
 
 /**
@@ -107,18 +108,68 @@ async function listarEnRango(usuarioId, desde, hastaExclusivo) {
 }
 
 /**
+ * Busca una cuenta que usa el calendario.
+ * @param {number} id - Id de la cuenta.
+ * @returns {Promise<{ id: number, nombre: string, rol: string }|null>} La cuenta, o null si no existe o no usa el calendario.
+ */
+async function buscarUsuarioDelCalendario(id) {
+  const filas = await query(`SELECT id, nombre, rol FROM usuarios WHERE id = ? AND rol IN (${MARCAS_ROLES})`, [
+    id,
+    ...ROLES_CALENDARIO,
+  ]);
+  return filas.length === 0 ? null : { id: filas[0].id, nombre: filas[0].nombre, rol: filas[0].rol };
+}
+
+/**
+ * Juntas que ocupan la agenda de una cuenta en el rango (donde organiza o está invitada, sin las que rechazó),
+ * ya sin las canceladas. Quien consulta recibe completas las suyas; de las ajenas, solo lo que su privacidad permite:
+ * pública → título, horario y organizador; privada → solo «Ocupado». Nunca id, descripción ni invitados.
+ * @param {number} usuarioId - Cuenta cuya agenda se consulta.
+ * @param {number} consultanteId - Cuenta que consulta.
+ * @param {string} desde - Medianoche del primer día (`AAAA-MM-DD HH:mm:ss`), incluida.
+ * @param {string} hastaExclusivo - Medianoche del día siguiente al último, excluida.
+ * @returns {Promise<Array<Object>>}
+ */
+async function agendaDe(usuarioId, consultanteId, desde, hastaExclusivo) {
+  const filas = await query(
+    `${SELECT_JUNTA}
+      WHERE j.inicio < ? AND j.fin > ?
+        AND (j.creado_por = ? OR EXISTS (
+              SELECT 1 FROM junta_participantes jp
+               WHERE jp.junta_id = j.id AND jp.usuario_id = ? AND jp.respuesta <> 'rechazada'))
+      ORDER BY j.inicio ASC, j.id ASC`,
+    [hastaExclusivo, desde, usuarioId, usuarioId]
+  );
+  const juntas = (await armarJuntas(filas, consultanteId)).filter((junta) => junta.estado !== 'cancelada');
+  return juntas.map((junta) => {
+    if (junta.soy_organizador || junta.participantes.some((p) => p.id === consultanteId)) return junta;
+    const { inicio, fin } = junta;
+    if (junta.privada) return { id: null, titulo: 'Ocupado', inicio, fin, privada: true, ocupado: true };
+    return {
+      id: null,
+      titulo: junta.titulo,
+      inicio,
+      fin,
+      organizador: { nombre: junta.creado_por.nombre },
+      privada: false,
+      ocupado: true,
+    };
+  });
+}
+
+/**
  * Crea una junta con sus invitados en `pendiente`, todo en una transacción.
  * @param {number} creadorId - Cuenta organizadora.
  * @param {{ titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[] }} datos - Datos ya validados.
  * @param {Function} [avisos] - `async (ejecutar, juntaId)` que crea los avisos dentro de la misma transacción.
  * @returns {Promise<Object>} La junta creada.
  */
-async function crear(creadorId, { titulo, descripcion, inicio, fin, participantes }, avisos) {
+async function crear(creadorId, { titulo, descripcion, inicio, fin, participantes, privada }, avisos) {
   const ahora = formatLocalDate(nowLocal());
   const id = await conTransaccion(async (ejecutar) => {
     const resultado = await ejecutar(
-      'INSERT INTO juntas (titulo, descripcion, inicio, fin, creado_por, creado_en, actualizado_en) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [titulo, descripcion, inicio, fin, creadorId, ahora, ahora]
+      'INSERT INTO juntas (titulo, descripcion, inicio, fin, privada, creado_por, creado_en, actualizado_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [titulo, descripcion, inicio, fin, privada ? 1 : 0, creadorId, ahora, ahora]
     );
     const marcas = participantes.map(() => '(?, ?)').join(', ');
     await ejecutar(
@@ -136,7 +187,7 @@ async function crear(creadorId, { titulo, descripcion, inicio, fin, participante
  * los nuevos entran en `pendiente` y los que salen se borran.
  * @param {number} id - Id de la junta.
  * @param {number} usuarioId - Cuenta organizadora que consulta.
- * @param {{ titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[] }} datos - Datos ya validados.
+ * @param {{ titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[], privada: boolean }} datos - Datos ya validados.
  * @param {{ reiniciarRespuestas?: boolean, avisos?: Function }} [opciones] - `reiniciarRespuestas` devuelve todas las
  *   respuestas a `pendiente` (cambió la fecha o la hora); `avisos` es `async (ejecutar)` dentro de la misma transacción.
  * @returns {Promise<Object>} La junta actualizada.
@@ -144,15 +195,16 @@ async function crear(creadorId, { titulo, descripcion, inicio, fin, participante
 async function actualizar(
   id,
   usuarioId,
-  { titulo, descripcion, inicio, fin, participantes },
+  { titulo, descripcion, inicio, fin, participantes, privada },
   { reiniciarRespuestas = false, avisos } = {}
 ) {
   await conTransaccion(async (ejecutar) => {
-    await ejecutar('UPDATE juntas SET titulo = ?, descripcion = ?, inicio = ?, fin = ?, actualizado_en = ? WHERE id = ?', [
+    await ejecutar('UPDATE juntas SET titulo = ?, descripcion = ?, inicio = ?, fin = ?, privada = ?, actualizado_en = ? WHERE id = ?', [
       titulo,
       descripcion,
       inicio,
       fin,
+      privada ? 1 : 0,
       formatLocalDate(nowLocal()),
       id,
     ]);
@@ -213,6 +265,8 @@ module.exports = {
   idsConRolDeCalendario,
   buscarPorId,
   listarEnRango,
+  buscarUsuarioDelCalendario,
+  agendaDe,
   crear,
   actualizar,
   responder,

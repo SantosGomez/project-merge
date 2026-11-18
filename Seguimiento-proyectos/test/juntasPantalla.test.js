@@ -133,3 +133,42 @@ describe('archivos nuevos: estilo del proyecto', () => {
     assert.match(calendario, /HORA_INICIO_VISTA/)
   })
 })
+
+describe('privacidad y agenda de otros (rebanada 23)', () => {
+  it('el formulario tiene el interruptor «Junta privada» con su ayuda', () => {
+    const formulario = leer('../src/components/JuntaFormDialog.vue')
+    assert.match(formulario, /<q-toggle/)
+    assert.match(formulario, /Junta privada/)
+    assert.match(formulario, /Quien no esté invitado solo verá «Ocupado» en las agendas/)
+    assert.match(formulario, /privada: privada\.value/)
+  })
+
+  it('la ficha muestra el chip «Privada» solo si la junta es privada', () => {
+    assert.match(
+      leer('../src/components/JuntaDetalleDialog.vue'),
+      /v-if="junta\.privada"[\s\S]{0,400}Privada/,
+    )
+  })
+
+  it('la pantalla tiene el selector «Ver agenda de» con «Mi agenda» y lo guarda en ?agenda=', () => {
+    const pagina = leer('../src/pages/JuntasPage.vue')
+    assert.match(pagina, /Ver agenda de/)
+    assert.match(pagina, /Mi agenda/)
+    assert.match(pagina, /query.agenda = id/)
+    assert.match(pagina, /Agenda de \$\{/)
+    assert.match(pagina, /agendaDe\(/)
+  })
+
+  it('en la agenda de otro, «Nueva junta» y los huecos invitan a esa persona', () => {
+    const pagina = leer('../src/pages/JuntasPage.vue')
+    assert.match(pagina, /:invitado-inicial=/)
+    assert.match(leer('../src/components/JuntaFormDialog.vue'), /invitadoInicial/)
+  })
+
+  it('el calendario no abre ficha de los bloques ajenos y aclara «No estás invitado a esta junta»', () => {
+    const calendario = leer('../src/components/CalendarioJuntas.vue')
+    assert.match(calendario, /No estás invitado a esta junta/)
+    assert.match(calendario, /esJuntaOcupada/)
+    assert.match(calendario, /tabindex="0"/)
+  })
+})

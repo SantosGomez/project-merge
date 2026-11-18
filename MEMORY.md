@@ -23,7 +23,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
   - 21a, juntas en el backend: hecha y subida (`6aedcce`).
   - 21b, pantalla «Juntas» (`/juntas`, QCalendar 5.4.0 importado solo en `CalendarioJuntas.vue`; principal de la recepcionista). Si `npm install` da EBUSY, cerrar el servidor de desarrollo.
   - 22, responder invitaciones: `PATCH /juntas/:id/respuesta`, estado calculado en `estadoJunta.js` (no se guarda), `notificaciones.junta_id`; el enlace del aviso solo se da a quien organiza o sigue invitado; cambiar inicio/fin reinicia respuestas. Recepcionista con campana.
-  - 23, juntas privadas.
+  - 23, juntas privadas y agenda de otros: `juntas.privada`, `GET /juntas/agenda/:usuarioId` (un tercero nunca recibe id, descripción ni invitados; privada = «Ocupado»), selector «Ver agenda de» (`?agenda=`). Claves de bloques sin id únicas en todo el calendario.
   - 24, avisos por correo.
   - 25, vista de año y vencimientos.
 
