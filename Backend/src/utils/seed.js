@@ -186,6 +186,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarVencimientoDeTipos();
   await migrarRegistrosTiempo();
   await migrarJornadas();
+  await migrarJuntas();
 
   if (!cuentasDemo) return;
 
@@ -563,6 +564,41 @@ async function migrarJornadas() {
       usuario_id INT NOT NULL PRIMARY KEY,
       jornada_base_minutos INT NOT NULL DEFAULT 480,
       CONSTRAINT fk_ajustes_actividades_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+}
+
+/**
+ * Crea las tablas de las juntas del calendario (rebanada 21a) si no existen; solo CREATE, nunca borra nada:
+ * - `juntas`: título, descripción, inicio y fin (DATETIME local) y la cuenta que la organiza.
+ * - `junta_participantes`: los invitados de cada junta y su respuesta (por ahora siempre `pendiente`).
+ * Se borran en cascada con la cuenta del organizador o del invitado, y los invitados con su junta.
+ */
+async function migrarJuntas() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS juntas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(150) NOT NULL,
+      descripcion VARCHAR(1000) NULL,
+      inicio DATETIME NOT NULL,
+      fin DATETIME NOT NULL,
+      creado_por INT NOT NULL,
+      creado_en DATETIME NOT NULL,
+      actualizado_en DATETIME NOT NULL,
+      KEY idx_juntas_inicio_fin (inicio, fin),
+      CONSTRAINT fk_juntas_creado_por FOREIGN KEY (creado_por) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS junta_participantes (
+      junta_id INT NOT NULL,
+      usuario_id INT NOT NULL,
+      respuesta ENUM('pendiente', 'aceptada', 'rechazada') NOT NULL DEFAULT 'pendiente',
+      respondido_en DATETIME NULL,
+      PRIMARY KEY (junta_id, usuario_id),
+      KEY idx_junta_participantes_usuario (usuario_id),
+      CONSTRAINT fk_junta_participantes_junta FOREIGN KEY (junta_id) REFERENCES juntas(id) ON DELETE CASCADE,
+      CONSTRAINT fk_junta_participantes_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
 }

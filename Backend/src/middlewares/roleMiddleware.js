@@ -151,6 +151,31 @@ async function requireConsultaDirectorio(req, res, next) {
   next();
 }
 
+/**
+ * Middleware del calendario de juntas: permite a administrador, contador, auxiliar y recepcionista.
+ * usuarios_de_sistema no usa el calendario.
+ * @param {Object} req - Objeto de petición (debe contener req.user con rol).
+ * @param {Object} res - Objeto de respuesta.
+ * @param {Function} next - Función siguiente del middleware.
+ */
+async function requireCalendario(req, res, next) {
+  if (!req.user) {
+    res.status(403).json(
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión para usar el calendario')
+    );
+    return;
+  }
+
+  if (!['administrador', 'contador', 'auxiliar', 'recepcionista'].includes(req.user.rol)) {
+    res.status(403).json(
+      buildError('Rol insuficiente', 'usuario autenticado', 'Se requiere rol de administrador, contador, auxiliar o recepcionista para usar el calendario')
+    );
+    return;
+  }
+
+  next();
+}
+
 module.exports = {
   requireAdmin,
   requireAdminOrSistema,
@@ -158,4 +183,5 @@ module.exports = {
   requireContador,
   requireContadorOAuxiliar,
   requireConsultaDirectorio,
+  requireCalendario,
 };

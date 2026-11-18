@@ -63,6 +63,7 @@ const MINIMOS = {
   'inyeccionSql.test.js': 9,
   'jornadaUtils.test.js': 7,
   'jornadas.test.js': 14,
+  'juntas.test.js': 14,
   'miPerfil.test.js': 3,
   'moduloActividades.test.js': 13,
   'misCasosEnEquipo.test.js': 7,
@@ -89,6 +90,7 @@ const MINIMOS = {
   'tokenUtils.test.js': 9,
   'userModel.test.js': 5,
   'userRoutes.test.js': 10,
+  'validacionJuntas.test.js': 9,
   'validationUtils.test.js': 23,
   'vencimientoActividad.test.js': 24,
 };

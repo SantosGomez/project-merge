@@ -18,15 +18,27 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 - **Editar cuentas:** `PATCH /usuarios/:id` con `NewUserDialog.vue` (prop `cuenta`). Nunca cambia la contraseña; si cambia el rol, revoca las sesiones. Sin cubrir: auditorías de un contador que cambia de rol.
 - **«Mi perfil»:** «Cambiar contraseña» está oculto (`CAMBIO_CONTRASENA_HABILITADO = false`); el backend sigue ahí.
 
-- **Módulo de calendario (desde 2026-11-18, sin commit):** plan en `docs/rebanadas/20-rol-recepcionista.md`:
-  1. Rol recepcionista.
-  2. Calendario mes/semana/día con QCalendar.
-  3. Invitaciones con aviso en la app.
-  4. Juntas privadas.
-  5. Avisos por correo.
-  6. Vista de año y vencimientos.
+- **Módulo de calendario (desde 2026-11-18):** rebanadas:
+  - 20, rol recepcionista: hecha y subida (`e401872`).
+  - 21a, juntas en el backend: aprobada, sin commit.
+  - 21b, pantalla con QCalendar (aprobado).
+  - 22, responder invitaciones y estado «por confirmar».
+  - 23, juntas privadas.
+  - 24, avisos por correo.
+  - 25, vista de año y vencimientos.
 
-  Decisiones: calendario propio (Google aparte), solo juntas internas, privacidad por junta. **La 20 está aprobada:** la recepcionista solo consulta el directorio (`requireConsultaDirectorio`) y su pantalla principal es provisional hasta la 2. Preguntas abiertas: el horario laboral; si los invitados también aceptan o solo el administrador; si la recepcionista ve el «Último acceso».
+  Decisiones:
+  - Calendario propio (Google queda aparte), solo juntas internas y privacidad por junta.
+  - Cada invitado acepta o rechaza; si el administrador está invitado, su respuesta confirma o cancela la junta.
+  - Los 4 roles crean juntas e invitan entre sí.
+  - La recepcionista solo consulta el directorio (`requireConsultaDirectorio`); su pantalla principal es provisional hasta la 21b.
+
+  21a:
+  - Tablas `juntas` y `junta_participantes`, rutas `/juntas` (`requireCalendario`); `/eventos` es el SSE.
+  - El PATCH pide el cuerpo completo y conserva respuestas y `respondido_en`.
+  - Campos de error: `título`, `descripción`, `inicio`, `fin`, `participantes` y `rango de fechas`.
+
+  Preguntas abiertas: el horario laboral (para la 21b) y si la recepcionista ve el «Último acceso».
 
 ## Pendientes / para decidir
 

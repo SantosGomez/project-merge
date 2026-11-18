@@ -49,7 +49,7 @@ const PAYLOADS_TIPADOS = [
 const CAMPOS = [
   'cliente', 'estado', 'prioridad', 'fecha_inicio', 'fecha_vencimiento', 'descripcion', 'observaciones',
   'observacion', 'importante', 'nombre', 'correo', 'password', 'rol', 'rfc', 'activo', 'regla_vencimiento',
-  'dia_del_mes', 'cobrable', 'agregar', 'quitar', 'contadores', 'contador_id', 'no_expediente', 'dependencia',
+  'dia_del_mes', 'titulo', 'inicio', 'fin', 'participantes', 'cobrable', 'agregar', 'quitar', 'contadores', 'contador_id', 'no_expediente', 'dependencia',
   'tipo_auditoria', 'estatal', 'evento', 'fase_id', 'fecha', 'hecha', 'texto', 'cliente_id', 'tipo_id', 'mes',
   'minutos', 'paso', 'jornada_base_minutos', 'entrada', 'salida', 'descanso_inicio', 'descanso_fin',
 ];
@@ -158,6 +158,12 @@ const ENDPOINTS = [
   ['PUT', '/jornadas/{P}', 'contador', true],
   ['GET', '/informes/tiempo', 'contador', false],
   ['GET', '/notificaciones', 'contador', false],
+  ['GET', '/juntas/participantes-disponibles', 'contador', false],
+  ['GET', '/juntas', 'contador', false],
+  ['POST', '/juntas', 'contador', true],
+  ['GET', '/juntas/{P}', 'contador', false],
+  ['PATCH', '/juntas/{P}', 'contador', true],
+  ['DELETE', '/juntas/{P}', 'contador', false],
 ];
 
 /**

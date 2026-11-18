@@ -30,6 +30,7 @@ const SISTEMA = 'usuarios_de_sistema';
 const RECEPCIONISTA = 'recepcionista';
 const TODOS = [ADMIN, CONTADOR, AUXILIAR, SISTEMA, RECEPCIONISTA];
 const CONTADOR_O_AUXILIAR = [CONTADOR, AUXILIAR];
+const CALENDARIO = [ADMIN, CONTADOR, AUXILIAR, RECEPCIONISTA];
 const ID_INEXISTENTE = 99999999;
 
 /**
@@ -107,6 +108,13 @@ const MATRIZ = [
   ['PUT', '/jornadas/ajustes', CONTADOR_O_AUXILIAR, {}],
   ['PUT', '/jornadas/:fecha', CONTADOR_O_AUXILIAR, {}],
   ['GET', '/informes/tiempo', CONTADOR_O_AUXILIAR],
+  // juntas del calendario
+  ['GET', '/juntas/participantes-disponibles', CALENDARIO],
+  ['GET', '/juntas', CALENDARIO],
+  ['POST', '/juntas', CALENDARIO, {}],
+  ['GET', '/juntas/:x', CALENDARIO],
+  ['PATCH', '/juntas/:x', CALENDARIO, {}],
+  ['DELETE', '/juntas/:x', CALENDARIO],
 ];
 
 // Endpoints sin token de acceso: el inicio de sesión y la conexión de tiempo real (con pase).
@@ -230,7 +238,7 @@ describe('matriz: la tabla cubre todas las rutas de la API', () => {
       [...app.matchAll(/const (\w+) = require\('\.\/routes\/(\w+)'\)/g)].map((m) => [m[1], m[2]])
     );
     const montajes = [...app.matchAll(/app\.use\('(\/[\w-]+)', (\w+)\)/g)].map((m) => [m[1], archivos[m[2]]]);
-    assert.ok(montajes.length >= 13, 'debe encontrar los 13 módulos de rutas');
+    assert.ok(montajes.length >= 14, 'debe encontrar los 14 módulos de rutas');
 
     const registradas = [];
     for (const [prefijo, archivo] of montajes) {
