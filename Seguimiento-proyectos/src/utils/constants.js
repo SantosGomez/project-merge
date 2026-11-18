@@ -31,7 +31,7 @@ export const PRIORITY_COLORS = {
 /**
  * Perfiles de la app; el usuario de sistema solo da de alta cuentas (historia 9a).
  * El auxiliar trabaja casos como un contador y apoya a uno; no gestiona auxiliares ni auditorías.
- * La recepcionista consulta el directorio en solo lectura (su pantalla es provisional hasta el calendario).
+ * La recepcionista consulta el directorio en solo lectura y entra por el calendario de juntas.
  */
 export const PROFILES = {
   administrador: 'administrador',
@@ -82,5 +82,5 @@ export const RUTA_PRINCIPAL_POR_ROL = Object.freeze({
   [PROFILES.contador]: '/contador/casos',
   [PROFILES.auxiliar]: '/contador/casos',
   [PROFILES.sistema]: '/admin/directorio',
-  [PROFILES.recepcionista]: '/admin/directorio',
+  [PROFILES.recepcionista]: '/juntas',
 })

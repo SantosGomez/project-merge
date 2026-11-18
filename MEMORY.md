@@ -20,8 +20,8 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 
 - **Módulo de calendario (desde 2026-11-18):** rebanadas:
   - 20, rol recepcionista: hecha y subida (`e401872`).
-  - 21a, juntas en el backend: aprobada, sin commit.
-  - 21b, pantalla con QCalendar (aprobado).
+  - 21a, juntas en el backend: hecha y subida (`6aedcce`).
+  - 21b, pantalla «Juntas» (`/juntas`, QCalendar 5.4.0 importado solo en `CalendarioJuntas.vue`; principal de la recepcionista). Si `npm install` da EBUSY, cerrar el servidor de desarrollo.
   - 22, responder invitaciones y estado «por confirmar».
   - 23, juntas privadas.
   - 24, avisos por correo.

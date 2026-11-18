@@ -148,6 +148,24 @@
                 <q-item-label caption>Registrar y dar seguimiento</q-item-label>
               </q-item-section>
             </q-item>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'juntas' }"
+              :aria-current="paginaActual('juntas')"
+              aria-label="Ir a juntas"
+            >
+              <q-item-section avatar>
+                <q-icon name="event" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Juntas</q-item-label>
+                <q-item-label caption>Calendario de juntas del equipo</q-item-label>
+              </q-item-section>
+            </q-item>
           </template>
 
           <template v-if="session.trabajaCasos">
@@ -211,6 +229,24 @@
                 <q-item-label caption>Registrar y dar seguimiento</q-item-label>
               </q-item-section>
             </q-item>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'juntas' }"
+              :aria-current="paginaActual('juntas')"
+              aria-label="Ir a juntas"
+            >
+              <q-item-section avatar>
+                <q-icon name="event" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Juntas</q-item-label>
+                <q-item-label caption>Calendario de juntas del equipo</q-item-label>
+              </q-item-section>
+            </q-item>
           </template>
 
           <template v-if="session.esUsuarioSistema">
@@ -237,6 +273,24 @@
 
           <template v-if="session.esRecepcionista">
             <q-item-label header>Recepción</q-item-label>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'juntas' }"
+              :aria-current="paginaActual('juntas')"
+              aria-label="Ir a juntas"
+            >
+              <q-item-section avatar>
+                <q-icon name="event" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Juntas</q-item-label>
+                <q-item-label caption>Calendario de juntas del equipo</q-item-label>
+              </q-item-section>
+            </q-item>
 
             <q-item
               clickable

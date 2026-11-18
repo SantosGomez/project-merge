@@ -12,6 +12,7 @@ import AuditoriasPage from '../pages/AuditoriasPage.vue'
 import CambiarContrasenaPage from '../pages/CambiarContrasenaPage.vue'
 import ContadorDashboardPage from '../pages/ContadorDashboardPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
+import JuntasPage from '../pages/JuntasPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
 import ContadorAuxiliaresPage from '../pages/ContadorAuxiliaresPage.vue'
@@ -104,6 +105,16 @@ const routes = [
           requiereSesion: true,
           perfil: [PROFILES.administrador, PROFILES.contador],
           titulo: 'Ficha de auditoría',
+        },
+      },
+      {
+        path: 'juntas',
+        name: 'juntas',
+        component: JuntasPage,
+        meta: {
+          requiereSesion: true,
+          perfil: [PROFILES.administrador, PROFILES.contador, PROFILES.auxiliar, PROFILES.recepcionista],
+          titulo: 'Juntas',
         },
       },
       {

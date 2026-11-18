@@ -1,6 +1,6 @@
 // Rol recepcionista (rebanada 20, 2026-11-18): entra a la app, consulta el directorio en solo
 // lectura y no ve nada de casos, auditorías ni avisos. Se da de alta desde el directorio.
-// Su pantalla principal es provisional: la rebanada 2 del calendario la cambia.
+// Su pantalla principal es el calendario «Juntas» (rebanada 21b); el directorio sigue en su menú.
 
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
@@ -28,10 +28,10 @@ const accesoDeLaRecepcionista = (nombre) =>
   }).accion
 
 describe('rol recepcionista: datos y reglas', () => {
-  it('existe como perfil, se muestra como «Recepcionista» y su pantalla principal es el directorio', () => {
+  it('existe como perfil, se muestra como «Recepcionista» y su pantalla principal es «Juntas»', () => {
     assert.equal(PROFILES.recepcionista, 'recepcionista')
     assert.equal(formatearRol('recepcionista'), 'Recepcionista')
-    assert.equal(RUTA_PRINCIPAL_POR_ROL.recepcionista, '/admin/directorio')
+    assert.equal(RUTA_PRINCIPAL_POR_ROL.recepcionista, '/juntas')
   })
 
   it('el alta de usuario acepta el rol recepcionista', () => {
@@ -45,8 +45,9 @@ describe('rol recepcionista: datos y reglas', () => {
     assert.equal(valido, true)
   })
 
-  it('entra al directorio y a ninguna otra pantalla con perfil', () => {
+  it('entra al directorio y a «Juntas», y a ninguna otra pantalla con perfil', () => {
     assert.equal(accesoDeLaRecepcionista('admin-directorio'), 'permitir')
+    assert.equal(accesoDeLaRecepcionista('juntas'), 'permitir')
     for (const nombre of [
       'admin-dashboard',
       'auditorias',
@@ -71,14 +72,15 @@ describe('rol recepcionista: pantallas', () => {
     assert.doesNotMatch(sesion, /trabajaCasos: [^\n]*recepcionista/)
   })
 
-  it('el menú tiene la sección «Recepción» con un solo ítem «Directorio», sin tooltip', () => {
+  it('el menú tiene la sección «Recepción» con los ítems «Juntas» y «Directorio», sin tooltip', () => {
     const inicio = layout.indexOf('<template v-if="session.esRecepcionista">')
     assert.ok(inicio >= 0, 'falta la sección de la recepcionista')
     const seccion = layout.slice(inicio, layout.indexOf('</template>', inicio))
     assert.match(seccion, /<q-item-label header>Recepción<\/q-item-label>/)
+    assert.match(seccion, /name: 'juntas'/)
     assert.match(seccion, /name: 'admin-directorio'/)
     assert.match(seccion, /Consultar cuentas del equipo/)
-    assert.equal((seccion.match(/<q-item\s/g) ?? []).length, 1)
+    assert.equal((seccion.match(/<q-item\s/g) ?? []).length, 2)
     assert.doesNotMatch(seccion, /q-tooltip/)
   })
 

@@ -1,0 +1,456 @@
+// Utilidades puras del calendario de juntas (rebanada 21b): rango visible, periodo, fechas del
+// formulario, respuesta de los invitados y colocación de las juntas en la cuadrícula.
+// Los valores esperados están calculados a mano contra el calendario de noviembre de 2026.
+
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import {
+  armarFechaHora,
+  campoDeErrorJunta,
+  distribuirSolapadas,
+  etiquetaRespuesta,
+  formatearFechaISO,
+  horaDeFechaHora,
+  horarioDeJunta,
+  juntasDelDia,
+  leerVistaDeUrl,
+  moverPeriodo,
+  parsearFechaISO,
+  rangoVisible,
+  segmentoDelDia,
+  textoPeriodo,
+  validarFormularioJunta,
+  vistaInicial,
+} from '../src/utils/juntas.js'
+
+describe('fechas sin desplazamiento de zona horaria', () => {
+  it('parsea y formatea una fecha AAAA-MM-DD como día local', () => {
+    const fecha = parsearFechaISO('2026-11-18')
+    assert.equal(fecha.getDate(), 18)
+    assert.equal(fecha.getMonth(), 10)
+    assert.equal(formatearFechaISO(fecha), '2026-11-18')
+  })
+
+  it('rechaza fechas que no existen o con otro formato', () => {
+    assert.equal(parsearFechaISO('2026-02-30'), null)
+    assert.equal(parsearFechaISO('18-11-2026'), null)
+    assert.equal(parsearFechaISO(undefined), null)
+  })
+})
+
+describe('rangoVisible', () => {
+  it('mes: del lunes de la semana del día 1 al domingo de la semana del último día', () => {
+    // 1 nov 2026 es domingo y 30 nov es lunes.
+    assert.deepEqual(rangoVisible('mes', '2026-11-18'), {
+      desde: '2026-10-26',
+      hasta: '2026-12-06',
+    })
+  })
+
+  it('mes: un mes que empieza en lunes y termina en domingo no agrega semanas', () => {
+    // 1 jun 2026 es lunes y 30 jun es martes; febrero 2027 empieza en lunes y termina en domingo.
+    assert.deepEqual(rangoVisible('mes', '2027-02-10'), {
+      desde: '2027-02-01',
+      hasta: '2027-02-28',
+    })
+  })
+
+  it('semana: de lunes a domingo, aunque la fecha sea domingo', () => {
+    assert.deepEqual(rangoVisible('semana', '2026-11-18'), {
+      desde: '2026-11-16',
+      hasta: '2026-11-22',
+    })
+    assert.deepEqual(rangoVisible('semana', '2026-11-22'), {
+      desde: '2026-11-16',
+      hasta: '2026-11-22',
+    })
+  })
+
+  it('día: solo ese día, también en fin de semana', () => {
+    assert.deepEqual(rangoVisible('dia', '2026-11-21'), {
+      desde: '2026-11-21',
+      hasta: '2026-11-21',
+    })
+  })
+
+  it('cruza el cambio de año', () => {
+    assert.deepEqual(rangoVisible('semana', '2026-12-31'), {
+      desde: '2026-12-28',
+      hasta: '2027-01-03',
+    })
+  })
+})
+
+describe('moverPeriodo', () => {
+  it('semana y día avanzan y retroceden por días, cruzando mes', () => {
+    assert.equal(moverPeriodo('semana', '2026-11-30', 1), '2026-12-07')
+    assert.equal(moverPeriodo('semana', '2026-11-02', -1), '2026-10-26')
+    assert.equal(moverPeriodo('dia', '2026-11-30', 1), '2026-12-01')
+  })
+
+  it('mes conserva el día y, si el mes nuevo es más corto, usa su último día', () => {
+    assert.equal(moverPeriodo('mes', '2026-11-18', 1), '2026-12-18')
+    assert.equal(moverPeriodo('mes', '2026-12-31', 1), '2027-01-31')
+    assert.equal(moverPeriodo('mes', '2026-03-31', -1), '2026-02-28')
+  })
+})
+
+describe('textoPeriodo', () => {
+  it('mes', () => {
+    assert.equal(textoPeriodo('mes', '2026-11-18'), 'noviembre de 2026')
+  })
+
+  it('semana de lunes a viernes dentro de un mes', () => {
+    assert.equal(textoPeriodo('semana', '2026-11-18'), '16 – 20 de noviembre de 2026')
+  })
+
+  it('semana que cruza de mes y de año', () => {
+    assert.equal(textoPeriodo('semana', '2026-11-30'), '30 de noviembre – 4 de diciembre de 2026')
+    assert.equal(
+      textoPeriodo('semana', '2026-12-31'),
+      '28 de diciembre de 2026 – 1 de enero de 2027',
+    )
+  })
+
+  it('día con su nombre', () => {
+    assert.equal(textoPeriodo('dia', '2026-11-18'), 'miércoles 18 de noviembre de 2026')
+    assert.equal(textoPeriodo('dia', '2026-11-21'), 'sábado 21 de noviembre de 2026')
+  })
+})
+
+describe('vista y fecha de la URL', () => {
+  it('sin vista elige Día en menos de 600 px y Semana en el resto', () => {
+    assert.equal(vistaInicial(599), 'dia')
+    assert.equal(vistaInicial(600), 'semana')
+  })
+
+  it('respeta una vista y una fecha válidas', () => {
+    assert.deepEqual(leerVistaDeUrl({ vista: 'mes', fecha: '2026-11-18' }, 1200, '2026-11-20'), {
+      vista: 'mes',
+      fecha: '2026-11-18',
+    })
+  })
+
+  it('ignora vistas o fechas inválidas y usa hoy y la vista por ancho', () => {
+    assert.deepEqual(leerVistaDeUrl({ vista: 'anio', fecha: '2026-02-31' }, 375, '2026-11-20'), {
+      vista: 'dia',
+      fecha: '2026-11-20',
+    })
+    assert.deepEqual(leerVistaDeUrl({}, 1200, '2026-11-20'), {
+      vista: 'semana',
+      fecha: '2026-11-20',
+    })
+  })
+})
+
+describe('armarFechaHora', () => {
+  it('une DD-MM-AAAA y HH:mm en AAAA-MM-DD HH:mm', () => {
+    assert.equal(armarFechaHora('18-11-2026', '09:30'), '2026-11-18 09:30')
+    assert.equal(armarFechaHora(' 01-12-2026 ', '19:00'), '2026-12-01 19:00')
+  })
+
+  it('devuelve null si la fecha o la hora no son válidas', () => {
+    assert.equal(armarFechaHora('31-02-2026', '09:00'), null)
+    assert.equal(armarFechaHora('18-11-2026', '24:00'), null)
+    assert.equal(armarFechaHora('18-11-2026', '9:5'), null)
+    assert.equal(armarFechaHora('', ''), null)
+  })
+})
+
+describe('etiquetaRespuesta', () => {
+  it('traduce cada respuesta a texto', () => {
+    assert.equal(etiquetaRespuesta('pendiente'), 'Pendiente')
+    assert.equal(etiquetaRespuesta('aceptada'), 'Aceptó')
+    assert.equal(etiquetaRespuesta('rechazada'), 'Rechazó')
+  })
+
+  it('una respuesta desconocida se muestra como Pendiente', () => {
+    assert.equal(etiquetaRespuesta('otra'), 'Pendiente')
+  })
+})
+
+describe('horaDeFechaHora', () => {
+  it('toma HH:mm de la hora local que devuelve la API', () => {
+    assert.equal(horaDeFechaHora('2026-11-18 09:05:00'), '09:05')
+    assert.equal(horaDeFechaHora('2026-11-18 19:30'), '19:30')
+  })
+})
+
+describe('horarioDeJunta', () => {
+  it('una junta de un solo día muestra solo las horas', () => {
+    assert.equal(
+      horarioDeJunta({ inicio: '2026-11-18 09:00:00', fin: '2026-11-18 10:30:00' }),
+      '09:00 – 10:30',
+    )
+  })
+
+  it('una junta que cruza la medianoche muestra la fecha de cada extremo', () => {
+    assert.equal(
+      horarioDeJunta({ inicio: '2026-11-18 17:00:00', fin: '2026-11-19 09:00:00' }),
+      '18-11-2026 17:00 – 19-11-2026 09:00',
+    )
+  })
+
+  it('una junta fuera del horario laboral conserva su hora real', () => {
+    assert.equal(
+      horarioDeJunta({ inicio: '2026-11-18 07:00:00', fin: '2026-11-18 20:15:00' }),
+      '07:00 – 20:15',
+    )
+  })
+})
+
+describe('campoDeErrorJunta', () => {
+  it('lee el campo de la parte «sobre X» del mensaje del backend', () => {
+    const queHacer = 'Elige una hora de fin posterior a la de inicio'
+    assert.equal(
+      campoDeErrorJunta(`El fin no es posterior al inicio sobre fin: ${queHacer}`),
+      'fin',
+    )
+    assert.equal(
+      campoDeErrorJunta('Falta el título de la junta sobre título: Escribe el título'),
+      'titulo',
+    )
+    assert.equal(
+      campoDeErrorJunta(
+        'La descripción supera los 1000 caracteres sobre descripción: Escribe una descripción más corta',
+      ),
+      'descripcion',
+    )
+    assert.equal(
+      campoDeErrorJunta('La fecha y hora de inicio no son válidas sobre inicio: Escribe la fecha'),
+      'inicio',
+    )
+    assert.equal(
+      campoDeErrorJunta(
+        'Falta elegir a los invitados sobre participantes: Elige entre 1 y 50 invitados',
+      ),
+      'participantes',
+    )
+  })
+
+  it('un error que no es de un campo del formulario devuelve null', () => {
+    assert.equal(
+      campoDeErrorJunta(
+        'El rango de fechas es incorrecto sobre rango de fechas: Envía desde y hasta',
+      ),
+      null,
+    )
+    assert.equal(campoDeErrorJunta('No se pudo conectar con el servidor'), null)
+    assert.equal(campoDeErrorJunta(undefined), null)
+  })
+})
+
+describe('segmentoDelDia: lo que se pinta de una junta en un día, de 8:00 a 19:00', () => {
+  const junta = (inicio, fin) => ({ id: 1, inicio, fin })
+
+  it('una junta dentro del horario ocupa de su inicio a su fin, en minutos del día', () => {
+    assert.deepEqual(
+      segmentoDelDia(junta('2026-11-18 09:00:00', '2026-11-18 10:30:00'), '2026-11-18'),
+      {
+        desde: 540,
+        hasta: 630,
+        recortadaAntes: false,
+        recortadaDespues: false,
+      },
+    )
+  })
+
+  it('se recorta al borde de la vista cuando empieza antes de las 8:00 o termina después de las 19:00', () => {
+    assert.deepEqual(
+      segmentoDelDia(junta('2026-11-18 07:00:00', '2026-11-18 09:00:00'), '2026-11-18'),
+      {
+        desde: 480,
+        hasta: 540,
+        recortadaAntes: true,
+        recortadaDespues: false,
+      },
+    )
+    assert.deepEqual(
+      segmentoDelDia(junta('2026-11-18 18:00:00', '2026-11-18 20:00:00'), '2026-11-18'),
+      {
+        desde: 1080,
+        hasta: 1140,
+        recortadaAntes: false,
+        recortadaDespues: true,
+      },
+    )
+  })
+
+  it('una junta fuera del horario o de otro día no aparece', () => {
+    assert.equal(
+      segmentoDelDia(junta('2026-11-18 06:00:00', '2026-11-18 08:00:00'), '2026-11-18'),
+      null,
+    )
+    assert.equal(
+      segmentoDelDia(junta('2026-11-18 19:00:00', '2026-11-18 20:00:00'), '2026-11-18'),
+      null,
+    )
+    assert.equal(
+      segmentoDelDia(junta('2026-11-18 09:00:00', '2026-11-18 10:00:00'), '2026-11-19'),
+      null,
+    )
+  })
+
+  it('una junta que cruza la medianoche se ve en los dos días', () => {
+    const cruza = junta('2026-11-18 17:00:00', '2026-11-19 09:00:00')
+    assert.deepEqual(segmentoDelDia(cruza, '2026-11-18'), {
+      desde: 1020,
+      hasta: 1140,
+      recortadaAntes: false,
+      recortadaDespues: true,
+    })
+    assert.deepEqual(segmentoDelDia(cruza, '2026-11-19'), {
+      desde: 480,
+      hasta: 540,
+      recortadaAntes: true,
+      recortadaDespues: false,
+    })
+  })
+
+  it('una junta que termina justo a las 00:00 del día siguiente no cuenta en ese día', () => {
+    assert.equal(
+      segmentoDelDia(junta('2026-11-18 22:00:00', '2026-11-19 00:00:00'), '2026-11-19'),
+      null,
+    )
+  })
+})
+
+describe('juntasDelDia', () => {
+  it('en el mes incluye toda junta que toca el día, aunque esté fuera del horario laboral, y ordena por hora', () => {
+    const juntas = [
+      { id: 3, inicio: '2026-11-18 15:00:00', fin: '2026-11-18 16:00:00' },
+      { id: 1, inicio: '2026-11-17 23:00:00', fin: '2026-11-18 01:00:00' },
+      { id: 2, inicio: '2026-11-18 06:00:00', fin: '2026-11-18 07:00:00' },
+      { id: 4, inicio: '2026-11-19 09:00:00', fin: '2026-11-19 10:00:00' },
+    ]
+    assert.deepEqual(
+      juntasDelDia(juntas, '2026-11-18').map((j) => j.id),
+      [1, 2, 3],
+    )
+  })
+})
+
+describe('distribuirSolapadas', () => {
+  it('juntas que no se tocan quedan en una sola columna', () => {
+    const r = distribuirSolapadas([
+      { id: 'a', desde: 540, hasta: 600 },
+      { id: 'b', desde: 600, hasta: 660 },
+    ])
+    assert.deepEqual(
+      r.map(({ id, columna, columnas }) => [id, columna, columnas]),
+      [
+        ['a', 0, 1],
+        ['b', 0, 1],
+      ],
+    )
+  })
+
+  it('dos juntas que se cruzan se reparten en dos columnas', () => {
+    const r = distribuirSolapadas([
+      { id: 'a', desde: 540, hasta: 660 },
+      { id: 'b', desde: 600, hasta: 720 },
+    ])
+    assert.deepEqual(
+      r.map(({ id, columna, columnas }) => [id, columna, columnas]),
+      [
+        ['a', 0, 2],
+        ['b', 1, 2],
+      ],
+    )
+  })
+
+  it('una tercera que cabe en la columna libre reutiliza la primera', () => {
+    const r = distribuirSolapadas([
+      { id: 'a', desde: 540, hasta: 600 },
+      { id: 'b', desde: 570, hasta: 720 },
+      { id: 'c', desde: 600, hasta: 660 },
+    ])
+    assert.deepEqual(
+      r.map(({ id, columna, columnas }) => [id, columna, columnas]),
+      [
+        ['a', 0, 2],
+        ['b', 1, 2],
+        ['c', 0, 2],
+      ],
+    )
+  })
+})
+
+describe('validarFormularioJunta', () => {
+  const valido = {
+    titulo: 'Revisión semanal',
+    fecha: '18-11-2026',
+    horaInicio: '09:00',
+    horaFin: '10:00',
+    descripcion: '',
+    participantes: [4],
+  }
+
+  it('un formulario completo no tiene errores', () => {
+    assert.deepEqual(validarFormularioJunta(valido), {})
+  })
+
+  it('pide título, fecha, horas e invitados', () => {
+    const errores = validarFormularioJunta({
+      titulo: '   ',
+      fecha: '',
+      horaInicio: '',
+      horaFin: '',
+      descripcion: '',
+      participantes: [],
+    })
+    assert.deepEqual(Object.keys(errores), [
+      'titulo',
+      'fecha',
+      'horaInicio',
+      'horaFin',
+      'participantes',
+    ])
+    assert.equal(errores.titulo, 'Escribe el título de la junta.')
+    assert.equal(errores.participantes, 'Elige al menos un invitado.')
+  })
+
+  it('respeta el máximo del título (150) y de la descripción (1000)', () => {
+    assert.deepEqual(validarFormularioJunta({ ...valido, titulo: 'a'.repeat(150) }), {})
+    assert.equal(
+      validarFormularioJunta({ ...valido, titulo: 'a'.repeat(151) }).titulo,
+      'El título supera los 150 caracteres permitidos.',
+    )
+    assert.deepEqual(validarFormularioJunta({ ...valido, descripcion: 'a'.repeat(1000) }), {})
+    assert.equal(
+      validarFormularioJunta({ ...valido, descripcion: 'a'.repeat(1001) }).descripcion,
+      'La descripción supera los 1000 caracteres permitidos.',
+    )
+  })
+
+  it('el fin debe ser posterior al inicio', () => {
+    assert.equal(
+      validarFormularioJunta({ ...valido, horaFin: '09:00' }).horaFin,
+      'La hora de fin debe ser posterior a la de inicio.',
+    )
+    assert.equal(
+      validarFormularioJunta({ ...valido, horaFin: '08:30' }).horaFin,
+      'La hora de fin debe ser posterior a la de inicio.',
+    )
+  })
+
+  it('máximo 50 invitados', () => {
+    const muchos = Array.from({ length: 51 }, (_, i) => i + 1)
+    assert.equal(
+      validarFormularioJunta({ ...valido, participantes: muchos }).participantes,
+      'Puedes invitar a 50 personas como máximo.',
+    )
+  })
+
+  it('una fecha inexistente o una hora mal escrita se señalan en su campo', () => {
+    assert.equal(
+      validarFormularioJunta({ ...valido, fecha: '31-02-2026' }).fecha,
+      'Escribe la fecha como DD-MM-AAAA.',
+    )
+    assert.equal(
+      validarFormularioJunta({ ...valido, horaInicio: '9:5' }).horaInicio,
+      'Escribe la hora como HH:mm, por ejemplo 09:30.',
+    )
+  })
+})
