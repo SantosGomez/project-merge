@@ -23,6 +23,8 @@ import {
   cambiarContrasena as cambiarContrasenaPorDefecto,
   getCambioPendiente as getCambioPendientePorDefecto,
   getPersistente as getPersistentePorDefecto,
+  getActividades as getActividadesPorDefecto,
+  setActividades as setActividadesPorDefecto,
   getNombre as getNombrePorDefecto,
   getId as getIdPorDefecto,
   getRol as getRolPorDefecto,
@@ -83,6 +85,8 @@ const authServicePorDefecto = {
   getId: getIdPorDefecto,
   getCambioPendiente: getCambioPendientePorDefecto,
   getPersistente: getPersistentePorDefecto,
+  getActividades: getActividadesPorDefecto,
+  setActividades: setActividadesPorDefecto,
   setSesion: setSesionPorDefecto,
   limpiarSesion: limpiarSesionPorDefecto,
 }
@@ -117,6 +121,8 @@ export const crearSessionStore = (dependencias = {}) => {
         debeCambiarContrasena: authService.getCambioPendiente(),
         /** Eligió «Mantener sesión iniciada»: la sesión sobrevive al cerrar la app. */
         persistente: authService.getPersistente(),
+        /** La cuenta tiene el módulo «Mis actividades» (pestaña de «Mis casos»). */
+        actividadesHabilitadas: authService.getActividades(),
         /** Bandera de sesión caducada por inactividad, `exp` o 401 (RF-07/43). */
         sesionCaducada: false,
         /** Último momento de actividad en milisegundos (RF-07). */
@@ -153,6 +159,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.id = authService.getId()
         this.debeCambiarContrasena = authService.getCambioPendiente()
         this.persistente = authService.getPersistente()
+        this.actividadesHabilitadas = authService.getActividades()
       },
 
       /** Limpia solo el estado reactivo; no toca el almacén ni el temporizador. */
@@ -162,6 +169,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.id = null
         this.debeCambiarContrasena = false
         this.persistente = false
+        this.actividadesHabilitadas = false
         this.ultimaActividad = null
       },
 
@@ -295,6 +303,10 @@ export const crearSessionStore = (dependencias = {}) => {
             this.caducarSesion()
             return { estado: 'caducada' }
           }
+          // El backend es quien decide quién tiene «Mis actividades»: se refresca la marca guardada.
+          const habilitado = perfil?.actividades_habilitadas === true
+          authService.setActividades(habilitado)
+          this.actividadesHabilitadas = habilitado
         } catch (error) {
           if (error?.estado === ESTADOS_ERROR.SIN_SESION) {
             this.caducarSesion()

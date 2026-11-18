@@ -12,7 +12,7 @@
       <q-tab name="casos" icon="list_alt" label="Mis casos">
         <q-tooltip>Los casos que registraste o te asignaron.</q-tooltip>
       </q-tab>
-      <q-tab name="actividades" icon="task_alt" label="Mis actividades">
+      <q-tab v-if="session.actividadesHabilitadas" name="actividades" icon="task_alt" label="Mis actividades">
         <q-tooltip>
           Tu jornada de hoy, lo que te toca hacer en el mes, tu calendario de vencimientos y tus
           informes de horas.
@@ -200,7 +200,7 @@
     />
       </q-tab-panel>
 
-      <q-tab-panel name="actividades" class="my-cases-page__panel">
+      <q-tab-panel v-if="session.actividadesHabilitadas" name="actividades" class="my-cases-page__panel">
         <MisActividades />
       </q-tab-panel>
     </q-tab-panels>
@@ -247,9 +247,12 @@ const route = useRoute()
 const router = useRouter()
 
 // Pestaña en la URL (?tab=actividades), como «Mi equipo» en «Mi resumen»; sin parámetro, «Mis casos».
-const PESTANAS = ['casos', 'actividades']
+// «Mis actividades» solo existe para las cuentas que tienen el módulo habilitado (en pruebas).
+const pestanasDisponibles = computed(() =>
+  session.actividadesHabilitadas ? ['casos', 'actividades'] : ['casos'],
+)
 const pestana = computed({
-  get: () => (PESTANAS.includes(route.query.tab) ? route.query.tab : 'casos'),
+  get: () => (pestanasDisponibles.value.includes(route.query.tab) ? route.query.tab : 'casos'),
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
 })
 

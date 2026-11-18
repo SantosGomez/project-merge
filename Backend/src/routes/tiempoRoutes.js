@@ -10,14 +10,15 @@ const {
   agregarTiempoManual,
   borrarBloque,
 } = require('../controllers/RegistroTiempoController');
+const { requireModuloActividades } = require('../middlewares/moduloMiddleware');
 const { asyncHandler } = require('../utils/asyncHandler');
 
 // Cronómetro y bloques de tiempo del contador o auxiliar (cada quien solo lo suyo)
-router.get('/activo', authenticateToken, requireContadorOAuxiliar, asyncHandler(obtenerActivo));
-router.post('/iniciar', authenticateToken, requireContadorOAuxiliar, asyncHandler(iniciarCronometro));
-router.post('/detener', authenticateToken, requireContadorOAuxiliar, asyncHandler(detenerCronometro));
-router.post('/manual', authenticateToken, requireContadorOAuxiliar, asyncHandler(agregarTiempoManual));
-router.get('/', authenticateToken, requireContadorOAuxiliar, asyncHandler(listarBloques));
-router.delete('/:id', authenticateToken, requireContadorOAuxiliar, asyncHandler(borrarBloque));
+router.get('/activo', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(obtenerActivo));
+router.post('/iniciar', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(iniciarCronometro));
+router.post('/detener', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(detenerCronometro));
+router.post('/manual', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(agregarTiempoManual));
+router.get('/', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(listarBloques));
+router.delete('/:id', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(borrarBloque));
 
 module.exports = router;

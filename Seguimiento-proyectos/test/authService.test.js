@@ -84,7 +84,7 @@ test('login hace POST /auth/login y guarda rol, id y nombre en el almacén, sin 
   ])
   assert.deepEqual(
     sesion,
-    { ...DATOS_SESION, debeCambiarContrasena: false, persistente: false },
+    { ...DATOS_SESION, debeCambiarContrasena: false, persistente: false, actividades: false },
     'login devuelve los datos de la sesión',
   )
   assert.equal(almacen.getItem(CLAVES_SESION.rol), 'administrador')
@@ -314,4 +314,18 @@ test('setSesion borra lo de la sesión anterior antes de guardar la nueva', () =
   assert.equal(almacen.getItem(CLAVES_SESION.persistente), null)
   assert.equal(almacen.getItem(CLAVES_SESION.cambioPendiente), null)
   assert.equal(servicio.getRol(), 'contador')
+})
+
+test('login guarda la marca de «Mis actividades» solo si el backend la envía en true', async () => {
+  for (const [enviado, esperado] of [[true, '1'], [false, null], [undefined, null], ['true', null]]) {
+    const api = crearApiFalsa({ datos: { ...CUERPO_LOGIN, actividades_habilitadas: enviado } })
+    const almacen = crearAlmacenFalso()
+    const servicio = crearAuthService({ api, almacen })
+
+    const sesion = await servicio.login('admin_seed', 'clave-falsa')
+
+    assert.equal(sesion.actividades, esperado === '1')
+    assert.equal(almacen.getItem(CLAVES_SESION.actividades), esperado)
+    assert.equal(servicio.getActividades(), esperado === '1')
+  }
 })

@@ -64,6 +64,7 @@ const MINIMOS = {
   'jornadaUtils.test.js': 7,
   'jornadas.test.js': 14,
   'miPerfil.test.js': 3,
+  'moduloActividades.test.js': 13,
   'misCasosEnEquipo.test.js': 7,
   'originMiddleware.test.js': 3,
   'limiteIntentosCuenta.test.js': 4,

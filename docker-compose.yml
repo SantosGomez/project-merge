@@ -48,6 +48,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       SESSION_INACTIVITY_MINUTES: ${SESSION_INACTIVITY_MINUTES}
       CORS_ORIGENES: ${CORS_ORIGENES}
+      # Ids con acceso al módulo «Mis actividades» (vacío = nadie; * = todos)
+      USUARIOS_CON_ACTIVIDADES: ${USUARIOS_CON_ACTIVIDADES-}
       TRUST_PROXY: "1"
       TZ: ${TZ}
     # Endurecimiento: sin capacidades de Linux, sistema de archivos de solo lectura

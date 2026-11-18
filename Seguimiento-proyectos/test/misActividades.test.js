@@ -207,11 +207,11 @@ describe('menú y pestañas de «Mi trabajo»', () => {
     const plantilla = plantillaDe(pagina)
     assert.match(plantilla, /<q-tabs/)
     assert.match(plantilla, /<q-tab\s+name="casos"[^>]*label="Mis casos"/)
-    assert.match(plantilla, /<q-tab\s+name="actividades"[^>]*label="Mis actividades"/)
-    assert.match(plantilla, /<q-tab-panel\s+name="actividades"/)
+    assert.match(plantilla, /<q-tab\s+v-if="session\.actividadesHabilitadas"\s+name="actividades"[^>]*label="Mis actividades"/)
+    assert.match(plantilla, /<q-tab-panel\s+v-if="session\.actividadesHabilitadas"\s+name="actividades"/)
     assert.match(plantilla, /<MisActividades\s*\/>/)
     assert.match(pagina, /route\.query\.tab/)
-    assert.match(pagina, /\['casos', 'actividades'\]/)
+    assert.match(pagina, /session\.actividadesHabilitadas \? \['casos', 'actividades'\] : \['casos'\]/)
     assert.match(pagina, /router\.replace\(\{ query: \{ \.\.\.route\.query, tab: valor \} \}\)/)
   })
 
@@ -219,7 +219,7 @@ describe('menú y pestañas de «Mi trabajo»', () => {
     const plantilla = plantillaDe(pagina)
     const panelCasos = plantilla.slice(
       plantilla.indexOf('<q-tab-panel name="casos"'),
-      plantilla.indexOf('<q-tab-panel name="actividades"'),
+      plantilla.indexOf('<q-tab-panel v-if="session.actividadesHabilitadas" name="actividades"'),
     )
     assert.ok(panelCasos.length > 100, 'el panel de «Mis casos» existe')
     assert.match(panelCasos, /Registrar caso/)

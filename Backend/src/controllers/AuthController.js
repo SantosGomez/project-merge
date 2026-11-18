@@ -15,6 +15,7 @@ const { hashPassword, verifyPassword, verificarContraHashFicticio } = require('.
 const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
 const { eventos } = require('../utils/eventos');
 const bitacora = require('../utils/bitacoraSeguridad');
+const { usuarioTieneActividades } = require('../config/modulos');
 const { JWT_SECRET, JWT_EXPIRES_IN, JWT_EXPIRES_IN_PERSISTENTE } = require('../config/jwt');
 
 /**
@@ -121,6 +122,8 @@ async function login(req, res) {
     correo: cuenta.correo,
     debe_cambiar_contrasena: Boolean(cuenta.debe_cambiar_contrasena),
     sesion_persistente: persistente,
+    // El frontend muestra «Mis actividades» solo si el módulo está habilitado para esta cuenta
+    actividades_habilitadas: usuarioTieneActividades(cuenta.id),
   });
 }
 
@@ -262,6 +265,7 @@ async function obtenerPerfil(req, res) {
     nombre: cuenta.nombre,
     correo: cuenta.correo,
     rol: cuenta.rol,
+    actividades_habilitadas: usuarioTieneActividades(cuenta.id),
     creado_en: cuenta.creado_en ? formatLocalDate(cuenta.creado_en) : null,
     ultimo_acceso_en: cuenta.ultimo_acceso_en ? formatLocalDate(cuenta.ultimo_acceso_en) : null,
   });

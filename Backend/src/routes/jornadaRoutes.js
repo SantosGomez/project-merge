@@ -9,14 +9,15 @@ const {
   corregirDia,
   guardarAjustes,
 } = require('../controllers/JornadaController');
+const { requireModuloActividades } = require('../middlewares/moduloMiddleware');
 const { asyncHandler } = require('../utils/asyncHandler');
 
 // Jornada del contador o auxiliar: cada quien solo la suya (ni el administrador ni el contador ven la ajena)
-router.get('/hoy', authenticateToken, requireContadorOAuxiliar, asyncHandler(obtenerHoy));
-router.post('/hoy/marcar', authenticateToken, requireContadorOAuxiliar, asyncHandler(marcarPaso));
-router.get('/', authenticateToken, requireContadorOAuxiliar, asyncHandler(listarDeMes));
+router.get('/hoy', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(obtenerHoy));
+router.post('/hoy/marcar', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(marcarPaso));
+router.get('/', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(listarDeMes));
 // «ajustes» va antes que «/:fecha» para que no se tome como una fecha
-router.put('/ajustes', authenticateToken, requireContadorOAuxiliar, asyncHandler(guardarAjustes));
-router.put('/:fecha', authenticateToken, requireContadorOAuxiliar, asyncHandler(corregirDia));
+router.put('/ajustes', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(guardarAjustes));
+router.put('/:fecha', authenticateToken, requireContadorOAuxiliar, requireModuloActividades, asyncHandler(corregirDia));
 
 module.exports = router;

@@ -52,18 +52,21 @@ export const crearAuthService = (opciones = {}) => {
   const getCambioPendiente = () => leer(CLAVES_SESION.cambioPendiente) === '1'
   /** true si eligió «Mantener sesión iniciada» (la sesión sobrevive al cerrar la app). */
   const getPersistente = () => leer(CLAVES_SESION.persistente) === '1'
+  /** true si la cuenta tiene habilitado el módulo «Mis actividades». */
+  const getActividades = () => leer(CLAVES_SESION.actividades) === '1'
 
   const setRol = (rol) => escribir(CLAVES_SESION.rol, rol)
   const setNombre = (nombre) => escribir(CLAVES_SESION.nombre, nombre)
   const setId = (id) => escribir(CLAVES_SESION.id, id)
   const setCambioPendiente = (pendiente) =>
     escribir(CLAVES_SESION.cambioPendiente, pendiente ? '1' : null)
+  const setActividades = (habilitado) => escribir(CLAVES_SESION.actividades, habilitado ? '1' : null)
 
   /**
    * Guarda la sesión completa (RF-02, RF-42). Primero borra la anterior y fija la marca de
    * sesión persistente, que decide si se guarda en sessionStorage o en localStorage.
    * @param {{ rol: string, id?: number|string, nombre?: string|null,
-   *   debeCambiarContrasena?: boolean, persistente?: boolean }} sesion
+   *   debeCambiarContrasena?: boolean, persistente?: boolean, actividades?: boolean }} sesion
    */
   const setSesion = (sesion) => {
     limpiarSesion()
@@ -72,6 +75,7 @@ export const crearAuthService = (opciones = {}) => {
     setNombre(sesion.nombre)
     setId(sesion.id)
     setCambioPendiente(sesion.debeCambiarContrasena)
+    setActividades(sesion.actividades)
   }
 
   /**
@@ -105,6 +109,7 @@ export const crearAuthService = (opciones = {}) => {
       nombre: data.nombre ?? null,
       debeCambiarContrasena: data.debe_cambiar_contrasena === true,
       persistente: data.sesion_persistente === true,
+      actividades: data.actividades_habilitadas === true,
     }
     setSesion(sesion)
     return sesion
@@ -133,7 +138,7 @@ export const crearAuthService = (opciones = {}) => {
    * Datos de la cuenta de la sesión (GET /auth/perfil) para «Mi perfil».
    * Si falla, rechaza con el error normalizado de api.js.
    * @returns {Promise<{ id: number, nombre: string, correo: string, rol: string,
-   *   creado_en: string|null, ultimo_acceso_en: string|null }>}
+   *   actividades_habilitadas: boolean, creado_en: string|null, ultimo_acceso_en: string|null }>}
    */
   const obtenerPerfil = async () => {
     const { data } = await api.get('/auth/perfil')
@@ -171,6 +176,8 @@ export const crearAuthService = (opciones = {}) => {
     getId,
     getCambioPendiente,
     getPersistente,
+    getActividades,
+    setActividades,
     setSesion,
     setRol,
     setNombre,
@@ -189,6 +196,8 @@ export const cambiarMiContrasena = servicioPorDefecto.cambiarMiContrasena
 export const obtenerPerfil = servicioPorDefecto.obtenerPerfil
 export const getCambioPendiente = servicioPorDefecto.getCambioPendiente
 export const getPersistente = servicioPorDefecto.getPersistente
+export const getActividades = servicioPorDefecto.getActividades
+export const setActividades = servicioPorDefecto.setActividades
 export const getRol = servicioPorDefecto.getRol
 export const getNombre = servicioPorDefecto.getNombre
 export const getId = servicioPorDefecto.getId

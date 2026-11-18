@@ -49,6 +49,8 @@ export const CLAVES_SESION = Object.freeze({
   cambioPendiente: 'delgrow_cambio_contrasena',
   /** '1' si eligió «Mantener sesión iniciada»: la sesión vive en localStorage. */
   persistente: 'delgrow_sesion_persistente',
+  /** '1' si la cuenta tiene el módulo «Mis actividades» (solo ordena la pantalla; el backend decide). */
+  actividades: 'delgrow_actividades',
 })
 
 /** Clasificación de los errores que entregan los servicios a las pantallas. */

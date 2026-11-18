@@ -39,7 +39,7 @@ async function testLoginValidoDevuelveToken() {
   assert.strictEqual(respuesta.body.rol, 'contador', 'debe incluir el rol del usuario');
   assert.deepStrictEqual(
     Object.keys(respuesta.body).sort(),
-    ['correo', 'debe_cambiar_contrasena', 'id', 'nombre', 'rol', 'sesion_persistente', 'token'],
+    ['actividades_habilitadas', 'correo', 'debe_cambiar_contrasena', 'id', 'nombre', 'rol', 'sesion_persistente', 'token'],
     'la respuesta trae token, rol, id, nombre, correo, la marca de cambio y si la sesión es persistente, sin el usuario'
   );
   assert.strictEqual(respuesta.body.debe_cambiar_contrasena, false, 'una cuenta de prueba no tiene cambio pendiente');

@@ -1,6 +1,10 @@
 const http = require('node:http');
 const { crearApp } = require('../src/app');
 
+// Las pruebas del resto de la API no dependen de qué cuentas tienen «Mis actividades»: todas entran.
+// Las pruebas del acceso por usuario (moduloActividades.test.js) fijan su propia lista.
+process.env.USUARIOS_CON_ACTIVIDADES = '*';
+
 /**
  * Apoyos de servidor HTTP para las pruebas de integración: levantan la app real
  * en un puerto libre, hacen peticiones y cierran el servidor para que el proceso

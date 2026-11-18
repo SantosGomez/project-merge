@@ -111,6 +111,8 @@ const crearAuthFalsa = ({
     getId: () => almacen.getItem(CLAVES_SESION.id),
     getCambioPendiente: () => almacen.getItem(CLAVES_SESION.cambioPendiente) === '1',
     getPersistente: () => almacen.getItem(CLAVES_SESION.persistente) === '1',
+    getActividades: () => almacen.getItem(CLAVES_SESION.actividades) === '1',
+    setActividades: (habilitado) => escribir(almacen, CLAVES_SESION.actividades, habilitado ? '1' : null),
     setSesion: (sesion) => {
       escribir(almacen, CLAVES_SESION.rol, sesion.rol)
       escribir(almacen, CLAVES_SESION.nombre, sesion.nombre)
@@ -818,4 +820,57 @@ test('al reabrir la app una sesión persistente guardada se restaura como persis
 
   assert.equal(resultado.estado, 'valida')
   assert.equal(store.persistente, true)
+})
+
+// --- «Mis actividades» solo para las cuentas habilitadas ------------------------
+
+test('«Mis actividades»: sin la marca guardada la cuenta no tiene el módulo', () => {
+  const auth = crearAuthFalsa({ inicial: almacenConSesion({ rol: 'contador', id: 7, nombre: 'c' }) })
+  const { store } = montarSesion({ auth })
+
+  assert.equal(store.actividadesHabilitadas, false)
+})
+
+test('«Mis actividades»: con la marca guardada la cuenta tiene el módulo', () => {
+  const auth = crearAuthFalsa({
+    inicial: { ...almacenConSesion({ rol: 'contador', id: 7, nombre: 'c' }), [CLAVES_SESION.actividades]: '1' },
+  })
+  const { store } = montarSesion({ auth })
+
+  assert.equal(store.actividadesHabilitadas, true)
+})
+
+test('«Mis actividades»: al restaurar la sesión el perfil del backend manda sobre la marca guardada', async () => {
+  const auth = crearAuthFalsa({
+    inicial: { ...almacenConSesion({ rol: 'contador', id: 7, nombre: 'c' }), [CLAVES_SESION.actividades]: '1' },
+  })
+  auth.obtenerPerfil = async () => ({ id: 7, actividades_habilitadas: false })
+  const { store } = montarSesion({ auth })
+
+  await store.restaurarSesion()
+
+  assert.equal(store.actividadesHabilitadas, false)
+  assert.equal(auth.getActividades(), false, 'la marca guardada también se corrige')
+})
+
+test('«Mis actividades»: si el perfil la habilita, el store y la marca guardada la reflejan', async () => {
+  const auth = crearAuthFalsa({ inicial: almacenConSesion({ rol: 'contador', id: 7, nombre: 'c' }) })
+  auth.obtenerPerfil = async () => ({ id: 7, actividades_habilitadas: true })
+  const { store } = montarSesion({ auth })
+
+  await store.restaurarSesion()
+
+  assert.equal(store.actividadesHabilitadas, true)
+  assert.equal(auth.getActividades(), true)
+})
+
+test('«Mis actividades»: al caducar la sesión el estado vuelve a «no habilitado»', () => {
+  const auth = crearAuthFalsa({
+    inicial: { ...almacenConSesion({ rol: 'contador', id: 7, nombre: 'c' }), [CLAVES_SESION.actividades]: '1' },
+  })
+  const { store } = montarSesion({ auth })
+
+  store.caducarSesion()
+
+  assert.equal(store.actividadesHabilitadas, false)
 })
