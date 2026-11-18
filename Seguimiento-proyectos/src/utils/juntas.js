@@ -5,7 +5,7 @@
 
 import { fechaADominioBackend, fechaParaFormulario } from './fechasCaso.js'
 
-export const VISTAS = Object.freeze(['mes', 'semana', 'dia'])
+export const VISTAS = Object.freeze(['anio', 'mes', 'semana', 'dia'])
 
 /** Horario laboral que muestran las vistas de semana y día (de 8:00 a 19:00). */
 export const HORA_INICIO_VISTA = 8
@@ -85,13 +85,17 @@ const ultimoDiaDelMes = (anio, mes) => new Date(anio, mes, 0).getDate()
 
 /**
  * Primer y último día que muestra la vista, ambos incluidos.
- * Mes y semana: de lunes a domingo; día: solo ese día.
- * @param {'mes'|'semana'|'dia'} vista
+ * Año: del 1 de enero al 31 de diciembre; mes y semana: de lunes a domingo; día: solo ese día.
+ * @param {'anio'|'mes'|'semana'|'dia'} vista
  * @param {string} iso - fecha de referencia AAAA-MM-DD.
  * @returns {{ desde: string, hasta: string }}
  */
 export const rangoVisible = (vista, iso) => {
   if (vista === 'dia') return { desde: iso, hasta: iso }
+  if (vista === 'anio') {
+    const anio = parsearFechaISO(iso).getFullYear()
+    return { desde: `${anio}-01-01`, hasta: `${anio}-12-31` }
+  }
   if (vista === 'semana') return { desde: lunesDeLaSemana(iso), hasta: domingoDeLaSemana(iso) }
   const fecha = parsearFechaISO(iso)
   const primero = `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}-01`
@@ -109,6 +113,11 @@ export const moverPeriodo = (vista, iso, direccion) => {
   if (vista === 'dia') return sumarDias(iso, direccion)
   if (vista === 'semana') return sumarDias(iso, 7 * direccion)
   const fecha = parsearFechaISO(iso)
+  if (vista === 'anio') {
+    const anioDestino = fecha.getFullYear() + direccion
+    const dia = Math.min(fecha.getDate(), ultimoDiaDelMes(anioDestino, fecha.getMonth() + 1))
+    return formatearFechaISO(new Date(anioDestino, fecha.getMonth(), dia))
+  }
   const mesDestino = new Date(fecha.getFullYear(), fecha.getMonth() + direccion, 1)
   const dia = Math.min(
     fecha.getDate(),
@@ -120,6 +129,7 @@ export const moverPeriodo = (vista, iso, direccion) => {
 /** Título del periodo en español: «noviembre de 2026», «16 – 20 de noviembre de 2026»… */
 export const textoPeriodo = (vista, iso) => {
   const fecha = parsearFechaISO(iso)
+  if (vista === 'anio') return String(fecha.getFullYear())
   if (vista === 'mes') return `${MESES[fecha.getMonth()]} de ${fecha.getFullYear()}`
   if (vista === 'dia') {
     return `${DIAS_DE_SEMANA[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]} de ${fecha.getFullYear()}`
@@ -384,3 +394,55 @@ export const validarFormularioJunta = (datos) => {
   }
   return errores
 }
+
+// --- vista de año ---------------------------------------------------------------------------------
+
+/** Día y mes en español: «18 de noviembre». */
+export const textoDiaDelMes = (iso) => {
+  const fecha = parsearFechaISO(iso)
+  return `${fecha.getDate()} de ${MESES[fecha.getMonth()]}`
+}
+
+/**
+ * Los 12 meses de un año para pintarlos compactos: cada mes trae sus semanas de lunes a domingo
+ * y, en lugar de los días de otro mes, `null`.
+ * @param {number} anio
+ * @returns {Array<{ mes: number, nombre: string, semanas: Array<Array<string|null>> }>}
+ */
+export const mesesDelAnio = (anio) =>
+  MESES.map((nombre, mes) => {
+    const dias = ultimoDiaDelMes(anio, mes + 1)
+    const celdas = Array((new Date(anio, mes, 1).getDay() + 6) % 7).fill(null)
+    for (let dia = 1; dia <= dias; dia++) {
+      celdas.push(formatearFechaISO(new Date(anio, mes, dia)))
+    }
+    while (celdas.length % 7 !== 0) celdas.push(null)
+    const semanas = []
+    for (let i = 0; i < celdas.length; i += 7) semanas.push(celdas.slice(i, i + 7))
+    return { mes, nombre, semanas }
+  })
+
+/**
+ * Cuántas juntas tocan cada día de un año (una junta de varios días cuenta en cada uno; una que
+ * termina a medianoche no cuenta el día siguiente).
+ * @param {Array<{ inicio: string, fin: string }>} juntas
+ * @param {number} anio - los días de otros años se ignoran.
+ * @returns {Object<string, number>} solo los días con juntas, por fecha AAAA-MM-DD.
+ */
+export const juntasPorDia = (juntas, anio) => {
+  const cuentas = {}
+  const primero = `${anio}-01-01`
+  const ultimo = `${anio}-12-31`
+  for (const junta of juntas) {
+    let dia = junta.inicio.slice(0, 10) < primero ? primero : junta.inicio.slice(0, 10)
+    while (dia <= ultimo && dia <= junta.fin.slice(0, 10)) {
+      if (juntasDelDia([junta], dia).length > 0) cuentas[dia] = (cuentas[dia] ?? 0) + 1
+      dia = sumarDias(dia, 1)
+    }
+  }
+  return cuentas
+}
+
+/** Texto accesible de un día de la vista de año: «18 de noviembre: 2 juntas». */
+export const textoDiaConJuntas = (iso, cantidad) =>
+  `${textoDiaDelMes(iso)}: ${cantidad === 0 ? 'sin juntas' : `${cantidad} ${cantidad === 1 ? 'junta' : 'juntas'}`}`

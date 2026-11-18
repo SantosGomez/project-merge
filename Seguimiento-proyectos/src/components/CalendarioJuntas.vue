@@ -20,6 +20,25 @@
       >
         <template #day="{ scope }">
           <div class="calendario-juntas__dia">
+            <q-btn
+              v-for="vencimiento in vencimientosDelDia(vencimientos, scope.timestamp.date)"
+              :key="vencimiento.clave"
+              unelevated
+              no-caps
+              dense
+              align="left"
+              :ripple="false"
+              class="vencimiento-etiqueta boton-presionable"
+              :class="`vencimiento-etiqueta--${vencimiento.prioridad}`"
+              :aria-label="nombreAccesibleDeVencimiento(vencimiento, rol)"
+              @click.stop="emit('abrir-vencimiento', vencimiento)"
+            >
+              <span class="vencimiento-etiqueta__texto">{{ textoDeVencimiento(vencimiento) }}</span>
+              <span class="vencimiento-etiqueta__marcas">{{
+                marcasDeVencimiento(vencimiento).join(' · ')
+              }}</span>
+              <q-tooltip>{{ nombreAccesibleDeVencimiento(vencimiento, rol) }}</q-tooltip>
+            </q-btn>
             <template
               v-for="(junta, indice) in juntasDelDia(juntas, scope.timestamp.date)"
               :key="claveDeJunta(junta, indice)"
@@ -85,6 +104,32 @@
         :class="{ 'calendario-juntas__calendario--semana': vista === 'semana' }"
         @click-time="alElegirHueco"
       >
+        <template #head-day-event="{ scope }">
+          <div
+            v-if="vencimientosDelDia(vencimientos, scope.timestamp.date).length > 0"
+            class="calendario-juntas__vencimientos"
+          >
+            <q-btn
+              v-for="vencimiento in vencimientosDelDia(vencimientos, scope.timestamp.date)"
+              :key="vencimiento.clave"
+              unelevated
+              no-caps
+              dense
+              align="left"
+              :ripple="false"
+              class="vencimiento-etiqueta boton-presionable"
+              :class="`vencimiento-etiqueta--${vencimiento.prioridad}`"
+              :aria-label="nombreAccesibleDeVencimiento(vencimiento, rol)"
+              @click.stop="emit('abrir-vencimiento', vencimiento)"
+            >
+              <span class="vencimiento-etiqueta__texto">{{ textoDeVencimiento(vencimiento) }}</span>
+              <span class="vencimiento-etiqueta__marcas">{{
+                marcasDeVencimiento(vencimiento).join(' · ')
+              }}</span>
+              <q-tooltip>{{ nombreAccesibleDeVencimiento(vencimiento, rol) }}</q-tooltip>
+            </q-btn>
+          </div>
+        </template>
         <template #day-body="{ scope }">
           <template
             v-for="(bloque, indice) in bloquesDelDia(scope.timestamp.date)"
@@ -161,11 +206,19 @@ import {
   segmentoDelDia,
   textoPeriodo,
 } from '../utils/juntas.js'
+import {
+  marcasDeVencimiento,
+  nombreAccesibleDeVencimiento,
+  textoDeVencimiento,
+  vencimientosDelDia,
+} from '../utils/vencimientosEnCalendario.js'
 
 /*
  * Calendario de juntas con QCalendar (importado solo aquí, no como plugin global). No pide datos:
  * recibe la vista, la fecha y las juntas del periodo; avisa con `abrir-junta` (clic en una junta)
- * y `nueva-junta` (clic en un hueco vacío de semana o día). El idioma es es-MX y los colores salen
+ * y `nueva-junta` (clic en un hueco vacío de semana o día). Los vencimientos de casos salen como
+ * etiquetas de día completo («Vence: cliente», con su prioridad y «Importante» si lo es) y avisan
+ * con `abrir-vencimiento`. El idioma es es-MX y los colores salen
  * de la paleta `--dg-*` (ver los estilos de abajo). Cada junta lleva con texto su estado («Por
  * confirmar», «Cancelada», con el título tachado) y «Responder» si te invitaron y aún no contestas.
  */
@@ -178,9 +231,13 @@ const props = defineProps({
   juntas: { type: Array, default: () => [] },
   /** Cuenta de la sesión, para saber si una invitación sigue sin respuesta. */
   usuarioId: { type: [Number, String], default: null },
+  /** Vencimientos de casos por marcar (salida de `vencimientosDeCasos`); vacío si no se muestran. */
+  vencimientos: { type: Array, default: () => [] },
+  /** Rol de la sesión: decide a dónde lleva el clic y lo que dice el nombre accesible. */
+  rol: { type: String, default: '' },
 })
 
-const emit = defineEmits(['abrir-junta', 'nueva-junta'])
+const emit = defineEmits(['abrir-junta', 'nueva-junta', 'abrir-vencimiento'])
 
 const AYUDA_OCUPADA = 'No estás invitado a esta junta'
 
@@ -335,6 +392,73 @@ const alElegirHueco = ({ scope }) => {
   flex-direction: column;
   gap: 2px;
   padding: 2px 4px 6px;
+}
+
+/* Vencimiento de un caso: etiqueta de día completo con el color de su prioridad (el texto dice la prioridad). */
+.vencimiento-etiqueta {
+  min-height: 24px;
+  max-width: 100%;
+  padding: 1px 6px;
+  border: 1px solid var(--dg-neutro-borde);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: var(--dg-neutro-fondo);
+  color: var(--dg-texto-secundario);
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.vencimiento-etiqueta--alta {
+  border-color: var(--dg-prioridad-alta-borde);
+  background: var(--dg-prioridad-alta-fondo);
+  color: var(--dg-prioridad-alta);
+}
+
+.vencimiento-etiqueta--media {
+  border-color: var(--dg-prioridad-media-borde);
+  background: var(--dg-prioridad-media-fondo);
+  color: var(--dg-prioridad-media);
+}
+
+.vencimiento-etiqueta--baja {
+  border-color: var(--dg-prioridad-baja-borde);
+  background: var(--dg-prioridad-baja-fondo);
+  color: var(--dg-prioridad-baja);
+}
+
+/* Si el cliente es largo, la prioridad baja a una segunda línea en lugar de recortarse. */
+.vencimiento-etiqueta :deep(.q-btn__content) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.vencimiento-etiqueta__texto {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vencimiento-etiqueta__marcas {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Etiquetas de día completo de las vistas de semana y día. */
+.calendario-juntas__vencimientos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px 4px;
 }
 
 /* Junta en el mes: una línea con la hora y el título. */

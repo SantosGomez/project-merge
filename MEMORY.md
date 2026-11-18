@@ -24,8 +24,8 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
   - 21b, pantalla «Juntas» (`/juntas`, QCalendar 5.4.0 importado solo en `CalendarioJuntas.vue`; principal de la recepcionista). Si `npm install` da EBUSY, cerrar el servidor de desarrollo.
   - 22, responder invitaciones: `PATCH /juntas/:id/respuesta`, estado calculado en `estadoJunta.js` (no se guarda), `notificaciones.junta_id`; el enlace del aviso solo se da a quien organiza o sigue invitado; cambiar inicio/fin reinicia respuestas. Recepcionista con campana.
   - 23, juntas privadas y agenda de otros: `juntas.privada`, `GET /juntas/agenda/:usuarioId` (un tercero nunca recibe id, descripción ni invitados; privada = «Ocupado»), selector «Ver agenda de» (`?agenda=`). Claves de bloques sin id únicas en todo el calendario.
-  - 24, avisos por correo.
-  - 25, vista de año y vencimientos.
+  - 24, avisos por correo: PENDIENTE por decisión del usuario (hace falta nodemailer y una cuenta SMTP del despacho).
+  - 25, vista Año (`?vista=anio`) y vencimientos de casos en Mes, Semana y Día (`utils/vencimientosEnCalendario.js`; interruptor por persona en localStorage). La Semana es de lunes a viernes, sin vencimientos de fin de semana.
 
   Decisiones:
   - Calendario propio (Google queda aparte), solo juntas internas y privacidad por junta.

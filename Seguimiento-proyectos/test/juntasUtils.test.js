@@ -17,13 +17,17 @@ import {
   horaDeFechaHora,
   horarioDeJunta,
   juntasDelDia,
+  juntasPorDia,
   leerAgendaDeUrl,
   leerVistaDeUrl,
   marcasDeJunta,
+  mesesDelAnio,
   moverPeriodo,
   parsearFechaISO,
   rangoVisible,
   segmentoDelDia,
+  textoDiaConJuntas,
+  textoDiaDelMes,
   textoPeriodo,
   validarFormularioJunta,
   vistaInicial,
@@ -138,10 +142,13 @@ describe('vista y fecha de la URL', () => {
   })
 
   it('ignora vistas o fechas inválidas y usa hoy y la vista por ancho', () => {
-    assert.deepEqual(leerVistaDeUrl({ vista: 'anio', fecha: '2026-02-31' }, 375, '2026-11-20'), {
-      vista: 'dia',
-      fecha: '2026-11-20',
-    })
+    assert.deepEqual(
+      leerVistaDeUrl({ vista: 'trimestre', fecha: '2026-02-31' }, 375, '2026-11-20'),
+      {
+        vista: 'dia',
+        fecha: '2026-11-20',
+      },
+    )
     assert.deepEqual(leerVistaDeUrl({}, 1200, '2026-11-20'), {
       vista: 'semana',
       fecha: '2026-11-20',
@@ -516,5 +523,115 @@ describe('agenda de otra persona', () => {
       assert.equal(leerAgendaDeUrl({ agenda: malo }, 5), null, String(malo))
     }
     assert.equal(leerAgendaDeUrl(undefined, 5), null)
+  })
+})
+
+describe('vista de año (rebanada 25)', () => {
+  it('rangoVisible: del 1 de enero al 31 de diciembre, que cabe en los 400 días de la API', () => {
+    assert.deepEqual(rangoVisible('anio', '2026-11-18'), {
+      desde: '2026-01-01',
+      hasta: '2026-12-31',
+    })
+    assert.deepEqual(rangoVisible('anio', '2028-02-29'), {
+      desde: '2028-01-01',
+      hasta: '2028-12-31',
+    })
+  })
+
+  it('moverPeriodo: de año en año, conservando el día y usando el 28 de febrero si no existe el 29', () => {
+    assert.equal(moverPeriodo('anio', '2026-11-18', 1), '2027-11-18')
+    assert.equal(moverPeriodo('anio', '2026-11-18', -1), '2025-11-18')
+    assert.equal(moverPeriodo('anio', '2028-02-29', 1), '2029-02-28')
+  })
+
+  it('textoPeriodo: solo el año', () => {
+    assert.equal(textoPeriodo('anio', '2026-11-18'), '2026')
+  })
+
+  it('leerVistaDeUrl acepta ?vista=anio incluso en celular', () => {
+    assert.deepEqual(leerVistaDeUrl({ vista: 'anio', fecha: '2026-11-18' }, 375, '2026-01-01'), {
+      vista: 'anio',
+      fecha: '2026-11-18',
+    })
+  })
+
+  it('textoDiaDelMes: «18 de noviembre»', () => {
+    assert.equal(textoDiaDelMes('2026-11-18'), '18 de noviembre')
+    assert.equal(textoDiaDelMes('2026-01-01'), '1 de enero')
+  })
+
+  it('mesesDelAnio: 12 meses con sus semanas de lunes a domingo y huecos fuera del mes', () => {
+    const meses = mesesDelAnio(2026)
+    assert.equal(meses.length, 12)
+    assert.deepEqual(
+      meses.map((m) => m.nombre),
+      [
+        'enero',
+        'febrero',
+        'marzo',
+        'abril',
+        'mayo',
+        'junio',
+        'julio',
+        'agosto',
+        'septiembre',
+        'octubre',
+        'noviembre',
+        'diciembre',
+      ],
+    )
+    // 1 ene 2026 es jueves.
+    assert.deepEqual(meses[0].semanas[0], [
+      null,
+      null,
+      null,
+      '2026-01-01',
+      '2026-01-02',
+      '2026-01-03',
+      '2026-01-04',
+    ])
+    // 1 nov 2026 es domingo y el 30 es lunes: seis semanas.
+    const noviembre = meses[10].semanas
+    assert.equal(noviembre.length, 6)
+    assert.deepEqual(noviembre[0], [null, null, null, null, null, null, '2026-11-01'])
+    assert.deepEqual(noviembre[5], ['2026-11-30', null, null, null, null, null, null])
+    // Febrero 2026 empieza en domingo y termina en sábado: cinco semanas.
+    assert.equal(meses[1].semanas.length, 5)
+    assert.equal(meses[1].semanas[4][5], '2026-02-28')
+  })
+
+  it('mesesDelAnio: cada día del año sale una sola vez (365 en 2026, 366 en 2028)', () => {
+    const contar = (anio) =>
+      mesesDelAnio(anio)
+        .flatMap((m) => m.semanas.flat())
+        .filter(Boolean).length
+    assert.equal(contar(2026), 365)
+    assert.equal(contar(2028), 366)
+  })
+
+  it('juntasPorDia: cuenta las juntas que tocan cada día del año y recorta lo que cae en otro año', () => {
+    const junta = (inicio, fin) => ({ id: 1, inicio, fin })
+    const juntas = [
+      junta('2026-11-18 09:00:00', '2026-11-18 10:00:00'),
+      junta('2026-11-18 11:00:00', '2026-11-18 12:00:00'),
+      junta('2026-11-19 17:00:00', '2026-11-20 09:00:00'),
+      // Termina a medianoche: no toca el 21.
+      junta('2026-11-20 15:00:00', '2026-11-21 00:00:00'),
+      junta('2026-12-31 22:00:00', '2027-01-01 02:00:00'),
+      junta('2027-03-01 09:00:00', '2027-03-01 10:00:00'),
+    ]
+    assert.deepEqual(juntasPorDia(juntas, 2026), {
+      '2026-11-18': 2,
+      '2026-11-19': 1,
+      '2026-11-20': 2,
+      '2026-12-31': 1,
+    })
+    assert.deepEqual(juntasPorDia([], 2026), {})
+  })
+
+  it('textoDiaConJuntas: «18 de noviembre: 2 juntas», «1 junta» y «sin juntas»', () => {
+    assert.equal(textoDiaConJuntas('2026-11-18', 2), '18 de noviembre: 2 juntas')
+    assert.equal(textoDiaConJuntas('2026-11-18', 1), '18 de noviembre: 1 junta')
+    assert.equal(textoDiaConJuntas('2026-11-18', 0), '18 de noviembre: sin juntas')
   })
 })

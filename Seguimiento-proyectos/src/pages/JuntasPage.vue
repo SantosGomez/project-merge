@@ -2,8 +2,8 @@
   <q-page class="juntas-page">
     <div class="juntas-page__head">
       <p class="juntas-page__lead">
-        Consulta tus juntas por mes, semana o día. Pulsa un hueco libre del calendario para crear
-        una junta, o una junta para ver sus datos.
+        Consulta tus juntas por año, mes, semana o día. Pulsa un hueco libre del calendario para
+        crear una junta, o una junta para ver sus datos.
       </p>
       <q-btn
         class="juntas-page__nueva control-touch boton-presionable"
@@ -106,6 +106,46 @@
       <h2 v-if="agendaId" class="juntas-page__agenda-titulo">{{ tituloAgenda }}</h2>
     </div>
 
+    <q-toggle
+      v-if="vencimientosDisponibles"
+      :model-value="mostrarVencimientos"
+      label="Mostrar vencimientos de casos"
+      color="primary"
+      class="juntas-page__vencimientos control-touch"
+      @update:model-value="cambiarMostrarVencimientos"
+    >
+      <q-tooltip>
+        Marca en el calendario el día en que vence cada caso que no está finalizado. Se recuerda
+        para tu cuenta en este equipo.
+      </q-tooltip>
+    </q-toggle>
+
+    <q-banner
+      v-if="vencimientosActivos && errorVencimientos"
+      dense
+      rounded
+      class="juntas-page__aviso-vencimientos"
+      role="status"
+    >
+      <template #avatar>
+        <q-icon name="event_busy" color="dg-aviso-texto" />
+      </template>
+      No se pudieron cargar los vencimientos.
+      <template #action>
+        <q-btn
+          flat
+          no-caps
+          dense
+          color="primary"
+          label="Reintentar"
+          class="control-touch boton-presionable"
+          @click="cargarVencimientos()"
+        >
+          <q-tooltip>Vuelve a pedir los vencimientos de los casos.</q-tooltip>
+        </q-btn>
+      </template>
+    </q-banner>
+
     <ScreenLoader v-if="cargando" :text="textoCarga" />
 
     <ErrorState v-else-if="errorCarga" :detail="errorCarga" @retry="cargar()" />
@@ -118,13 +158,25 @@
         {{ textoVacio }}
       </q-banner>
 
+      <AnioJuntas
+        v-if="vista === 'anio'"
+        :anio="anio"
+        :juntas="juntas"
+        :hoy="hoy"
+        @elegir-dia="elegirDia"
+      />
+
       <CalendarioJuntas
+        v-else
         :vista="vista"
         :fecha="fecha"
         :juntas="juntas"
         :usuario-id="session.id"
+        :vencimientos="vencimientos"
+        :rol="session.rol ?? ''"
         @abrir-junta="abrirDetalle"
         @nueva-junta="abrirNueva"
+        @abrir-vencimiento="abrirVencimiento"
       />
     </template>
 
@@ -153,11 +205,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
+import AnioJuntas from '../components/AnioJuntas.vue'
 import CalendarioJuntas from '../components/CalendarioJuntas.vue'
 import ErrorState from '../components/ErrorState.vue'
 import JuntaDetalleDialog from '../components/JuntaDetalleDialog.vue'
 import JuntaFormDialog from '../components/JuntaFormDialog.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
+import { getMisCasos } from '../services/caseService.js'
+import { getCasosImportantesCalendario } from '../services/counterService.js'
 import { agendaDe, listar, obtener, participantesDisponibles } from '../services/juntaService.js'
 import { useSessionStore } from '../stores/session.js'
 import { formatearRol } from '../utils/formateadores.js'
@@ -170,6 +225,13 @@ import {
   rangoVisible,
   textoPeriodo,
 } from '../utils/juntas.js'
+import {
+  destinoDeVencimiento,
+  guardarMostrarVencimientos,
+  leerMostrarVencimientos,
+  puedeVerVencimientos,
+  vencimientosDeCasos,
+} from '../utils/vencimientosEnCalendario.js'
 
 /*
  * Calendario de juntas del equipo. La vista y la fecha viajan en la URL
@@ -179,6 +241,10 @@ import {
  * Con `?agenda=ID` se ve la agenda de otra persona (`GET /juntas/agenda/:id`): las juntas donde participas
  * salen completas y las demás como «Ocupado», sin ficha. Desde esa agenda, «Nueva junta» y los huecos
  * abren el formulario con esa persona ya invitada.
+ * En `?vista=anio` se ven los 12 meses con la cantidad de juntas de cada día; un clic en un día abre la
+ * vista Día. En mes, semana y día, el administrador, el contador y el auxiliar ven además el vencimiento
+ * de sus casos (no los finalizados) con el interruptor «Mostrar vencimientos de casos»; en la agenda de
+ * otra persona no se muestran. Si esa carga falla, las juntas se siguen viendo con un aviso para reintentar.
  */
 const $q = useQuasar()
 const route = useRoute()
@@ -186,6 +252,7 @@ const router = useRouter()
 const session = useSessionStore()
 
 const OPCIONES_DE_VISTA = [
+  { label: 'Año', value: 'anio' },
   { label: 'Mes', value: 'mes' },
   { label: 'Semana', value: 'semana' },
   { label: 'Día', value: 'dia' },
@@ -201,6 +268,7 @@ const vista = computed(() => estado.value.vista)
 const fecha = computed(() => estado.value.fecha)
 const periodo = computed(() => textoPeriodo(vista.value, fecha.value))
 const rango = computed(() => rangoVisible(vista.value, fecha.value))
+const anio = computed(() => Number(fecha.value.slice(0, 4)))
 
 // Persona de `?agenda=` (id como texto) o null si se ve la propia agenda.
 const agendaId = computed(() => leerAgendaDeUrl(route.query, session.id))
@@ -214,6 +282,9 @@ const irAHoy = () => {
   hoy.value = hoyISO()
   irA(vista.value, hoy.value)
 }
+
+// En la vista de año, un clic en un día abre la vista Día de esa fecha.
+const elegirDia = (dia) => irA('dia', dia)
 
 // --- agenda de otra persona --------------------------------------------------------------------------
 
@@ -306,10 +377,66 @@ watch(
   () => cargar(),
 )
 
+// --- vencimientos de casos --------------------------------------------------------------------------
+
+const mostrarVencimientos = ref(leerMostrarVencimientos(session.id))
+const casosParaVencimientos = ref([])
+const vencimientosCargados = ref(false)
+const errorVencimientos = ref(false)
+let peticionDeVencimientos = 0
+
+// El interruptor existe para quien ve vencimientos, fuera de la agenda de otra persona y de la vista de año.
+const vencimientosDisponibles = computed(
+  () => puedeVerVencimientos(session.rol) && !agendaId.value && vista.value !== 'anio',
+)
+const vencimientosActivos = computed(
+  () => vencimientosDisponibles.value && mostrarVencimientos.value,
+)
+
+const vencimientos = computed(() =>
+  vencimientosActivos.value ? vencimientosDeCasos(casosParaVencimientos.value) : [],
+)
+
+/**
+ * Pide los casos de los que salen los vencimientos: los importantes de todos si eres administrador, los
+ * tuyos (con los de tus auxiliares) si eres contador o auxiliar. En silencio conserva lo que ya se veía.
+ */
+const cargarVencimientos = async ({ silencioso = false } = {}) => {
+  const numero = ++peticionDeVencimientos
+  if (!silencioso) errorVencimientos.value = false
+  try {
+    const casos =
+      session.rol === 'administrador' ? await getCasosImportantesCalendario() : await getMisCasos()
+    if (numero !== peticionDeVencimientos) return
+    casosParaVencimientos.value = casos
+    vencimientosCargados.value = true
+    errorVencimientos.value = false
+  } catch {
+    if (numero !== peticionDeVencimientos || silencioso) return
+    errorVencimientos.value = true
+  }
+}
+
+const cambiarMostrarVencimientos = (mostrar) => {
+  mostrarVencimientos.value = mostrar
+  guardarMostrarVencimientos(session.id, mostrar)
+}
+
+// Al activarse por primera vez se piden; después solo se recargan al volver a la pestaña.
+watch(vencimientosActivos, (activos) => {
+  if (activos && !vencimientosCargados.value) cargarVencimientos()
+})
+
+const abrirVencimiento = (vencimiento) => {
+  const destino = destinoDeVencimiento(vencimiento, session.rol)
+  if (destino) router.push(destino)
+}
+
 const alVolverALaPestana = () => {
   if (document.visibilityState !== 'visible') return
   hoy.value = hoyISO()
   cargar({ silencioso: true })
+  if (vencimientosActivos.value) cargarVencimientos({ silencioso: true })
 }
 
 onMounted(() => {
@@ -318,6 +445,7 @@ onMounted(() => {
     irA(vista.value, fecha.value)
   }
   cargar()
+  if (vencimientosActivos.value) cargarVencimientos()
   cargarPersonas()
   abrirJuntaDeLaUrl()
   document.addEventListener('visibilitychange', alVolverALaPestana)
@@ -477,6 +605,17 @@ watch(
   font-size: 1.15rem;
   font-weight: 600;
   line-height: 1.3;
+}
+
+.juntas-page__vencimientos {
+  margin-bottom: 8px;
+}
+
+.juntas-page__aviso-vencimientos {
+  margin-bottom: 12px;
+  border: 1px solid var(--dg-aviso-borde);
+  background: var(--dg-aviso-fondo);
+  color: var(--dg-aviso-texto);
 }
 
 .juntas-page__vacio {
