@@ -206,6 +206,8 @@
         :usuario-id="session.id"
         :vencimientos="vencimientos"
         :rol="session.rol ?? ''"
+        :agenda-id="agendaId"
+        :con-fin-de-semana="conFinDeSemana"
         @abrir-junta="abrirDetalle"
         @nueva-junta="abrirNueva"
         @abrir-vencimiento="abrirVencimiento"
@@ -261,6 +263,7 @@ import {
   moverPeriodo,
   organizadorDeAlta,
   rangoVisible,
+  semanaMuestraFinDeSemana,
   textoAdministradoresAtendidos,
   textoPeriodo,
 } from '../utils/juntas.js'
@@ -310,7 +313,6 @@ const anchoAlEntrar = $q.screen.width
 const estado = computed(() => leerVistaDeUrl(route.query, anchoAlEntrar, hoy.value))
 const vista = computed(() => estado.value.vista)
 const fecha = computed(() => estado.value.fecha)
-const periodo = computed(() => textoPeriodo(vista.value, fecha.value))
 const rango = computed(() => rangoVisible(vista.value, fecha.value))
 const anio = computed(() => Number(fecha.value.slice(0, 4)))
 
@@ -329,6 +331,18 @@ const irAHoy = () => {
 
 // En la vista de año, un clic en un día abre la vista Día de esa fecha.
 const elegirDia = (dia) => irA('dia', dia)
+
+// Sábado y domingo solo se pintan en la semana que tiene juntas o vencimientos en esos días.
+const conFinDeSemana = computed(
+  () =>
+    vista.value === 'semana' &&
+    semanaMuestraFinDeSemana(
+      fecha.value,
+      juntas.value,
+      vencimientos.value.map((vencimiento) => vencimiento.vence),
+    ),
+)
+const periodo = computed(() => textoPeriodo(vista.value, fecha.value, conFinDeSemana.value))
 
 // --- agenda de otra persona --------------------------------------------------------------------------
 

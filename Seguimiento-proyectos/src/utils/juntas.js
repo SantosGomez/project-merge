@@ -126,17 +126,20 @@ export const moverPeriodo = (vista, iso, direccion) => {
   return formatearFechaISO(new Date(mesDestino.getFullYear(), mesDestino.getMonth(), dia))
 }
 
-/** Título del periodo en español: «noviembre de 2026», «16 – 20 de noviembre de 2026»… */
-export const textoPeriodo = (vista, iso) => {
+/**
+ * Título del periodo en español: «noviembre de 2026», «16 – 20 de noviembre de 2026»…
+ * @param {boolean} [conFinDeSemana] - la semana llega hasta el domingo en lugar del viernes.
+ */
+export const textoPeriodo = (vista, iso, conFinDeSemana = false) => {
   const fecha = parsearFechaISO(iso)
   if (vista === 'anio') return String(fecha.getFullYear())
   if (vista === 'mes') return `${MESES[fecha.getMonth()]} de ${fecha.getFullYear()}`
   if (vista === 'dia') {
     return `${DIAS_DE_SEMANA[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]} de ${fecha.getFullYear()}`
   }
-  // La semana se muestra de lunes a viernes.
+  // La semana va de lunes a viernes, o hasta el domingo si tiene algo en el fin de semana.
   const lunes = parsearFechaISO(lunesDeLaSemana(iso))
-  const viernes = parsearFechaISO(sumarDias(lunesDeLaSemana(iso), 4))
+  const viernes = parsearFechaISO(sumarDias(lunesDeLaSemana(iso), conFinDeSemana ? 6 : 4))
   if (lunes.getMonth() === viernes.getMonth()) {
     return `${lunes.getDate()} – ${viernes.getDate()} de ${MESES[lunes.getMonth()]} de ${lunes.getFullYear()}`
   }
@@ -196,17 +199,32 @@ export const miRespuestaEnJunta = (junta, usuarioId) => {
 }
 
 /**
- * Textos que acompañan a la junta en el calendario: su estado si no es «Confirmada» y «Responder»
- * si la invitaron y todavía no contesta. Siempre con texto, nunca solo con color.
+ * Textos que acompañan a la junta en el calendario: su estado si no es «Confirmada» y, si hay una respuesta
+ * pendiente, a quién corresponde. Siempre con texto, nunca solo con color.
+ * - En tu agenda: «Responder» si te invitaron y todavía no contestas.
+ * - En la agenda de un administrador que atiendes: «Responder por {nombre}» si él tiene la respuesta pendiente.
+ * - En cualquier otra agenda ajena: «Tu respuesta pendiente» si tu propia invitación está pendiente.
+ * @param {Object} junta
+ * @param {number|string|null} usuarioId - cuenta de la sesión.
+ * @param {number|string|null} [agendaId] - persona cuya agenda se ve; null o ausente es la propia.
  * @returns {string[]}
  */
-export const marcasDeJunta = (junta, usuarioId) => {
+export const marcasDeJunta = (junta, usuarioId, agendaId = null) => {
   if (esJuntaOcupada(junta)) return []
   const marcas = []
   if (junta.estado === 'por_confirmar' || junta.estado === 'cancelada') {
     marcas.push(etiquetaEstadoJunta(junta.estado))
   }
-  if (miRespuestaEnJunta(junta, usuarioId) === 'pendiente') marcas.push('Responder')
+  const miRespuestaPendiente = miRespuestaEnJunta(junta, usuarioId) === 'pendiente'
+  if (agendaId === null || agendaId === undefined) {
+    if (miRespuestaPendiente) marcas.push('Responder')
+    return marcas
+  }
+  const pendienteDeLaAgenda = (junta.responder_por ?? []).find(
+    (persona) => String(persona.id) === String(agendaId) && persona.respuesta === 'pendiente',
+  )
+  if (pendienteDeLaAgenda) marcas.push(`Responder por ${pendienteDeLaAgenda.nombre}`)
+  else if (miRespuestaPendiente) marcas.push('Tu respuesta pendiente')
   return marcas
 }
 
@@ -382,6 +400,59 @@ export const juntasDelDia = (juntas, iso) => {
         minutosAbsolutos(a.fin) - minutosAbsolutos(b.fin) ||
         a.id - b.id,
     )
+}
+
+/**
+ * Hora de la junta en ese día del mes: la de inicio el día en que empieza y «Hasta {hora fin}» en los días
+ * de continuación (una junta que cruza la medianoche).
+ */
+export const horaEnElDia = (junta, iso) =>
+  String(junta.inicio).slice(0, 10) === iso
+    ? horaDeFechaHora(junta.inicio)
+    : `Hasta ${horaDeFechaHora(junta.fin)}`
+
+/**
+ * Texto de la etiqueta de arriba del día para una junta que queda entera fuera de las 8:00 a 19:00:
+ * «Antes de las 8:00 · 06:30 título» o «Después de las 19:00 · 22:00 título».
+ * @returns {string|null} null si la junta no toca ese día o se ve, entera o recortada, en la cuadrícula.
+ */
+export const etiquetaFueraDeHorario = (junta, iso) => {
+  if (juntasDelDia([junta], iso).length === 0 || segmentoDelDia(junta, iso)) return null
+  const finEnElDia = minutosAbsolutos(junta.fin) - minutosDelDia(iso)
+  const prefijo = finEnElDia <= MINUTO_INICIO_VISTA ? 'Antes de las 8:00' : 'Después de las 19:00'
+  const titulo = esJuntaOcupada(junta) ? etiquetaDeJuntaOcupada(junta) : junta.titulo
+  return `${prefijo} · ${horaEnElDia(junta, iso)} ${titulo}`
+}
+
+/**
+ * Nota de un bloque que se recorta en la cuadrícula: «Empieza 07:00» y/o «Sigue hasta 20:00» con la hora real
+ * (con su fecha si ese extremo cae en otro día). Vacía si el bloque cabe de 8:00 a 19:00.
+ */
+export const notaDeRecorte = (junta, iso) => {
+  const segmento = segmentoDelDia(junta, iso)
+  if (!segmento) return ''
+  const extremo = (texto) =>
+    texto.slice(0, 10) === iso
+      ? horaDeFechaHora(texto)
+      : `${fechaParaFormulario(texto)} ${horaDeFechaHora(texto)}`
+  const notas = []
+  if (segmento.recortadaAntes) notas.push(`Empieza ${extremo(junta.inicio)}`)
+  if (segmento.recortadaDespues) notas.push(`Sigue hasta ${extremo(junta.fin)}`)
+  return notas.join(' · ')
+}
+
+/**
+ * Indica si la vista Semana agrega sábado y domingo: solo cuando tienen juntas o vencimientos.
+ * @param {string} iso - fecha de referencia AAAA-MM-DD.
+ * @param {Array<{ inicio: string, fin: string }>} juntas
+ * @param {string[]} diasConVencimientos - fechas AAAA-MM-DD en que vence algo.
+ */
+export const semanaMuestraFinDeSemana = (iso, juntas, diasConVencimientos) => {
+  const sabado = sumarDias(lunesDeLaSemana(iso), 5)
+  const domingo = sumarDias(sabado, 1)
+  return [sabado, domingo].some(
+    (dia) => juntasDelDia(juntas, dia).length > 0 || diasConVencimientos.includes(dia),
+  )
 }
 
 /**

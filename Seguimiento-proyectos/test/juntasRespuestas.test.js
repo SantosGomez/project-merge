@@ -240,3 +240,38 @@ describe('calendario: marcas de estado', () => {
     assert.doesNotMatch(calendario, /#[0-9a-fA-F]{3,6}\b/)
   })
 })
+
+describe('rebanada 29: calendario y campana', () => {
+  const calendario = leer('../src/components/CalendarioJuntas.vue')
+  const pagina = leer('../src/pages/JuntasPage.vue')
+  const campana = leer('../src/components/CampanaAvisos.vue')
+
+  it('las juntas fuera de 8:00 a 19:00 salen en la franja de arriba del día, junto a los vencimientos', () => {
+    const arriba = calendario.slice(
+      calendario.indexOf('#head-day-event'),
+      calendario.indexOf('#day-body'),
+    )
+    assert.match(arriba, /juntasFueraDeHorario\(/)
+    assert.match(arriba, /abrir-junta/)
+    assert.match(calendario, /notaDeRecorte\(/)
+  })
+
+  it('el mes usa horaEnElDia y la semana decide sus días con la prop conFinDeSemana', () => {
+    assert.match(calendario, /horaEnElDia\(junta, scope\.timestamp\.date\)/)
+    assert.match(calendario, /vista === 'semana' && !conFinDeSemana/)
+    assert.match(pagina, /:con-fin-de-semana="conFinDeSemana"/)
+    assert.match(pagina, /:agenda-id="agendaId"/)
+  })
+
+  it('el hover no pisa el color del estado y solo se aplica con mouse', () => {
+    assert.match(calendario, /@media \(hover: hover\) and \(pointer: fine\)/)
+    assert.match(calendario, /\.junta-etiqueta--por-confirmar:hover/)
+    assert.match(calendario, /\.junta-bloque--cancelada:hover/)
+  })
+
+  it('la campana relee los avisos al cambiar de ruta (no de consulta) y no pone su propio scroll', () => {
+    assert.match(campana, /watch\(\(\) => route\.path, cargar\)/)
+    assert.doesNotMatch(campana, /route\.fullPath/)
+    assert.doesNotMatch(campana, /max-height/)
+  })
+})

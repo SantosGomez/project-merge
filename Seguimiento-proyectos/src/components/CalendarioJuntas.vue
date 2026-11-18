@@ -52,7 +52,9 @@
                 :aria-label="nombreAccesibleOcupada(junta)"
                 @click.stop
               >
-                <span class="junta-etiqueta__hora">{{ horaDeFechaHora(junta.inicio) }}</span>
+                <span class="junta-etiqueta__hora">{{
+                  horaEnElDia(junta, scope.timestamp.date)
+                }}</span>
                 <span class="junta-etiqueta__titulo">{{ etiquetaDeJuntaOcupada(junta) }}</span>
               </div>
               <q-btn
@@ -67,7 +69,9 @@
                 :aria-label="nombreAccesible(junta)"
                 @click.stop="emit('abrir-junta', junta)"
               >
-                <span class="junta-etiqueta__hora">{{ horaDeFechaHora(junta.inicio) }}</span>
+                <span class="junta-etiqueta__hora">{{
+                  horaEnElDia(junta, scope.timestamp.date)
+                }}</span>
                 <span v-if="textoDeMarcas(junta)" class="junta-etiqueta__marcas">{{
                   textoDeMarcas(junta)
                 }}</span>
@@ -84,7 +88,7 @@
       <QCalendarDay
         :model-value="fecha"
         :view="vista === 'semana' ? 'week' : 'day'"
-        :weekdays="vista === 'semana' ? DIAS_LABORALES : TODOS_LOS_DIAS"
+        :weekdays="vista === 'semana' && !conFinDeSemana ? DIAS_LABORALES : TODOS_LOS_DIAS"
         locale="es-MX"
         hour24-format
         time-clicks-clamped
@@ -101,9 +105,41 @@
       >
         <template #head-day-event="{ scope }">
           <div
-            v-if="vencimientosDelDia(vencimientos, scope.timestamp.date).length > 0"
+            v-if="hayEtiquetasArriba(scope.timestamp.date)"
             class="calendario-juntas__vencimientos"
           >
+            <template
+              v-for="fuera in juntasFueraDeHorario(scope.timestamp.date)"
+              :key="claveDeJunta(fuera.junta, fuera.indice)"
+            >
+              <div
+                v-if="esJuntaOcupada(fuera.junta)"
+                tabindex="0"
+                role="group"
+                class="junta-etiqueta junta-etiqueta--ocupada junta-etiqueta--arriba"
+                :aria-label="`${fuera.texto}. ${AYUDA_OCUPADA}.`"
+                @click.stop
+              >
+                <span class="junta-etiqueta__titulo">{{ fuera.texto }}</span>
+              </div>
+              <q-btn
+                v-else
+                unelevated
+                no-caps
+                dense
+                align="left"
+                :ripple="false"
+                class="junta-etiqueta junta-etiqueta--arriba boton-presionable"
+                :class="clasesDeEstado(fuera.junta, 'junta-etiqueta')"
+                :aria-label="`${nombreAccesible(fuera.junta)} ${fuera.texto}.`"
+                @click.stop="emit('abrir-junta', fuera.junta)"
+              >
+                <span class="junta-etiqueta__titulo">{{ fuera.texto }}</span>
+                <span v-if="textoDeMarcas(fuera.junta)" class="junta-etiqueta__marcas">{{
+                  textoDeMarcas(fuera.junta)
+                }}</span>
+              </q-btn>
+            </template>
             <q-btn
               v-for="vencimiento in vencimientosDelDia(vencimientos, scope.timestamp.date)"
               :key="vencimiento.clave"
@@ -143,6 +179,7 @@
               <span class="junta-bloque__texto">
                 <span class="junta-bloque__titulo">{{ etiquetaDeJuntaOcupada(bloque.junta) }}</span>
                 <span class="junta-bloque__horario">{{ horarioDeJunta(bloque.junta) }}</span>
+                <span v-if="bloque.nota" class="junta-bloque__nota">{{ bloque.nota }}</span>
               </span>
             </div>
             <q-btn
@@ -166,6 +203,7 @@
                     {{ textoDeMarcas(bloque.junta) }}
                   </span>
                 </span>
+                <span v-if="bloque.nota" class="junta-bloque__nota">{{ bloque.nota }}</span>
               </span>
             </q-btn>
           </template>
@@ -189,10 +227,12 @@ import {
   distribuirSolapadas,
   esJuntaOcupada,
   etiquetaDeJuntaOcupada,
-  horaDeFechaHora,
+  etiquetaFueraDeHorario,
+  horaEnElDia,
   horarioDeJunta,
   juntasDelDia,
   marcasDeJunta,
+  notaDeRecorte,
   segmentoDelDia,
   textoPeriodo,
 } from '../utils/juntas.js'
@@ -226,6 +266,10 @@ const props = defineProps({
   vencimientos: { type: Array, default: () => [] },
   /** Rol de la sesión: decide a dónde lleva el clic y lo que dice el nombre accesible. */
   rol: { type: String, default: '' },
+  /** Persona cuya agenda se ve (id como texto); null en la propia. Decide a quién se refiere «Responder». */
+  agendaId: { type: [Number, String], default: null },
+  /** La vista Semana agrega sábado y domingo (la pantalla lo decide: solo si tienen juntas o vencimientos). */
+  conFinDeSemana: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['abrir-junta', 'nueva-junta', 'abrir-vencimiento'])
@@ -250,7 +294,7 @@ const ALTO_MINIMO_DE_BLOQUE = 24
 const textoDeVista = computed(() => textoPeriodo(props.vista, props.fecha))
 
 // «Por confirmar · Responder»: lo que acompaña a la junta, o '' si no lleva marcas.
-const textoDeMarcas = (junta) => marcasDeJunta(junta, props.usuarioId).join(' · ')
+const textoDeMarcas = (junta) => marcasDeJunta(junta, props.usuarioId, props.agendaId).join(' · ')
 
 const nombreAccesible = (junta) =>
   `Junta ${junta.titulo}, ${horarioDeJunta(junta)}${
@@ -268,9 +312,20 @@ const bloquesDelDia = (dia) =>
   distribuirSolapadas(
     props.juntas.flatMap((junta) => {
       const segmento = segmentoDelDia(junta, dia)
-      return segmento ? [{ ...segmento, junta }] : []
+      return segmento ? [{ ...segmento, junta, nota: notaDeRecorte(junta, dia) }] : []
     }),
   )
+
+// Juntas que quedan enteras antes de las 8:00 o después de las 19:00: no caben en la cuadrícula y salen
+// como etiquetas arriba del día. `indice` es su posición entre todas las juntas, para una clave única.
+const juntasFueraDeHorario = (dia) =>
+  props.juntas.flatMap((junta, indice) => {
+    const texto = etiquetaFueraDeHorario(junta, dia)
+    return texto ? [{ junta, texto, indice }] : []
+  })
+
+const hayEtiquetasArriba = (dia) =>
+  juntasFueraDeHorario(dia).length > 0 || vencimientosDelDia(props.vencimientos, dia).length > 0
 
 const estiloDeBloque = (bloque) => ({
   top: `${bloque.desde - HORA_INICIO_VISTA * 60}px`,
@@ -355,13 +410,19 @@ const alElegirHueco = ({ scope }) => {
   font-size: 0.8rem;
 }
 
-.calendario-juntas :deep(.q-calendar-day__interval),
 .calendario-juntas :deep(.q-calendar-day__day-interval) {
   cursor: pointer;
 }
 
-.calendario-juntas :deep(.q-calendar-day__day-interval:hover) {
-  background: var(--dg-fondo-hover);
+/* Solo con mouse: en táctil el hover se queda pegado después del toque. */
+@media (hover: hover) and (pointer: fine) {
+  .calendario-juntas :deep(.q-calendar-day__day-interval) {
+    transition: background-color 120ms ease;
+  }
+
+  .calendario-juntas :deep(.q-calendar-day__day-interval:hover) {
+    background: var(--dg-fondo-hover);
+  }
 }
 
 .calendario-juntas__dia {
@@ -458,10 +519,6 @@ const alElegirHueco = ({ scope }) => {
   text-align: left;
 }
 
-.junta-etiqueta:hover {
-  background: var(--dg-fondo-hover);
-}
-
 .junta-etiqueta :deep(.q-btn__content) {
   display: flex;
   flex-wrap: nowrap;
@@ -516,6 +573,25 @@ const alElegirHueco = ({ scope }) => {
   outline-offset: 1px;
 }
 
+/* Etiqueta de arriba del día (junta fuera de 8:00 a 19:00): el texto baja de línea en lugar de recortarse. */
+.junta-etiqueta--arriba {
+  height: auto;
+  padding-block: 2px;
+}
+
+.junta-etiqueta--arriba :deep(.q-btn__content) {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.junta-etiqueta--arriba .junta-etiqueta__titulo {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
 /* Junta en semana y día: un bloque sobre su franja horaria. */
 .junta-bloque {
   position: absolute;
@@ -530,10 +606,6 @@ const alElegirHueco = ({ scope }) => {
   text-align: left;
 }
 
-.junta-bloque:hover {
-  background: var(--dg-fondo-hover);
-}
-
 .junta-etiqueta--por-confirmar,
 .junta-bloque--por-confirmar {
   border-left-color: var(--dg-aviso-borde);
@@ -546,6 +618,37 @@ const alElegirHueco = ({ scope }) => {
   border-left-color: var(--dg-error);
   background: var(--dg-error-fondo);
   color: var(--dg-error);
+}
+
+/*
+ * Hover: refuerza el color del estado, no lo cambia. Cada estado tiene el suyo (el normal oscurece su fondo;
+ * «Por confirmar» y «Cancelada» conservan su fondo y marcan su borde). Después de definir los estados, con igual
+ * especificidad, para que ninguno se pinte del azul de una junta normal.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .junta-etiqueta,
+  .junta-bloque {
+    transition:
+      background-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  .junta-etiqueta:hover,
+  .junta-bloque:hover {
+    background: var(--dg-fondo-hover);
+  }
+
+  .junta-etiqueta--por-confirmar:hover,
+  .junta-bloque--por-confirmar:hover {
+    background: var(--dg-aviso-fondo);
+    box-shadow: inset 0 0 0 1px var(--dg-aviso-borde);
+  }
+
+  .junta-etiqueta--cancelada:hover,
+  .junta-bloque--cancelada:hover {
+    background: var(--dg-error-fondo);
+    box-shadow: inset 0 0 0 1px var(--dg-error);
+  }
 }
 
 .junta-etiqueta--cancelada .junta-etiqueta__titulo,
@@ -582,6 +685,15 @@ const alElegirHueco = ({ scope }) => {
   display: block;
   white-space: normal;
   font-weight: 700;
+}
+
+.junta-bloque__nota {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .junta-bloque__horario {

@@ -14,10 +14,12 @@ import {
   distribuirSolapadas,
   esJuntaOcupada,
   etiquetaDeJuntaOcupada,
+  etiquetaFueraDeHorario,
   etiquetaRespuesta,
   invitadoInicialDeAlta,
   formatearFechaISO,
   horaDeFechaHora,
+  horaEnElDia,
   horarioDeJunta,
   juntasDelDia,
   juntasPorDia,
@@ -26,10 +28,12 @@ import {
   marcasDeJunta,
   mesesDelAnio,
   moverPeriodo,
+  notaDeRecorte,
   organizadorDeAlta,
   parsearFechaISO,
   rangoVisible,
   segmentoDelDia,
+  semanaMuestraFinDeSemana,
   textoAdministradoresAtendidos,
   textoDiaConJuntas,
   textoDiaDelMes,
@@ -727,5 +731,218 @@ describe('administrador que atiende la recepcionista (rebanada 28)', () => {
       null,
     )
     assert.equal(agendaInicialDeRecepcion('contador', atendidos, {}), null)
+  })
+})
+
+// --- rebanada 29: lo que no se veía en el calendario ----------------------------------------------
+
+describe('horaEnElDia: la hora de la junta en el mes', () => {
+  const cruzaMedianoche = {
+    inicio: '2026-11-18 22:00:00',
+    fin: '2026-11-19 01:30:00',
+  }
+
+  it('el día en que empieza muestra su hora de inicio', () => {
+    assert.equal(horaEnElDia(cruzaMedianoche, '2026-11-18'), '22:00')
+  })
+
+  it('el día de continuación dice «Hasta» y la hora de fin, no la de inicio', () => {
+    assert.equal(horaEnElDia(cruzaMedianoche, '2026-11-19'), 'Hasta 01:30')
+  })
+})
+
+describe('etiquetaFueraDeHorario: juntas que no caben de 8:00 a 19:00', () => {
+  const junta = (inicio, fin, titulo = 'Cierre') => ({ titulo, inicio, fin })
+
+  it('una junta entera antes de las 8:00 dice «Antes de las 8:00 · hora título»', () => {
+    assert.equal(
+      etiquetaFueraDeHorario(junta('2026-11-18 06:30:00', '2026-11-18 07:30:00'), '2026-11-18'),
+      'Antes de las 8:00 · 06:30 Cierre',
+    )
+  })
+
+  it('una junta entera después de las 19:00 dice «Después de las 19:00 · hora título»', () => {
+    assert.equal(
+      etiquetaFueraDeHorario(junta('2026-11-18 19:30:00', '2026-11-18 20:30:00'), '2026-11-18'),
+      'Después de las 19:00 · 19:30 Cierre',
+    )
+  })
+
+  it('una junta que termina justo a las 8:00 o empieza justo a las 19:00 también cae fuera', () => {
+    assert.equal(
+      etiquetaFueraDeHorario(junta('2026-11-18 07:00:00', '2026-11-18 08:00:00'), '2026-11-18'),
+      'Antes de las 8:00 · 07:00 Cierre',
+    )
+    assert.equal(
+      etiquetaFueraDeHorario(junta('2026-11-18 19:00:00', '2026-11-18 19:30:00'), '2026-11-18'),
+      'Después de las 19:00 · 19:00 Cierre',
+    )
+  })
+
+  it('una que cruza la medianoche: «Después» el primer día y «Antes … Hasta» el siguiente', () => {
+    const noche = junta('2026-11-18 22:00:00', '2026-11-19 01:30:00')
+    assert.equal(etiquetaFueraDeHorario(noche, '2026-11-18'), 'Después de las 19:00 · 22:00 Cierre')
+    assert.equal(
+      etiquetaFueraDeHorario(noche, '2026-11-19'),
+      'Antes de las 8:00 · Hasta 01:30 Cierre',
+    )
+  })
+
+  it('una junta dentro del horario, recortada o de otro día no lleva etiqueta de este tipo', () => {
+    assert.equal(
+      etiquetaFueraDeHorario(junta('2026-11-18 09:00:00', '2026-11-18 10:00:00'), '2026-11-18'),
+      null,
+    )
+    assert.equal(
+      etiquetaFueraDeHorario(junta('2026-11-18 07:00:00', '2026-11-18 09:00:00'), '2026-11-18'),
+      null,
+    )
+    assert.equal(
+      etiquetaFueraDeHorario(junta('2026-11-18 06:30:00', '2026-11-18 07:30:00'), '2026-11-19'),
+      null,
+    )
+  })
+
+  it('un bloque ajeno usa su texto de ocupado (sin título ni ficha)', () => {
+    const privada = {
+      ocupado: true,
+      privada: true,
+      inicio: '2026-11-18 06:30:00',
+      fin: '2026-11-18 07:30:00',
+    }
+    assert.equal(etiquetaFueraDeHorario(privada, '2026-11-18'), 'Antes de las 8:00 · 06:30 Ocupado')
+  })
+})
+
+describe('notaDeRecorte: bloques que empiezan antes o terminan después del horario', () => {
+  it('empieza antes de las 8:00: «Empieza {hora real}»', () => {
+    assert.equal(
+      notaDeRecorte({ inicio: '2026-11-18 07:00:00', fin: '2026-11-18 09:00:00' }, '2026-11-18'),
+      'Empieza 07:00',
+    )
+  })
+
+  it('termina después de las 19:00: «Sigue hasta {hora real}»', () => {
+    assert.equal(
+      notaDeRecorte({ inicio: '2026-11-18 18:00:00', fin: '2026-11-18 20:00:00' }, '2026-11-18'),
+      'Sigue hasta 20:00',
+    )
+  })
+
+  it('recortado por ambos lados dice las dos cosas', () => {
+    assert.equal(
+      notaDeRecorte({ inicio: '2026-11-18 07:00:00', fin: '2026-11-18 20:00:00' }, '2026-11-18'),
+      'Empieza 07:00 · Sigue hasta 20:00',
+    )
+  })
+
+  it('si el otro extremo cae en otro día, lo dice con su fecha', () => {
+    const cruza = { inicio: '2026-11-18 18:00:00', fin: '2026-11-19 09:00:00' }
+    assert.equal(notaDeRecorte(cruza, '2026-11-18'), 'Sigue hasta 19-11-2026 09:00')
+    const llega = { inicio: '2026-11-18 07:00:00', fin: '2026-11-18 09:00:00' }
+    assert.equal(notaDeRecorte(llega, '2026-11-18'), 'Empieza 07:00')
+    const vieneDeAyer = { inicio: '2026-11-17 18:00:00', fin: '2026-11-18 09:00:00' }
+    assert.equal(notaDeRecorte(vieneDeAyer, '2026-11-18'), 'Empieza 17-11-2026 18:00')
+  })
+
+  it('un bloque que cabe en el horario no lleva nota', () => {
+    assert.equal(
+      notaDeRecorte({ inicio: '2026-11-18 09:00:00', fin: '2026-11-18 10:00:00' }, '2026-11-18'),
+      '',
+    )
+  })
+})
+
+describe('semanaMuestraFinDeSemana y textoPeriodo con fin de semana', () => {
+  const juntaEl = (dia) => ({ inicio: `${dia} 10:00:00`, fin: `${dia} 11:00:00` })
+
+  it('sin nada en sábado ni domingo se queda de lunes a viernes', () => {
+    assert.equal(semanaMuestraFinDeSemana('2026-11-18', [juntaEl('2026-11-18')], []), false)
+  })
+
+  it('una junta en sábado o en domingo agrega el fin de semana', () => {
+    assert.equal(semanaMuestraFinDeSemana('2026-11-18', [juntaEl('2026-11-21')], []), true)
+    assert.equal(semanaMuestraFinDeSemana('2026-11-18', [juntaEl('2026-11-22')], []), true)
+  })
+
+  it('un vencimiento en sábado o en domingo también', () => {
+    assert.equal(semanaMuestraFinDeSemana('2026-11-18', [], ['2026-11-21']), true)
+    assert.equal(semanaMuestraFinDeSemana('2026-11-18', [], ['2026-11-22']), true)
+  })
+
+  it('lo de otra semana no cuenta', () => {
+    assert.equal(
+      semanaMuestraFinDeSemana('2026-11-18', [juntaEl('2026-11-28')], ['2026-11-29']),
+      false,
+    )
+  })
+
+  it('una junta del viernes que cruza a sábado agrega el fin de semana', () => {
+    const noche = { inicio: '2026-11-20 22:00:00', fin: '2026-11-21 01:00:00' }
+    assert.equal(semanaMuestraFinDeSemana('2026-11-18', [noche], []), true)
+  })
+
+  it('el periodo llega al domingo cuando se muestra el fin de semana', () => {
+    assert.equal(textoPeriodo('semana', '2026-11-18', true), '16 – 22 de noviembre de 2026')
+    assert.equal(textoPeriodo('semana', '2026-11-18', false), '16 – 20 de noviembre de 2026')
+    assert.equal(
+      textoPeriodo('semana', '2026-11-30', true),
+      '30 de noviembre – 6 de diciembre de 2026',
+    )
+  })
+})
+
+describe('marcasDeJunta en la agenda de otra persona', () => {
+  const invitada = (participantes, responderPor = []) => ({
+    estado: 'confirmada',
+    participantes,
+    responder_por: responderPor,
+  })
+
+  it('en tu agenda (sin agenda ajena) «Responder» sigue igual', () => {
+    const junta = invitada([{ id: 3, respuesta: 'pendiente' }])
+    assert.deepEqual(marcasDeJunta(junta, 3), ['Responder'])
+    assert.deepEqual(marcasDeJunta(junta, 3, null), ['Responder'])
+  })
+
+  it('la recepcionista en la agenda de un administrador con respuesta pendiente: «Responder por {nombre}»', () => {
+    const junta = invitada(
+      [{ id: 7, respuesta: 'pendiente' }],
+      [{ id: 7, nombre: 'Ana Pérez', respuesta: 'pendiente' }],
+    )
+    assert.deepEqual(marcasDeJunta(junta, 3, '7'), ['Responder por Ana Pérez'])
+  })
+
+  it('si ese administrador ya respondió, no hay marca de respuesta', () => {
+    const junta = invitada(
+      [{ id: 7, respuesta: 'aceptada' }],
+      [{ id: 7, nombre: 'Ana Pérez', respuesta: 'aceptada' }],
+    )
+    assert.deepEqual(marcasDeJunta(junta, 3, '7'), [])
+  })
+
+  it('responder_por de otro administrador distinto al de la agenda no cuenta', () => {
+    const junta = invitada(
+      [{ id: 8, respuesta: 'pendiente' }],
+      [{ id: 8, nombre: 'Luis Gómez', respuesta: 'pendiente' }],
+    )
+    assert.deepEqual(marcasDeJunta(junta, 3, '7'), [])
+  })
+
+  it('en otra agenda ajena, si tu invitación está pendiente dice «Tu respuesta pendiente»', () => {
+    const junta = invitada([{ id: 3, respuesta: 'pendiente' }])
+    assert.deepEqual(marcasDeJunta(junta, 3, '7'), ['Tu respuesta pendiente'])
+  })
+
+  it('el estado sigue yendo primero y un bloque ocupado no lleva marcas', () => {
+    const junta = {
+      ...invitada(
+        [{ id: 7, respuesta: 'pendiente' }],
+        [{ id: 7, nombre: 'Ana Pérez', respuesta: 'pendiente' }],
+      ),
+      estado: 'por_confirmar',
+    }
+    assert.deepEqual(marcasDeJunta(junta, 3, '7'), ['Por confirmar', 'Responder por Ana Pérez'])
+    assert.deepEqual(marcasDeJunta({ ocupado: true }, 3, '7'), [])
   })
 })

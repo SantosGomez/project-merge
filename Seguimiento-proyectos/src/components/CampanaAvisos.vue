@@ -141,12 +141,19 @@ onBeforeUnmount(() => {
   dejarDeEscuchar.forEach((dejar) => dejar())
 })
 
-watch(() => route.fullPath, cargar)
+// Se observa la ruta sin la consulta: ajustar la vista o la fecha de una pantalla no vuelve a pedir los avisos.
+watch(() => route.path, cargar)
 </script>
 
 <style scoped>
 .campana-avisos {
   color: var(--dg-texto-secundario);
+}
+
+/* El número cae dentro del botón: en el encabezado del celular, más arriba lo recorta el borde. */
+.campana-avisos :deep(.q-badge--floating) {
+  top: 2px;
+  right: 2px;
 }
 
 .campana-avisos--clara {
@@ -168,8 +175,6 @@ watch(() => route.fullPath, cargar)
 
 .campana-avisos__lista {
   width: min(360px, 90vw);
-  max-height: 60vh;
-  overflow-y: auto;
 }
 
 .campana-avisos__item--nuevo {
