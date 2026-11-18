@@ -376,7 +376,7 @@ function testCreateTableDeContadorAuxiliar() {
 }
 
 // Rol auxiliar (2026-11-10): en minúscula como los demás; corrige el 'Auxiliar' puesto a mano.
-const ENUM_ROL = "enum('administrador','contador','usuarios_de_sistema','auxiliar')";
+const ENUM_ROL = "enum('administrador','contador','usuarios_de_sistema','auxiliar','recepcionista')";
 
 async function testMigracionAgregaElRolAuxiliar() {
   await seedDatabase({ cuentasDemo: false });
@@ -395,9 +395,19 @@ async function testSeGuardaUnUsuarioConRolAuxiliar() {
   assert.strictEqual(fila.rol, 'auxiliar');
 }
 
+async function testSeGuardaUnUsuarioConRolRecepcionista() {
+  await seedDatabase({ cuentasDemo: false });
+  const recepcionista = await crearUsuarioDePrueba('recepcionista');
+  const [fila] = await query('SELECT rol FROM usuarios WHERE id = ?', [recepcionista.id]);
+  assert.strictEqual(fila.rol, 'recepcionista', 'el rol no queda vacío ni cambia');
+}
+
 function testCreateTableDeUsuariosIncluyeAuxiliar() {
   const fuente = readFileSync(join(__dirname, '../src/utils/seed.js'), 'utf8');
-  assert.match(fuente, /rol ENUM\('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar'\) NOT NULL/);
+  assert.match(
+    fuente,
+    /rol ENUM\('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar', 'recepcionista'\) NOT NULL/
+  );
 }
 
 describe('seed de datos maestros', () => {
@@ -435,7 +445,8 @@ describe('seed de datos maestros', () => {
   test('una base nueva crea la tabla contador_auxiliar con sus columnas y PK', testCreateTableDeContadorAuxiliar);
   test('la migración deja el rol auxiliar en minúscula y se puede repetir', testMigracionAgregaElRolAuxiliar);
   test('se guarda un usuario con rol auxiliar', testSeGuardaUnUsuarioConRolAuxiliar);
-  test('una base nueva crea usuarios con el rol auxiliar', testCreateTableDeUsuariosIncluyeAuxiliar);
+  test('se guarda un usuario con rol recepcionista', testSeGuardaUnUsuarioConRolRecepcionista);
+  test('una base nueva crea usuarios con los roles auxiliar y recepcionista', testCreateTableDeUsuariosIncluyeAuxiliar);
 });
 
 describe('cuentas demo en producción (S2)', () => {

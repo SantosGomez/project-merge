@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
-const { requireAdminOrSistema } = require('../middlewares/roleMiddleware');
+const { requireAdminOrSistema, requireConsultaDirectorio } = require('../middlewares/roleMiddleware');
 const { createUser, resetPassword, listUsers, updateUser } = require('../controllers/UserController');
 const { listarContadoresDeAuxiliar, ajustarContadoresDeAuxiliar } = require('../controllers/AuxiliarController');
 const { asyncHandler } = require('../utils/asyncHandler');
@@ -10,8 +10,8 @@ const { asyncHandler } = require('../utils/asyncHandler');
 router.get('/:id/contadores', authenticateToken, requireAdminOrSistema, asyncHandler(listarContadoresDeAuxiliar));
 router.put('/:id/contadores', authenticateToken, requireAdminOrSistema, asyncHandler(ajustarContadoresDeAuxiliar));
 
-// GET /usuarios — Directorio de cuentas con datos públicos (solo administrador o usuarios_de_sistema)
-router.get('/', authenticateToken, requireAdminOrSistema, asyncHandler(listUsers));
+// GET /usuarios — Directorio de cuentas con datos públicos (administrador, usuarios_de_sistema o recepcionista, solo consulta)
+router.get('/', authenticateToken, requireConsultaDirectorio, asyncHandler(listUsers));
 
 // POST /usuarios — Alta de usuario protegida (solo administrador o usuarios_de_sistema) (RF-28 a RF-30)
 router.post('/', authenticateToken, requireAdminOrSistema, asyncHandler(createUser));

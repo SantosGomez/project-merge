@@ -2,7 +2,7 @@ const { hashPassword } = require('./passwordUtils');
 const { esCorreoValido } = require('./validationUtils');
 const UserModel = require('../models/UserModel');
 
-const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar'];
+const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar', 'recepcionista'];
 const MIN_PASSWORD = 8;
 
 /**
@@ -14,7 +14,7 @@ function motivoDeError({ nombre, correo, rol, password }) {
   if (!correo) return 'falta el correo';
   if (!esCorreoValido(correo)) return 'el correo no es válido';
   if (!nombre) return 'falta el nombre';
-  if (!ROLES_VALIDOS.includes(rol)) return 'el rol no es administrador, contador, auxiliar ni usuarios_de_sistema';
+  if (!ROLES_VALIDOS.includes(rol)) return 'el rol no es administrador, contador, auxiliar, recepcionista ni usuarios_de_sistema';
   if (password.length < MIN_PASSWORD) return 'la contraseña tiene menos de 8 caracteres';
   return null;
 }

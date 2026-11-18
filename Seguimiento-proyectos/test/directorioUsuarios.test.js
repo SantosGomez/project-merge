@@ -175,7 +175,7 @@ describe('Directorio de usuarios (revisión): diálogos accesibles y texto del m
   it('las dos opciones «Directorio» del menú se llaman igual que la pantalla: directorio de usuarios', () => {
     assert.doesNotMatch(menu, /directorio de contadores|Elegir contador/)
     const opciones = [...menu.matchAll(/aria-label="Ir al directorio de usuarios"/g)]
-    assert.equal(opciones.length, 2, 'administrador y usuario de sistema')
+    assert.equal(opciones.length, 3, 'administrador, usuario de sistema y recepcionista')
   })
 })
 
@@ -192,11 +192,11 @@ describe('Directorio de usuarios: filtros de búsqueda y rol', () => {
     assert.match(buscador, /<q-tooltip>/)
   })
 
-  it('tiene lista de rol con «Todos los roles» y los cuatro roles', () => {
+  it('tiene lista de rol con «Todos los roles» y los cinco roles', () => {
     assert.match(plantilla, /<q-select[^>]*v-model="filtros\.rol"[^>]*:options="OPCIONES_ROL"/)
     // Revisión de UI, rebanada 8: los tres roles usan formatearRol, como el alta de usuario.
     assert.ok(pagina.includes("label: 'Todos los roles'"))
-    assert.match(pagina, /\[PROFILES\.administrador, PROFILES\.contador, PROFILES\.auxiliar, PROFILES\.sistema\]\.map\(/)
+    assert.match(pagina, /\[PROFILES\.administrador, PROFILES\.contador, PROFILES\.auxiliar, PROFILES\.sistema, PROFILES\.recepcionista\]\.map\(/)
     assert.match(pagina, /label: formatearRol\(valor\)/)
   })
 

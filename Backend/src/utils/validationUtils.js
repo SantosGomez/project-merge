@@ -2,7 +2,7 @@ const { buildError } = require('./errorUtils');
 
 const ESTADOS_VALIDOS = ['Pendiente', 'En proceso', 'Finalizado'];
 const PRIORIDADES_VALIDAS = ['Alta', 'Media', 'Baja'];
-const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar'];
+const ROLES_VALIDOS = ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar', 'recepcionista'];
 const LONGITUD_MAX_CLIENTE = 80;
 const LONGITUD_MIN_PASSWORD = 12;
 // Tope de contraseña: evita gastar Argon2id con textos enormes
@@ -189,7 +189,7 @@ function validatePriority(prioridad) {
 }
 
 /**
- * Valida que un rol sea uno de los permitidos: administrador, contador, usuarios_de_sistema, auxiliar.
+ * Valida que un rol sea uno de los permitidos: administrador, contador, usuarios_de_sistema, auxiliar, recepcionista.
  * RF-30.
  * @param {string} rol - Rol de usuario a validar.
  * @returns {boolean} true si es válido, false en caso contrario.

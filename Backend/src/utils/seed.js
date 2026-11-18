@@ -24,7 +24,7 @@ async function crearTablasSiNoExisten() {
       nombre VARCHAR(150) NOT NULL,
       correo VARCHAR(150) NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
-      rol ENUM('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar') NOT NULL,
+      rol ENUM('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar', 'recepcionista') NOT NULL,
       creado_en DATETIME NOT NULL,
       actualizado_en DATETIME NULL,
       ultimo_acceso_en DATETIME NULL,
@@ -121,8 +121,9 @@ async function migrarUsuarios() {
 
   // Rol auxiliar (2026-11-10): en minúscula como los demás; también corrige un 'Auxiliar'
   // agregado a mano (la comparación de ENUM no distingue mayúsculas y conserva los datos).
+  // Rol recepcionista (2026-11-18): si falta en el ENUM, MariaDB sin modo estricto deja '' en sus filas.
   await query(
-    "ALTER TABLE usuarios MODIFY rol ENUM('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar') NOT NULL"
+    "ALTER TABLE usuarios MODIFY rol ENUM('administrador', 'contador', 'usuarios_de_sistema', 'auxiliar', 'recepcionista') NOT NULL"
   );
 }
 

@@ -27,7 +27,8 @@ const ADMIN = 'administrador';
 const CONTADOR = 'contador';
 const AUXILIAR = 'auxiliar';
 const SISTEMA = 'usuarios_de_sistema';
-const TODOS = [ADMIN, CONTADOR, AUXILIAR, SISTEMA];
+const RECEPCIONISTA = 'recepcionista';
+const TODOS = [ADMIN, CONTADOR, AUXILIAR, SISTEMA, RECEPCIONISTA];
 const CONTADOR_O_AUXILIAR = [CONTADOR, AUXILIAR];
 const ID_INEXISTENTE = 99999999;
 
@@ -59,7 +60,7 @@ const MATRIZ = [
   ['GET', '/contadores/:x/casos', [ADMIN]],
   ['POST', '/contadores/:x/casos', [ADMIN], {}],
   // usuarios
-  ['GET', '/usuarios', [ADMIN, SISTEMA]],
+  ['GET', '/usuarios', [ADMIN, SISTEMA, RECEPCIONISTA]],
   ['POST', '/usuarios', [ADMIN, SISTEMA], {}],
   ['PATCH', '/usuarios/restablecer-contrasena', [ADMIN, SISTEMA], {}],
   ['GET', '/usuarios/:x/contadores', [ADMIN, SISTEMA]],

@@ -14,6 +14,9 @@ const src = read('../src/layouts/MaquetaLayout.vue')
 // Sección «Usuarios» del usuario de sistema: también lleva al directorio (directorio, rebanada 2).
 const inicioSistema = src.indexOf('<template v-if="session.esUsuarioSistema">')
 const bloqueSistema = src.slice(inicioSistema, src.indexOf('</template>', inicioSistema))
+// Sección «Recepción» de la recepcionista: también lleva al directorio (rebanada 20).
+const inicioRecepcion = src.indexOf('<template v-if="session.esRecepcionista">')
+const bloqueRecepcion = src.slice(inicioRecepcion, src.indexOf('</template>', inicioRecepcion))
 
 const cssRule = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -119,7 +122,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
 
     const bloqueContador = src.slice(inicioContador, finContador)
-    const sinBloques = src.replace(bloqueAdmin, '').replace(bloqueContador, '').replace(bloqueSistema, '')
+    const sinBloques = src.replace(bloqueAdmin, '').replace(bloqueContador, '').replace(bloqueSistema, '').replace(bloqueRecepcion, '')
     for (const ruta of [
       'admin-dashboard',
       'admin-directorio',
@@ -170,7 +173,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(finAdmin > inicioAdmin, 'falta el cierre del bloque del administrador')
 
     const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
-    const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '').replace(bloqueSistema, '')
+    const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '').replace(bloqueSistema, '').replace(bloqueRecepcion, '')
     for (const ruta of ['admin-dashboard', 'admin-directorio', 'contador-casos']) {
       assert.ok(
         !sinBloques.includes(`name: '${ruta}'`),
@@ -681,11 +684,11 @@ describe('Directorio de usuarios (rebanada 2: el usuario de sistema entra) — v
   const rutas = read('../src/router/index.js')
   const pagina = read('../src/pages/CountersDirectoryPage.vue')
 
-  it('la ruta del directorio admite al administrador y al usuario de sistema', () => {
+  it('la ruta del directorio admite al administrador, al usuario de sistema y a la recepcionista', () => {
     const inicio = rutas.indexOf("name: 'admin-directorio'")
     const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
 
-    assert.match(ruta, /perfil: \[PROFILES\.administrador, PROFILES\.sistema\]/, 'los dos perfiles')
+    assert.match(ruta, /perfil: \[PROFILES\.administrador, PROFILES\.sistema, PROFILES\.recepcionista\]/, 'los tres perfiles')
   })
 
   it('la sección «Usuarios» del menú tiene la opción «Directorio»', () => {

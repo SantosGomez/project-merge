@@ -201,7 +201,7 @@
             <p id="nuevo-rol-ayuda" class="form-help">
               Administrador ve el dashboard; Contador registra sus casos; Auxiliar apoya a un contador
               (tiene sus casos y cambia el estado de los de su contador); Usuario de sistema administra
-              las cuentas.
+              las cuentas; Recepcionista consulta el directorio.
             </p>
           </div>
 

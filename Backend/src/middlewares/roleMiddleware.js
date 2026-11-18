@@ -126,4 +126,36 @@ async function requireContadorOAuxiliar(req, res, next) {
   next();
 }
 
-module.exports = { requireAdmin, requireAdminOrSistema, requireAdminOrContador, requireContador, requireContadorOAuxiliar };
+/**
+ * Middleware del directorio de cuentas en solo consulta: permite a administrador, usuarios_de_sistema
+ * y recepcionista. Las escrituras de /usuarios siguen con requireAdminOrSistema.
+ * @param {Object} req - Objeto de petición (debe contener req.user con rol).
+ * @param {Object} res - Objeto de respuesta.
+ * @param {Function} next - Función siguiente del middleware.
+ */
+async function requireConsultaDirectorio(req, res, next) {
+  if (!req.user) {
+    res.status(403).json(
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión para consultar el directorio')
+    );
+    return;
+  }
+
+  if (!['administrador', 'usuarios_de_sistema', 'recepcionista'].includes(req.user.rol)) {
+    res.status(403).json(
+      buildError('Rol insuficiente', 'usuario autenticado', 'Se requiere rol de administrador, usuario de sistema o recepcionista para consultar el directorio')
+    );
+    return;
+  }
+
+  next();
+}
+
+module.exports = {
+  requireAdmin,
+  requireAdminOrSistema,
+  requireAdminOrContador,
+  requireContador,
+  requireContadorOAuxiliar,
+  requireConsultaDirectorio,
+};

@@ -12,6 +12,7 @@ const ROLES = new Map([
   ['contador', 'Contador'],
   ['auxiliar', 'Auxiliar'],
   ['usuarios_de_sistema', 'Usuario de sistema'],
+  ['recepcionista', 'Recepcionista'],
 ])
 
 /** Ayuda contextual de cada prioridad, en su código interno. */

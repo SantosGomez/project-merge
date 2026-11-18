@@ -23,7 +23,7 @@ const MINIMOS = {
   'appCors.test.js': 4,
   'asignarCaso.test.js': 2,
   'auditoriaEventos.test.js': 10,
-  'autorizacionMatriz.test.js': 36,
+  'autorizacionMatriz.test.js': 37,
   'bitacoraSeguridad.test.js': 12,
   'auditoriaMensajes.test.js': 5,
   'auditoriaRoutes.test.js': 19,
@@ -78,6 +78,7 @@ const MINIMOS = {
   'registrosTiempo.test.js': 13,
   'respuestasApi.test.js': 3,
   'rolAuxiliar.test.js': 10,
+  'rolRecepcionista.test.js': 5,
   'roleMiddleware.test.js': 8,
   'respaldoCifrado.test.js': 6,
   'rotarSecretos.test.js': 5,
@@ -88,7 +89,7 @@ const MINIMOS = {
   'tokenUtils.test.js': 9,
   'userModel.test.js': 5,
   'userRoutes.test.js': 10,
-  'validationUtils.test.js': 22,
+  'validationUtils.test.js': 23,
   'vencimientoActividad.test.js': 24,
 };
 

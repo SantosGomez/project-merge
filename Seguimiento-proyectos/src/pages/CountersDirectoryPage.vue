@@ -21,9 +21,12 @@
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. Para ver los casos
           importantes de un contador o de un auxiliar, pulsa «Ver casos importantes» en su fila.
         </p>
-        <p v-else class="directory-panel__help">
+        <p v-else-if="session.esUsuarioSistema" class="directory-panel__help">
           Todas las cuentas del equipo, con su rol y la fecha de su último acceso. «Nuevo usuario»
           crea una cuenta y «Restablecer contraseña» le asigna una contraseña nueva.
+        </p>
+        <p v-else class="directory-panel__help">
+          Consulta las cuentas del equipo, con su rol y la fecha de su último acceso.
         </p>
       </div>
 
@@ -183,7 +186,7 @@
                 <q-tooltip>Abre los casos de este auxiliar que su contador marcó como importantes.</q-tooltip>
               </q-btn>
               <q-btn
-                v-if="props.row.rolClave === 'auxiliar'"
+                v-if="props.row.rolClave === 'auxiliar' && !session.esRecepcionista"
                 flat
                 no-caps
                 color="primary"
@@ -268,7 +271,7 @@
                     <q-tooltip>Abre los casos de este auxiliar que su contador marcó como importantes.</q-tooltip>
                   </q-btn>
                   <q-btn
-                    v-if="props.row.rolClave === 'auxiliar'"
+                    v-if="props.row.rolClave === 'auxiliar' && !session.esRecepcionista"
                     flat
                     no-caps
                     color="primary"
@@ -381,7 +384,7 @@ const TODOS_LOS_ROLES = 'todos'
 const OPCIONES_ROL = [
   { label: 'Todos los roles', value: TODOS_LOS_ROLES },
   // Mismas etiquetas que el resto de la app (y que el alta de usuario).
-  ...[PROFILES.administrador, PROFILES.contador, PROFILES.auxiliar, PROFILES.sistema].map((valor) => ({
+  ...[PROFILES.administrador, PROFILES.contador, PROFILES.auxiliar, PROFILES.sistema, PROFILES.recepcionista].map((valor) => ({
     label: formatearRol(valor),
     value: valor,
   })),
@@ -511,7 +514,9 @@ const abrirCasosDeAuxiliar = (fila) => {
 
 // En celular la tarjeta solo lleva barra de acciones si tiene algún botón que mostrar.
 const tieneAccionesTarjeta = (fila) =>
-  (fila.puedeVerCasos && session.esAdministrador) || session.esUsuarioSistema || fila.rolClave === 'auxiliar'
+  (fila.puedeVerCasos && session.esAdministrador) ||
+  session.esUsuarioSistema ||
+  (fila.rolClave === 'auxiliar' && !session.esRecepcionista)
 
 /*
  * Recarga sin cargador: la tabla no parpadea. Si falla tras crear una cuenta, se conserva la

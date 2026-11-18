@@ -70,7 +70,7 @@ async function createUser(req, res) {
   // Validar que el rol sea uno de los permitidos (RF-30)
   if (!rol || !validateRol(rol)) {
     return res.status(400).json(
-      buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador, auxiliar o usuario de sistema')
+      buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador, auxiliar, recepcionista o usuario de sistema')
     );
   }
 
@@ -217,7 +217,7 @@ function validarDatosDeCuenta({ nombre, correo, rol }) {
   }
   if (!rol || !validateRol(rol)) {
     return {
-      error: buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador, auxiliar o usuario de sistema'),
+      error: buildError('Rol no válido', 'rol', 'Usa uno de estos: administrador, contador, auxiliar, recepcionista o usuario de sistema'),
     };
   }
   return { nombre: nombreLimpio, correo: correoLimpio, rol };

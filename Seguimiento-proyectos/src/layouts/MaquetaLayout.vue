@@ -234,6 +234,28 @@
               </q-item-section>
             </q-item>
           </template>
+
+          <template v-if="session.esRecepcionista">
+            <q-item-label header>Recepción</q-item-label>
+
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'admin-directorio' }"
+              :aria-current="paginaActual('admin-directorio')"
+              aria-label="Ir al directorio de usuarios"
+            >
+              <q-item-section avatar>
+                <q-icon name="group" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Directorio</q-item-label>
+                <q-item-label caption>Consultar cuentas del equipo</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
         </q-list>
         </nav>
       </q-scroll-area>

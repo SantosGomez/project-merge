@@ -109,7 +109,7 @@ describe('PATCH /usuarios/:id (editar cuenta)', () => {
       [{ correo: 'sin-arroba' }, 'Correo no válido sobre correo: Escribe un correo como nombre@delgrow.mx'],
       [{ nombre: 'a'.repeat(151) }, 'El nombre supera el máximo de caracteres sobre nombre: El nombre debe tener máximo 150 caracteres'],
       [{ nombre: 5 }, 'Dato inválido sobre nombre: debe enviarse como texto'],
-      [{ rol: 'jefe' }, 'Rol no válido sobre rol: Usa uno de estos: administrador, contador, auxiliar o usuario de sistema'],
+      [{ rol: 'jefe' }, 'Rol no válido sobre rol: Usa uno de estos: administrador, contador, auxiliar, recepcionista o usuario de sistema'],
       [{ rol: 7 }, 'Dato inválido sobre rol: El rol debe enviarse como texto'],
     ];
     for (const [cambio, mensaje] of casos) {

@@ -62,7 +62,11 @@ describe('pantallas: alta y directorio', () => {
   })
 
   it('el directorio ofrece «Contadores que apoya» en las filas de auxiliares y pasa los contadores', () => {
-    assert.equal((directorio.match(/v-if="props\.row\.rolClave === 'auxiliar'"/g) ?? []).length, 2, 'tabla y tarjeta')
+    assert.equal(
+      (directorio.match(/v-if="props\.row\.rolClave === 'auxiliar' && !session\.esRecepcionista"/g) ?? []).length,
+      2,
+      'tabla y tarjeta',
+    )
     assert.match(directorio, /<ContadoresDeAuxiliarDialog/)
     assert.match(directorio, /<NewUserDialog[^>]*:contadores="contadores"/)
     assert.match(directorio, /<ContadoresDeAuxiliarDialog[^>]*:contadores="contadores"/)

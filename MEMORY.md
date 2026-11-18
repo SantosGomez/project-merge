@@ -18,6 +18,16 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 - **Editar cuentas:** `PATCH /usuarios/:id` con `NewUserDialog.vue` (prop `cuenta`). Nunca cambia la contraseña; si cambia el rol, revoca las sesiones. Sin cubrir: auditorías de un contador que cambia de rol.
 - **«Mi perfil»:** «Cambiar contraseña» está oculto (`CAMBIO_CONTRASENA_HABILITADO = false`); el backend sigue ahí.
 
+- **Módulo de calendario (desde 2026-11-18, sin commit):** plan en `docs/rebanadas/20-rol-recepcionista.md`:
+  1. Rol recepcionista.
+  2. Calendario mes/semana/día con QCalendar.
+  3. Invitaciones con aviso en la app.
+  4. Juntas privadas.
+  5. Avisos por correo.
+  6. Vista de año y vencimientos.
+
+  Decisiones: calendario propio (Google aparte), solo juntas internas, privacidad por junta. **La 20 está aprobada:** la recepcionista solo consulta el directorio (`requireConsultaDirectorio`) y su pantalla principal es provisional hasta la 2. Preguntas abiertas: el horario laboral; si los invitados también aceptan o solo el administrador; si la recepcionista ve el «Último acceso».
+
 ## Pendientes / para decidir
 
 - **«Mis actividades»:** los «para decidir» de `17-revision-ui-actividades.md` (`en_cartera` en `GET /actividades`, jornada plegada) y la regla fiscal. Los opcionales sin aplicar están en cada `docs/rebanadas/NN-*.md`.
@@ -30,6 +40,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 ## Errores a evitar
 
 - **Shell:** PowerShell no admite `&&`/`||`. En Git Bash, `MSYS_NO_PATHCONV=1`. Varios `.vue` usan CRLF y `sed` falla con varias líneas o con `\\`: usar Edit.
+- **ENUM de roles:** el seed fija `usuarios.rol` en cada arranque y MariaDB no está en modo estricto. Un rol agregado a mano que no esté en el seed queda en `''` sin error: agregarlo siempre en `seed.js` (CREATE y ALTER).
 - **Pruebas:** nunca `DROP`/`ALTER` destructivo. Cada archivo de `Backend/test` va en `MINIMOS`. El backend se corre por archivo (todo junto se cuelga). `lint:check` no revisa formato: correr también `npx prettier --check`.
 - **Datos de prueba:** borrar las `sesiones` antes que la cuenta. `limpiarDatosDePrueba` borra los avisos `zz_test_`.
 - **Calidad de las pruebas:** si una prueba pasa sin el cambio, no prueba nada. Nunca esquivar una prueba de texto moviendo el texto a otro archivo.

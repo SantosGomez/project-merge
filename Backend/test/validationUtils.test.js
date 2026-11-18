@@ -5,6 +5,7 @@ const {
   validateNewCaseInput,
   validateStatus,
   validatePriority,
+  validateRol,
   validarTextoOpcional,
 } = require('../src/utils/validationUtils');
 
@@ -217,6 +218,16 @@ function testTextoOpcionalTipoInvalido() {
   }
 }
 
+// Roles que acepta el alta de cuentas (la recepcionista se suma en la rebanada 20).
+function testRolesValidos() {
+  for (const rol of ['administrador', 'contador', 'usuarios_de_sistema', 'auxiliar', 'recepcionista']) {
+    assert.strictEqual(validateRol(rol), true, `«${rol}» es un rol válido`);
+  }
+  for (const rol of ['Recepcionista', 'recepcion', '', null, 5]) {
+    assert.strictEqual(validateRol(rol), false, `«${rol}» no es un rol válido`);
+  }
+}
+
 describe('validationUtils', () => {
   test('testLoginInputCamposVacios', testLoginInputCamposVacios);
   test('testLoginInputSoloEspacios', testLoginInputSoloEspacios);
@@ -243,4 +254,5 @@ describe('validationUtils', () => {
   test('validarTextoOpcional trata null, undefined y vacío como ausente', testTextoOpcionalAusente);
   test('validarTextoOpcional recorta y respeta el máximo', testTextoOpcionalRecortaYValidaMaximo);
   test('validarTextoOpcional rechaza los valores que no son texto', testTextoOpcionalTipoInvalido);
+  test('validateRol acepta recepcionista y rechaza roles que no existen', testRolesValidos);
 });

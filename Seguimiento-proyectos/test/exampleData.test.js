@@ -45,6 +45,7 @@ test('constants.js reúne los valores únicos del dominio', () => {
     contador: 'contador',
     auxiliar: 'auxiliar',
     sistema: 'usuarios_de_sistema',
+    recepcionista: 'recepcionista',
   })
   assert.equal(MAX_CLIENT_LENGTH, 80)
 })
