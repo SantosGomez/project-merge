@@ -75,9 +75,10 @@ function validarTexto(valor, campo, maximo, obligatorio) {
 }
 
 function validarParticipantes(valor, creadorId) {
-  const queHacer = `Elige entre 1 y ${MAX_PARTICIPANTES} invitados, sin repetir y sin incluirte a ti`;
-  if (!Array.isArray(valor) || valor.length === 0) {
-    return errorDeCampo('Falta elegir a los invitados', 'participantes', queHacer);
+  const queHacer = `Elige hasta ${MAX_PARTICIPANTES} invitados (o ninguno), sin repetir y sin incluirte a ti`;
+  if (valor === undefined) return { valor: [] };
+  if (!Array.isArray(valor)) {
+    return errorDeCampo('La lista de invitados no es válida', 'participantes', queHacer);
   }
   if (valor.length > MAX_PARTICIPANTES) {
     return errorDeCampo(`Hay más de ${MAX_PARTICIPANTES} invitados`, 'participantes', queHacer);

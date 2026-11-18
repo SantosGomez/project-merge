@@ -69,7 +69,7 @@ describe('vencimientos de casos', () => {
   })
 
   it('el interruptor «Mostrar vencimientos de casos» solo lo ven quienes pueden y no en la agenda de otra persona', () => {
-    assert.match(pagina, /Mostrar vencimientos de casos/)
+    assert.match(pagina, /label="Mostrar vencimientos"/)
     assert.match(pagina, /<q-toggle/)
     assert.match(pagina, /puedeVerVencimientos\(/)
     assert.match(pagina, /leerMostrarVencimientos\(/)
@@ -113,5 +113,58 @@ describe('vencimientos de casos', () => {
     assert.match(calendario, /var\(--dg-prioridad-media-fondo\)/)
     assert.match(calendario, /var\(--dg-prioridad-baja-fondo\)/)
     assert.doesNotMatch(calendario, /#[0-9a-fA-F]{3,8}\b|rgba?\(/)
+  })
+})
+
+describe('vencimientos de auditorías (rebanada 26)', () => {
+  it('solo el contador las pide, con listarAuditorias, y el aviso de error es el mismo', () => {
+    assert.match(
+      pagina,
+      /import \{ listarAuditorias \} from '\.\.\/services\/auditoriaService\.js'/,
+    )
+    assert.match(pagina, /listarAuditorias\(\)/)
+    assert.match(pagina, /vencimientosDeAuditorias\(/)
+    assert.match(pagina, /session\.rol === 'contador'/)
+  })
+
+  it('la etiqueta de auditoría tiene su propio color de la paleta', () => {
+    assert.match(calendario, /vencimiento-etiqueta--auditoria/)
+    assert.match(calendario, /var\(--dg-info-fondo\)/)
+  })
+})
+
+describe('el calendario no muestra tooltips (rebanada 26)', () => {
+  const anio = leer('../src/components/AnioJuntas.vue')
+
+  it('ni el calendario ni la vista Año llevan q-tooltip', () => {
+    assert.doesNotMatch(calendario, /q-tooltip/)
+    assert.doesNotMatch(anio, /q-tooltip/)
+  })
+
+  it('se quitó la lógica que solo servía al tooltip, y el aria-label de «Ocupado» se conserva', () => {
+    assert.doesNotMatch(calendario, /ayudaDeOcupada|enfocada|encima/)
+    assert.match(calendario, /No estás invitado a esta junta/)
+    assert.match(calendario, /:aria-label="nombreAccesibleOcupada\(/)
+    assert.match(calendario, /tabindex="0"/)
+  })
+})
+
+describe('juntas sin invitados (rebanada 26)', () => {
+  const formulario = leer('../src/components/JuntaFormDialog.vue')
+
+  it('el campo de invitados ya no es obligatorio y explica que la junta bloquea tu horario', () => {
+    const campo = formulario.slice(
+      formulario.indexOf('for="junta-invitados"'),
+      formulario.indexOf('junta-invitados-ayuda" class'),
+    )
+    assert.doesNotMatch(campo, /required-mark|aria-required/)
+    assert.match(
+      formulario.replace(/\s+/g, ' '),
+      /Si no invitas a nadie, la junta solo bloquea tu horario y los demás la verán en tu agenda/,
+    )
+  })
+
+  it('la ficha dice «Sin invitados» cuando no hay ninguno', () => {
+    assert.match(leer('../src/components/JuntaDetalleDialog.vue'), /Sin invitados/)
   })
 })

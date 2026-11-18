@@ -154,9 +154,7 @@
           </div>
 
           <div class="form-group junta-form__ancho-completo">
-            <label for="junta-invitados" class="form-label"
-              >Invitados <span aria-hidden="true" class="required-mark">*</span></label
-            >
+            <label for="junta-invitados" class="form-label">Invitados</label>
             <q-select
               v-model="invitados"
               for="junta-invitados"
@@ -178,7 +176,6 @@
               transition-hide="jump-up"
               :transition-duration="180"
               class="selector-moderno"
-              aria-required="true"
               aria-describedby="junta-invitados-ayuda"
               :loading="cargandoPersonas"
               :error="!!errorDeCampo('participantes')"
@@ -216,7 +213,9 @@
               </template>
             </q-select>
             <p id="junta-invitados-ayuda" class="form-help">
-              Elige entre 1 y {{ MAX_INVITADOS }} personas. Cada invitado empieza como «Pendiente».
+              Puedes elegir hasta {{ MAX_INVITADOS }} personas. Cada invitado empieza como
+              «Pendiente». Si no invitas a nadie, la junta solo bloquea tu horario y los demás la
+              verán en tu agenda.
             </p>
             <q-btn
               v-if="errorPersonas"

@@ -403,7 +403,7 @@ describe('validarFormularioJunta', () => {
     assert.deepEqual(validarFormularioJunta(valido), {})
   })
 
-  it('pide título, fecha, horas e invitados', () => {
+  it('pide título, fecha y horas, pero no exige invitados', () => {
     const errores = validarFormularioJunta({
       titulo: '   ',
       fecha: '',
@@ -412,15 +412,18 @@ describe('validarFormularioJunta', () => {
       descripcion: '',
       participantes: [],
     })
-    assert.deepEqual(Object.keys(errores), [
-      'titulo',
-      'fecha',
-      'horaInicio',
-      'horaFin',
-      'participantes',
-    ])
+    assert.deepEqual(Object.keys(errores), ['titulo', 'fecha', 'horaInicio', 'horaFin'])
     assert.equal(errores.titulo, 'Escribe el título de la junta.')
-    assert.equal(errores.participantes, 'Elige al menos un invitado.')
+  })
+
+  it('una junta sin invitados (lista vacía o ausente) es válida; más de 50 sigue siendo un error', () => {
+    assert.deepEqual(validarFormularioJunta({ ...valido, participantes: [] }), {})
+    assert.deepEqual(validarFormularioJunta({ ...valido, participantes: undefined }), {})
+    assert.equal(
+      validarFormularioJunta({ ...valido, participantes: Array.from({ length: 51 }, (_, i) => i) })
+        .participantes,
+      'Puedes invitar a 50 personas como máximo.',
+    )
   })
 
   it('respeta el máximo del título (150) y de la descripción (1000)', () => {

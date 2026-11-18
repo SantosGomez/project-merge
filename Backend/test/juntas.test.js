@@ -165,6 +165,23 @@ describe('/juntas', () => {
     );
   });
 
+  test('una junta sin invitados (lista vacía o ausente) queda confirmada, sin avisos, y se puede pasar a ninguno al editar', async () => {
+    const vacia = await crear('contador1', { titulo: 'zz_test_ bloqueo propio', participantes: [] });
+    assert.deepStrictEqual(vacia.participantes, []);
+    assert.strictEqual(vacia.estado, 'confirmada');
+    const ausente = await crear('contador1', { titulo: 'zz_test_ bloqueo ausente', participantes: undefined });
+    assert.deepStrictEqual(ausente.participantes, []);
+    const conInvitado = await crear('contador1', { titulo: 'zz_test_ con invitado', participantes: [cuentas.admin.id] });
+    assert.strictEqual(conInvitado.estado, 'por_confirmar');
+    const r = await api('contador1', 'PATCH', `/juntas/${conInvitado.id}`, cuerpoJunta({ titulo: 'zz_test_ con invitado', participantes: [] }));
+    assert.strictEqual(r.statusCode, 200, JSON.stringify(r.body));
+    assert.deepStrictEqual(r.body.junta.participantes, []);
+    assert.strictEqual(r.body.junta.estado, 'confirmada');
+    assert.strictEqual((await api('admin', 'GET', `/juntas/${conInvitado.id}`)).statusCode, 404);
+    const avisos = await query("SELECT 1 FROM notificaciones WHERE mensaje LIKE '%zz_test_ bloqueo%'");
+    assert.strictEqual(avisos.length, 0);
+  });
+
   test('la descripción es opcional y queda en null', async () => {
     const junta = await crear('contador1', { titulo: 'Sin descripción' });
     assert.strictEqual(junta.descripcion, null);
@@ -180,8 +197,8 @@ describe('/juntas', () => {
       [{ inicio: '2031-02-30 09:00' }, 'inicio inexistente'],
       [{ fin: '2031-03-10 09:00' }, 'fin igual al inicio'],
       [{ fin: '2031-03-10 08:00' }, 'fin anterior'],
-      [{ participantes: [] }, 'sin invitados'],
-      [{ participantes: undefined }, 'invitados ausentes'],
+      [{ participantes: null }, 'invitados nulos'],
+      [{ participantes: 'x' }, 'invitados que no son arreglo'],
       [{ participantes: [c.contador1.id] }, 'el propio creador'],
       [{ participantes: [c.contador2.id, c.contador2.id] }, 'repetidos'],
       [{ participantes: [ID_INEXISTENTE] }, 'id inexistente'],

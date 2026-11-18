@@ -97,10 +97,12 @@ describe('validarJunta', () => {
     assert.strictEqual(otroDia.valor.fin, '2026-12-02 01:00:00');
   });
 
-  test('participantes: entre 1 y 50, enteros positivos, sin repetidos ni el creador', () => {
-    for (const participantes of [undefined, null, [], 'x', 3, {}, ['a'], [0], [-1], [1.5], [null], [2, 2], [CREADOR], [2, CREADOR]]) {
+  test('participantes: de 0 a 50, enteros positivos, sin repetidos ni el creador', () => {
+    for (const participantes of [null, 'x', 3, {}, ['a'], [0], [-1], [1.5], [null], [2, 2], [CREADOR], [2, CREADOR]]) {
       assert.strictEqual(campoDelError(validarJunta({ ...BASE, participantes }, CREADOR)), 'participantes', JSON.stringify(participantes));
     }
+    assert.deepStrictEqual(validarJunta({ ...BASE, participantes: [] }, CREADOR).valor.participantes, []);
+    assert.deepStrictEqual(validarJunta({ ...BASE, participantes: undefined }, CREADOR).valor.participantes, []);
     const cincuenta = Array.from({ length: 50 }, (_, i) => i + 2);
     assert.ok(validarJunta({ ...BASE, participantes: cincuenta }, CREADOR).valor);
     assert.strictEqual(campoDelError(validarJunta({ ...BASE, participantes: [...cincuenta, 99] }, CREADOR)), 'participantes');

@@ -119,6 +119,18 @@ describe('GET /juntas/agenda/:usuarioId', () => {
     assert.ok(!JSON.stringify(r.body).includes(cuentas.recepcion.nombre), 'no filtra a los invitados');
   });
 
+  test('una junta sin invitados del organizador sale en su agenda: pública con título y privada como Ocupado', async () => {
+    await crear('admin', { titulo: 'Bloqueo público', participantes: [], inicio: '2034-04-20 09:00', fin: '2034-04-20 10:00' });
+    await crear('admin', { titulo: 'Bloqueo privado', participantes: [], privada: true, inicio: '2034-04-21 09:00', fin: '2034-04-21 10:00' });
+    const r = await agendaDe('auxiliar', 'admin', '?desde=2034-04-20&hasta=2034-04-21');
+    assert.strictEqual(r.statusCode, 200, JSON.stringify(r.body));
+    assert.deepStrictEqual(
+      r.body.juntas.map((j) => [j.titulo, j.privada, j.ocupado]),
+      [['Bloqueo público', false, true], ['Ocupado', true, true]]
+    );
+    assert.ok(!JSON.stringify(r.body).includes('Bloqueo privado'));
+  });
+
   test('un tercero ve la junta privada solo como «Ocupado», sin título, organizador, id ni invitados', async () => {
     await crear('contador', {
       titulo: 'Despido reservado',

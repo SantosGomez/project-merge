@@ -29,15 +29,16 @@
               align="left"
               :ripple="false"
               class="vencimiento-etiqueta boton-presionable"
-              :class="`vencimiento-etiqueta--${vencimiento.prioridad}`"
+              :class="`vencimiento-etiqueta--${claseDeVencimiento(vencimiento)}`"
               :aria-label="nombreAccesibleDeVencimiento(vencimiento, rol)"
               @click.stop="emit('abrir-vencimiento', vencimiento)"
             >
               <span class="vencimiento-etiqueta__texto">{{ textoDeVencimiento(vencimiento) }}</span>
-              <span class="vencimiento-etiqueta__marcas">{{
-                marcasDeVencimiento(vencimiento).join(' · ')
-              }}</span>
-              <q-tooltip>{{ nombreAccesibleDeVencimiento(vencimiento, rol) }}</q-tooltip>
+              <span
+                v-if="marcasDeVencimiento(vencimiento).length > 0"
+                class="vencimiento-etiqueta__marcas"
+                >{{ marcasDeVencimiento(vencimiento).join(' · ') }}</span
+              >
             </q-btn>
             <template
               v-for="(junta, indice) in juntasDelDia(juntas, scope.timestamp.date)"
@@ -49,15 +50,10 @@
                 role="group"
                 class="junta-etiqueta junta-etiqueta--ocupada"
                 :aria-label="nombreAccesibleOcupada(junta)"
-                @focus="enfocada = claveDeJunta(junta, indice)"
-                @blur="enfocada = null"
                 @click.stop
               >
                 <span class="junta-etiqueta__hora">{{ horaDeFechaHora(junta.inicio) }}</span>
                 <span class="junta-etiqueta__titulo">{{ etiquetaDeJuntaOcupada(junta) }}</span>
-                <q-tooltip v-bind="ayudaDeOcupada(claveDeJunta(junta, indice))">{{
-                  AYUDA_OCUPADA
-                }}</q-tooltip>
               </div>
               <q-btn
                 v-else
@@ -76,7 +72,6 @@
                   textoDeMarcas(junta)
                 }}</span>
                 <span class="junta-etiqueta__titulo">{{ junta.titulo }}</span>
-                <q-tooltip>{{ textoCompleto(junta) }}</q-tooltip>
               </q-btn>
             </template>
           </div>
@@ -118,15 +113,16 @@
               align="left"
               :ripple="false"
               class="vencimiento-etiqueta boton-presionable"
-              :class="`vencimiento-etiqueta--${vencimiento.prioridad}`"
+              :class="`vencimiento-etiqueta--${claseDeVencimiento(vencimiento)}`"
               :aria-label="nombreAccesibleDeVencimiento(vencimiento, rol)"
               @click.stop="emit('abrir-vencimiento', vencimiento)"
             >
               <span class="vencimiento-etiqueta__texto">{{ textoDeVencimiento(vencimiento) }}</span>
-              <span class="vencimiento-etiqueta__marcas">{{
-                marcasDeVencimiento(vencimiento).join(' · ')
-              }}</span>
-              <q-tooltip>{{ nombreAccesibleDeVencimiento(vencimiento, rol) }}</q-tooltip>
+              <span
+                v-if="marcasDeVencimiento(vencimiento).length > 0"
+                class="vencimiento-etiqueta__marcas"
+                >{{ marcasDeVencimiento(vencimiento).join(' · ') }}</span
+              >
             </q-btn>
           </div>
         </template>
@@ -142,17 +138,12 @@
               class="junta-bloque junta-bloque--ocupada"
               :style="estiloDeBloque(bloque)"
               :aria-label="nombreAccesibleOcupada(bloque.junta)"
-              @focus="enfocada = claveDeJunta(bloque.junta, indice)"
-              @blur="enfocada = null"
               @click.stop
             >
               <span class="junta-bloque__texto">
                 <span class="junta-bloque__titulo">{{ etiquetaDeJuntaOcupada(bloque.junta) }}</span>
                 <span class="junta-bloque__horario">{{ horarioDeJunta(bloque.junta) }}</span>
               </span>
-              <q-tooltip v-bind="ayudaDeOcupada(claveDeJunta(bloque.junta, indice))">{{
-                AYUDA_OCUPADA
-              }}</q-tooltip>
             </div>
             <q-btn
               v-else
@@ -176,7 +167,6 @@
                   </span>
                 </span>
               </span>
-              <q-tooltip>{{ textoCompleto(bloque.junta) }}</q-tooltip>
             </q-btn>
           </template>
         </template>
@@ -186,7 +176,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { QCalendarDay } from '@quasar/quasar-ui-qcalendar/QCalendarDay'
 import { QCalendarMonth } from '@quasar/quasar-ui-qcalendar/QCalendarMonth'
 import '@quasar/quasar-ui-qcalendar/QCalendarDay.css'
@@ -207,6 +197,7 @@ import {
   textoPeriodo,
 } from '../utils/juntas.js'
 import {
+  claseDeVencimiento,
   marcasDeVencimiento,
   nombreAccesibleDeVencimiento,
   textoDeVencimiento,
@@ -217,8 +208,8 @@ import {
  * Calendario de juntas con QCalendar (importado solo aquí, no como plugin global). No pide datos:
  * recibe la vista, la fecha y las juntas del periodo; avisa con `abrir-junta` (clic en una junta)
  * y `nueva-junta` (clic en un hueco vacío de semana o día). Los vencimientos de casos salen como
- * etiquetas de día completo («Vence: cliente», con su prioridad y «Importante» si lo es) y avisan
- * con `abrir-vencimiento`. El idioma es es-MX y los colores salen
+ * etiquetas de día completo («Vence: cliente», con su prioridad y «Importante» si lo es) y los de
+ * auditorías como «Auditoría: cliente»; ambos avisan con `abrir-vencimiento`. El idioma es es-MX y los colores salen
  * de la paleta `--dg-*` (ver los estilos de abajo). Cada junta lleva con texto su estado («Por
  * confirmar», «Cancelada», con el título tachado) y «Responder» si te invitaron y aún no contestas.
  */
@@ -241,19 +232,8 @@ const emit = defineEmits(['abrir-junta', 'nueva-junta', 'abrir-vencimiento'])
 
 const AYUDA_OCUPADA = 'No estás invitado a esta junta'
 
-// Los bloques ajenos (agenda de otra persona) no abren ficha. Se enfocan con el teclado y su ayuda se
-// muestra al pasar el cursor o al enfocarlos; `enfocada` y `encima` guardan cuál es.
-const enfocada = ref(null)
-const encima = ref(null)
-
-const ayudaDeOcupada = (clave) => ({
-  modelValue: enfocada.value === clave || encima.value === clave,
-  'onUpdate:modelValue': (visible) => {
-    if (visible) encima.value = clave
-    else if (encima.value === clave) encima.value = null
-  },
-})
-
+// Los bloques ajenos (agenda de otra persona) no abren ficha: se enfocan con el teclado y su
+// `aria-label` dice que no estás invitado. El calendario no usa tooltips.
 const nombreAccesibleOcupada = (junta) =>
   `${etiquetaDeJuntaOcupada(junta)}, ${horarioDeJunta(junta)}. ${AYUDA_OCUPADA}.`
 
@@ -271,9 +251,6 @@ const textoDeVista = computed(() => textoPeriodo(props.vista, props.fecha))
 
 // «Por confirmar · Responder»: lo que acompaña a la junta, o '' si no lleva marcas.
 const textoDeMarcas = (junta) => marcasDeJunta(junta, props.usuarioId).join(' · ')
-
-const textoCompleto = (junta) =>
-  [junta.titulo, horarioDeJunta(junta), textoDeMarcas(junta)].filter(Boolean).join(' · ')
 
 const nombreAccesible = (junta) =>
   `Junta ${junta.titulo}, ${horarioDeJunta(junta)}${
@@ -424,6 +401,13 @@ const alElegirHueco = ({ scope }) => {
   border-color: var(--dg-prioridad-baja-borde);
   background: var(--dg-prioridad-baja-fondo);
   color: var(--dg-prioridad-baja);
+}
+
+/* Auditoría: azul informativo, para distinguirla de los casos (el texto dice «Auditoría:»). */
+.vencimiento-etiqueta--auditoria {
+  border-color: var(--dg-info-borde);
+  background: var(--dg-info-fondo);
+  color: var(--dg-info-texto);
 }
 
 /* Si el cliente es largo, la prioridad baja a una segunda línea en lugar de recortarse. */

@@ -388,8 +388,7 @@ export const validarFormularioJunta = (datos) => {
   }
 
   const invitados = datos.participantes ?? []
-  if (invitados.length === 0) errores.participantes = 'Elige al menos un invitado.'
-  else if (invitados.length > MAX_INVITADOS) {
+  if (invitados.length > MAX_INVITADOS) {
     errores.participantes = `Puedes invitar a ${MAX_INVITADOS} personas como máximo.`
   }
   return errores

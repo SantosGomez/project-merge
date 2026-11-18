@@ -1,5 +1,5 @@
-// Vencimientos de casos en el calendario de juntas (rebanada 25): qué casos se marcan, cómo se
-// nombran, a dónde llevan y cómo se recuerda el interruptor «Mostrar vencimientos de casos».
+// Vencimientos de casos y de auditorías en el calendario de juntas (rebanadas 25 y 26): qué se marca,
+// cómo se nombra, a dónde lleva y cómo se recuerda el interruptor «Mostrar vencimientos».
 // Sin Vue y sin Quasar. La fecha de vencimiento es una DATE AAAA-MM-DD: se compara como texto y
 // nunca se le pasa a `Date`, porque se leería como UTC y se desplazaría un día.
 
@@ -28,6 +28,7 @@ export const vencimientosDeCasos = (casos) =>
     return [
       {
         clave: `vence-${caso.id}`,
+        tipo: 'caso',
         casoId: caso.id,
         cliente: caso.cliente,
         prioridad: caso.prioridad,
@@ -37,25 +38,63 @@ export const vencimientosDeCasos = (casos) =>
     ]
   })
 
+const FORMA_FECHA_FORMULARIO = /^(\d{2})-(\d{2})-(\d{4})$/
+
+/**
+ * Auditorías que se marcan en el calendario: las que no están «Completado» y tienen una fecha de
+ * vencimiento real. La fecha llega como DD-MM-AAAA (así la traduce `auditoriaService`) y se reacomoda
+ * como texto a AAAA-MM-DD, sin pasar por `Date`.
+ * @param {Array<Object>|undefined} auditorias - auditorías de `listarAuditorias()`.
+ * @returns {Array<{ clave: string, tipo: string, auditoriaId: number, cliente: string, vence: string }>}
+ */
+export const vencimientosDeAuditorias = (auditorias) =>
+  (auditorias ?? []).flatMap((auditoria) => {
+    const partes = FORMA_FECHA_FORMULARIO.exec(auditoria.fechaVencimiento ?? '')
+    const vence = partes ? `${partes[3]}-${partes[2]}-${partes[1]}` : ''
+    if (auditoria.estado === 'Completado' || !parsearFechaISO(vence)) return []
+    return [
+      {
+        clave: `vence-auditoria-${auditoria.id}`,
+        tipo: 'auditoria',
+        auditoriaId: auditoria.id,
+        cliente: auditoria.cliente,
+        vence,
+      },
+    ]
+  })
+
+const esAuditoria = (vencimiento) => vencimiento.tipo === 'auditoria'
+
+/** Variante de color de la etiqueta: la prioridad del caso, o «auditoria». */
+export const claseDeVencimiento = (vencimiento) =>
+  esAuditoria(vencimiento) ? 'auditoria' : vencimiento.prioridad
+
 /** Lo que vence ese día, por nombre del cliente. */
 export const vencimientosDelDia = (vencimientos, iso) =>
   vencimientos
     .filter((vencimiento) => vencimiento.vence === iso)
     .sort((a, b) => a.cliente.localeCompare(b.cliente, 'es', { sensitivity: 'base' }))
 
-/** Texto visible de la etiqueta: «Vence: {cliente}». */
-export const textoDeVencimiento = (vencimiento) => `Vence: ${vencimiento.cliente}`
+/** Texto visible de la etiqueta: «Vence: {cliente}» en un caso y «Auditoría: {cliente}» en una auditoría. */
+export const textoDeVencimiento = (vencimiento) =>
+  `${esAuditoria(vencimiento) ? 'Auditoría' : 'Vence'}: ${vencimiento.cliente}`
 
 const etiquetaDePrioridad = (prioridad) => PRIORITY_LABELS[prioridad] ?? prioridad
 
 /** Textos que acompañan a la etiqueta: la prioridad y, si lo es, «Importante». */
-export const marcasDeVencimiento = (vencimiento) => [
-  etiquetaDePrioridad(vencimiento.prioridad),
-  ...(vencimiento.importante ? ['Importante'] : []),
-]
+export const marcasDeVencimiento = (vencimiento) =>
+  esAuditoria(vencimiento)
+    ? []
+    : [
+        etiquetaDePrioridad(vencimiento.prioridad),
+        ...(vencimiento.importante ? ['Importante'] : []),
+      ]
 
 /** Nombre accesible de la etiqueta: el día, el cliente, la prioridad y a dónde lleva al activarla. */
 export const nombreAccesibleDeVencimiento = (vencimiento, rol) => {
+  if (esAuditoria(vencimiento)) {
+    return `Vence el ${textoDiaDelMes(vencimiento.vence)}: auditoría de ${vencimiento.cliente}. Abre la ficha de la auditoría.`
+  }
   const destino =
     rol === 'administrador' ? 'Abre ese día en tu resumen.' : 'Abre el caso en «Mis casos».'
   const importante = vencimiento.importante ? ', importante' : ''
@@ -67,6 +106,9 @@ export const nombreAccesibleDeVencimiento = (vencimiento, rol) => {
  * administrador con `?dia=AAAA-MM-DD`. null si el rol no ve vencimientos.
  */
 export const destinoDeVencimiento = (vencimiento, rol) => {
+  if (esAuditoria(vencimiento)) {
+    return { name: 'auditoria-ficha', params: { id: String(vencimiento.auditoriaId) } }
+  }
   if (rol === 'contador' || rol === 'auxiliar') {
     return { name: 'contador-casos', query: { casoId: String(vencimiento.casoId) } }
   }

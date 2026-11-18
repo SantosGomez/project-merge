@@ -109,14 +109,14 @@
     <q-toggle
       v-if="vencimientosDisponibles"
       :model-value="mostrarVencimientos"
-      label="Mostrar vencimientos de casos"
+      label="Mostrar vencimientos"
       color="primary"
       class="juntas-page__vencimientos control-touch"
       @update:model-value="cambiarMostrarVencimientos"
     >
       <q-tooltip>
-        Marca en el calendario el día en que vence cada caso que no está finalizado. Se recuerda
-        para tu cuenta en este equipo.
+        Marca en el calendario el día en que vence cada caso que no está finalizado y, si eres
+        contador, cada auditoría que no está completada. Se recuerda para tu cuenta en este equipo.
       </q-tooltip>
     </q-toggle>
 
@@ -141,7 +141,7 @@
           class="control-touch boton-presionable"
           @click="cargarVencimientos()"
         >
-          <q-tooltip>Vuelve a pedir los vencimientos de los casos.</q-tooltip>
+          <q-tooltip>Vuelve a pedir los vencimientos de los casos y las auditorías.</q-tooltip>
         </q-btn>
       </template>
     </q-banner>
@@ -211,6 +211,7 @@ import ErrorState from '../components/ErrorState.vue'
 import JuntaDetalleDialog from '../components/JuntaDetalleDialog.vue'
 import JuntaFormDialog from '../components/JuntaFormDialog.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
+import { listarAuditorias } from '../services/auditoriaService.js'
 import { getMisCasos } from '../services/caseService.js'
 import { getCasosImportantesCalendario } from '../services/counterService.js'
 import { agendaDe, listar, obtener, participantesDisponibles } from '../services/juntaService.js'
@@ -230,6 +231,7 @@ import {
   guardarMostrarVencimientos,
   leerMostrarVencimientos,
   puedeVerVencimientos,
+  vencimientosDeAuditorias,
   vencimientosDeCasos,
 } from '../utils/vencimientosEnCalendario.js'
 
@@ -243,8 +245,8 @@ import {
  * abren el formulario con esa persona ya invitada.
  * En `?vista=anio` se ven los 12 meses con la cantidad de juntas de cada día; un clic en un día abre la
  * vista Día. En mes, semana y día, el administrador, el contador y el auxiliar ven además el vencimiento
- * de sus casos (no los finalizados) con el interruptor «Mostrar vencimientos de casos»; en la agenda de
- * otra persona no se muestran. Si esa carga falla, las juntas se siguen viendo con un aviso para reintentar.
+ * de sus casos (no los finalizados) con el interruptor «Mostrar vencimientos» y el contador también el de
+ * sus auditorías (no las completadas); en la agenda de otra persona no se muestran. Si esa carga falla, las juntas se siguen viendo con un aviso para reintentar.
  */
 const $q = useQuasar()
 const route = useRoute()
@@ -381,6 +383,7 @@ watch(
 
 const mostrarVencimientos = ref(leerMostrarVencimientos(session.id))
 const casosParaVencimientos = ref([])
+const auditoriasParaVencimientos = ref([])
 const vencimientosCargados = ref(false)
 const errorVencimientos = ref(false)
 let peticionDeVencimientos = 0
@@ -394,21 +397,30 @@ const vencimientosActivos = computed(
 )
 
 const vencimientos = computed(() =>
-  vencimientosActivos.value ? vencimientosDeCasos(casosParaVencimientos.value) : [],
+  vencimientosActivos.value
+    ? [
+        ...vencimientosDeCasos(casosParaVencimientos.value),
+        ...vencimientosDeAuditorias(auditoriasParaVencimientos.value),
+      ]
+    : [],
 )
 
 /**
- * Pide los casos de los que salen los vencimientos: los importantes de todos si eres administrador, los
- * tuyos (con los de tus auxiliares) si eres contador o auxiliar. En silencio conserva lo que ya se veía.
+ * Pide lo que se marca: los casos importantes de todos si eres administrador, los tuyos (con los de tus
+ * auxiliares) si eres contador o auxiliar y, si eres contador, también tus auditorías. Si algo falla se
+ * muestra el aviso. En silencio conserva lo que ya se veía.
  */
 const cargarVencimientos = async ({ silencioso = false } = {}) => {
   const numero = ++peticionDeVencimientos
   if (!silencioso) errorVencimientos.value = false
   try {
-    const casos =
-      session.rol === 'administrador' ? await getCasosImportantesCalendario() : await getMisCasos()
+    const [casos, auditorias] = await Promise.all([
+      session.rol === 'administrador' ? getCasosImportantesCalendario() : getMisCasos(),
+      session.rol === 'contador' ? listarAuditorias() : [],
+    ])
     if (numero !== peticionDeVencimientos) return
     casosParaVencimientos.value = casos
+    auditoriasParaVencimientos.value = auditorias
     vencimientosCargados.value = true
     errorVencimientos.value = false
   } catch {

@@ -25,10 +25,11 @@ async function participantesDisponibles(usuarioId) {
 
 /**
  * De una lista de ids, devuelve los que existen y tienen un rol del calendario.
- * @param {number[]} ids - Ids a comprobar (lista no vacía).
+ * @param {number[]} ids - Ids a comprobar (puede estar vacía).
  * @returns {Promise<number[]>}
  */
 async function idsConRolDeCalendario(ids) {
+  if (ids.length === 0) return [];
   const marcas = ids.map(() => '?').join(', ');
   const filas = await query(`SELECT id FROM usuarios WHERE id IN (${marcas}) AND rol IN (${MARCAS_ROLES})`, [
     ...ids,
@@ -171,11 +172,13 @@ async function crear(creadorId, { titulo, descripcion, inicio, fin, participante
       'INSERT INTO juntas (titulo, descripcion, inicio, fin, privada, creado_por, creado_en, actualizado_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [titulo, descripcion, inicio, fin, privada ? 1 : 0, creadorId, ahora, ahora]
     );
-    const marcas = participantes.map(() => '(?, ?)').join(', ');
-    await ejecutar(
-      `INSERT INTO junta_participantes (junta_id, usuario_id) VALUES ${marcas}`,
-      participantes.flatMap((usuarioId) => [resultado.insertId, usuarioId])
-    );
+    if (participantes.length > 0) {
+      const marcas = participantes.map(() => '(?, ?)').join(', ');
+      await ejecutar(
+        `INSERT INTO junta_participantes (junta_id, usuario_id) VALUES ${marcas}`,
+        participantes.flatMap((usuarioId) => [resultado.insertId, usuarioId])
+      );
+    }
     if (avisos) await avisos(ejecutar, resultado.insertId);
     return resultado.insertId;
   });
@@ -208,16 +211,20 @@ async function actualizar(
       formatLocalDate(nowLocal()),
       id,
     ]);
-    const marcasIds = participantes.map(() => '?').join(', ');
-    await ejecutar(`DELETE FROM junta_participantes WHERE junta_id = ? AND usuario_id NOT IN (${marcasIds})`, [
-      id,
-      ...participantes,
-    ]);
-    const marcasNuevos = participantes.map(() => '(?, ?)').join(', ');
-    await ejecutar(
-      `INSERT IGNORE INTO junta_participantes (junta_id, usuario_id) VALUES ${marcasNuevos}`,
-      participantes.flatMap((participanteId) => [id, participanteId])
-    );
+    if (participantes.length === 0) {
+      await ejecutar('DELETE FROM junta_participantes WHERE junta_id = ?', [id]);
+    } else {
+      const marcasIds = participantes.map(() => '?').join(', ');
+      await ejecutar(`DELETE FROM junta_participantes WHERE junta_id = ? AND usuario_id NOT IN (${marcasIds})`, [
+        id,
+        ...participantes,
+      ]);
+      const marcasNuevos = participantes.map(() => '(?, ?)').join(', ');
+      await ejecutar(
+        `INSERT IGNORE INTO junta_participantes (junta_id, usuario_id) VALUES ${marcasNuevos}`,
+        participantes.flatMap((participanteId) => [id, participanteId])
+      );
+    }
     if (reiniciarRespuestas) {
       await ejecutar("UPDATE junta_participantes SET respuesta = 'pendiente', respondido_en = NULL WHERE junta_id = ?", [id]);
     }

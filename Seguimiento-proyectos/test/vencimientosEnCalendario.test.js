@@ -13,6 +13,7 @@ import {
   nombreAccesibleDeVencimiento,
   puedeVerVencimientos,
   textoDeVencimiento,
+  vencimientosDeAuditorias,
   vencimientosDeCasos,
   vencimientosDelDia,
 } from '../src/utils/vencimientosEnCalendario.js'
@@ -51,6 +52,7 @@ describe('vencimientosDeCasos', () => {
     assert.deepEqual(vencimientosDeCasos([caso({ importante: 1, prioridad: 'media' })]), [
       {
         clave: 'vence-7',
+        tipo: 'caso',
         casoId: 7,
         cliente: 'Cliente Uno',
         prioridad: 'media',
@@ -152,7 +154,76 @@ describe('destinoDeVencimiento', () => {
   })
 })
 
-describe('interruptor «Mostrar vencimientos de casos»', () => {
+const auditoria = (extra) => ({
+  id: 41,
+  cliente: 'Cliente Auditado',
+  estado: 'En proceso',
+  fechaVencimiento: '18-11-2026',
+  ...extra,
+})
+
+describe('vencimientosDeAuditorias', () => {
+  it('toma el cliente y el día (de DD-MM-AAAA a AAAA-MM-DD) con su identificador', () => {
+    assert.deepEqual(vencimientosDeAuditorias([auditoria()]), [
+      {
+        clave: 'vence-auditoria-41',
+        tipo: 'auditoria',
+        auditoriaId: 41,
+        cliente: 'Cliente Auditado',
+        vence: '2026-11-18',
+      },
+    ])
+  })
+
+  it('deja fuera las completadas y las que no tienen una fecha real', () => {
+    const resultado = vencimientosDeAuditorias([
+      auditoria({ id: 1, estado: 'Completado' }),
+      auditoria({ id: 2, fechaVencimiento: '' }),
+      auditoria({ id: 3, fechaVencimiento: '30-02-2026' }),
+      auditoria({ id: 4, fechaVencimiento: undefined }),
+      auditoria({ id: 5, estado: 'Pendiente' }),
+    ])
+    assert.deepEqual(
+      resultado.map((v) => v.auditoriaId),
+      [5],
+    )
+  })
+
+  it('una lista ausente da una lista vacía', () => {
+    assert.deepEqual(vencimientosDeAuditorias(undefined), [])
+  })
+
+  it('el texto es «Auditoría: {cliente}», sin marcas, y se distingue de un caso por texto', () => {
+    const [v] = vencimientosDeAuditorias([auditoria()])
+    assert.equal(textoDeVencimiento(v), 'Auditoría: Cliente Auditado')
+    assert.deepEqual(marcasDeVencimiento(v), [])
+    assert.equal(
+      nombreAccesibleDeVencimiento(v, 'contador'),
+      'Vence el 18 de noviembre: auditoría de Cliente Auditado. Abre la ficha de la auditoría.',
+    )
+  })
+
+  it('el clic lleva a la ficha de la auditoría', () => {
+    const [v] = vencimientosDeAuditorias([auditoria()])
+    assert.deepEqual(destinoDeVencimiento(v, 'contador'), {
+      name: 'auditoria-ficha',
+      params: { id: '41' },
+    })
+  })
+
+  it('se mezcla con los casos del día y sigue el orden por cliente', () => {
+    const lista = [
+      ...vencimientosDeCasos([caso({ id: 1, cliente: 'Zeta' })]),
+      ...vencimientosDeAuditorias([auditoria({ cliente: 'alfa' })]),
+    ]
+    assert.deepEqual(
+      vencimientosDelDia(lista, '2026-11-18').map((v) => v.clave),
+      ['vence-auditoria-41', 'vence-1'],
+    )
+  })
+})
+
+describe('interruptor «Mostrar vencimientos»', () => {
   it('está encendido por defecto', () => {
     assert.equal(leerMostrarVencimientos(5, crearAlmacen()), true)
   })
