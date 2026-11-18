@@ -124,6 +124,63 @@
           <p v-if="errorRespuesta" class="error-banner" role="alert">{{ errorRespuesta }}</p>
         </section>
 
+        <template v-if="respondePor.length > 0">
+          <section
+            v-for="administrador in respondePor"
+            :key="administrador.id"
+            class="detalle-seccion"
+          >
+            <h3 class="detalle-seccion__titulo">Responder por {{ administrador.nombre }}</h3>
+            <p class="junta-detalle__mi-respuesta">
+              {{ textoRespuestaDe(administrador) }}
+            </p>
+            <div
+              class="junta-detalle__responder"
+              role="group"
+              :aria-label="`Responder a la invitación por ${administrador.nombre}`"
+            >
+              <q-btn
+                no-caps
+                unelevated
+                icon="check_circle"
+                label="Aceptar"
+                :color="administrador.respuesta === 'aceptada' ? 'primary' : 'dg-superficie'"
+                :text-color="administrador.respuesta === 'aceptada' ? 'white' : 'primary'"
+                :aria-pressed="administrador.respuesta === 'aceptada' ? 'true' : 'false'"
+                :loading="respondiendoPor === `${administrador.id}-aceptada`"
+                :disable="respondiendoPor !== '' || borrando"
+                class="control-touch boton-presionable junta-detalle__boton-respuesta"
+                @click="responderPorAdministrador(administrador, 'aceptada')"
+              >
+                <q-tooltip>
+                  Confirma que {{ administrador.nombre }} asistirá a la junta. Puedes cambiarlo
+                  después.
+                </q-tooltip>
+              </q-btn>
+              <q-btn
+                no-caps
+                unelevated
+                icon="cancel"
+                label="Rechazar"
+                :color="administrador.respuesta === 'rechazada' ? 'dg-error' : 'dg-superficie'"
+                :text-color="administrador.respuesta === 'rechazada' ? 'white' : 'dg-error'"
+                :aria-pressed="administrador.respuesta === 'rechazada' ? 'true' : 'false'"
+                :loading="respondiendoPor === `${administrador.id}-rechazada`"
+                :disable="respondiendoPor !== '' || borrando"
+                class="control-touch boton-presionable junta-detalle__boton-respuesta"
+                @click="responderPorAdministrador(administrador, 'rechazada')"
+              >
+                <q-tooltip>
+                  Avisa que {{ administrador.nombre }} no podrá asistir. Puedes cambiarlo después.
+                </q-tooltip>
+              </q-btn>
+            </div>
+          </section>
+          <p v-if="errorRespuestaPor" class="error-banner" role="alert">
+            {{ errorRespuestaPor }}
+          </p>
+        </template>
+
         <section class="detalle-seccion">
           <h3 class="detalle-seccion__titulo">Invitados</h3>
           <q-list v-if="junta.participantes.length > 0" separator class="junta-detalle__invitados">
@@ -171,7 +228,7 @@
         >
           <q-tooltip>Cierra esta ficha sin cambiar nada.</q-tooltip>
         </q-btn>
-        <template v-if="junta.soy_organizador">
+        <template v-if="puedeEditar">
           <q-btn
             flat
             no-caps
@@ -264,6 +321,8 @@ import {
  * Las respuestas de los invitados se muestran con texto, no solo con color.
  * Si la cuenta está invitada, puede aceptar o rechazar (y cambiarlo después): al guardar avisa con
  * `respondida` y la junta nueva; si falla, muestra el error y la ficha queda como estaba.
+ * La recepcionista actúa como secretaria de los administradores: si la API le da `puede_editar` ve
+ * «Editar» y «Borrar», y por cada administrador de `responder_por` ve «Responder por {nombre}».
  */
 const props = defineProps({
   /** Junta tal como la devuelve la API. */
@@ -319,22 +378,48 @@ const errorBorrado = ref('')
 // Respuesta que se está guardando ('' si ninguna) y error del último intento.
 const respondiendo = ref('')
 const errorRespuesta = ref('')
+// Lo mismo al responder por un administrador: `${id}-${respuesta}` mientras se guarda.
+const respondiendoPor = ref('')
+const errorRespuestaPor = ref('')
 
 // Respuesta de la cuenta a esta junta; null si la organiza (no responde su propia invitación).
 const miRespuesta = computed(() =>
   props.junta.soy_organizador ? null : miRespuestaEnJunta(props.junta, session.id),
 )
 
-const textoAyuda = computed(() =>
-  props.junta.soy_organizador
-    ? 'Organizas esta junta: puedes editarla o borrarla.'
-    : 'Ficha de solo lectura: solo quien organiza la junta puede cambiarla.',
-)
+// Permisos que da la API: quien organiza, o la recepcionista cuando la junta es de un administrador.
+const puedeEditar = computed(() => props.junta.puede_editar === true)
+// Administradores invitados por los que puede responder la recepcionista ([] para los demás).
+const respondePor = computed(() => props.junta.responder_por ?? [])
+
+const textoAyuda = computed(() => {
+  if (props.junta.soy_organizador) return 'Organizas esta junta: puedes editarla o borrarla.'
+  if (puedeEditar.value) {
+    return `Como recepcionista puedes editar y borrar esta junta de ${props.junta.creado_por.nombre}${
+      respondePor.value.length > 0 ? ' y responder por los administradores invitados' : ''
+    }.`
+  }
+  if (respondePor.value.length > 0) {
+    return 'Ficha de solo lectura: como recepcionista solo puedes responder por los administradores invitados.'
+  }
+  return 'Ficha de solo lectura: solo quien organiza la junta puede cambiarla.'
+})
+
+const textoRespuestaDe = (administrador) => {
+  if (administrador.respuesta === 'aceptada') {
+    return `${administrador.nombre} aceptó la invitación. Puedes cambiar su respuesta.`
+  }
+  if (administrador.respuesta === 'rechazada') {
+    return `${administrador.nombre} rechazó la invitación. Puedes cambiar su respuesta.`
+  }
+  return `${administrador.nombre} todavía no responde a esta invitación. Puedes responder en su nombre.`
+}
 
 watch(dialogoAbierto, (abierto) => {
   if (abierto) {
     errorBorrado.value = ''
     errorRespuesta.value = ''
+    errorRespuestaPor.value = ''
     confirmacionAbierta.value = false
   }
 })
@@ -356,6 +441,22 @@ const responderInvitacion = async (respuesta) => {
       'Qué ocurrió: No se guardó tu respuesta. Sobre: la conexión con el servidor. Qué hacer: Revisa tu conexión y vuelve a pulsar «Aceptar» o «Rechazar».'
   } finally {
     respondiendo.value = ''
+  }
+}
+
+const responderPorAdministrador = async (administrador, respuesta) => {
+  if (respondiendoPor.value) return
+  respondiendoPor.value = `${administrador.id}-${respuesta}`
+  errorRespuestaPor.value = ''
+  try {
+    const juntaNueva = await responder(props.junta.id, respuesta, administrador.id)
+    emit('respondida', juntaNueva)
+  } catch (error) {
+    errorRespuestaPor.value =
+      error?.mensaje ??
+      'Qué ocurrió: No se guardó la respuesta. Sobre: la conexión con el servidor. Qué hacer: Revisa tu conexión y vuelve a pulsar «Aceptar» o «Rechazar».'
+  } finally {
+    respondiendoPor.value = ''
   }
 }
 

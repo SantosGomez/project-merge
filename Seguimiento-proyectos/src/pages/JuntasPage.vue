@@ -194,7 +194,8 @@
       :junta="juntaEnEdicion"
       :fecha-inicial="precarga.fecha"
       :hora-inicial="precarga.hora"
-      :invitado-inicial="agendaId ? usuarioAgenda : null"
+      :invitado-inicial="invitadoInicial"
+      :organizador="organizadorDeLaJunta"
       @guardada="alGuardar"
     />
   </q-page>
@@ -220,9 +221,11 @@ import { formatearRol } from '../utils/formateadores.js'
 import {
   esJuntaOcupada,
   hoyISO,
+  invitadoInicialDeAlta,
   leerAgendaDeUrl,
   leerVistaDeUrl,
   moverPeriodo,
+  organizadorDeAlta,
   rangoVisible,
   textoPeriodo,
 } from '../utils/juntas.js'
@@ -242,7 +245,9 @@ import {
  * Con `?juntaId=` (enlace de un aviso de la campana) abre la ficha de esa junta.
  * Con `?agenda=ID` se ve la agenda de otra persona (`GET /juntas/agenda/:id`): las juntas donde participas
  * salen completas y las demás como «Ocupado», sin ficha. Desde esa agenda, «Nueva junta» y los huecos
- * abren el formulario con esa persona ya invitada.
+ * abren el formulario con esa persona ya invitada. La recepcionista es secretaria de los administradores:
+ * en la agenda de uno de ellos ve sus juntas completas (también las privadas) y la junta nueva se agenda
+ * a nombre de él, sin invitarlo.
  * En `?vista=anio` se ven los 12 meses con la cantidad de juntas de cada día; un clic en un día abre la
  * vista Día. En mes, semana y día, el administrador, el contador y el auxiliar ven además el vencimiento
  * de sus casos (no los finalizados) con el interruptor «Mostrar vencimientos» y el contador también el de
@@ -318,6 +323,11 @@ const textoVacio = computed(() =>
     ? `${nombreDeLaAgenda.value} no tiene juntas en este periodo.`
     : 'No tienes juntas en este periodo.',
 )
+
+// Persona de la agenda que se ve ahora (null en la propia, aunque quede un valor viejo mientras recarga).
+const personaDeLaAgenda = computed(() => (agendaId.value ? usuarioAgenda.value : null))
+const organizadorDeLaJunta = computed(() => organizadorDeAlta(session.rol, personaDeLaAgenda.value))
+const invitadoInicial = computed(() => invitadoInicialDeAlta(session.rol, personaDeLaAgenda.value))
 
 const cambiarAgenda = (id) => {
   const query = { ...route.query }

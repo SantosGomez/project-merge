@@ -65,12 +65,17 @@ export const crearJuntaService = (opciones = {}) => {
   }
 
   /**
-   * POST /juntas: crea una junta; los invitados quedan en «pendiente».
-   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean }} datos
+   * POST /juntas: crea una junta; los invitados quedan en «pendiente». Con `organizadorId` (solo la
+   * recepcionista) la junta se agenda a nombre de ese administrador.
+   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean, organizadorId?: number }} datos
    * @returns {Promise<Object>} la junta creada.
    */
   const crear = async (datos) => {
-    const { data } = await api.post('/juntas', cuerpoDeJunta(datos))
+    const cuerpo = cuerpoDeJunta(datos)
+    if (datos.organizadorId !== undefined && datos.organizadorId !== null) {
+      cuerpo.organizador_id = datos.organizadorId
+    }
+    const { data } = await api.post('/juntas', cuerpo)
     return leerJunta(data, 'la junta guardada')
   }
 
@@ -86,13 +91,17 @@ export const crearJuntaService = (opciones = {}) => {
   }
 
   /**
-   * PATCH /juntas/:id/respuesta: un invitado acepta o rechaza (y puede cambiarlo después).
+   * PATCH /juntas/:id/respuesta: un invitado acepta o rechaza (y puede cambiarlo después). Con
+   * `enNombreDe` (solo la recepcionista) responde por ese administrador invitado.
    * @param {number} id
    * @param {'aceptada'|'rechazada'} respuesta
+   * @param {number} [enNombreDe] - id del administrador por el que se responde.
    * @returns {Promise<Object>} la junta actualizada, con su estado.
    */
-  const responder = async (id, respuesta) => {
-    const { data } = await api.patch(`/juntas/${id}/respuesta`, { respuesta })
+  const responder = async (id, respuesta, enNombreDe) => {
+    const cuerpo = { respuesta }
+    if (enNombreDe !== undefined && enNombreDe !== null) cuerpo.en_nombre_de = enNombreDe
+    const { data } = await api.patch(`/juntas/${id}/respuesta`, cuerpo)
     return leerJunta(data, 'tu respuesta')
   }
 

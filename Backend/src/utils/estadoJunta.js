@@ -54,6 +54,27 @@ function mensajeDeEstado(titulo, estado) {
   return estado === 'confirmada' ? `La junta «${titulo}» quedó confirmada` : `La junta «${titulo}» se canceló`;
 }
 
+/** Aviso al administrador de que su secretaria agendó una junta a su nombre. */
+function mensajeDeAgendadoPorSecretaria(secretaria, titulo, inicio) {
+  const { fecha, hora } = fechaYHoraDeAviso(inicio);
+  return `${secretaria} agendó «${titulo}» a tu nombre el ${fecha} a las ${hora}`;
+}
+
+/** Aviso al administrador de que su secretaria cambió una junta suya. */
+function mensajeDeCambioPorSecretaria(secretaria, titulo) {
+  return `${secretaria} cambió «${titulo}»`;
+}
+
+/** Aviso al administrador de que su secretaria borró una junta suya. */
+function mensajeDeBorradoPorSecretaria(secretaria, titulo, inicio) {
+  return `${secretaria} borró «${titulo}» del ${fechaYHoraDeAviso(inicio).fecha}`;
+}
+
+/** Aviso al administrador de que su secretaria respondió una invitación por él. */
+function mensajeDeRespuestaPorSecretaria(secretaria, titulo, respuesta) {
+  return `${secretaria} ${respuesta === 'aceptada' ? 'aceptó' : 'rechazó'} por ti «${titulo}»`;
+}
+
 module.exports = {
   calcularEstado,
   fechaYHoraDeAviso,
@@ -62,4 +83,8 @@ module.exports = {
   mensajeDeBorrado,
   mensajeDeRespuesta,
   mensajeDeEstado,
+  mensajeDeAgendadoPorSecretaria,
+  mensajeDeCambioPorSecretaria,
+  mensajeDeBorradoPorSecretaria,
+  mensajeDeRespuestaPorSecretaria,
 };

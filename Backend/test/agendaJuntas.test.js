@@ -25,6 +25,8 @@ const LLAVES_COMPLETA = [
   'inicio',
   'participantes',
   'privada',
+  'puede_editar',
+  'responder_por',
   'soy_organizador',
   'titulo',
 ];
@@ -240,7 +242,7 @@ describe('GET /juntas/agenda/:usuarioId', () => {
   test('las demás rutas no cambian: una junta ajena sigue dando 404 y no aparece en GET /juntas', async () => {
     const ajena = await crear('contador', {
       titulo: 'Ajena a recepción',
-      participantes: [cuentas.admin.id],
+      participantes: [cuentas.auxiliar.id],
       inicio: '2034-04-20 09:00',
       fin: '2034-04-20 10:00',
     });

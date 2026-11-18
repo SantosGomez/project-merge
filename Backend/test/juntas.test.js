@@ -146,7 +146,7 @@ describe('/juntas', () => {
     const junta = r.body.junta;
     assert.deepStrictEqual(
       Object.keys(junta).sort(),
-      ['creado_por', 'descripcion', 'estado', 'fin', 'id', 'inicio', 'participantes', 'privada', 'soy_organizador', 'titulo']
+      ['creado_por', 'descripcion', 'estado', 'fin', 'id', 'inicio', 'participantes', 'privada', 'puede_editar', 'responder_por', 'soy_organizador', 'titulo']
     );
     assert.strictEqual(junta.privada, false);
     assert.strictEqual(junta.titulo, 'Cierre de mes');

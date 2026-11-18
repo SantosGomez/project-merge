@@ -46,6 +46,18 @@ describe('juntaService.responder', () => {
     ])
   })
 
+  it('con enNombreDe envía en_nombre_de en el cuerpo de la respuesta', async () => {
+    const api = crearApiFalsa({ PATCH: { junta: junta('confirmada') } })
+    await crearJuntaService({ api }).responder(5, 'rechazada', 9)
+    assert.deepEqual(api.llamadas, [
+      {
+        metodo: 'PATCH',
+        url: '/juntas/5/respuesta',
+        segundo: { respuesta: 'rechazada', en_nombre_de: 9 },
+      },
+    ])
+  })
+
   it('rechaza una respuesta sin junta con tres partes', async () => {
     const api = crearApiFalsa({ PATCH: { otra: 1 } })
     await assert.rejects(crearJuntaService({ api }).responder(5, 'rechazada'), (error) => {
@@ -85,7 +97,7 @@ describe('notificacionService: avisos de juntas', () => {
 describe('destinoDeAviso con juntas', () => {
   const aviso = { juntaId: 7, juntaInicio: '2026-12-01 09:00:00' }
 
-  it('lleva a «Juntas» con la fecha de la junta y su id para los 4 roles del calendario', () => {
+  it('lleva a «Mi Calendario» con la fecha de la junta y su id para los 4 roles del calendario', () => {
     for (const rol of ['administrador', 'contador', 'auxiliar', 'recepcionista']) {
       assert.deepEqual(destinoDeAviso(aviso, rol), {
         name: 'juntas',

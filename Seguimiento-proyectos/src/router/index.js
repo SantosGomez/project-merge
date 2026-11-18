@@ -114,7 +114,7 @@ const routes = [
         meta: {
           requiereSesion: true,
           perfil: [PROFILES.administrador, PROFILES.contador, PROFILES.auxiliar, PROFILES.recepcionista],
-          titulo: 'Juntas',
+          titulo: 'Mi Calendario',
         },
       },
       {

@@ -75,7 +75,7 @@ describe('rol recepcionista: pantallas', () => {
     assert.doesNotMatch(sesion, /trabajaCasos: [^\n]*recepcionista/)
   })
 
-  it('el menú tiene la sección «Recepción» con los ítems «Juntas» y «Directorio», sin tooltip', () => {
+  it('el menú tiene la sección «Recepción» con los ítems «Mi Calendario» y «Directorio», sin tooltip', () => {
     const inicio = layout.indexOf('<template v-if="session.esRecepcionista">')
     assert.ok(inicio >= 0, 'falta la sección de la recepcionista')
     const seccion = layout.slice(inicio, layout.indexOf('</template>', inicio))

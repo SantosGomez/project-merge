@@ -26,12 +26,24 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
   - 23, juntas privadas y agenda de otros: `juntas.privada`, `GET /juntas/agenda/:usuarioId` (un tercero nunca recibe id, descripción ni invitados; privada = «Ocupado»), selector «Ver agenda de» (`?agenda=`). Claves de bloques sin id únicas en todo el calendario.
   - 24, avisos por correo: PENDIENTE por decisión del usuario (hace falta nodemailer y una cuenta SMTP del despacho).
   - 25, vista Año (`?vista=anio`) y vencimientos de casos en Mes, Semana y Día (`utils/vencimientosEnCalendario.js`; interruptor por persona en localStorage). La Semana es de lunes a viernes, sin vencimientos de fin de semana.
+  - 26, ajustes:
+    - juntas sin invitados (bloquean el horario);
+    - vencimientos de auditorías del contador (`auditoriaService` entrega las fechas en `DD-MM-AAAA`);
+    - calendario sin tooltips (excepción anotada en `AGENTS.md`).
+  - 27, «Mi Calendario» (la ruta sigue siendo `/juntas`):
+    - la recepcionista es secretaria de todos los administradores (`organizador_id`, `en_nombre_de`);
+    - las reglas viven solo en `utils/accesoJuntas.js`;
+    - `JuntaModel` recibe al consultante como `{id, rol}`.
+  - Commits de la 21b a la 27: sin push hasta que el usuario los revise.
+  - Pendientes:
+    - formatear `MaquetaLayout.vue` y `router/index.js` (ya fallaban `prettier --check`);
+    - decidir si el administrador recibe el aviso de estado cuando la recepcionista responde por él.
 
   Decisiones:
   - Calendario propio (Google queda aparte), solo juntas internas y privacidad por junta.
   - Cada invitado acepta o rechaza; si el administrador está invitado, su respuesta confirma o cancela la junta.
   - Los 4 roles crean juntas e invitan entre sí.
-  - La recepcionista solo consulta el directorio (`requireConsultaDirectorio`); su pantalla principal es provisional hasta la 21b.
+  - La recepcionista consulta el directorio y administra la agenda de los administradores; su pantalla principal es «Mi Calendario».
 
   21a:
   - Tablas `juntas` y `junta_participantes`, rutas `/juntas` (`requireCalendario`); `/eventos` es el SSE.

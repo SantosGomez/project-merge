@@ -216,6 +216,28 @@ export const marcasDeJunta = (junta, usuarioId) => {
  */
 export const esJuntaOcupada = (junta) => junta?.ocupado === true
 
+/**
+ * La recepcionista que ve la agenda de un administrador actúa como su secretaria: la junta nueva
+ * se agenda a nombre de él. Con cualquier otra persona o rol, no hay organizador distinto de quien llama.
+ * @param {string} rolSesion - rol de la cuenta que usa la pantalla.
+ * @param {{ id: number, nombre: string, rol: string }|null} usuarioAgenda - persona de cuya agenda se parte.
+ * @returns {{ id: number, nombre: string }|null}
+ */
+export const organizadorDeAlta = (rolSesion, usuarioAgenda) =>
+  rolSesion === 'recepcionista' && usuarioAgenda?.rol === 'administrador'
+    ? { id: usuarioAgenda.id, nombre: usuarioAgenda.nombre }
+    : null
+
+/**
+ * Persona a invitar de entrada al crear desde la agenda de otra: la de esa agenda, salvo que la junta
+ * se agende a nombre de ella (entonces es la organizadora, no una invitada).
+ * @param {string} rolSesion - rol de la cuenta que usa la pantalla.
+ * @param {{ id: number, nombre: string, rol: string }|null} usuarioAgenda
+ * @returns {{ id: number, nombre: string, rol: string }|null}
+ */
+export const invitadoInicialDeAlta = (rolSesion, usuarioAgenda) =>
+  organizadorDeAlta(rolSesion, usuarioAgenda) ? null : (usuarioAgenda ?? null)
+
 /** Texto del bloque ajeno: «Ocupado» si es privada; si es pública, «Título · organiza Nombre». */
 export const etiquetaDeJuntaOcupada = (junta) =>
   junta.privada ? 'Ocupado' : `${junta.titulo} · organiza ${junta.organizador?.nombre ?? ''}`.trim()

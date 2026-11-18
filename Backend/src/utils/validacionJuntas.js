@@ -138,6 +138,24 @@ function validarJunta(cuerpo, creadorId) {
 }
 
 /**
+ * Valida el `organizador_id` con el que una secretaria agenda a nombre de un administrador
+ * (que sea un administrador existente lo comprueba el controlador).
+ * @param {*} valor - Valor recibido.
+ * @returns {{ valor?: number, error?: { mensaje: string } }}
+ */
+function validarOrganizador(valor) {
+  const id = typeof valor === 'string' || typeof valor === 'number' ? parseCounterId(valor) : null;
+  if (id === null) {
+    return errorDeCampo(
+      'El administrador a cuyo nombre agendas no es válido',
+      'organizador',
+      'Elige a un administrador de la lista'
+    );
+  }
+  return { valor: id };
+}
+
+/**
  * Valida el rango `desde`/`hasta` (AAAA-MM-DD, ambos días incluidos) de la consulta de juntas.
  * @param {*} desde - Primer día.
  * @param {*} hasta - Último día.
@@ -174,4 +192,4 @@ function validarRespuesta(cuerpo) {
   );
 }
 
-module.exports = { parseFechaHora, validarJunta, validarRango, validarRespuesta, MAX_PARTICIPANTES };
+module.exports = { parseFechaHora, validarJunta, validarOrganizador, validarRango, validarRespuesta, MAX_PARTICIPANTES };

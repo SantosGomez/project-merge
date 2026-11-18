@@ -1,6 +1,6 @@
 const assert = require('node:assert');
 const { describe, test } = require('node:test');
-const { parseFechaHora, validarJunta, validarRango, validarRespuesta } = require('../src/utils/validacionJuntas');
+const { parseFechaHora, validarJunta, validarOrganizador, validarRango, validarRespuesta } = require('../src/utils/validacionJuntas');
 
 /**
  * Pruebas unitarias de las validaciones puras de juntas (rebanada 21a): sin base de datos.
@@ -146,6 +146,19 @@ describe('validarRespuesta', () => {
   test('rechaza cualquier otro valor con tres partes sobre respuesta', () => {
     for (const cuerpo of [{ respuesta: 'pendiente' }, { respuesta: 'Aceptada' }, { respuesta: 1 }, { respuesta: null }, {}, null, undefined, 'aceptada']) {
       assert.strictEqual(campoDelError(validarRespuesta(cuerpo)), 'respuesta');
+    }
+  });
+});
+
+describe('validarOrganizador', () => {
+  test('acepta un id como número o texto', () => {
+    assert.deepStrictEqual(validarOrganizador(7), { valor: 7 });
+    assert.deepStrictEqual(validarOrganizador('7'), { valor: 7 });
+  });
+
+  test('rechaza lo que no es un id con tres partes sobre organizador', () => {
+    for (const valor of [null, 'abc', '', 0, -1, 1.5, {}, [7], true, 1e308]) {
+      assert.strictEqual(campoDelError(validarOrganizador(valor)), 'organizador', JSON.stringify(valor));
     }
   });
 });

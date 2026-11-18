@@ -49,7 +49,7 @@ const PAYLOADS_TIPADOS = [
 const CAMPOS = [
   'cliente', 'estado', 'prioridad', 'fecha_inicio', 'fecha_vencimiento', 'descripcion', 'observaciones',
   'observacion', 'importante', 'nombre', 'correo', 'password', 'rol', 'rfc', 'activo', 'regla_vencimiento',
-  'dia_del_mes', 'titulo', 'inicio', 'fin', 'participantes', 'privada', 'cobrable', 'agregar', 'quitar', 'contadores', 'contador_id', 'no_expediente', 'dependencia',
+  'dia_del_mes', 'titulo', 'inicio', 'fin', 'participantes', 'privada', 'organizador_id', 'en_nombre_de', 'respuesta', 'cobrable', 'agregar', 'quitar', 'contadores', 'contador_id', 'no_expediente', 'dependencia',
   'tipo_auditoria', 'estatal', 'evento', 'fase_id', 'fecha', 'hecha', 'texto', 'cliente_id', 'tipo_id', 'mes',
   'minutos', 'paso', 'jornada_base_minutos', 'entrada', 'salida', 'descanso_inicio', 'descanso_fin',
 ];
@@ -64,6 +64,7 @@ let contador;
 let ajeno;
 let administrador;
 let sistema;
+let recepcionista;
 let tokens;
 let instantaneaInicial;
 
@@ -165,6 +166,11 @@ const ENDPOINTS = [
   ['GET', '/juntas/{P}', 'contador', false],
   ['PATCH', '/juntas/{P}', 'contador', true],
   ['PATCH', '/juntas/{P}/respuesta', 'contador', true],
+  // la recepcionista es la única que puede enviar organizador_id y en_nombre_de sin recibir 403
+  ['POST', '/juntas', 'recepcionista', true],
+  ['PATCH', '/juntas/{P}', 'recepcionista', true],
+  ['PATCH', '/juntas/{P}/respuesta', 'recepcionista', true],
+  ['DELETE', '/juntas/{P}', 'recepcionista', false],
   ['DELETE', '/juntas/{P}', 'contador', false],
 ];
 
@@ -187,6 +193,7 @@ before(async () => {
   ajeno = await crearUsuarioDePrueba('contador');
   administrador = await crearUsuarioDePrueba('administrador');
   sistema = await crearUsuarioDePrueba('usuarios_de_sistema');
+  recepcionista = await crearUsuarioDePrueba('recepcionista');
   await crearCasoDePrueba(ajeno.id, { cliente: MARCA_AJENA });
   servidor = await iniciarServidor();
   tokens = {
@@ -194,6 +201,7 @@ before(async () => {
     contador: await iniciarSesion(servidor.puerto, contador.correo, contador.password),
     administrador: await iniciarSesion(servidor.puerto, administrador.correo, administrador.password),
     sistema: await iniciarSesion(servidor.puerto, sistema.correo, sistema.password),
+    recepcionista: await iniciarSesion(servidor.puerto, recepcionista.correo, recepcionista.password),
   };
   instantaneaInicial = await instantanea();
 });

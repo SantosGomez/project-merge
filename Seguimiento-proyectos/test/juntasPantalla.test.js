@@ -44,11 +44,11 @@ describe('dependencia QCalendar', () => {
 })
 
 describe('ruta /juntas', () => {
-  it('se llama «juntas», muestra JuntasPage con el título «Juntas» y pide sesión', () => {
+  it('se llama «juntas», muestra JuntasPage con el título «Mi Calendario» y pide sesión', () => {
     const ruta = bloqueRuta()
     assert.match(ruta, /path: 'juntas'/)
     assert.match(ruta, /component: JuntasPage/)
-    assert.match(ruta, /titulo: 'Juntas'/)
+    assert.match(ruta, /titulo: 'Mi Calendario'/)
     assert.match(ruta, /requiereSesion: true/)
     assert.match(router, /import JuntasPage from '\.\.\/pages\/JuntasPage\.vue'/)
   })
@@ -78,7 +78,7 @@ describe('ruta /juntas', () => {
   })
 })
 
-describe('menú lateral: ítem «Juntas»', () => {
+describe('menú lateral: ítem «Mi Calendario»', () => {
   // Cada sección empieza en su <template v-if> y termina en el </template> que la cierra.
   const seccion = (condicion) => {
     const inicio = layout.indexOf(`<template v-if="${condicion}">`)
@@ -91,17 +91,17 @@ describe('menú lateral: ítem «Juntas»', () => {
     ['Mi trabajo', 'session.trabajaCasos'],
     ['Recepción', 'session.esRecepcionista'],
   ]) {
-    it(`la sección «${nombre}» tiene «Juntas» con su subtítulo y sin tooltip`, () => {
+    it(`la sección «${nombre}» tiene «Mi Calendario» con su subtítulo y sin tooltip`, () => {
       const cuerpo = seccion(condicion)
       assert.match(cuerpo, /:to="\{ name: 'juntas' \}"/)
-      assert.match(cuerpo, /<q-item-label>Juntas<\/q-item-label>/)
-      assert.match(cuerpo, /<q-item-label caption>Calendario de juntas del equipo<\/q-item-label>/)
+      assert.match(cuerpo, /<q-item-label>Mi Calendario<\/q-item-label>/)
+      assert.match(cuerpo, /<q-item-label caption>Juntas y vencimientos<\/q-item-label>/)
       assert.equal((cuerpo.match(/name: 'juntas'/g) ?? []).length, 1)
       assert.doesNotMatch(cuerpo, /q-tooltip/)
     })
   }
 
-  it('el usuario de sistema no ve «Juntas»', () => {
+  it('el usuario de sistema no ve «Mi Calendario»', () => {
     assert.doesNotMatch(seccion('session.esUsuarioSistema'), /juntas/)
   })
 })
@@ -170,5 +170,42 @@ describe('privacidad y agenda de otros (rebanada 23)', () => {
     assert.match(calendario, /No estás invitado a esta junta/)
     assert.match(calendario, /esJuntaOcupada/)
     assert.match(calendario, /tabindex="0"/)
+  })
+})
+
+describe('recepcionista como secretaria del administrador (rebanada 27)', () => {
+  const plantillaDe = (texto) => texto.split('<script')[0]
+  const pagina = leer('../src/pages/JuntasPage.vue')
+  const formulario = leer('../src/components/JuntaFormDialog.vue')
+  const ficha = leer('../src/components/JuntaDetalleDialog.vue')
+
+  it('la pantalla pasa el organizador al formulario y deja de invitar al administrador de la agenda', () => {
+    assert.match(plantillaDe(pagina), /:invitado-inicial="invitadoInicial"/)
+    assert.match(plantillaDe(pagina), /:organizador="organizadorDeLaJunta"/)
+    assert.match(pagina, /organizadorDeAlta\(session\.rol, personaDeLaAgenda\.value\)/)
+    assert.match(pagina, /invitadoInicialDeAlta\(session\.rol, personaDeLaAgenda\.value\)/)
+  })
+
+  it('el formulario muestra «Organiza: {nombre}» en texto de solo lectura y crea con organizadorId', () => {
+    assert.match(plantillaDe(formulario), /v-if="organizadorNombre"[\s\S]{0,300}Organiza:/)
+    assert.match(formulario, /organizador: \{ type: Object, default: null \}/)
+    assert.match(formulario, /organizadorId: props\.organizador\.id/)
+    assert.match(formulario, /persona\.id !== organizadorAjeno\.value\?\.id/)
+  })
+
+  it('la ficha edita y borra con puede_editar y trae «Responder por» con Aceptar y Rechazar', () => {
+    const plantilla = plantillaDe(ficha)
+    assert.match(plantilla, /<template v-if="puedeEditar">/)
+    assert.match(ficha, /props\.junta\.puede_editar === true/)
+    assert.match(ficha, /props\.junta\.responder_por \?\? \[\]/)
+    assert.match(plantilla, /Responder por \{\{ administrador\.nombre \}\}/)
+    assert.match(plantilla, /v-for="administrador in respondePor"/)
+    assert.match(plantilla, /responderPorAdministrador\(administrador, 'aceptada'\)/)
+    assert.match(plantilla, /responderPorAdministrador\(administrador, 'rechazada'\)/)
+    assert.match(ficha, /responder\(props\.junta\.id, respuesta, administrador\.id\)/)
+  })
+
+  it('el calendario sigue sin tooltips', () => {
+    assert.doesNotMatch(leer('../src/components/CalendarioJuntas.vue'), /q-tooltip/)
   })
 })

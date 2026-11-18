@@ -97,6 +97,28 @@ describe('juntaService', () => {
     )
   })
 
+  it('crear con organizadorId envía organizador_id; sin él, el cuerpo no lo trae', async () => {
+    const api = crearApiFalsa({ POST: { junta } })
+    const servicio = crearJuntaService({ api })
+    const base = { titulo: 'a', inicio: 'x', fin: 'y', participantes: [4] }
+    await servicio.crear({ ...base, organizadorId: 9 })
+    await servicio.crear(base)
+    assert.equal(api.llamadas[0].segundo.organizador_id, 9)
+    assert.equal('organizador_id' in api.llamadas[1].segundo, false)
+  })
+
+  it('actualizar nunca envía organizador_id', async () => {
+    const api = crearApiFalsa({ PATCH: { junta } })
+    await crearJuntaService({ api }).actualizar(5, {
+      titulo: 'a',
+      inicio: 'x',
+      fin: 'y',
+      participantes: [],
+      organizadorId: 9,
+    })
+    assert.equal('organizador_id' in api.llamadas[0].segundo, false)
+  })
+
   it('agendaDe pide GET /juntas/agenda/:id con el rango y devuelve usuario y juntas', async () => {
     const usuario = { id: 3, nombre: 'Ana', rol: 'administrador' }
     const ocupada = { id: null, titulo: 'Ocupado', ocupado: true }

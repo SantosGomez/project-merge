@@ -156,14 +156,14 @@
               active-class="q-item--nav-activo"
               :to="{ name: 'juntas' }"
               :aria-current="paginaActual('juntas')"
-              aria-label="Ir a juntas"
+              aria-label="Ir a Mi Calendario"
             >
               <q-item-section avatar>
                 <q-icon name="event" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>Juntas</q-item-label>
-                <q-item-label caption>Calendario de juntas del equipo</q-item-label>
+                <q-item-label>Mi Calendario</q-item-label>
+                <q-item-label caption>Juntas y vencimientos</q-item-label>
               </q-item-section>
             </q-item>
           </template>
@@ -237,14 +237,14 @@
               active-class="q-item--nav-activo"
               :to="{ name: 'juntas' }"
               :aria-current="paginaActual('juntas')"
-              aria-label="Ir a juntas"
+              aria-label="Ir a Mi Calendario"
             >
               <q-item-section avatar>
                 <q-icon name="event" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>Juntas</q-item-label>
-                <q-item-label caption>Calendario de juntas del equipo</q-item-label>
+                <q-item-label>Mi Calendario</q-item-label>
+                <q-item-label caption>Juntas y vencimientos</q-item-label>
               </q-item-section>
             </q-item>
           </template>
@@ -281,14 +281,14 @@
               active-class="q-item--nav-activo"
               :to="{ name: 'juntas' }"
               :aria-current="paginaActual('juntas')"
-              aria-label="Ir a juntas"
+              aria-label="Ir a Mi Calendario"
             >
               <q-item-section avatar>
                 <q-icon name="event" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>Juntas</q-item-label>
-                <q-item-label caption>Calendario de juntas del equipo</q-item-label>
+                <q-item-label>Mi Calendario</q-item-label>
+                <q-item-label caption>Juntas y vencimientos</q-item-label>
               </q-item-section>
             </q-item>
 

@@ -13,6 +13,7 @@ import {
   esJuntaOcupada,
   etiquetaDeJuntaOcupada,
   etiquetaRespuesta,
+  invitadoInicialDeAlta,
   formatearFechaISO,
   horaDeFechaHora,
   horarioDeJunta,
@@ -23,6 +24,7 @@ import {
   marcasDeJunta,
   mesesDelAnio,
   moverPeriodo,
+  organizadorDeAlta,
   parsearFechaISO,
   rangoVisible,
   segmentoDelDia,
@@ -636,5 +638,29 @@ describe('vista de año (rebanada 25)', () => {
     assert.equal(textoDiaConJuntas('2026-11-18', 2), '18 de noviembre: 2 juntas')
     assert.equal(textoDiaConJuntas('2026-11-18', 1), '18 de noviembre: 1 junta')
     assert.equal(textoDiaConJuntas('2026-11-18', 0), '18 de noviembre: sin juntas')
+  })
+})
+
+describe('recepcionista como secretaria en la agenda de un administrador (rebanada 27)', () => {
+  const admin = { id: 7, nombre: 'Ana Administradora', rol: 'administrador' }
+  const contador = { id: 8, nombre: 'Carlos Contador', rol: 'contador' }
+
+  it('organizadorDeAlta: solo la recepcionista con la agenda de un administrador agenda a su nombre', () => {
+    assert.deepEqual(organizadorDeAlta('recepcionista', admin), {
+      id: 7,
+      nombre: 'Ana Administradora',
+    })
+    assert.equal(organizadorDeAlta('recepcionista', contador), null)
+    assert.equal(organizadorDeAlta('recepcionista', null), null)
+    assert.equal(organizadorDeAlta('contador', admin), null)
+    assert.equal(organizadorDeAlta('administrador', admin), null)
+    assert.equal(organizadorDeAlta('auxiliar', admin), null)
+  })
+
+  it('invitadoInicialDeAlta: invita a la persona de la agenda, salvo que se agende a nombre de ella', () => {
+    assert.equal(invitadoInicialDeAlta('recepcionista', admin), null)
+    assert.deepEqual(invitadoInicialDeAlta('recepcionista', contador), contador)
+    assert.deepEqual(invitadoInicialDeAlta('contador', admin), admin)
+    assert.equal(invitadoInicialDeAlta('contador', null), null)
   })
 })

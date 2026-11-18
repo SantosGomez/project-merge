@@ -728,3 +728,62 @@ describe('escalada de privilegios por la API de usuarios', () => {
     assert.ok(sistema2.id);
   });
 });
+
+describe('juntas: organizador_id y en_nombre_de son solo de la recepcionista', () => {
+  const cuerpoJunta = (extra) => ({
+    titulo: 'zz_test junta de matriz',
+    inicio: '2036-01-12 09:00',
+    fin: '2036-01-12 10:00',
+    ...extra,
+  });
+
+  test('organizador_id: solo la recepcionista lo usa; los demás roles reciben 403 y la recepcionista 201 o 400', async () => {
+    for (const rol of [ADMIN, CONTADOR, AUXILIAR]) {
+      const r = await peticion(servidor.puerto, 'POST', '/juntas', cuerpoJunta({ organizador_id: cuentas[ADMIN].id }), tokens[rol]);
+      assert.strictEqual(r.statusCode, 403, rol);
+    }
+    const bien = await peticion(
+      servidor.puerto,
+      'POST',
+      '/juntas',
+      cuerpoJunta({ organizador_id: cuentas[ADMIN].id }),
+      tokens[RECEPCIONISTA]
+    );
+    assert.strictEqual(bien.statusCode, 201, JSON.stringify(bien.body));
+    assert.strictEqual(bien.body.junta.creado_por.id, cuentas[ADMIN].id);
+    const mal = await peticion(
+      servidor.puerto,
+      'POST',
+      '/juntas',
+      cuerpoJunta({ organizador_id: cuentas[CONTADOR].id }),
+      tokens[RECEPCIONISTA]
+    );
+    assert.strictEqual(mal.statusCode, 400);
+    const sistemaIntento = await peticion(servidor.puerto, 'POST', '/juntas', cuerpoJunta({ organizador_id: cuentas[ADMIN].id }), tokens[SISTEMA]);
+    assert.strictEqual(sistemaIntento.statusCode, 403);
+  });
+
+  test('en_nombre_de: solo la recepcionista responde por un administrador invitado; los demás reciben 403', async () => {
+    const junta = await peticion(
+      servidor.puerto,
+      'POST',
+      '/juntas',
+      cuerpoJunta({ participantes: [cuentas[ADMIN].id, cuentas[AUXILIAR].id] }),
+      tokens[CONTADOR]
+    );
+    assert.strictEqual(junta.statusCode, 201, JSON.stringify(junta.body));
+    const ruta = `/juntas/${junta.body.junta.id}/respuesta`;
+    const cuerpo = { respuesta: 'aceptada', en_nombre_de: cuentas[ADMIN].id };
+    for (const rol of [ADMIN, AUXILIAR]) {
+      assert.strictEqual((await peticion(servidor.puerto, 'PATCH', ruta, cuerpo, tokens[rol])).statusCode, 403, rol);
+    }
+    assert.strictEqual((await peticion(servidor.puerto, 'PATCH', ruta, cuerpo, tokens[CONTADOR])).statusCode, 403);
+    const ok = await peticion(servidor.puerto, 'PATCH', ruta, cuerpo, tokens[RECEPCIONISTA]);
+    assert.strictEqual(ok.statusCode, 200, JSON.stringify(ok.body));
+    const [fila] = await consultar('SELECT respuesta FROM junta_participantes WHERE junta_id = ? AND usuario_id = ?', [
+      junta.body.junta.id,
+      cuentas[ADMIN].id,
+    ]);
+    assert.strictEqual(fila.respuesta, 'aceptada');
+  });
+});

@@ -22,6 +22,13 @@
             Esta junta termina otro día. Al guardar terminará el mismo día en que empieza.
           </p>
 
+          <p v-if="organizadorNombre" class="junta-form__organiza junta-form__ancho-completo">
+            <q-icon name="person" size="16px" aria-hidden="true" />
+            <span>
+              Organiza: <strong>{{ organizadorNombre }}</strong>
+            </span>
+          </p>
+
           <div class="form-group junta-form__ancho-completo">
             <label for="junta-titulo" class="form-label"
               >Título <span aria-hidden="true" class="required-mark">*</span></label
@@ -212,10 +219,15 @@
                 </q-item>
               </template>
             </q-select>
-            <p id="junta-invitados-ayuda" class="form-help">
+            <p v-if="!organizadorNombre" id="junta-invitados-ayuda" class="form-help">
               Puedes elegir hasta {{ MAX_INVITADOS }} personas. Cada invitado empieza como
               «Pendiente». Si no invitas a nadie, la junta solo bloquea tu horario y los demás la
               verán en tu agenda.
+            </p>
+            <p v-else id="junta-invitados-ayuda" class="form-help">
+              Puedes elegir hasta {{ MAX_INVITADOS }} personas. Cada invitado empieza como
+              «Pendiente». Si no invitas a nadie, la junta solo bloquea el horario de
+              {{ organizadorNombre }}.
             </p>
             <q-btn
               v-if="errorPersonas"
@@ -372,6 +384,9 @@ import {
  * Alta y edición de una junta (prop `junta` para editar). La junta del formulario es de un solo día:
  * fecha DD-MM-AAAA y dos horas HH:mm; a la API va como `AAAA-MM-DD HH:mm`. Con `fechaInicial` y
  * `horaInicial` (clic en un hueco del calendario) se precarga el horario, de 30 minutos.
+ * Con `organizador` (la recepcionista agendando a nombre de un administrador) la junta queda a nombre de
+ * él: se muestra «Organiza: {nombre}» y no se le puede invitar. Al editar una junta que organiza otra
+ * persona (la recepcionista con la junta de un administrador) también se muestra quién organiza.
  */
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
@@ -384,11 +399,20 @@ const props = defineProps({
   horaInicial: { type: String, default: '' },
   /** Persona a invitar de entrada al crear ({ id, nombre, rol }), p. ej. de cuya agenda se parte. */
   invitadoInicial: { type: Object, default: null },
+  /** Administrador a cuyo nombre se agenda al crear ({ id, nombre }); null si la junta es de quien la crea. */
+  organizador: { type: Object, default: null },
 })
 
 const emit = defineEmits(['guardada'])
 
 const modoEdicion = computed(() => props.junta !== null)
+
+// Quien organiza cuando no es la cuenta que usa el formulario; null si la junta es propia.
+const organizadorAjeno = computed(() => {
+  if (modoEdicion.value) return props.junta.soy_organizador ? null : props.junta.creado_por
+  return props.organizador
+})
+const organizadorNombre = computed(() => organizadorAjeno.value?.nombre ?? '')
 
 const TEXTOS_ALTA = {
   titulo: 'Nueva junta',
@@ -528,7 +552,9 @@ const cargarPersonas = async () => {
   cargandoPersonas.value = true
   errorPersonas.value = false
   try {
-    const usuarios = await participantesDisponibles()
+    const usuarios = (await participantesDisponibles()).filter(
+      (persona) => persona.id !== organizadorAjeno.value?.id,
+    )
     personas.value = mezclarInvitadosDeLaJunta(usuarios.map(opcionDePersona))
     opcionesFiltradas.value = personas.value
   } catch {
@@ -629,7 +655,7 @@ const submit = async () => {
     }
     const guardada = modoEdicion.value
       ? await actualizar(props.junta.id, datos)
-      : await crear(datos)
+      : await crear(props.organizador ? { ...datos, organizadorId: props.organizador.id } : datos)
     emit('guardada', guardada)
     dialogoAbierto.value = false
   } catch (error) {
@@ -695,6 +721,15 @@ const submit = async () => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.junta-form__organiza {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--dg-texto);
+  font-size: 0.95rem;
 }
 
 .junta-form__aviso {
