@@ -435,6 +435,19 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
   .q-transition--dialogo-sale-leave-to {
     transform: none;
   }
+
+  /* Selectores, tooltips, campana y calendarios del formulario (jump-down y jump-up): solo fundido. */
+  .q-transition--jump-down-enter-from,
+  .q-transition--jump-down-leave-to,
+  .q-transition--jump-up-enter-from,
+  .q-transition--jump-up-leave-to {
+    transform: none;
+  }
+
+  /* El «shake» del diálogo persistent (un clic fuera) no se anima. */
+  .q-animate--scale {
+    animation: none;
+  }
 }
 
 /* Texto solo para lectores de pantalla (por ejemplo, el nombre de la fase en la tabla «Avance»). */

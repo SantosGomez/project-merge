@@ -264,7 +264,7 @@ describe('rebanada 29: calendario y campana', () => {
       /horaEnElDia\(props\.junta, props\.dia\)/,
     )
     assert.match(calendario, /:dia="scope\.timestamp\.date"/)
-    assert.match(calendario, /vista === 'semana' && !conFinDeSemana/)
+    assert.match(calendario, /esSemanaCompleta && !conFinDeSemana/)
     assert.match(pagina, /:con-fin-de-semana="conFinDeSemana"/)
     assert.match(pagina, /:agenda-id="agendaId"/)
   })

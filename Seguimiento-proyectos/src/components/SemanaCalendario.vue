@@ -1,6 +1,6 @@
 <template>
   <div class="semana">
-    <div class="semana__cabecera">
+    <div v-if="conCabecera" class="semana__cabecera">
       <p class="semana__mes">{{ mesDeLaTira }}</p>
       <q-btn
         flat
@@ -68,6 +68,7 @@ import { tituloDeDia } from '../utils/actividades.js'
  * Tira de la semana para celular y tableta: tres semanas de lunes a domingo que se deslizan de
  * lado, cada día con su número y una marca de color. «Ver mes» despliega el calendario completo
  * (lo pinta el componente padre). Solo presenta: el día elegido y las marcas llegan por props.
+ * La marca «junta» (punto de acento) la usa «Mi Calendario»; con `conCabecera` en falso no hay «Ver mes».
  */
 const props = defineProps({
   /** Marca de cada día (`marcasPorDia`): vencido, pronto o a-tiempo. */
@@ -77,12 +78,19 @@ const props = defineProps({
   /** Hoy AAAA-MM-DD. */
   hoy: { type: String, required: true },
   mesVisible: { type: Boolean, default: false },
+  /** Muestra el nombre del mes y «Ver mes». «Mi Calendario» la oculta: el periodo ya está arriba. */
+  conCabecera: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['elegir-dia', 'alternar-mes'])
 
 const NOMBRES_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
-const TEXTOS_DE_MARCA = { vencido: 'vencidos', pronto: 'vencen pronto', 'a-tiempo': 'a tiempo' }
+const TEXTOS_DE_MARCA = {
+  vencido: 'vencidos',
+  pronto: 'vencen pronto',
+  'a-tiempo': 'a tiempo',
+  junta: 'con juntas',
+}
 
 // La tira se centra en el día elegido o, si no hay, en hoy.
 const base = computed(() => props.diaElegido ?? props.hoy)
@@ -197,6 +205,11 @@ watch(base, alinearSemana)
 
 .semana__marca--a-tiempo {
   background: var(--dg-exito);
+}
+
+/* «Mi Calendario»: el día tiene juntas. */
+.semana__marca--junta {
+  background: var(--dg-acento);
 }
 
 .semana__dia--hoy {

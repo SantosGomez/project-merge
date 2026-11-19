@@ -225,7 +225,7 @@ describe('administrador que atiende la recepcionista (rebanada 28)', () => {
   const pagina = leer('../src/pages/JuntasPage.vue')
   const plantilla = plantillaDe(pagina)
 
-  it('muestra el aviso de a quién administra, con «Ver su agenda», solo a la recepcionista', () => {
+  it('muestra el aviso de a quién administra, con «Ver su agenda» o «Volver a mi agenda», solo a la recepcionista', () => {
     assert.match(pagina, /const atendidos = computed\(\(\) => session\.administradoresAtendidos\)/)
     assert.match(
       plantilla,
@@ -233,17 +233,19 @@ describe('administrador que atiende la recepcionista (rebanada 28)', () => {
     )
     assert.match(plantilla, /\{\{ textoAviso \}\}/)
     assert.match(pagina, /textoAdministradoresAtendidos\(atendidos\.value\)/)
-    assert.match(plantilla, /Ver su agenda/)
-    assert.match(plantilla, /@click="cambiarAgenda\(String\(administrador\.id\)\)"/)
+    // Los textos «Ver su agenda» y «Volver a mi agenda» salen de accionesDeAtendidos (rebanada 33).
+    assert.match(pagina, /accionesDeAtendidos\(atendidos\.value, agendaId\.value\)/)
+    assert.match(plantilla, /v-for="accion in accionesDeRecepcion"/)
+    assert.match(plantilla, /@click="cambiarAgenda\(accion\.id\)"/)
   })
 
   it('al entrar sin agenda, con un solo administrador abre la agenda de él', () => {
     assert.match(pagina, /agendaInicialDeRecepcion\(session\.rol, atendidos\.value, route\.query\)/)
   })
 
-  it('«Ver agenda de» marca con «(lo administras)» al administrador que atiende', () => {
+  it('«Ver agenda de» marca con «Tú la administras» al administrador que atiende', () => {
     assert.match(pagina, /administraAAdministrador\(p, atendidos\.value\)/)
-    assert.match(pagina, /lo administras/)
+    assert.match(pagina, /Tú la administras/)
   })
 
   it('el aviso usa colores de la paleta y no un hexadecimal suelto', () => {

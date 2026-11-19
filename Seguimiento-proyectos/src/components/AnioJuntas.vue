@@ -1,9 +1,10 @@
 <template>
   <q-card flat bordered class="anio-juntas" :aria-label="`Calendario de juntas del año ${anio}`">
-    <div class="anio-juntas__meses">
+    <div ref="contenedor" class="anio-juntas__meses" @keydown="alTeclear" @focusin="alEnfocar">
       <section
         v-for="mes in meses"
         :key="mes.mes"
+        :data-mes="mes.mes"
         class="anio-mes"
         :aria-labelledby="`anio-mes-${mes.mes}`"
       >
@@ -20,11 +21,15 @@
               no-caps
               dense
               :ripple="false"
+              :data-dia="dia"
+              :tabindex="dia === diaConFoco ? 0 : -1"
               class="anio-dia boton-presionable"
-              :class="{
-                'anio-dia--con-juntas': cuentas[dia] > 0,
-                'anio-dia--hoy': dia === hoy,
-              }"
+              :class="[
+                intensidadDeJuntas(cuentas[dia]) > 0
+                  ? `anio-dia--nivel-${intensidadDeJuntas(cuentas[dia])}`
+                  : '',
+                { 'anio-dia--hoy': dia === hoy },
+              ]"
               :aria-label="nombreAccesible(dia)"
               @click="emit('elegir-dia', dia)"
             >
@@ -41,15 +46,24 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
-import { juntasPorDia, mesesDelAnio, textoDiaConJuntas } from '../utils/juntas.js'
+import {
+  diaInicialDelAnio,
+  intensidadDeJuntas,
+  juntasPorDia,
+  mesesDelAnio,
+  moverDiaEnAnio,
+  textoDiaConJuntas,
+} from '../utils/juntas.js'
 
 /*
  * Vista de año: 12 meses compactos de lunes a domingo. No pide datos: recibe el año y las juntas
  * del año; cada día con juntas lleva su cantidad (y su nombre accesible la dice con texto, por
- * ejemplo «18 de noviembre: 2 juntas»). Un clic en un día avisa con `elegir-dia` para abrir la
- * vista Día de esa fecha.
+ * ejemplo «18 de noviembre: 2 juntas»). Un clic en un día (o Enter) avisa con `elegir-dia` para abrir la
+ * vista Día de esa fecha. Con teclado hay una sola parada de Tab (foco itinerante: la fecha elegida u hoy) y las
+ * flechas mueven el foco; al abrir, el mes de esa fecha queda a la vista. El tinte de cada día crece con el
+ * número de juntas (1, 2–3 y 4 o más).
  */
 const props = defineProps({
   /** Año que se muestra. */
@@ -58,6 +72,8 @@ const props = defineProps({
   juntas: { type: Array, default: () => [] },
   /** Hoy en AAAA-MM-DD, para marcar el día actual. */
   hoy: { type: String, default: '' },
+  /** Fecha elegida AAAA-MM-DD: el día que recibe el foco y el mes que se muestra al abrir. */
+  fecha: { type: String, default: '' },
 })
 
 const emit = defineEmits(['elegir-dia'])
@@ -75,6 +91,37 @@ const LETRAS_DE_SEMANA = [
 const meses = computed(() => mesesDelAnio(props.anio))
 const cuentas = computed(() => juntasPorDia(props.juntas, props.anio))
 
+// Foco itinerante: solo este día está en el orden de Tab; las flechas lo mueven.
+const contenedor = ref(null)
+const diaConFoco = ref(diaInicialDelAnio(props.anio, props.fecha, props.hoy))
+watch(
+  () => [props.anio, props.fecha],
+  () => {
+    diaConFoco.value = diaInicialDelAnio(props.anio, props.fecha, props.hoy)
+  },
+)
+
+const alEnfocar = (evento) => {
+  const dia = evento.target.closest?.('[data-dia]')?.dataset.dia
+  if (dia) diaConFoco.value = dia
+}
+
+const alTeclear = async (evento) => {
+  const origen = evento.target.closest?.('[data-dia]')
+  const destino = origen ? moverDiaEnAnio(origen.dataset.dia, evento.key) : null
+  if (destino === null) return
+  evento.preventDefault()
+  diaConFoco.value = destino
+  await nextTick()
+  contenedor.value?.querySelector(`[data-dia="${destino}"]`)?.focus()
+}
+
+// Al abrir, el mes de la fecha elegida (u hoy) queda a la vista; el salto es instantáneo.
+onMounted(() => {
+  const mes = Number(diaConFoco.value.slice(5, 7)) - 1
+  contenedor.value?.querySelector(`[data-mes="${mes}"]`)?.scrollIntoView({ block: 'center' })
+})
+
 const nombreAccesible = (dia) =>
   `${textoDiaConJuntas(dia, cuentas.value[dia] ?? 0)}${dia === props.hoy ? ' (hoy)' : ''}. Abre ese día.`
 </script>
@@ -90,7 +137,7 @@ const nombreAccesible = (dia) =>
 
 .anio-juntas__meses {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
   padding: 16px;
 }
@@ -122,15 +169,17 @@ const nombreAccesible = (dia) =>
   text-align: center;
 }
 
+/* Un día sin juntas pesa poco: peso 400 y texto tenue. Los que tienen juntas suben de tinte y de peso. */
 .anio-dia {
   position: relative;
   min-width: 0;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 6px;
-  color: var(--dg-texto);
+  color: var(--dg-texto-tenue);
   font-size: 0.85rem;
+  font-weight: 400;
 }
 
 .anio-dia--vacio {
@@ -143,13 +192,34 @@ const nombreAccesible = (dia) =>
   line-height: 1.1;
 }
 
-.anio-dia--con-juntas {
-  background: var(--dg-fondo-seleccion);
+.anio-dia--nivel-1,
+.anio-dia--nivel-2,
+.anio-dia--nivel-3 {
+  color: var(--dg-texto);
   font-weight: 700;
 }
 
+.anio-dia--nivel-1 {
+  background: var(--dg-fondo-seleccion);
+}
+
+.anio-dia--nivel-2 {
+  background: color-mix(in srgb, var(--dg-acento) 22%, var(--dg-superficie));
+}
+
+.anio-dia--nivel-3 {
+  background: color-mix(in srgb, var(--dg-acento) 42%, var(--dg-superficie));
+}
+
+/* Hoy: anillo de 2 px en el color de foco, hacia adentro para que no tape a los vecinos. */
 .anio-dia--hoy {
-  border-color: var(--dg-acento);
+  box-shadow: inset 0 0 0 2px var(--dg-foco);
+}
+
+.anio-dia:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--dg-foco) !important;
+  outline-offset: 2px;
 }
 
 .anio-dia__cuenta {

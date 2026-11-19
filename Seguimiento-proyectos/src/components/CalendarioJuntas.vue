@@ -5,8 +5,63 @@
     class="calendario-juntas"
     :aria-label="`Calendario de juntas: ${textoDeVista}`"
   >
+    <!-- Celular, Semana: la tira de días arriba y debajo la agenda del día elegido. -->
+    <SemanaCalendario
+      v-if="vista === 'semana' && compacto"
+      :marcas="marcasDeLaTira"
+      :dia-elegido="fecha"
+      :hoy="hoy"
+      :con-cabecera="false"
+      class="calendario-juntas__tira"
+      @elegir-dia="(dia) => emit('elegir-dia', dia)"
+    />
+
+    <!-- Celular, Mes: cuadrícula compacta con el número de juntas de cada día y debajo la agenda del día elegido. -->
+    <div
+      v-else-if="vista === 'mes' && compacto"
+      class="calendario-juntas__mes-compacto"
+      role="group"
+      aria-label="Días del mes: elige uno para ver sus juntas"
+    >
+      <div
+        class="calendario-juntas__fila-compacta calendario-juntas__dias-de-semana"
+        aria-hidden="true"
+      >
+        <span v-for="letra in LETRAS_DE_SEMANA" :key="letra.clave">{{ letra.texto }}</span>
+      </div>
+      <div
+        v-for="(semana, indice) in semanasDelMes"
+        :key="indice"
+        class="calendario-juntas__fila-compacta"
+      >
+        <template v-for="(dia, posicion) in semana" :key="posicion">
+          <span v-if="dia === null" class="mes-compacto__dia" aria-hidden="true"></span>
+          <q-btn
+            v-else
+            flat
+            no-caps
+            dense
+            :ripple="false"
+            class="mes-compacto__dia boton-presionable"
+            :class="{
+              'mes-compacto__dia--elegido': dia === fecha,
+              'mes-compacto__dia--hoy': dia === hoy,
+            }"
+            :aria-pressed="String(dia === fecha)"
+            :aria-label="nombreAccesibleDeDia(dia)"
+            @click="emit('elegir-dia', dia)"
+          >
+            <span class="mes-compacto__numero" aria-hidden="true">{{ Number(dia.slice(8)) }}</span>
+            <span class="mes-compacto__cuenta" aria-hidden="true">{{
+              cuentasDelMes[dia] > 0 ? cuentasDelMes[dia] : ''
+            }}</span>
+          </q-btn>
+        </template>
+      </div>
+    </div>
+
     <!-- Mes: cuadrícula de lunes a domingo; cada día muestra hasta 3 elementos y «+N más» abre ese día. -->
-    <div v-if="vista === 'mes'" class="calendario-juntas__scroll">
+    <div v-if="vista === 'mes' && !compacto" class="calendario-juntas__scroll">
       <QCalendarMonth
         :model-value="fecha"
         :weekdays="DIAS_DEL_MES"
@@ -80,12 +135,12 @@
       </QCalendarMonth>
     </div>
 
-    <!-- Semana (lunes a viernes) y día: de 8:00 a 19:00; un clic en un hueco vacío crea una junta. -->
+    <!-- Semana (lunes a viernes) y día: de 8:00 a 19:00; un clic en un hueco vacío crea una junta. En celular, Semana y Mes muestran aquí solo el día elegido. -->
     <div v-else class="calendario-juntas__scroll">
       <QCalendarDay
         :model-value="fecha"
-        :view="vista === 'semana' ? 'week' : 'day'"
-        :weekdays="vista === 'semana' && !conFinDeSemana ? DIAS_LABORALES : TODOS_LOS_DIAS"
+        :view="esSemanaCompleta ? 'week' : 'day'"
+        :weekdays="esSemanaCompleta && !conFinDeSemana ? DIAS_LABORALES : TODOS_LOS_DIAS"
         locale="es-MX"
         hour24-format
         time-clicks-clamped
@@ -97,7 +152,7 @@
         :interval-height="ALTO_DE_HUECO"
         :show-interval-label="(marca) => marca.minute === 0"
         class="calendario-juntas__calendario"
-        :class="{ 'calendario-juntas__calendario--semana': vista === 'semana' }"
+        :class="{ 'calendario-juntas__calendario--semana': esSemanaCompleta }"
         @click-time="alElegirHueco"
       >
         <template #head-day-event="{ scope }">
@@ -169,6 +224,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { QCalendarDay } from '@quasar/quasar-ui-qcalendar/QCalendarDay'
 import { QCalendarMonth } from '@quasar/quasar-ui-qcalendar/QCalendarMonth'
@@ -176,6 +232,8 @@ import '@quasar/quasar-ui-qcalendar/QCalendarDay.css'
 import '@quasar/quasar-ui-qcalendar/QCalendarMonth.css'
 
 import BloqueJunta from './BloqueJunta.vue'
+import SemanaCalendario from './SemanaCalendario.vue'
+import { diasDeTira } from '../utils/calendarioAdministrador.js'
 import {
   HORA_FIN_VISTA,
   HORA_INICIO_VISTA,
@@ -183,9 +241,13 @@ import {
   distribuirSolapadas,
   etiquetaFueraDeHorario,
   juntasDelDia,
+  juntasPorDia,
   limitarElementosDelDia,
+  marcasDeDiasConJuntas,
+  mesesDelAnio,
   notaDeRecorte,
   segmentoDelDia,
+  textoDiaConJuntas,
   textoPeriodo,
 } from '../utils/juntas.js'
 import {
@@ -205,6 +267,9 @@ import {
  * auditorías como «Auditoría: cliente»; ambos avisan con `abrir-vencimiento`. El idioma es es-MX y los colores salen
  * de la paleta `--dg-*` (ver los estilos de abajo). Cada junta se pinta con `BloqueJunta` (estado, marcas y
  * modo compacto). En el Mes, cada día muestra hasta 3 elementos y «+N más» abre la vista Día de esa fecha.
+ * En menos de 600 px, Semana y Mes no usan la cuadrícula ancha: arriba va la tira de la semana (`SemanaCalendario`)
+ * o una cuadrícula compacta del mes con el número de juntas de cada día, y debajo la agenda del día elegido
+ * (la vista Día); elegir un día avisa con `elegir-dia`.
  */
 const props = defineProps({
   /** 'mes', 'semana' o 'dia'. */
@@ -225,12 +290,28 @@ const props = defineProps({
   conFinDeSemana: { type: Boolean, default: false },
   /** Id de la junta recién guardada: se resalta con un anillo de acento unos segundos. */
   resaltadaId: { type: [Number, String], default: null },
+  /** Hoy en AAAA-MM-DD, para marcar el día actual en celular. */
+  hoy: { type: String, default: '' },
 })
 
-const emit = defineEmits(['abrir-junta', 'nueva-junta', 'abrir-vencimiento'])
+const emit = defineEmits(['abrir-junta', 'nueva-junta', 'abrir-vencimiento', 'elegir-dia'])
+
+const $q = useQuasar()
+// Menos de 600 px: Semana y Mes pasan a la tira de la semana y a la cuadrícula compacta.
+const compacto = computed(() => $q.screen.lt.sm)
+const esSemanaCompleta = computed(() => props.vista === 'semana' && !compacto.value)
 
 // Días de la semana de QCalendar: 0 es domingo.
 const DIAS_DEL_MES = [1, 2, 3, 4, 5, 6, 0]
+const LETRAS_DE_SEMANA = [
+  { clave: 'lunes', texto: 'L' },
+  { clave: 'martes', texto: 'M' },
+  { clave: 'miercoles', texto: 'M' },
+  { clave: 'jueves', texto: 'J' },
+  { clave: 'viernes', texto: 'V' },
+  { clave: 'sabado', texto: 'S' },
+  { clave: 'domingo', texto: 'D' },
+]
 const DIAS_LABORALES = [1, 2, 3, 4, 5]
 const TODOS_LOS_DIAS = [1, 2, 3, 4, 5, 6, 0]
 
@@ -244,6 +325,18 @@ const textoDeVista = computed(() => textoPeriodo(props.vista, props.fecha))
 // Junta recién guardada: la pantalla la resalta unos segundos.
 const esResaltada = (junta) =>
   props.resaltadaId !== null && String(junta.id) === String(props.resaltadaId)
+
+// Tira de la semana (celular): marca los días con juntas entre los que ya se cargaron.
+const marcasDeLaTira = computed(() => marcasDeDiasConJuntas(props.juntas, diasDeTira(props.fecha)))
+
+// Mes compacto (celular): las semanas del mes de la fecha y cuántas juntas hay cada día.
+const anioDeLaFecha = computed(() => Number(props.fecha.slice(0, 4)))
+const semanasDelMes = computed(
+  () => mesesDelAnio(anioDeLaFecha.value)[Number(props.fecha.slice(5, 7)) - 1].semanas,
+)
+const cuentasDelMes = computed(() => juntasPorDia(props.juntas, anioDeLaFecha.value))
+const nombreAccesibleDeDia = (dia) =>
+  `${textoDiaConJuntas(dia, cuentasDelMes.value[dia] ?? 0)}${dia === props.hoy ? ' (hoy)' : ''}. Muestra ese día.`
 
 // Bloques de un día con su columna, para que las juntas que se cruzan no se tapen.
 const bloquesDelDia = (dia) =>
@@ -339,6 +432,80 @@ const alElegirHueco = ({ scope }) => {
   border-color: var(--dg-borde);
   background: var(--dg-superficie);
   color: var(--dg-texto);
+}
+
+/* Celular, Semana: la tira de días ocupa todo el ancho, con aire a los lados. */
+.calendario-juntas__tira {
+  padding: 8px 4px 0;
+  border-bottom: 1px solid var(--dg-borde);
+}
+
+/* Celular, Mes: siete columnas de 44 px de alto como mínimo, sin scroll de lado. */
+.calendario-juntas__mes-compacto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-bottom: 1px solid var(--dg-borde);
+}
+
+.calendario-juntas__fila-compacta {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.calendario-juntas__dias-de-semana {
+  color: var(--dg-texto-secundario);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mes-compacto__dia {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--dg-texto);
+  font-size: 0.9rem;
+}
+
+.mes-compacto__dia :deep(.q-btn__content) {
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.1;
+}
+
+.mes-compacto__cuenta {
+  min-width: 16px;
+  min-height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.mes-compacto__cuenta:not(:empty) {
+  background: var(--dg-acento);
+  color: var(--dg-superficie);
+}
+
+.mes-compacto__dia--hoy {
+  border-color: var(--dg-acento);
+}
+
+.mes-compacto__dia--elegido {
+  border-color: var(--dg-acento);
+  background: var(--dg-fondo-seleccion);
+  font-weight: 700;
+}
+
+.mes-compacto__dia:focus-visible {
+  outline: 2px solid var(--dg-foco) !important;
+  outline-offset: 2px;
 }
 
 /* Celular: la cuadrícula se desplaza dentro de su propio contenedor, no la página entera. */

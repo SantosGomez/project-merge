@@ -40,8 +40,16 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
     - la recepcionista ve el aviso «Administras la agenda de…»;
     - trampa: dotenv carga `Backend/.env` en las pruebas, así que la prueba que necesite a todos los administradores debe quitar la variable;
     - **antes de desplegar**, confirmar que el 7947 es administrador en la base de Docker.
-  - Commits de la 21b a la 27: sin push hasta que el usuario los revise.
+  - Revisión de UX (`docs/revision-ux-mi-calendario.md`), rebanadas 29 a 33, ya subidas:
+    - la vista Semana muestra sábado y domingo solo si tienen algo;
+    - etiquetas para juntas fuera de 8:00 a 19:00;
+    - el calendario no se desmonta al cargar;
+    - `BloqueJunta`, `MarcaJunta` y `BarraPeriodo` son el marcado único;
+    - en móvil, `SemanaCalendario` con `conCabecera=false`;
+    - vista Año con foco itinerante;
+    - trampa: el foco de los `q-btn` del calendario necesita `!important` para ganar a `app.scss`.
   - Pendientes:
+    - opcionales de la revisión sin aplicar (en cada `docs/rebanadas/29` a `33`), entre ellos probar en el navegador la agenda de la recepcionista con los bloques nuevos;
     - formatear `MaquetaLayout.vue` y `router/index.js` (ya fallaban `prettier --check`);
     - decidir si el administrador recibe el aviso de estado cuando la recepcionista responde por él.
 
@@ -56,7 +64,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
   - El PATCH pide el cuerpo completo y conserva respuestas y `respondido_en`.
   - Campos de error: `título`, `descripción`, `inicio`, `fin`, `participantes` y `rango de fechas`.
 
-  Preguntas abiertas: el horario laboral (para la 21b) y si la recepcionista ve el «Último acceso».
+  Pregunta abierta: si la recepcionista ve el «Último acceso» en el directorio.
 
 ## Pendientes / para decidir
 

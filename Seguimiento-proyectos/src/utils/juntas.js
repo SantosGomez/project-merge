@@ -653,3 +653,84 @@ export const conJuntaGuardada = (juntas, guardada, rango) => {
 
 /** Lista sin la junta con ese id. No modifica la lista recibida. */
 export const sinJunta = (juntas, id) => juntas.filter((junta) => junta.id !== id)
+
+// --- cabecera, celular y teclado de la vista de año ---------------------------------------------------
+
+/**
+ * Línea de guía de la cabecera: depende de la vista y de si ves la agenda de otra persona.
+ * @param {'anio'|'mes'|'semana'|'dia'} vista
+ * @param {string|null} nombreAgenda - nombre de la persona cuya agenda se ve; null en la propia.
+ * @returns {string}
+ */
+export const textoGuiaCalendario = (vista, nombreAgenda) => {
+  if (nombreAgenda) return `Estás viendo la agenda de ${nombreAgenda}`
+  return vista === 'semana' || vista === 'dia'
+    ? 'Pulsa un hueco libre para crear una junta'
+    : 'Pulsa un día para verlo'
+}
+
+/**
+ * Acciones de la franja de la recepcionista. Si ya ves la agenda de un administrador que atiendes, la acción es
+ * volver a la tuya (`id` null); si no, una por administrador («Ver su agenda» si es uno solo).
+ * @param {Array<{ id: number, nombre: string }>|undefined} atendidos - administradores atendidos (de la sesión).
+ * @param {string|null} agendaId - persona cuya agenda se ve; null en la propia.
+ * @returns {Array<{ id: string|null, texto: string, ayuda: string }>}
+ */
+export const accionesDeAtendidos = (atendidos, agendaId) => {
+  const lista = atendidos ?? []
+  if (lista.some((administrador) => String(administrador.id) === String(agendaId))) {
+    return [{ id: null, texto: 'Volver a mi agenda', ayuda: 'Vuelve a tu propia agenda.' }]
+  }
+  return lista.map((administrador) => ({
+    id: String(administrador.id),
+    texto: lista.length === 1 ? 'Ver su agenda' : `Ver agenda de ${administrador.nombre}`,
+    ayuda: `Abre la agenda de ${administrador.nombre} para administrarla.`,
+  }))
+}
+
+/**
+ * Día al que llega el foco con las flechas de la vista de año: ←→ un día, ↑↓ una semana, Inicio y Fin el
+ * primero y el último del mes. No sale del año: en los extremos se queda donde está.
+ * @param {string} iso - día con el foco AAAA-MM-DD.
+ * @param {string} tecla - `KeyboardEvent.key`.
+ * @returns {string|null} null si la tecla no mueve el foco.
+ */
+export const moverDiaEnAnio = (iso, tecla) => {
+  const fecha = parsearFechaISO(iso)
+  let destino
+  if (tecla === 'ArrowLeft') destino = sumarDias(iso, -1)
+  else if (tecla === 'ArrowRight') destino = sumarDias(iso, 1)
+  else if (tecla === 'ArrowUp') destino = sumarDias(iso, -7)
+  else if (tecla === 'ArrowDown') destino = sumarDias(iso, 7)
+  else if (tecla === 'Home') destino = `${iso.slice(0, 8)}01`
+  else if (tecla === 'End') {
+    destino = `${iso.slice(0, 8)}${dosDigitos(ultimoDiaDelMes(fecha.getFullYear(), fecha.getMonth() + 1))}`
+  } else return null
+  return destino.slice(0, 4) === iso.slice(0, 4) ? destino : iso
+}
+
+/** Día de la vista de año con `tabindex` 0: la fecha elegida, hoy o el 1 de enero, el primero que caiga en ese año. */
+export const diaInicialDelAnio = (anio, fecha, hoy) => {
+  const prefijo = `${anio}-`
+  if (String(fecha).startsWith(prefijo)) return fecha
+  if (String(hoy).startsWith(prefijo)) return hoy
+  return `${prefijo}01-01`
+}
+
+/** Nivel de tinte de un día de la vista de año: 0 sin juntas, 1 con una, 2 con dos o tres y 3 con cuatro o más. */
+export const intensidadDeJuntas = (cantidad) => {
+  if (!cantidad || cantidad < 1) return 0
+  if (cantidad === 1) return 1
+  return cantidad < 4 ? 2 : 3
+}
+
+/**
+ * Marca «junta» en cada uno de esos días que toca alguna junta (para la tira de la semana en celular).
+ * @param {Array<{ inicio: string, fin: string }>} juntas
+ * @param {string[]} dias - fechas AAAA-MM-DD.
+ * @returns {Object<string, 'junta'>}
+ */
+export const marcasDeDiasConJuntas = (juntas, dias) =>
+  Object.fromEntries(
+    dias.filter((dia) => juntasDelDia(juntas, dia).length > 0).map((dia) => [dia, 'junta']),
+  )

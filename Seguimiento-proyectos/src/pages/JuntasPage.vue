@@ -4,6 +4,7 @@
       v-if="session.esRecepcionista"
       dense
       rounded
+      inline-actions
       class="juntas-page__atiende"
       :class="{ 'juntas-page__atiende--sin': atendidos.length === 0 }"
       role="status"
@@ -12,147 +13,122 @@
         <q-icon :name="atendidos.length === 0 ? 'event_busy' : 'support_agent'" />
       </template>
       {{ textoAviso }}
-      <template v-if="atendidos.length > 0" #action>
+      <template v-if="accionesDeRecepcion.length > 0" #action>
         <q-btn
-          v-for="administrador in atendidos"
-          :key="administrador.id"
+          v-for="accion in accionesDeRecepcion"
+          :key="accion.id ?? 'volver'"
           flat
           no-caps
           dense
           color="primary"
-          icon="event_note"
-          :label="
-            atendidos.length === 1 ? 'Ver su agenda' : `Ver agenda de ${administrador.nombre}`
-          "
+          :icon="accion.id ? 'event_note' : 'undo'"
+          :label="accion.texto"
           class="control-touch boton-presionable"
-          @click="cambiarAgenda(String(administrador.id))"
+          @click="cambiarAgenda(accion.id)"
         >
-          <q-tooltip max-width="320px"
-            >Abre la agenda de {{ administrador.nombre }} para administrarla.</q-tooltip
-          >
+          <q-tooltip max-width="320px">{{ accion.ayuda }}</q-tooltip>
         </q-btn>
       </template>
     </q-banner>
 
-    <div class="juntas-page__head">
-      <p class="juntas-page__lead">
-        Consulta tus juntas por año, mes, semana o día. Pulsa un hueco libre del calendario para
-        crear una junta, o una junta para ver sus datos.
-      </p>
+    <BarraPeriodo
+      :periodo="periodo"
+      :vista="vista"
+      :opciones-de-vista="OPCIONES_DE_VISTA"
+      :guia="textoGuia"
+      :agenda="agendaId ? tituloAgenda : ''"
+      @update:vista="cambiarVista"
+      @anterior="moverA(-1)"
+      @hoy="irAHoy"
+      @siguiente="moverA(1)"
+    >
+      <template #acciones>
+        <q-btn
+          class="juntas-page__nueva control-touch boton-presionable"
+          color="primary"
+          no-caps
+          unelevated
+          icon="add_circle"
+          label="Nueva junta"
+          aria-haspopup="dialog"
+          @click="abrirNueva()"
+        >
+          <q-tooltip max-width="320px"
+            >Abre el formulario para crear una junta e invitar a personas del equipo.</q-tooltip
+          >
+        </q-btn>
+      </template>
+
+      <template #opciones>
+        <q-select
+          :model-value="agendaId"
+          :options="opcionesDeAgenda"
+          emit-value
+          map-options
+          outlined
+          dense
+          options-dense
+          label="Ver agenda de"
+          dropdown-icon="expand_more"
+          popup-content-class="menu-seleccion-custom"
+          transition-show="jump-down"
+          transition-hide="jump-up"
+          :transition-duration="180"
+          class="selector-moderno juntas-page__selector"
+          :loading="cargandoPersonas"
+          @update:model-value="cambiarAgenda"
+        >
+          <template #prepend>
+            <q-icon name="event_note" />
+          </template>
+          <template #selected-item="{ opt }">
+            <span class="juntas-page__seleccionado">{{ opt.label }}</span>
+          </template>
+          <template #option="{ itemProps, opt }">
+            <q-item v-bind="itemProps" class="item-opcion-custom">
+              <q-item-section>
+                <q-item-label>{{ opt.label }}</q-item-label>
+                <q-item-label v-if="opt.detalle" caption>{{ opt.detalle }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+          <q-tooltip max-width="320px">
+            Elige a otra persona para ver cuándo está ocupada y agendar una junta con ella.
+          </q-tooltip>
+        </q-select>
+
+        <q-toggle
+          v-if="vencimientosDisponibles"
+          :model-value="mostrarVencimientos"
+          label="Mostrar vencimientos"
+          color="primary"
+          class="juntas-page__vencimientos control-touch"
+          @update:model-value="cambiarMostrarVencimientos"
+        >
+          <q-tooltip max-width="320px">
+            Marca en el calendario el día en que vence cada caso que no está finalizado y, si eres
+            contador, cada auditoría que no está completada. Se recuerda para tu cuenta en este
+            equipo.
+          </q-tooltip>
+        </q-toggle>
+      </template>
+    </BarraPeriodo>
+
+    <q-page-sticky v-if="$q.screen.lt.sm" position="bottom-right" :offset="[16, 16]">
       <q-btn
-        class="juntas-page__nueva control-touch boton-presionable"
+        fab
         color="primary"
-        no-caps
-        unelevated
-        icon="add_circle"
-        label="Nueva junta"
+        icon="add"
+        aria-label="Nueva junta"
         aria-haspopup="dialog"
+        class="boton-presionable"
         @click="abrirNueva()"
       >
         <q-tooltip max-width="320px"
           >Abre el formulario para crear una junta e invitar a personas del equipo.</q-tooltip
         >
       </q-btn>
-    </div>
-
-    <div class="juntas-page__barra">
-      <q-btn-toggle
-        :model-value="vista"
-        :options="OPCIONES_DE_VISTA"
-        no-caps
-        unelevated
-        toggle-color="primary"
-        color="dg-superficie"
-        text-color="primary"
-        class="juntas-page__vistas"
-        aria-label="Elegir cómo ver el calendario"
-        @update:model-value="cambiarVista"
-      />
-
-      <div class="juntas-page__navegacion" role="group" aria-label="Moverse por el calendario">
-        <q-btn
-          outline
-          no-caps
-          color="primary"
-          icon="chevron_left"
-          label="Anterior"
-          padding="4px 10px"
-          class="control-touch boton-presionable"
-          @click="moverA(-1)"
-        >
-          <q-tooltip :delay="500" max-width="320px">Va al periodo anterior.</q-tooltip>
-        </q-btn>
-        <q-btn
-          outline
-          no-caps
-          color="primary"
-          :icon="$q.screen.gt.xs ? 'today' : undefined"
-          label="Hoy"
-          padding="4px 12px"
-          class="control-touch boton-presionable"
-          @click="irAHoy"
-        >
-          <q-tooltip :delay="500" max-width="320px">Vuelve al día de hoy.</q-tooltip>
-        </q-btn>
-        <q-btn
-          outline
-          no-caps
-          color="primary"
-          icon-right="chevron_right"
-          label="Siguiente"
-          padding="4px 10px"
-          class="control-touch boton-presionable"
-          @click="moverA(1)"
-        >
-          <q-tooltip :delay="500" max-width="320px">Va al periodo siguiente.</q-tooltip>
-        </q-btn>
-      </div>
-
-      <h2 class="juntas-page__periodo" aria-live="polite">{{ periodo }}</h2>
-    </div>
-
-    <div class="juntas-page__agenda">
-      <q-select
-        :model-value="agendaId"
-        :options="opcionesDeAgenda"
-        emit-value
-        map-options
-        outlined
-        dense
-        options-dense
-        label="Ver agenda de"
-        dropdown-icon="expand_more"
-        popup-content-class="menu-seleccion-custom"
-        transition-show="jump-down"
-        transition-hide="jump-up"
-        :transition-duration="180"
-        class="selector-moderno juntas-page__selector"
-        :loading="cargandoPersonas"
-        @update:model-value="cambiarAgenda"
-      >
-        <template #prepend>
-          <q-icon name="event_note" />
-        </template>
-        <q-tooltip max-width="320px">
-          Elige a otra persona para ver cuándo está ocupada y agendar una junta con ella.
-        </q-tooltip>
-      </q-select>
-      <h2 v-if="agendaId" class="juntas-page__agenda-titulo">{{ tituloAgenda }}</h2>
-    </div>
-
-    <q-toggle
-      v-if="vencimientosDisponibles"
-      :model-value="mostrarVencimientos"
-      label="Mostrar vencimientos"
-      color="primary"
-      class="juntas-page__vencimientos control-touch"
-      @update:model-value="cambiarMostrarVencimientos"
-    >
-      <q-tooltip max-width="320px">
-        Marca en el calendario el día en que vence cada caso que no está finalizado y, si eres
-        contador, cada auditoría que no está completada. Se recuerda para tu cuenta en este equipo.
-      </q-tooltip>
-    </q-toggle>
+    </q-page-sticky>
 
     <q-banner
       v-if="vencimientosActivos && errorVencimientos"
@@ -240,6 +216,7 @@
           :anio="anio"
           :juntas="juntas"
           :hoy="hoy"
+          :fecha="fecha"
           @elegir-dia="elegirDia"
         />
 
@@ -254,6 +231,8 @@
           :agenda-id="agendaId"
           :con-fin-de-semana="conFinDeSemana"
           :resaltada-id="juntaResaltadaId"
+          :hoy="hoy"
+          @elegir-dia="fijarDia"
           @abrir-junta="abrirDetalle"
           @nueva-junta="abrirNueva"
           @abrir-vencimiento="abrirVencimiento"
@@ -290,6 +269,7 @@ import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
 import AnioJuntas from '../components/AnioJuntas.vue'
+import BarraPeriodo from '../components/BarraPeriodo.vue'
 import CalendarioJuntas from '../components/CalendarioJuntas.vue'
 import ErrorState from '../components/ErrorState.vue'
 import JuntaDetalleDialog from '../components/JuntaDetalleDialog.vue'
@@ -302,6 +282,7 @@ import { agendaDe, listar, obtener, participantesDisponibles } from '../services
 import { useSessionStore } from '../stores/session.js'
 import { formatearRol } from '../utils/formateadores.js'
 import {
+  accionesDeAtendidos,
   administraAAdministrador,
   agendaInicialDeRecepcion,
   conJuntaGuardada,
@@ -317,6 +298,7 @@ import {
   semanaMuestraFinDeSemana,
   sinJunta,
   textoAdministradoresAtendidos,
+  textoGuiaCalendario,
   textoPeriodo,
 } from '../utils/juntas.js'
 import {
@@ -384,6 +366,9 @@ const irAHoy = () => {
 // En la vista de año, un clic en un día abre la vista Día de esa fecha.
 const elegirDia = (dia) => irA('dia', dia)
 
+// En celular, la tira de la semana y el mes compacto eligen el día sin cambiar de vista.
+const fijarDia = (dia) => irA(vista.value, dia)
+
 // Sábado y domingo solo se pintan en la semana que tiene juntas o vencimientos en esos días.
 const conFinDeSemana = computed(
   () =>
@@ -406,13 +391,16 @@ const usuarioAgenda = ref(null)
 // Administradores cuya agenda administra la recepcionista (vacío para los demás roles).
 const atendidos = computed(() => session.administradoresAtendidos)
 const textoAviso = computed(() => textoAdministradoresAtendidos(atendidos.value))
+const accionesDeRecepcion = computed(() => accionesDeAtendidos(atendidos.value, agendaId.value))
 
+// Cada opción lleva el nombre y, debajo, el rol (y «Tú la administras» si es un administrador que atiendes).
 const opcionesDeAgenda = computed(() => [
-  { label: 'Mi agenda', value: null },
+  { label: 'Mi agenda', value: null, detalle: '' },
   ...personas.value.map((p) => ({
-    label: administraAAdministrador(p, atendidos.value)
-      ? `${p.nombre} (${formatearRol(p.rol)}) (lo administras)`
-      : `${p.nombre} (${formatearRol(p.rol)})`,
+    label: p.nombre,
+    detalle: administraAAdministrador(p, atendidos.value)
+      ? `${formatearRol(p.rol)} · Tú la administras`
+      : formatearRol(p.rol),
     value: String(p.id),
   })),
 ])
@@ -424,6 +412,9 @@ const nombreDeLaAgenda = computed(
     'la persona elegida',
 )
 const tituloAgenda = computed(() => `Agenda de ${nombreDeLaAgenda.value}`)
+const textoGuia = computed(() =>
+  textoGuiaCalendario(vista.value, agendaId.value ? nombreDeLaAgenda.value : null),
+)
 const textoCarga = computed(() =>
   agendaId.value ? `Cargando la agenda de ${nombreDeLaAgenda.value}…` : 'Cargando tus juntas…',
 )
@@ -742,85 +733,25 @@ watch(
   color: var(--dg-aviso-texto);
 }
 
-.juntas-page__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  margin-bottom: 16px;
-}
-
-.juntas-page__lead {
-  flex: 1 1 260px;
-  min-width: 0;
-  margin: 0;
-  color: var(--dg-texto-secundario);
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
 .juntas-page__nueva {
   min-width: 44px;
   min-height: 44px;
 }
 
-.juntas-page__barra {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  margin-bottom: 12px;
-}
-
-.juntas-page__vistas {
-  border: 1px solid var(--dg-borde-fuerte);
-  border-radius: 6px;
-}
-
-.juntas-page__vistas :deep(.q-btn) {
-  min-height: 44px;
-  min-width: 44px;
-}
-
-.juntas-page__navegacion {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.juntas-page__agenda {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  margin-bottom: 12px;
-}
-
 .juntas-page__selector {
-  flex: 0 1 320px;
+  flex: 0 1 340px;
   min-width: min(100%, 240px);
 }
 
-.juntas-page__agenda-titulo {
-  flex: 1 1 220px;
-  margin: 0;
-  color: var(--dg-texto);
-  font-size: 1.05rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.juntas-page__periodo {
-  flex: 1 1 220px;
-  margin: 0;
-  color: var(--dg-texto);
-  font-size: 1.15rem;
-  font-weight: 600;
-  line-height: 1.3;
+/* El nombre elegido va completo y en una línea; el rol solo sale en la lista de opciones. */
+.juntas-page__seleccionado {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .juntas-page__vencimientos {
-  margin-bottom: 8px;
+  margin: 0;
 }
 
 .juntas-page__aviso-vencimientos {
