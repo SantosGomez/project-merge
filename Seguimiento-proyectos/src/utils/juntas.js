@@ -198,12 +198,19 @@ export const miRespuestaEnJunta = (junta, usuarioId) => {
   return yo ? yo.respuesta : null
 }
 
+// «Privada» si lo es y «Solo tú» si no tiene invitados (solo bloquea el horario de quien la organiza).
+const marcasDeVisibilidad = (junta) => [
+  ...(junta.privada ? ['Privada'] : []),
+  ...((junta.participantes ?? []).length === 0 ? ['Solo tú'] : []),
+]
+
 /**
  * Textos que acompañan a la junta en el calendario: su estado si no es «Confirmada» y, si hay una respuesta
  * pendiente, a quién corresponde. Siempre con texto, nunca solo con color.
  * - En tu agenda: «Responder» si te invitaron y todavía no contestas.
  * - En la agenda de un administrador que atiendes: «Responder por {nombre}» si él tiene la respuesta pendiente.
  * - En cualquier otra agenda ajena: «Tu respuesta pendiente» si tu propia invitación está pendiente.
+ * Al final, «Privada» si la junta es privada y «Solo tú» si no tiene invitados.
  * @param {Object} junta
  * @param {number|string|null} usuarioId - cuenta de la sesión.
  * @param {number|string|null} [agendaId] - persona cuya agenda se ve; null o ausente es la propia.
@@ -218,15 +225,61 @@ export const marcasDeJunta = (junta, usuarioId, agendaId = null) => {
   const miRespuestaPendiente = miRespuestaEnJunta(junta, usuarioId) === 'pendiente'
   if (agendaId === null || agendaId === undefined) {
     if (miRespuestaPendiente) marcas.push('Responder')
-    return marcas
+    return [...marcas, ...marcasDeVisibilidad(junta)]
   }
   const pendienteDeLaAgenda = (junta.responder_por ?? []).find(
     (persona) => String(persona.id) === String(agendaId) && persona.respuesta === 'pendiente',
   )
   if (pendienteDeLaAgenda) marcas.push(`Responder por ${pendienteDeLaAgenda.nombre}`)
   else if (miRespuestaPendiente) marcas.push('Tu respuesta pendiente')
-  return marcas
+  return [...marcas, ...marcasDeVisibilidad(junta)]
 }
+
+const DETALLE_DE_MARCA = {
+  Responder: { icono: 'reply', tono: 'acento' },
+  'Tu respuesta pendiente': { icono: 'reply', tono: 'acento' },
+  'Por confirmar': { icono: 'schedule', tono: 'aviso' },
+  Cancelada: { icono: 'event_busy', tono: 'neutro' },
+  Privada: { icono: 'lock', tono: 'neutro' },
+  'Solo tú': { icono: 'person', tono: 'neutro' },
+}
+
+/**
+ * Icono (de Material Icons) y tono de color de una marca de `marcasDeJunta`. El tono es `acento`, `aviso` o
+ * `neutro`; una marca desconocida sale neutra y sin icono.
+ * @param {string} texto
+ * @returns {{ icono: string, tono: string }}
+ */
+export const detalleDeMarca = (texto) => {
+  if (texto.startsWith('Responder por ')) return DETALLE_DE_MARCA.Responder
+  return DETALLE_DE_MARCA[texto] ?? { icono: '', tono: 'neutro' }
+}
+
+const ALTO_COMPACTO_PX = 45
+const ANCHO_COMPACTO_PX = 120
+
+/**
+ * Un bloque de junta es compacto (una sola línea «11:30 Título») con 45 px de alto o menos, o 120 px de ancho
+ * o menos. Si no se conoce el ancho, solo cuenta el alto.
+ * @param {number} alto - alto del bloque en píxeles.
+ * @param {number} [ancho] - ancho del bloque en píxeles.
+ * @returns {boolean}
+ */
+export const esBloqueCompacto = (alto, ancho) =>
+  alto <= ALTO_COMPACTO_PX || (typeof ancho === 'number' && ancho <= ANCHO_COMPACTO_PX)
+
+const MAXIMO_POR_DIA_EN_MES = 3
+
+/**
+ * Elementos que caben en un día del Mes (3 como máximo) y cuántos quedan fuera para «+N más».
+ * @template T
+ * @param {T[]} elementos - juntas y vencimientos del día, en el orden en que se muestran.
+ * @returns {{ visibles: T[], ocultos: number }}
+ */
+export const limitarElementosDelDia = (elementos) => ({
+  visibles: elementos.slice(0, MAXIMO_POR_DIA_EN_MES),
+  ocultos: Math.max(elementos.length - MAXIMO_POR_DIA_EN_MES, 0),
+})
 
 /**
  * Bloque ajeno de la agenda de otra persona: la API lo marca con `ocupado` y no trae id, descripción

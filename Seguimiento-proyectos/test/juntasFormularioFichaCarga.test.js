@@ -192,10 +192,12 @@ describe('calendario: resalta la junta guardada y permite devolverle el foco', (
   const calendario = leer('../src/components/CalendarioJuntas.vue')
 
   it('recibe `resaltadaId` y marca los bloques y etiquetas de esa junta con un anillo de acento', () => {
+    const bloque = leer('../src/components/BloqueJunta.vue')
     assert.match(calendario, /resaltadaId:/)
-    assert.match(calendario, /junta--resaltada/)
-    assert.match(calendario, /box-shadow:\s*0 0 0 2px var\(--dg-acento\)/)
-    assert.match(calendario, /:data-junta-id="/)
+    assert.match(calendario, /:resaltada="esResaltada\(/)
+    assert.match(bloque, /junta--resaltada/)
+    assert.match(bloque, /box-shadow:\s*0 0 0 2px var\(--dg-acento\)/)
+    assert.match(bloque, /'data-junta-id'/)
   })
 
   it('sigue sin tooltips', () => {

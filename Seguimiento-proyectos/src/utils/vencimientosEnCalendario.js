@@ -69,6 +69,10 @@ const esAuditoria = (vencimiento) => vencimiento.tipo === 'auditoria'
 export const claseDeVencimiento = (vencimiento) =>
   esAuditoria(vencimiento) ? 'auditoria' : vencimiento.prioridad
 
+/** Icono del vencimiento: `flag` para un caso y `fact_check` para una auditoría. */
+export const iconoDeVencimiento = (vencimiento) =>
+  esAuditoria(vencimiento) ? 'fact_check' : 'flag'
+
 /** Lo que vence ese día, por nombre del cliente. */
 export const vencimientosDelDia = (vencimientos, iso) =>
   vencimientos

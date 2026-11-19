@@ -166,10 +166,11 @@ describe('privacidad y agenda de otros (rebanada 23)', () => {
   })
 
   it('el calendario no abre ficha de los bloques ajenos y aclara «No estás invitado a esta junta»', () => {
-    const calendario = leer('../src/components/CalendarioJuntas.vue')
-    assert.match(calendario, /No estás invitado a esta junta/)
-    assert.match(calendario, /esJuntaOcupada/)
-    assert.match(calendario, /tabindex="0"/)
+    const bloque = leer('../src/components/BloqueJunta.vue')
+    assert.match(bloque, /No estás invitado a esta junta/)
+    assert.match(bloque, /esJuntaOcupada/)
+    assert.match(bloque, /tabindex: 0/)
+    assert.match(bloque, /if \(!ocupada\.value\) emit\('abrir'/)
   })
 })
 

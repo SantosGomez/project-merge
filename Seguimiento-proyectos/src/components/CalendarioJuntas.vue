@@ -5,7 +5,7 @@
     class="calendario-juntas"
     :aria-label="`Calendario de juntas: ${textoDeVista}`"
   >
-    <!-- Mes: cuadrícula de lunes a domingo; cada junta es una etiqueta con su hora y su título. -->
+    <!-- Mes: cuadrícula de lunes a domingo; cada día muestra hasta 3 elementos y «+N más» abre ese día. -->
     <div v-if="vista === 'mes'" class="calendario-juntas__scroll">
       <QCalendarMonth
         :model-value="fecha"
@@ -20,64 +20,60 @@
       >
         <template #day="{ scope }">
           <div class="calendario-juntas__dia">
-            <q-btn
-              v-for="vencimiento in vencimientosDelDia(vencimientos, scope.timestamp.date)"
-              :key="vencimiento.clave"
-              unelevated
-              no-caps
-              dense
-              align="left"
-              :ripple="false"
-              class="vencimiento-etiqueta boton-presionable"
-              :class="`vencimiento-etiqueta--${claseDeVencimiento(vencimiento)}`"
-              :aria-label="nombreAccesibleDeVencimiento(vencimiento, rol)"
-              @click.stop="emit('abrir-vencimiento', vencimiento)"
-            >
-              <span class="vencimiento-etiqueta__texto">{{ textoDeVencimiento(vencimiento) }}</span>
-              <span
-                v-if="marcasDeVencimiento(vencimiento).length > 0"
-                class="vencimiento-etiqueta__marcas"
-                >{{ marcasDeVencimiento(vencimiento).join(' · ') }}</span
-              >
-            </q-btn>
-            <template
-              v-for="(junta, indice) in juntasDelDia(juntas, scope.timestamp.date)"
-              :key="claveDeJunta(junta, indice)"
-            >
-              <div
-                v-if="esJuntaOcupada(junta)"
-                tabindex="0"
-                role="group"
-                class="junta-etiqueta junta-etiqueta--ocupada"
-                :aria-label="nombreAccesibleOcupada(junta)"
-                @click.stop
-              >
-                <span class="junta-etiqueta__hora">{{
-                  horaEnElDia(junta, scope.timestamp.date)
-                }}</span>
-                <span class="junta-etiqueta__titulo">{{ etiquetaDeJuntaOcupada(junta) }}</span>
-              </div>
+            <template v-for="resumen in [resumenDelMes(scope.timestamp.date)]" :key="resumen.dia">
+              <template v-for="elemento in resumen.visibles" :key="elemento.clave">
+                <q-btn
+                  v-if="elemento.vencimiento"
+                  unelevated
+                  no-caps
+                  dense
+                  align="left"
+                  :ripple="false"
+                  class="vencimiento-etiqueta vencimiento-etiqueta--mes boton-presionable"
+                  :class="`vencimiento-etiqueta--${claseDeVencimiento(elemento.vencimiento)}`"
+                  :aria-label="nombreAccesibleDeVencimiento(elemento.vencimiento, rol)"
+                  @click.stop="emit('abrir-vencimiento', elemento.vencimiento)"
+                >
+                  <span class="vencimiento-etiqueta__cuerpo">
+                    <span class="vencimiento-etiqueta__fila">
+                      <q-icon
+                        :name="iconoDeVencimiento(elemento.vencimiento)"
+                        size="14px"
+                        aria-hidden="true"
+                      />
+                      <span class="vencimiento-etiqueta__texto">{{
+                        textoDeVencimiento(elemento.vencimiento)
+                      }}</span>
+                    </span>
+                    <span
+                      v-if="marcasDeVencimiento(elemento.vencimiento).length > 0"
+                      class="vencimiento-etiqueta__prioridad"
+                      >{{ marcasDeVencimiento(elemento.vencimiento).join(' · ') }}</span
+                    >
+                  </span>
+                </q-btn>
+                <BloqueJunta
+                  v-else
+                  formato="mes"
+                  :junta="elemento.junta"
+                  :dia="scope.timestamp.date"
+                  :usuario-id="usuarioId"
+                  :agenda-id="agendaId"
+                  :resaltada="esResaltada(elemento.junta)"
+                  @abrir="emit('abrir-junta', $event)"
+                />
+              </template>
               <q-btn
-                v-else
-                unelevated
-                no-caps
+                v-if="resumen.ocultos > 0"
+                flat
                 dense
-                align="left"
-                :ripple="false"
-                class="junta-etiqueta boton-presionable"
-                :class="clasesDeEstado(junta, 'junta-etiqueta')"
-                :data-junta-id="junta.id"
-                :aria-label="nombreAccesible(junta)"
-                @click.stop="emit('abrir-junta', junta)"
-              >
-                <span class="junta-etiqueta__hora">{{
-                  horaEnElDia(junta, scope.timestamp.date)
-                }}</span>
-                <span v-if="textoDeMarcas(junta)" class="junta-etiqueta__marcas">{{
-                  textoDeMarcas(junta)
-                }}</span>
-                <span class="junta-etiqueta__titulo">{{ junta.titulo }}</span>
-              </q-btn>
+                no-caps
+                color="primary"
+                class="calendario-juntas__mas boton-presionable"
+                :label="`+${resumen.ocultos} más`"
+                :aria-label="`Hay ${resumen.ocultos} más este día. Abre la vista Día de ese día.`"
+                @click.stop="verDia(scope.timestamp.date)"
+              />
             </template>
           </div>
         </template>
@@ -109,39 +105,18 @@
             v-if="hayEtiquetasArriba(scope.timestamp.date)"
             class="calendario-juntas__vencimientos"
           >
-            <template
+            <BloqueJunta
               v-for="fuera in juntasFueraDeHorario(scope.timestamp.date)"
               :key="claveDeJunta(fuera.junta, fuera.indice)"
-            >
-              <div
-                v-if="esJuntaOcupada(fuera.junta)"
-                tabindex="0"
-                role="group"
-                class="junta-etiqueta junta-etiqueta--ocupada junta-etiqueta--arriba"
-                :aria-label="`${fuera.texto}. ${AYUDA_OCUPADA}.`"
-                @click.stop
-              >
-                <span class="junta-etiqueta__titulo">{{ fuera.texto }}</span>
-              </div>
-              <q-btn
-                v-else
-                unelevated
-                no-caps
-                dense
-                align="left"
-                :ripple="false"
-                class="junta-etiqueta junta-etiqueta--arriba boton-presionable"
-                :class="clasesDeEstado(fuera.junta, 'junta-etiqueta')"
-                :data-junta-id="fuera.junta.id"
-                :aria-label="`${nombreAccesible(fuera.junta)} ${fuera.texto}.`"
-                @click.stop="emit('abrir-junta', fuera.junta)"
-              >
-                <span class="junta-etiqueta__titulo">{{ fuera.texto }}</span>
-                <span v-if="textoDeMarcas(fuera.junta)" class="junta-etiqueta__marcas">{{
-                  textoDeMarcas(fuera.junta)
-                }}</span>
-              </q-btn>
-            </template>
+              formato="arriba"
+              :junta="fuera.junta"
+              :dia="scope.timestamp.date"
+              :texto-arriba="fuera.texto"
+              :usuario-id="usuarioId"
+              :agenda-id="agendaId"
+              :resaltada="esResaltada(fuera.junta)"
+              @abrir="emit('abrir-junta', $event)"
+            />
             <q-btn
               v-for="vencimiento in vencimientosDelDia(vencimientos, scope.timestamp.date)"
               :key="vencimiento.clave"
@@ -155,61 +130,37 @@
               :aria-label="nombreAccesibleDeVencimiento(vencimiento, rol)"
               @click.stop="emit('abrir-vencimiento', vencimiento)"
             >
-              <span class="vencimiento-etiqueta__texto">{{ textoDeVencimiento(vencimiento) }}</span>
-              <span
-                v-if="marcasDeVencimiento(vencimiento).length > 0"
-                class="vencimiento-etiqueta__marcas"
-                >{{ marcasDeVencimiento(vencimiento).join(' · ') }}</span
-              >
+              <span class="vencimiento-etiqueta__cuerpo">
+                <span class="vencimiento-etiqueta__fila">
+                  <q-icon :name="iconoDeVencimiento(vencimiento)" size="14px" aria-hidden="true" />
+                  <span class="vencimiento-etiqueta__texto">{{
+                    textoDeVencimiento(vencimiento)
+                  }}</span>
+                </span>
+                <span
+                  v-if="marcasDeVencimiento(vencimiento).length > 0"
+                  class="vencimiento-etiqueta__prioridad"
+                  >{{ marcasDeVencimiento(vencimiento).join(' · ') }}</span
+                >
+              </span>
             </q-btn>
           </div>
         </template>
         <template #day-body="{ scope }">
-          <template
+          <BloqueJunta
             v-for="(bloque, indice) in bloquesDelDia(scope.timestamp.date)"
             :key="claveDeJunta(bloque.junta, indice)"
-          >
-            <div
-              v-if="esJuntaOcupada(bloque.junta)"
-              tabindex="0"
-              role="group"
-              class="junta-bloque junta-bloque--ocupada"
-              :style="estiloDeBloque(bloque)"
-              :aria-label="nombreAccesibleOcupada(bloque.junta)"
-              @click.stop
-            >
-              <span class="junta-bloque__texto">
-                <span class="junta-bloque__titulo">{{ etiquetaDeJuntaOcupada(bloque.junta) }}</span>
-                <span class="junta-bloque__horario">{{ horarioDeJunta(bloque.junta) }}</span>
-                <span v-if="bloque.nota" class="junta-bloque__nota">{{ bloque.nota }}</span>
-              </span>
-            </div>
-            <q-btn
-              v-else
-              unelevated
-              no-caps
-              dense
-              align="left"
-              :ripple="false"
-              class="junta-bloque boton-presionable"
-              :class="clasesDeEstado(bloque.junta, 'junta-bloque')"
-              :data-junta-id="bloque.junta.id"
-              :style="estiloDeBloque(bloque)"
-              :aria-label="nombreAccesible(bloque.junta)"
-              @click.stop="emit('abrir-junta', bloque.junta)"
-            >
-              <span class="junta-bloque__texto">
-                <span class="junta-bloque__titulo">{{ bloque.junta.titulo }}</span>
-                <span class="junta-bloque__horario">
-                  {{ horarioDeJunta(bloque.junta) }}
-                  <span v-if="textoDeMarcas(bloque.junta)" class="junta-bloque__marcas">
-                    {{ textoDeMarcas(bloque.junta) }}
-                  </span>
-                </span>
-                <span v-if="bloque.nota" class="junta-bloque__nota">{{ bloque.nota }}</span>
-              </span>
-            </q-btn>
-          </template>
+            formato="bloque"
+            :junta="bloque.junta"
+            :dia="scope.timestamp.date"
+            :alto="altoDeBloque(bloque)"
+            :nota="bloque.nota"
+            :usuario-id="usuarioId"
+            :agenda-id="agendaId"
+            :resaltada="esResaltada(bloque.junta)"
+            :style="estiloDeBloque(bloque)"
+            @abrir="emit('abrir-junta', $event)"
+          />
         </template>
       </QCalendarDay>
     </div>
@@ -218,29 +169,28 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { QCalendarDay } from '@quasar/quasar-ui-qcalendar/QCalendarDay'
 import { QCalendarMonth } from '@quasar/quasar-ui-qcalendar/QCalendarMonth'
 import '@quasar/quasar-ui-qcalendar/QCalendarDay.css'
 import '@quasar/quasar-ui-qcalendar/QCalendarMonth.css'
 
+import BloqueJunta from './BloqueJunta.vue'
 import {
   HORA_FIN_VISTA,
   HORA_INICIO_VISTA,
   claveDeJunta,
   distribuirSolapadas,
-  esJuntaOcupada,
-  etiquetaDeJuntaOcupada,
   etiquetaFueraDeHorario,
-  horaEnElDia,
-  horarioDeJunta,
   juntasDelDia,
-  marcasDeJunta,
+  limitarElementosDelDia,
   notaDeRecorte,
   segmentoDelDia,
   textoPeriodo,
 } from '../utils/juntas.js'
 import {
   claseDeVencimiento,
+  iconoDeVencimiento,
   marcasDeVencimiento,
   nombreAccesibleDeVencimiento,
   textoDeVencimiento,
@@ -253,8 +203,8 @@ import {
  * y `nueva-junta` (clic en un hueco vacío de semana o día). Los vencimientos de casos salen como
  * etiquetas de día completo («Vence: cliente», con su prioridad y «Importante» si lo es) y los de
  * auditorías como «Auditoría: cliente»; ambos avisan con `abrir-vencimiento`. El idioma es es-MX y los colores salen
- * de la paleta `--dg-*` (ver los estilos de abajo). Cada junta lleva con texto su estado («Por
- * confirmar», «Cancelada», con el título tachado) y «Responder» si te invitaron y aún no contestas.
+ * de la paleta `--dg-*` (ver los estilos de abajo). Cada junta se pinta con `BloqueJunta` (estado, marcas y
+ * modo compacto). En el Mes, cada día muestra hasta 3 elementos y «+N más» abre la vista Día de esa fecha.
  */
 const props = defineProps({
   /** 'mes', 'semana' o 'dia'. */
@@ -279,13 +229,6 @@ const props = defineProps({
 
 const emit = defineEmits(['abrir-junta', 'nueva-junta', 'abrir-vencimiento'])
 
-const AYUDA_OCUPADA = 'No estás invitado a esta junta'
-
-// Los bloques ajenos (agenda de otra persona) no abren ficha: se enfocan con el teclado y su
-// `aria-label` dice que no estás invitado. El calendario no usa tooltips.
-const nombreAccesibleOcupada = (junta) =>
-  `${etiquetaDeJuntaOcupada(junta)}, ${horarioDeJunta(junta)}. ${AYUDA_OCUPADA}.`
-
 // Días de la semana de QCalendar: 0 es domingo.
 const DIAS_DEL_MES = [1, 2, 3, 4, 5, 6, 0]
 const DIAS_LABORALES = [1, 2, 3, 4, 5]
@@ -298,20 +241,9 @@ const ALTO_MINIMO_DE_BLOQUE = 24
 
 const textoDeVista = computed(() => textoPeriodo(props.vista, props.fecha))
 
-// «Por confirmar · Responder»: lo que acompaña a la junta, o '' si no lleva marcas.
-const textoDeMarcas = (junta) => marcasDeJunta(junta, props.usuarioId, props.agendaId).join(' · ')
-
-const nombreAccesible = (junta) =>
-  `Junta ${junta.titulo}, ${horarioDeJunta(junta)}${
-    textoDeMarcas(junta) ? `, ${textoDeMarcas(junta)}` : ''
-  }. Abre los datos de la junta.`
-
-// Clase de color según el estado (el texto de las marcas ya lo dice; el color solo refuerza).
-const clasesDeEstado = (junta, base) => ({
-  [`${base}--por-confirmar`]: junta.estado === 'por_confirmar',
-  [`${base}--cancelada`]: junta.estado === 'cancelada',
-  'junta--resaltada': props.resaltadaId !== null && String(junta.id) === String(props.resaltadaId),
-})
+// Junta recién guardada: la pantalla la resalta unos segundos.
+const esResaltada = (junta) =>
+  props.resaltadaId !== null && String(junta.id) === String(props.resaltadaId)
 
 // Bloques de un día con su columna, para que las juntas que se cruzan no se tapen.
 const bloquesDelDia = (dia) =>
@@ -333,12 +265,37 @@ const juntasFueraDeHorario = (dia) =>
 const hayEtiquetasArriba = (dia) =>
   juntasFueraDeHorario(dia).length > 0 || vencimientosDelDia(props.vencimientos, dia).length > 0
 
+// Alto del bloque en píxeles: un minuto es un píxel, con un mínimo para que se vea.
+const altoDeBloque = (bloque) => Math.max(bloque.hasta - bloque.desde, ALTO_MINIMO_DE_BLOQUE)
+
 const estiloDeBloque = (bloque) => ({
   top: `${bloque.desde - HORA_INICIO_VISTA * 60}px`,
-  height: `${Math.max(bloque.hasta - bloque.desde, ALTO_MINIMO_DE_BLOQUE)}px`,
+  height: `${altoDeBloque(bloque)}px`,
   left: `calc(${(bloque.columna / bloque.columnas) * 100}% + 2px)`,
   width: `calc(${100 / bloque.columnas}% - 4px)`,
 })
+
+// Mes: las juntas del día (por hora) y luego sus vencimientos; solo 3 se pintan y el resto va en «+N más».
+const resumenDelMes = (dia) => ({
+  dia,
+  ...limitarElementosDelDia([
+    ...juntasDelDia(props.juntas, dia).map((junta, indice) => ({
+      clave: claveDeJunta(junta, indice),
+      junta,
+    })),
+    ...vencimientosDelDia(props.vencimientos, dia).map((vencimiento) => ({
+      clave: vencimiento.clave,
+      vencimiento,
+    })),
+  ]),
+})
+
+// «+N más» abre la vista Día de esa fecha: la pantalla lee la vista y la fecha de la URL.
+const route = useRoute()
+const router = useRouter()
+const verDia = (dia) => {
+  router.replace({ query: { ...route.query, vista: 'dia', fecha: dia } })
+}
 
 const alElegirHueco = ({ scope }) => {
   emit('nueva-junta', { fecha: scope.timestamp.date, hora: scope.timestamp.time })
@@ -438,13 +395,16 @@ const alElegirHueco = ({ scope }) => {
   padding: 2px 4px 6px;
 }
 
-/* Vencimiento de un caso: etiqueta de día completo con el color de su prioridad (el texto dice la prioridad). */
+/*
+ * Vencimiento: «pestaña de expediente». Lleva icono (`flag` en un caso, `fact_check` en una auditoría), fondo
+ * pleno y un borde uniforme, sin el borde izquierdo grueso de las juntas, para no confundirse con ellas. El
+ * título ocupa hasta 2 líneas y la prioridad va en su propia píldora (el texto dice la prioridad).
+ */
 .vencimiento-etiqueta {
   min-height: 24px;
   max-width: 100%;
-  padding: 1px 6px;
+  padding: 2px 6px;
   border: 1px solid var(--dg-neutro-borde);
-  border-left-width: 4px;
   border-radius: 4px;
   background: var(--dg-neutro-fondo);
   color: var(--dg-texto-secundario);
@@ -477,30 +437,93 @@ const alElegirHueco = ({ scope }) => {
   color: var(--dg-info-texto);
 }
 
-/* Si el cliente es largo, la prioridad baja a una segunda línea en lugar de recortarse. */
 .vencimiento-etiqueta :deep(.q-btn__content) {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   justify-content: flex-start;
-  gap: 0 4px;
   min-width: 0;
   width: 100%;
 }
 
-.vencimiento-etiqueta__texto {
+.vencimiento-etiqueta__cuerpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
   max-width: 100%;
+  line-height: 1.25;
+}
+
+.vencimiento-etiqueta__fila {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.vencimiento-etiqueta__fila :deep(.q-icon) {
+  flex: none;
+  margin-top: 1px;
+}
+
+.vencimiento-etiqueta__texto {
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
   font-weight: 700;
-  text-overflow: ellipsis;
+  text-align: left;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+/* Prioridad (y «Importante»): su propia píldora, con el color del vencimiento. */
+.vencimiento-etiqueta__prioridad {
+  padding: 0 6px;
+  border: 1px solid currentcolor;
+  border-radius: 999px;
+  background: var(--dg-superficie);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
-.vencimiento-etiqueta__marcas {
-  flex: none;
-  font-size: 0.72rem;
-  font-weight: 600;
+/* En el Mes todas las filas miden lo mismo (42 px): el título ocupa una línea y la prioridad va debajo. */
+.vencimiento-etiqueta--mes {
+  display: flex;
+  width: 100%;
+  height: 42px;
+}
+
+.vencimiento-etiqueta--mes .vencimiento-etiqueta__texto {
+  line-clamp: 1;
+  -webkit-line-clamp: 1;
+}
+
+.vencimiento-etiqueta--mes .vencimiento-etiqueta__prioridad {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Un solo anillo de foco en los vencimientos, igual que en los bloques de junta. */
+.vencimiento-etiqueta:focus-visible {
+  z-index: 3;
+  outline: 2px solid var(--dg-foco) !important;
+  outline-offset: 2px;
+}
+
+/* «+N más» del Mes: botón plano del ancho del día. */
+.calendario-juntas__mas {
+  align-self: flex-start;
+  min-height: 24px;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 /* Etiquetas de día completo de las vistas de semana y día. */
@@ -512,215 +535,9 @@ const alElegirHueco = ({ scope }) => {
   padding: 2px 4px;
 }
 
-/* Junta en el mes: una línea con la hora y el título. */
-.junta-etiqueta {
-  min-height: 24px;
-  max-width: 100%;
-  padding: 1px 6px;
-  border-left: 3px solid var(--dg-acento);
-  border-radius: 4px;
-  background: var(--dg-fondo-seleccion);
-  color: var(--dg-texto);
-  font-size: 0.78rem;
-  text-align: left;
-}
-
-.junta-etiqueta :deep(.q-btn__content) {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: 4px;
-  min-width: 0;
-  width: 100%;
-}
-
-.junta-etiqueta__hora {
-  flex: none;
-  font-weight: 700;
-}
-
-.junta-etiqueta__titulo {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.junta-etiqueta__marcas {
-  flex: none;
-  font-weight: 700;
-}
-
-/* Bloque ajeno de la agenda de otra persona: sin ficha, con borde discontinuo (no solo color) y texto «Ocupado». */
-.junta-etiqueta.junta-etiqueta--ocupada,
-.junta-bloque.junta-bloque--ocupada {
-  border-left: 3px dashed var(--dg-borde-discontinuo);
-  background: var(--dg-fondo-panel);
-  color: var(--dg-texto-secundario);
-  cursor: default;
-}
-
-.junta-etiqueta--ocupada {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: 0;
-}
-
-.junta-etiqueta.junta-etiqueta--ocupada:hover,
-.junta-bloque.junta-bloque--ocupada:hover {
-  background: var(--dg-fondo-panel);
-}
-
-.junta-etiqueta--ocupada:focus-visible,
-.junta-bloque--ocupada:focus-visible {
-  outline: 2px solid var(--dg-foco);
-  outline-offset: 1px;
-}
-
-/* Etiqueta de arriba del día (junta fuera de 8:00 a 19:00): el texto baja de línea en lugar de recortarse. */
-.junta-etiqueta--arriba {
-  height: auto;
-  padding-block: 2px;
-}
-
-.junta-etiqueta--arriba :deep(.q-btn__content) {
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.junta-etiqueta--arriba .junta-etiqueta__titulo {
-  overflow: visible;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-align: left;
-}
-
-/* Junta en semana y día: un bloque sobre su franja horaria. */
-.junta-bloque {
-  position: absolute;
-  z-index: 1;
-  overflow: hidden;
-  padding: 2px 6px;
-  border-left: 4px solid var(--dg-acento);
-  border-radius: 6px;
-  background: var(--dg-fondo-seleccion);
-  color: var(--dg-texto);
-  font-size: 0.8rem;
-  text-align: left;
-}
-
-.junta-etiqueta--por-confirmar,
-.junta-bloque--por-confirmar {
-  border-left-color: var(--dg-aviso-borde);
-  background: var(--dg-aviso-fondo);
-  color: var(--dg-aviso-texto);
-}
-
-.junta-etiqueta--cancelada,
-.junta-bloque--cancelada {
-  border-left-color: var(--dg-error);
-  background: var(--dg-error-fondo);
-  color: var(--dg-error);
-}
-
-/*
- * Hover: refuerza el color del estado, no lo cambia. Cada estado tiene el suyo (el normal oscurece su fondo;
- * «Por confirmar» y «Cancelada» conservan su fondo y marcan su borde). Después de definir los estados, con igual
- * especificidad, para que ninguno se pinte del azul de una junta normal.
- */
-@media (hover: hover) and (pointer: fine) {
-  .junta-etiqueta,
-  .junta-bloque {
-    transition:
-      background-color 120ms ease,
-      box-shadow 120ms ease;
-  }
-
-  .junta-etiqueta:hover,
-  .junta-bloque:hover {
-    background: var(--dg-fondo-hover);
-  }
-
-  .junta-etiqueta--por-confirmar:hover,
-  .junta-bloque--por-confirmar:hover {
-    background: var(--dg-aviso-fondo);
-    box-shadow: inset 0 0 0 1px var(--dg-aviso-borde);
-  }
-
-  .junta-etiqueta--cancelada:hover,
-  .junta-bloque--cancelada:hover {
-    background: var(--dg-error-fondo);
-    box-shadow: inset 0 0 0 1px var(--dg-error);
-  }
-}
-
-/* Junta recién guardada: anillo de acento con una transición corta (la quita la pantalla a los 3 s). */
-.junta-etiqueta.junta--resaltada,
-.junta-bloque.junta--resaltada {
-  z-index: 2;
-  box-shadow: 0 0 0 2px var(--dg-acento);
-  transition: box-shadow 200ms var(--dg-curva-salida);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .junta-etiqueta,
-  .junta-bloque {
+  .vencimiento-etiqueta {
     transition: none !important;
   }
-}
-
-.junta-etiqueta--cancelada .junta-etiqueta__titulo,
-.junta-bloque--cancelada .junta-bloque__titulo {
-  text-decoration: line-through;
-}
-
-.junta-bloque :deep(.q-btn__content) {
-  align-items: flex-start;
-  justify-content: flex-start;
-  width: 100%;
-  height: 100%;
-}
-
-.junta-bloque__texto {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-  max-width: 100%;
-  line-height: 1.25;
-  text-align: left;
-}
-
-.junta-bloque__titulo {
-  max-width: 100%;
-  overflow: hidden;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.junta-bloque__marcas {
-  display: block;
-  white-space: normal;
-  font-weight: 700;
-}
-
-.junta-bloque__nota {
-  max-width: 100%;
-  overflow: hidden;
-  font-size: 0.74rem;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.junta-bloque__horario {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>

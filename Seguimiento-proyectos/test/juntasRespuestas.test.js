@@ -230,10 +230,12 @@ describe('calendario: marcas de estado', () => {
   const calendario = leer('../src/components/CalendarioJuntas.vue')
 
   it('pinta las marcas con texto y tacha el título de una junta cancelada', () => {
-    assert.match(calendario, /marcasDeJunta\(/)
-    assert.match(calendario, /junta-etiqueta--cancelada/)
-    assert.match(calendario, /junta-bloque--cancelada/)
-    assert.match(calendario, /text-decoration: line-through/)
+    const bloque = leer('../src/components/BloqueJunta.vue')
+    assert.match(bloque, /marcasDeJunta\(/)
+    assert.match(bloque, /<MarcaJunta/)
+    assert.match(bloque, /junta-etiqueta--cancelada/)
+    assert.match(bloque, /junta-bloque--cancelada/)
+    assert.match(bloque, /text-decoration: line-through/)
   })
 
   it('no usa colores hexadecimales sueltos en lo nuevo', () => {
@@ -257,16 +259,21 @@ describe('rebanada 29: calendario y campana', () => {
   })
 
   it('el mes usa horaEnElDia y la semana decide sus días con la prop conFinDeSemana', () => {
-    assert.match(calendario, /horaEnElDia\(junta, scope\.timestamp\.date\)/)
+    assert.match(
+      leer('../src/components/BloqueJunta.vue'),
+      /horaEnElDia\(props\.junta, props\.dia\)/,
+    )
+    assert.match(calendario, /:dia="scope\.timestamp\.date"/)
     assert.match(calendario, /vista === 'semana' && !conFinDeSemana/)
     assert.match(pagina, /:con-fin-de-semana="conFinDeSemana"/)
     assert.match(pagina, /:agenda-id="agendaId"/)
   })
 
   it('el hover no pisa el color del estado y solo se aplica con mouse', () => {
-    assert.match(calendario, /@media \(hover: hover\) and \(pointer: fine\)/)
-    assert.match(calendario, /\.junta-etiqueta--por-confirmar:hover/)
-    assert.match(calendario, /\.junta-bloque--cancelada:hover/)
+    const bloque = leer('../src/components/BloqueJunta.vue')
+    assert.match(bloque, /@media \(hover: hover\) and \(pointer: fine\)/)
+    assert.match(bloque, /\.junta-etiqueta--por-confirmar:hover/)
+    assert.match(bloque, /\.junta-bloque--cancelada:hover/)
   })
 
   it('la campana relee los avisos al cambiar de ruta (no de consulta) y no pone su propio scroll', () => {

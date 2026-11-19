@@ -27,7 +27,9 @@
           class="control-touch boton-presionable"
           @click="cambiarAgenda(String(administrador.id))"
         >
-          <q-tooltip>Abre la agenda de {{ administrador.nombre }} para administrarla.</q-tooltip>
+          <q-tooltip max-width="320px"
+            >Abre la agenda de {{ administrador.nombre }} para administrarla.</q-tooltip
+          >
         </q-btn>
       </template>
     </q-banner>
@@ -47,7 +49,7 @@
         aria-haspopup="dialog"
         @click="abrirNueva()"
       >
-        <q-tooltip
+        <q-tooltip max-width="320px"
           >Abre el formulario para crear una junta e invitar a personas del equipo.</q-tooltip
         >
       </q-btn>
@@ -78,7 +80,7 @@
           class="control-touch boton-presionable"
           @click="moverA(-1)"
         >
-          <q-tooltip>Va al periodo anterior.</q-tooltip>
+          <q-tooltip :delay="500" max-width="320px">Va al periodo anterior.</q-tooltip>
         </q-btn>
         <q-btn
           outline
@@ -90,7 +92,7 @@
           class="control-touch boton-presionable"
           @click="irAHoy"
         >
-          <q-tooltip>Vuelve al día de hoy.</q-tooltip>
+          <q-tooltip :delay="500" max-width="320px">Vuelve al día de hoy.</q-tooltip>
         </q-btn>
         <q-btn
           outline
@@ -102,7 +104,7 @@
           class="control-touch boton-presionable"
           @click="moverA(1)"
         >
-          <q-tooltip>Va al periodo siguiente.</q-tooltip>
+          <q-tooltip :delay="500" max-width="320px">Va al periodo siguiente.</q-tooltip>
         </q-btn>
       </div>
 
@@ -131,7 +133,7 @@
         <template #prepend>
           <q-icon name="event_note" />
         </template>
-        <q-tooltip>
+        <q-tooltip max-width="320px">
           Elige a otra persona para ver cuándo está ocupada y agendar una junta con ella.
         </q-tooltip>
       </q-select>
@@ -146,7 +148,7 @@
       class="juntas-page__vencimientos control-touch"
       @update:model-value="cambiarMostrarVencimientos"
     >
-      <q-tooltip>
+      <q-tooltip max-width="320px">
         Marca en el calendario el día en que vence cada caso que no está finalizado y, si eres
         contador, cada auditoría que no está completada. Se recuerda para tu cuenta en este equipo.
       </q-tooltip>
@@ -173,7 +175,9 @@
           class="control-touch boton-presionable"
           @click="cargarVencimientos()"
         >
-          <q-tooltip>Vuelve a pedir los vencimientos de los casos y las auditorías.</q-tooltip>
+          <q-tooltip max-width="320px"
+            >Vuelve a pedir los vencimientos de los casos y las auditorías.</q-tooltip
+          >
         </q-btn>
       </template>
     </q-banner>
@@ -199,7 +203,7 @@
             class="control-touch boton-presionable"
             @click="cargar()"
           >
-            <q-tooltip>Vuelve a pedir las juntas de este periodo.</q-tooltip>
+            <q-tooltip max-width="320px">Vuelve a pedir las juntas de este periodo.</q-tooltip>
           </q-btn>
         </template>
       </q-banner>

@@ -142,10 +142,11 @@ describe('el calendario no muestra tooltips (rebanada 26)', () => {
   })
 
   it('se quitó la lógica que solo servía al tooltip, y el aria-label de «Ocupado» se conserva', () => {
-    assert.doesNotMatch(calendario, /ayudaDeOcupada|enfocada|encima/)
-    assert.match(calendario, /No estás invitado a esta junta/)
-    assert.match(calendario, /:aria-label="nombreAccesibleOcupada\(/)
-    assert.match(calendario, /tabindex="0"/)
+    const bloque = leer('../src/components/BloqueJunta.vue')
+    assert.doesNotMatch(calendario + bloque, /ayudaDeOcupada|enfocada|encima/)
+    assert.match(bloque, /No estás invitado a esta junta/)
+    assert.match(bloque, /:aria-label="nombreAccesible"/)
+    assert.match(bloque, /tabindex: 0/)
   })
 })
 
