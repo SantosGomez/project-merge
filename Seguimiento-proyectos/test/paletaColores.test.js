@@ -96,7 +96,7 @@ const PARES_DE_TEXTO = [
   // Calendario del administrador: etiqueta «Vence pronto» en amarillo
   ['aviso-texto', 'vence-pronto-fondo'],
   // Calendario de juntas (rebanada 32): «Cancelada» neutra y píldoras sobre fondo blanco
-  ['texto-tenue', 'neutro-fondo'], ['aviso-texto', 'superficie'], ['texto-secundario', 'superficie'],
+  ['texto-tenue', 'neutro-fondo'], ['error', 'error-fondo'], ['aviso-texto', 'superficie'], ['texto-secundario', 'superficie'],
   ['prioridad-alta', 'superficie'], ['prioridad-media', 'superficie'],
   ['prioridad-baja', 'superficie'], ['info-texto', 'superficie'],
 ]

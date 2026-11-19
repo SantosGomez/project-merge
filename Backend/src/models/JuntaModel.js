@@ -135,7 +135,7 @@ async function administradoresAtendidos() {
 
 /**
  * Juntas que ocupan la agenda de una cuenta en el rango (donde organiza o está invitada, sin las que rechazó),
- * ya sin las canceladas. Quien consulta recibe completas las suyas; de las ajenas, solo lo que su privacidad permite:
+ * ya sin las canceladas (salvo para la secretaria de un administrador atendido, que también recibe esas dos). Quien consulta recibe completas las suyas; de las ajenas, solo lo que su privacidad permite:
  * pública → título, horario y organizador; privada → solo «Ocupado». Nunca id, descripción ni invitados.
  * Si quien consulta es secretaria y la agenda es de un administrador, todas llegan completas.
  * @param {{ id: number, rol: string }} dueno - Cuenta cuya agenda se consulta.
@@ -145,17 +145,18 @@ async function administradoresAtendidos() {
  * @returns {Promise<Array<Object>>}
  */
 async function agendaDe(dueno, consultante, desde, hastaExclusivo) {
+  const todoCompleto = veAgendaCompleta(consultante, dueno);
   const filas = await query(
     `${SELECT_JUNTA}
       WHERE j.inicio < ? AND j.fin > ?
         AND (j.creado_por = ? OR EXISTS (
               SELECT 1 FROM junta_participantes jp
-               WHERE jp.junta_id = j.id AND jp.usuario_id = ? AND jp.respuesta <> 'rechazada'))
+               WHERE jp.junta_id = j.id AND jp.usuario_id = ? AND (? OR jp.respuesta <> 'rechazada')))
       ORDER BY j.inicio ASC, j.id ASC`,
-    [hastaExclusivo, desde, dueno.id, dueno.id]
+    [hastaExclusivo, desde, dueno.id, dueno.id, todoCompleto ? 1 : 0]
   );
-  const juntas = (await armarJuntas(filas, consultante)).filter((junta) => junta.estado !== 'cancelada');
-  const todoCompleto = veAgendaCompleta(consultante, dueno);
+  const armadas = await armarJuntas(filas, consultante);
+  const juntas = todoCompleto ? armadas : armadas.filter((junta) => junta.estado !== 'cancelada');
   return juntas.map((junta) => {
     const esPropia = junta.soy_organizador || junta.participantes.some((p) => p.id === consultante.id);
     if (esPropia || todoCompleto) return junta;

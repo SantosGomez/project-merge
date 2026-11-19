@@ -26,13 +26,17 @@ describe('marcasDeJunta: «Privada» y «Solo tú»', () => {
     assert.deepEqual(marcasDeJunta(junta, 3), ['Privada'])
   })
 
-  it('una junta sin invitados lleva «Solo tú»', () => {
-    assert.deepEqual(marcasDeJunta({ estado: 'confirmada', participantes: [] }, 3), ['Solo tú'])
-    assert.deepEqual(marcasDeJunta({ estado: 'confirmada' }, 3), ['Solo tú'])
+  it('una junta sin invitados lleva «Solo tú» si quien mira la organiza y «Sin invitados» en otro caso', () => {
+    const propia = { estado: 'confirmada', soy_organizador: true, participantes: [] }
+    assert.deepEqual(marcasDeJunta(propia, 3), ['Solo tú'])
+    assert.deepEqual(marcasDeJunta({ ...propia, participantes: undefined }, 3), ['Solo tú'])
+    const ajena = { estado: 'confirmada', soy_organizador: false, participantes: [] }
+    assert.deepEqual(marcasDeJunta(ajena, 3), ['Sin invitados'])
+    assert.deepEqual(marcasDeJunta({ estado: 'confirmada' }, 3, 7), ['Sin invitados'])
   })
 
   it('las marcas van en orden: estado, respuesta, «Privada» y «Solo tú»', () => {
-    const junta = { estado: 'cancelada', privada: true, participantes: [] }
+    const junta = { estado: 'cancelada', privada: true, soy_organizador: true, participantes: [] }
     assert.deepEqual(marcasDeJunta(junta, 3), ['Cancelada', 'Privada', 'Solo tú'])
     const conRespuesta = {
       estado: 'por_confirmar',
@@ -63,10 +67,14 @@ describe('detalleDeMarca: icono y tono de cada marca', () => {
     assert.deepEqual(detalleDeMarca('Por confirmar'), { icono: 'schedule', tono: 'aviso' })
   })
 
-  it('«Cancelada», «Privada» y «Solo tú» van en neutro con su icono', () => {
-    assert.deepEqual(detalleDeMarca('Cancelada'), { icono: 'event_busy', tono: 'neutro' })
+  it('«Cancelada» lleva event_busy en error', () => {
+    assert.deepEqual(detalleDeMarca('Cancelada'), { icono: 'event_busy', tono: 'error' })
+  })
+
+  it('«Privada», «Solo tú» y «Sin invitados» van en neutro con su icono', () => {
     assert.deepEqual(detalleDeMarca('Privada'), { icono: 'lock', tono: 'neutro' })
     assert.deepEqual(detalleDeMarca('Solo tú'), { icono: 'person', tono: 'neutro' })
+    assert.deepEqual(detalleDeMarca('Sin invitados'), { icono: 'person_outline', tono: 'neutro' })
   })
 
   it('una marca desconocida se pinta neutra y sin icono', () => {
@@ -154,16 +162,37 @@ describe('componentes nuevos MarcaJunta y BloqueJunta', () => {
     assert.doesNotMatch(plantillaDe(calendario), /junta-bloque__titulo|junta-etiqueta__hora/)
   })
 
-  it('cancelada es neutra, por confirmar va rayado y ocupado lleva rayado neutro con candado', () => {
-    assert.match(bloque, /junta-bloque--cancelada[\s\S]{0,300}var\(--dg-neutro-fondo\)/)
+  it('cancelada va en rojo, por confirmar va rayado y ocupado lleva rayado neutro con candado', () => {
+    assert.match(bloque, /junta-bloque--cancelada[\s\S]{0,300}var\(--dg-error-fondo\)/)
+    assert.match(bloque, /junta-bloque--cancelada[\s\S]{0,300}var\(--dg-error\)/)
+    assert.match(bloque, /junta-bloque--cancelada:hover[\s\S]{0,200}var\(--dg-error-fondo\)/)
     assert.match(bloque, /var\(--dg-neutro-borde\)/)
-    assert.match(bloque, /var\(--dg-texto-tenue\)/)
     assert.match(bloque, /repeating-linear-gradient\(\s*135deg/)
     assert.match(bloque, /var\(--dg-aviso-fondo\)/)
     assert.match(bloque, /name="lock"/)
-    assert.doesNotMatch(bloque, /var\(--dg-error/)
     assert.doesNotMatch(bloque, /#[0-9a-fA-F]{3,8}\b|rgba?\(/)
     assert.doesNotMatch(marca, /#[0-9a-fA-F]{3,8}\b|rgba?\(/)
+  })
+
+  it('en modo compacto las marcas no se ocultan: quedan como iconos, máximo 2, al final de la línea', () => {
+    assert.doesNotMatch(bloque, /junta-bloque--compacto \.junta-bloque__marcas,/)
+    assert.doesNotMatch(bloque, /\.junta-bloque \.junta-bloque__marcas,/)
+    assert.match(bloque, /marcasVisibles/)
+    assert.match(bloque, /slice\(0,\s*2\)/)
+    assert.match(bloque, /junta-bloque--compacto \.junta-bloque__marcas/)
+  })
+
+  it('el chip «Rechazó» de la ficha va en tono de error, también su icono', () => {
+    const ficha = leer('../src/components/JuntaDetalleDialog.vue')
+    assert.match(ficha, /rechazada: 'bg-dg-error-fondo text-dg-error'/)
+    assert.match(
+      ficha,
+      /junta-detalle__respuesta :deep\(\.q-chip__icon\)[\s\S]{0,40}color: inherit/,
+    )
+  })
+
+  it('MarcaJunta pinta el tono de error con la paleta', () => {
+    assert.match(marca, /marca-junta--error[\s\S]{0,200}var\(--dg-error\)/)
   })
 
   it('el foco es un solo anillo --dg-foco de 2 px con desplazamiento de 2 px y el bloque enfocado sube', () => {

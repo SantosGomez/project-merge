@@ -198,10 +198,13 @@ export const miRespuestaEnJunta = (junta, usuarioId) => {
   return yo ? yo.respuesta : null
 }
 
-// «Privada» si lo es y «Solo tú» si no tiene invitados (solo bloquea el horario de quien la organiza).
+// «Privada» si lo es; si no tiene invitados, «Solo tú» para quien la organiza y «Sin invitados» para los demás
+// (por ejemplo, la recepcionista en la agenda del administrador).
 const marcasDeVisibilidad = (junta) => [
   ...(junta.privada ? ['Privada'] : []),
-  ...((junta.participantes ?? []).length === 0 ? ['Solo tú'] : []),
+  ...((junta.participantes ?? []).length === 0
+    ? [junta.soy_organizador === true ? 'Solo tú' : 'Sin invitados']
+    : []),
 ]
 
 /**
@@ -210,7 +213,7 @@ const marcasDeVisibilidad = (junta) => [
  * - En tu agenda: «Responder» si te invitaron y todavía no contestas.
  * - En la agenda de un administrador que atiendes: «Responder por {nombre}» si él tiene la respuesta pendiente.
  * - En cualquier otra agenda ajena: «Tu respuesta pendiente» si tu propia invitación está pendiente.
- * Al final, «Privada» si la junta es privada y «Solo tú» si no tiene invitados.
+ * Al final, «Privada» si la junta es privada y, si no tiene invitados, «Solo tú» (la organizas tú) o «Sin invitados».
  * @param {Object} junta
  * @param {number|string|null} usuarioId - cuenta de la sesión.
  * @param {number|string|null} [agendaId] - persona cuya agenda se ve; null o ausente es la propia.
@@ -239,13 +242,14 @@ const DETALLE_DE_MARCA = {
   Responder: { icono: 'reply', tono: 'acento' },
   'Tu respuesta pendiente': { icono: 'reply', tono: 'acento' },
   'Por confirmar': { icono: 'schedule', tono: 'aviso' },
-  Cancelada: { icono: 'event_busy', tono: 'neutro' },
+  Cancelada: { icono: 'event_busy', tono: 'error' },
   Privada: { icono: 'lock', tono: 'neutro' },
   'Solo tú': { icono: 'person', tono: 'neutro' },
+  'Sin invitados': { icono: 'person_outline', tono: 'neutro' },
 }
 
 /**
- * Icono (de Material Icons) y tono de color de una marca de `marcasDeJunta`. El tono es `acento`, `aviso` o
+ * Icono (de Material Icons) y tono de color de una marca de `marcasDeJunta`. El tono es `acento`, `aviso`, `error` o
  * `neutro`; una marca desconocida sale neutra y sin icono.
  * @param {string} texto
  * @returns {{ icono: string, tono: string }}

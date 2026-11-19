@@ -48,6 +48,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
     - en móvil, `SemanaCalendario` con `conCabecera=false`;
     - vista Año con foco itinerante;
     - trampa: el foco de los `q-btn` del calendario necesita `!important` para ganar a `app.scss`.
+    - rebanada 34: la recepcionista ve en la agenda de su administrador también las canceladas y rechazadas; cancelada en rojo (`--dg-error*`), no gris; marcas en compacto como iconos (máx. 2); «Sin invitados» si no organizas. Trampa: no usar `git stash` aquí (cambia LF/CRLF y rompe `prettier --check`).
   - Pendientes:
     - opcionales de la revisión sin aplicar (en cada `docs/rebanadas/29` a `33`), entre ellos probar en el navegador la agenda de la recepcionista con los bloques nuevos;
     - formatear `MaquetaLayout.vue` y `router/index.js` (ya fallaban `prettier --check`);

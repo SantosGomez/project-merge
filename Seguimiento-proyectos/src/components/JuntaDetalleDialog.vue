@@ -209,6 +209,7 @@
                   square
                   :icon="ICONO_RESPUESTA[invitado.respuesta] ?? ICONO_RESPUESTA.pendiente"
                   :class="CLASE_RESPUESTA[invitado.respuesta] ?? CLASE_RESPUESTA.pendiente"
+                  class="junta-detalle__respuesta"
                 >
                   {{ etiquetaRespuesta(invitado.respuesta) }}
                   <q-tooltip>{{
@@ -539,6 +540,11 @@ const borrarJunta = async () => {
   font-size: 1.15rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+/* El icono del chip toma el color del texto (por defecto Quasar lo pinta gris). */
+.junta-detalle__respuesta :deep(.q-chip__icon) {
+  color: inherit;
 }
 
 .junta-detalle__estado {

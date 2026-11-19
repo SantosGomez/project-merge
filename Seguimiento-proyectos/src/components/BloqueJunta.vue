@@ -34,9 +34,9 @@
       </span>
       <span v-if="formato === 'bloque'" class="junta-bloque__horario">{{ horario }}</span>
       <span v-if="organiza" class="junta-bloque__organiza">{{ organiza }}</span>
-      <span v-if="marcas.length > 0" class="junta-bloque__marcas">
+      <span v-if="marcasVisibles.length > 0" class="junta-bloque__marcas">
         <MarcaJunta
-          v-for="(marca, posicion) in marcas"
+          v-for="(marca, posicion) in marcasVisibles"
           :key="marca"
           :texto="marca"
           :solo-icono="soloIconoEnMarca(posicion)"
@@ -63,7 +63,7 @@ import {
 
 /*
  * Un solo bloque de junta para Semana, Día y Mes, con cuatro variantes de estado: normal, «Por confirmar»
- * (rayado con borde de aviso), «Cancelada» (neutra y tachada) y «Ocupado» o ajena (rayado neutro, sin ficha).
+ * (rayado con borde de aviso), «Cancelada» (roja y tachada) y «Ocupado» o ajena (rayado neutro, sin ficha).
  * `formato` dice dónde va: 'bloque' (cuadrícula de Semana y Día), 'mes' (una fila del Mes) o 'arriba'
  * (etiqueta de una junta fuera de 8:00 a 19:00, en la franja de arriba del día).
  * Es compacto (una sola línea «11:30 Título») con 45 px de alto o menos, o con 120 px de ancho o menos: el alto
@@ -140,9 +140,14 @@ const nombreAccesible = computed(() => {
   return props.formato === 'arriba' ? `${detalle} ${props.textoArriba}.` : detalle
 })
 
+// En un bloque compacto caben como máximo 2 marcas; el orden de `marcasDeJunta` ya pone primero el estado
+// («Cancelada» o «Por confirmar») y después la respuesta. El bloque angosto (por ancho) lo recorta el CSS igual.
+const marcasVisibles = computed(() => (compacto.value ? marcas.value.slice(0, 2) : marcas.value))
+
 // En un bloque de Semana, Día o Mes solo la primera marca lleva texto (suele ser el estado); las demás van en
-// icono para no recortarse. El texto de todas sigue en el `aria-label`.
-const soloIconoEnMarca = (posicion) => props.formato !== 'arriba' && posicion > 0
+// icono para no recortarse. En un bloque compacto todas van en icono. El texto de todas sigue en el `aria-label`.
+const soloIconoEnMarca = (posicion) =>
+  props.formato !== 'arriba' && (compacto.value || posicion > 0)
 
 const alHacerClic = () => {
   if (!ocupada.value) emit('abrir', props.junta)
@@ -309,12 +314,12 @@ const alHacerClic = () => {
   color: var(--dg-aviso-texto);
 }
 
-/* «Cancelada»: neutra y con el título tachado (no es un error, así que no va en rojo). */
+/* «Cancelada»: roja y con el título tachado (la junta se rechazó o se canceló). */
 .junta-etiqueta--cancelada,
 .junta-bloque--cancelada {
-  border-color: var(--dg-neutro-borde);
-  background-color: var(--dg-neutro-fondo);
-  color: var(--dg-texto-tenue);
+  border-color: var(--dg-error);
+  background-color: var(--dg-error-fondo);
+  color: var(--dg-error);
 }
 
 .junta-etiqueta--cancelada .junta-bloque__titulo,
@@ -349,7 +354,7 @@ const alHacerClic = () => {
 /*
  * Compacto: una sola línea «11:30 Título» con la hora en negrita. Aplica con 45 px de alto o menos (clase) y
  * con 120 px de ancho o menos (consulta de contenedor: 100 px de contenido, que son 120 con relleno y borde).
- * En compacto las marcas no se pintan (no caben junto al título; siguen en el `aria-label`). Los dos bloques son iguales a propósito: una consulta de contenedor no puede compartir selector con una clase.
+ * En compacto las marcas se pintan solo como icono (máximo 2) al final de la línea; su texto sigue en el `aria-label`. Los dos bloques son iguales a propósito: una consulta de contenedor no puede compartir selector con una clase.
  */
 .junta-bloque--compacto .junta-bloque__cuerpo {
   flex-direction: row;
@@ -365,7 +370,12 @@ const alHacerClic = () => {
   display: inline;
 }
 
-.junta-bloque--compacto .junta-bloque__marcas,
+.junta-bloque--compacto .junta-bloque__marcas {
+  flex: none;
+  align-self: center;
+  overflow: visible;
+}
+
 .junta-bloque--compacto .junta-bloque__horario,
 .junta-bloque--compacto .junta-bloque__organiza,
 .junta-bloque--compacto .junta-bloque__nota {
@@ -387,7 +397,16 @@ const alHacerClic = () => {
     display: inline;
   }
 
-  .junta-bloque .junta-bloque__marcas,
+  .junta-bloque .junta-bloque__marcas {
+    flex: none;
+    align-self: center;
+    overflow: visible;
+  }
+
+  .junta-bloque .junta-bloque__marcas > :nth-child(n + 3) {
+    display: none;
+  }
+
   .junta-bloque .junta-bloque__horario,
   .junta-bloque .junta-bloque__organiza,
   .junta-bloque .junta-bloque__nota {
@@ -398,6 +417,10 @@ const alHacerClic = () => {
   .junta-bloque__marcas :deep(.marca-junta__texto) {
     display: none;
   }
+}
+
+.junta-bloque--compacto .junta-bloque__marcas :deep(.marca-junta__texto) {
+  display: none;
 }
 
 /* Hover: solo con mouse (en táctil se queda pegado). Refuerza el estado, no lo cambia. */
@@ -422,8 +445,8 @@ const alHacerClic = () => {
 
   .junta-etiqueta--cancelada:hover,
   .junta-bloque--cancelada:hover {
-    background-color: var(--dg-neutro-fondo);
-    box-shadow: inset 0 0 0 1px var(--dg-neutro-borde);
+    background-color: var(--dg-error-fondo);
+    box-shadow: inset 0 0 0 1px var(--dg-error);
   }
 
   .junta-etiqueta--ocupada:hover,

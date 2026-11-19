@@ -58,6 +58,12 @@ const detalle = computed(() => detalleDeMarca(props.texto))
   color: var(--dg-superficie);
 }
 
+.marca-junta--error {
+  border-color: var(--dg-error);
+  background: var(--dg-error-fondo);
+  color: var(--dg-error);
+}
+
 .marca-junta--aviso {
   border-color: var(--dg-aviso-borde);
   background: var(--dg-aviso-fondo);

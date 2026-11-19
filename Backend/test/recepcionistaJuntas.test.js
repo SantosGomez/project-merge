@@ -490,6 +490,43 @@ describe('la recepcionista como secretaria del administrador', () => {
       assert.ok(!JSON.stringify(r.body).includes(privada.titulo));
     });
 
+    test('la recepcionista también recibe, completas, las juntas canceladas y las que el administrador rechazó; los demás no', async () => {
+      const cancelada = await crear('contador', {
+        participantes: [cuentas.admin.id, cuentas.contador2.id],
+        inicio: '2035-03-24 09:00',
+        fin: '2035-03-24 10:00',
+      });
+      assert.strictEqual((await api('admin', 'PATCH', `/juntas/${cancelada.id}/respuesta`, { respuesta: 'rechazada' })).statusCode, 200);
+      const rechazada = await crear('contador', {
+        participantes: [cuentas.admin.id],
+        inicio: '2035-03-25 09:00',
+        fin: '2035-03-25 10:00',
+      });
+      assert.strictEqual((await api('admin', 'PATCH', `/juntas/${rechazada.id}/respuesta`, { respuesta: 'rechazada' })).statusCode, 200);
+
+      const r = await api('recepcion', 'GET', `/juntas/agenda/${cuentas.admin.id}${RANGO}`);
+      for (const junta of [cancelada, rechazada]) {
+        const completa = r.body.juntas.find((j) => j.id === junta.id);
+        assert.ok(completa, `la recepcionista ve «${junta.titulo}»`);
+        assert.strictEqual(completa.estado, 'cancelada');
+        assert.strictEqual(completa.titulo, junta.titulo);
+        assert.strictEqual(completa.ocupado, undefined);
+      }
+      const deOtro = await api('contador2', 'GET', `/juntas/agenda/${cuentas.admin.id}${RANGO}`);
+      assert.ok(deOtro.body.juntas.every((j) => j.id !== cancelada.id && j.id !== rechazada.id), 'un tercero no las ve');
+
+      process.env.ADMINISTRADORES_DE_RECEPCION = String(cuentas.admin2.id);
+      try {
+        const sinAtender = await api('recepcion', 'GET', `/juntas/agenda/${cuentas.admin.id}${RANGO}`);
+        assert.ok(
+          sinAtender.body.juntas.every((j) => j.id !== cancelada.id && j.id !== rechazada.id),
+          'si no atiende a ese administrador, es un tercero'
+        );
+      } finally {
+        delete process.env.ADMINISTRADORES_DE_RECEPCION;
+      }
+    });
+
     test('un contador que consulta la agenda del administrador sigue sin ver el detalle', async () => {
       const privada = await crear('admin', {
         participantes: [cuentas.contador2.id],
