@@ -195,9 +195,9 @@ describe('pantalla «Juntas»: abrir la ficha desde un aviso', () => {
     )
   })
 
-  it('al responder avisa «Respuesta guardada», actualiza la ficha y recarga el calendario', () => {
+  it('al responder actualiza la ficha y recarga el calendario, sin avisar (el botón marcado confirma)', () => {
     assert.match(plantillaDe(pagina), /@respondida="alResponder"/)
-    assert.match(pagina, /Respuesta guardada/)
+    assert.doesNotMatch(pagina, /Respuesta guardada/)
     assert.match(pagina, /juntaSeleccionada\.value = junta/)
   })
 })

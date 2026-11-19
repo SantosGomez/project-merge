@@ -204,7 +204,10 @@ describe('recepcionista como secretaria del administrador (rebanada 27)', () => 
     assert.match(plantilla, /<template v-if="puedeEditar">/)
     assert.match(ficha, /props\.junta\.puede_editar === true/)
     assert.match(ficha, /props\.junta\.responder_por \?\? \[\]/)
-    assert.match(plantilla, /Responder por \{\{ administrador\.nombre \}\}/)
+    assert.match(
+      plantilla,
+      /Responder por\s*<span class="detalle-seccion__nombre">\{\{ administrador\.nombre \}\}/,
+    )
     assert.match(plantilla, /v-for="administrador in respondePor"/)
     assert.match(plantilla, /responderPorAdministrador\(administrador, 'aceptada'\)/)
     assert.match(plantilla, /responderPorAdministrador\(administrador, 'rechazada'\)/)

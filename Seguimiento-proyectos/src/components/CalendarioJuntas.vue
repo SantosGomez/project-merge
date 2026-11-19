@@ -66,6 +66,7 @@
                 :ripple="false"
                 class="junta-etiqueta boton-presionable"
                 :class="clasesDeEstado(junta, 'junta-etiqueta')"
+                :data-junta-id="junta.id"
                 :aria-label="nombreAccesible(junta)"
                 @click.stop="emit('abrir-junta', junta)"
               >
@@ -131,6 +132,7 @@
                 :ripple="false"
                 class="junta-etiqueta junta-etiqueta--arriba boton-presionable"
                 :class="clasesDeEstado(fuera.junta, 'junta-etiqueta')"
+                :data-junta-id="fuera.junta.id"
                 :aria-label="`${nombreAccesible(fuera.junta)} ${fuera.texto}.`"
                 @click.stop="emit('abrir-junta', fuera.junta)"
               >
@@ -191,6 +193,7 @@
               :ripple="false"
               class="junta-bloque boton-presionable"
               :class="clasesDeEstado(bloque.junta, 'junta-bloque')"
+              :data-junta-id="bloque.junta.id"
               :style="estiloDeBloque(bloque)"
               :aria-label="nombreAccesible(bloque.junta)"
               @click.stop="emit('abrir-junta', bloque.junta)"
@@ -270,6 +273,8 @@ const props = defineProps({
   agendaId: { type: [Number, String], default: null },
   /** La vista Semana agrega sábado y domingo (la pantalla lo decide: solo si tienen juntas o vencimientos). */
   conFinDeSemana: { type: Boolean, default: false },
+  /** Id de la junta recién guardada: se resalta con un anillo de acento unos segundos. */
+  resaltadaId: { type: [Number, String], default: null },
 })
 
 const emit = defineEmits(['abrir-junta', 'nueva-junta', 'abrir-vencimiento'])
@@ -305,6 +310,7 @@ const nombreAccesible = (junta) =>
 const clasesDeEstado = (junta, base) => ({
   [`${base}--por-confirmar`]: junta.estado === 'por_confirmar',
   [`${base}--cancelada`]: junta.estado === 'cancelada',
+  'junta--resaltada': props.resaltadaId !== null && String(junta.id) === String(props.resaltadaId),
 })
 
 // Bloques de un día con su columna, para que las juntas que se cruzan no se tapen.
@@ -648,6 +654,21 @@ const alElegirHueco = ({ scope }) => {
   .junta-bloque--cancelada:hover {
     background: var(--dg-error-fondo);
     box-shadow: inset 0 0 0 1px var(--dg-error);
+  }
+}
+
+/* Junta recién guardada: anillo de acento con una transición corta (la quita la pantalla a los 3 s). */
+.junta-etiqueta.junta--resaltada,
+.junta-bloque.junta--resaltada {
+  z-index: 2;
+  box-shadow: 0 0 0 2px var(--dg-acento);
+  transition: box-shadow 200ms var(--dg-curva-salida);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .junta-etiqueta,
+  .junta-bloque {
+    transition: none !important;
   }
 }
 

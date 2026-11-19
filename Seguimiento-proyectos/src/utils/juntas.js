@@ -580,3 +580,23 @@ export const juntasPorDia = (juntas, anio) => {
 /** Texto accesible de un día de la vista de año: «18 de noviembre: 2 juntas». */
 export const textoDiaConJuntas = (iso, cantidad) =>
   `${textoDiaDelMes(iso)}: ${cantidad === 0 ? 'sin juntas' : `${cantidad} ${cantidad === 1 ? 'junta' : 'juntas'}`}`
+
+/**
+ * Indica si algún día de la junta cae dentro del rango visible.
+ * @param {{ inicio: string, fin: string }} junta
+ * @param {{ desde: string, hasta: string }} rango - fechas AAAA-MM-DD.
+ */
+export const juntaCaeEnRango = (junta, rango) =>
+  String(junta.inicio).slice(0, 10) <= rango.hasta && String(junta.fin).slice(0, 10) >= rango.desde
+
+/**
+ * Lista con la junta que devolvió la API: reemplaza la que ya estaba (o la agrega) si cae en el rango
+ * visible y la quita si ya no cae. No modifica la lista recibida.
+ */
+export const conJuntaGuardada = (juntas, guardada, rango) => {
+  const restantes = juntas.filter((junta) => junta.id !== guardada.id)
+  return juntaCaeEnRango(guardada, rango) ? [...restantes, guardada] : restantes
+}
+
+/** Lista sin la junta con ese id. No modifica la lista recibida. */
+export const sinJunta = (juntas, id) => juntas.filter((junta) => junta.id !== id)

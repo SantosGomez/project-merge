@@ -155,7 +155,7 @@ describe('juntas sin invitados (rebanada 26)', () => {
   it('el campo de invitados ya no es obligatorio y explica que la junta bloquea tu horario', () => {
     const campo = formulario.slice(
       formulario.indexOf('for="junta-invitados"'),
-      formulario.indexOf('junta-invitados-ayuda" class'),
+      formulario.indexOf(':hint="textoAyudaInvitados"'),
     )
     assert.doesNotMatch(campo, /required-mark|aria-required/)
     assert.match(

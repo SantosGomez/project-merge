@@ -7,6 +7,7 @@
     :transition-duration="220"
     aria-labelledby="junta-form-titulo"
     @show="enfocarTitulo"
+    @hide="alCerrar"
     @shake="pedirDescartar"
   >
     <q-card ref="tarjeta" class="junta-form">
@@ -69,7 +70,7 @@
               dense
               class="input-moderno"
               aria-required="true"
-              aria-describedby="junta-fecha-ayuda"
+              hint="Formato DD-MM-AAAA."
               :error="!!errorDeCampo('fecha')"
               :error-message="errorDeCampo('fecha')"
               @update:model-value="clearError('fecha')"
@@ -104,7 +105,6 @@
                 </q-icon>
               </template>
             </q-input>
-            <p id="junta-fecha-ayuda" class="form-help">Formato DD-MM-AAAA.</p>
           </div>
 
           <div class="junta-form__horas">
@@ -183,7 +183,7 @@
               transition-hide="jump-up"
               :transition-duration="180"
               class="selector-moderno"
-              aria-describedby="junta-invitados-ayuda"
+              :hint="textoAyudaInvitados"
               :loading="cargandoPersonas"
               :error="!!errorDeCampo('participantes')"
               :error-message="errorDeCampo('participantes')"
@@ -219,16 +219,6 @@
                 </q-item>
               </template>
             </q-select>
-            <p v-if="!organizadorNombre" id="junta-invitados-ayuda" class="form-help">
-              Puedes elegir hasta {{ MAX_INVITADOS }} personas. Cada invitado empieza como
-              «Pendiente». Si no invitas a nadie, la junta solo bloquea tu horario y los demás la
-              verán en tu agenda.
-            </p>
-            <p v-else id="junta-invitados-ayuda" class="form-help">
-              Puedes elegir hasta {{ MAX_INVITADOS }} personas. Cada invitado empieza como
-              «Pendiente». Si no invitas a nadie, la junta solo bloquea el horario de
-              {{ organizadorNombre }}.
-            </p>
             <q-btn
               v-if="errorPersonas"
               flat
@@ -403,7 +393,10 @@ const props = defineProps({
   organizador: { type: Object, default: null },
 })
 
-const emit = defineEmits(['guardada'])
+const emit = defineEmits(['guardada', 'cerrada'])
+
+// Avisa cuando el diálogo ya terminó de cerrarse, para que la pantalla devuelva el foco.
+const alCerrar = () => emit('cerrada')
 
 const modoEdicion = computed(() => props.junta !== null)
 
@@ -413,6 +406,13 @@ const organizadorAjeno = computed(() => {
   return props.organizador
 })
 const organizadorNombre = computed(() => organizadorAjeno.value?.nombre ?? '')
+
+// Ayuda bajo el selector de invitados (prop hint): cambia según a nombre de quién se agenda.
+const textoAyudaInvitados = computed(() =>
+  organizadorNombre.value
+    ? `Puedes elegir hasta ${MAX_INVITADOS} personas. Cada invitado empieza como «Pendiente». Si no invitas a nadie, la junta solo bloquea el horario de ${organizadorNombre.value}.`
+    : `Puedes elegir hasta ${MAX_INVITADOS} personas. Cada invitado empieza como «Pendiente». Si no invitas a nadie, la junta solo bloquea tu horario y los demás la verán en tu agenda.`,
+)
 
 const TEXTOS_ALTA = {
   titulo: 'Nueva junta',
@@ -674,13 +674,19 @@ const submit = async () => {
 <style scoped>
 .junta-form {
   width: min(720px, calc(100vw - 32px));
+  max-height: 85vh;
   max-width: none !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .junta-form__form {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .junta-form__head {
@@ -700,6 +706,11 @@ const submit = async () => {
 }
 
 .junta-form__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dg-borde-fuerte) transparent;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px 20px;
@@ -755,8 +766,11 @@ const submit = async () => {
   align-self: flex-start;
 }
 
+/* Pie fijo: «Cancelar» y «Guardar» se ven siempre; solo el cuerpo se desplaza. */
 .junta-form__actions {
+  flex: none;
   padding: 8px 16px 16px;
+  border-top: 1px solid var(--dg-borde);
 }
 
 /* Confirmación de descartar: mismo aspecto que en los demás formularios. */

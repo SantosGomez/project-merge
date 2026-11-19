@@ -178,40 +178,83 @@
       </template>
     </q-banner>
 
-    <ScreenLoader v-if="cargando" :text="textoCarga" />
+    <ScreenLoader v-if="cargando && !cargadoUnaVez" :text="textoCarga" />
 
-    <ErrorState v-else-if="errorCarga" :detail="errorCarga" @retry="cargar()" />
+    <ErrorState v-else-if="errorCarga && !cargadoUnaVez" :detail="errorCarga" @retry="cargar()" />
 
     <template v-else>
-      <q-banner v-if="juntas.length === 0" dense rounded class="juntas-page__vacio" role="status">
+      <q-banner v-if="errorCarga" dense rounded class="juntas-page__aviso-carga" role="alert">
         <template #avatar>
-          <q-icon name="event_available" color="dg-acento" />
+          <q-icon name="error_outline" color="dg-error" />
         </template>
-        {{ textoVacio }}
+        {{ errorCarga }}
+        <template #action>
+          <q-btn
+            flat
+            no-caps
+            dense
+            color="primary"
+            icon="refresh"
+            label="Reintentar"
+            class="control-touch boton-presionable"
+            @click="cargar()"
+          >
+            <q-tooltip>Vuelve a pedir las juntas de este periodo.</q-tooltip>
+          </q-btn>
+        </template>
       </q-banner>
 
-      <AnioJuntas
-        v-if="vista === 'anio'"
-        :anio="anio"
-        :juntas="juntas"
-        :hoy="hoy"
-        @elegir-dia="elegirDia"
-      />
+      <div
+        class="juntas-page__contenido"
+        :class="{ 'juntas-page__contenido--cargando': cargando }"
+        :aria-busy="cargando"
+      >
+        <q-linear-progress
+          v-if="cargando"
+          indeterminate
+          size="2px"
+          color="primary"
+          class="juntas-page__progreso"
+          aria-label="Actualizando el calendario"
+        />
 
-      <CalendarioJuntas
-        v-else
-        :vista="vista"
-        :fecha="fecha"
-        :juntas="juntas"
-        :usuario-id="session.id"
-        :vencimientos="vencimientos"
-        :rol="session.rol ?? ''"
-        :agenda-id="agendaId"
-        :con-fin-de-semana="conFinDeSemana"
-        @abrir-junta="abrirDetalle"
-        @nueva-junta="abrirNueva"
-        @abrir-vencimiento="abrirVencimiento"
-      />
+        <q-banner
+          v-if="juntas.length === 0 && !errorCarga"
+          dense
+          rounded
+          class="juntas-page__vacio"
+          role="status"
+        >
+          <template #avatar>
+            <q-icon name="event_available" color="dg-acento" />
+          </template>
+          {{ textoVacio }}
+        </q-banner>
+
+        <AnioJuntas
+          v-if="vista === 'anio'"
+          :anio="anio"
+          :juntas="juntas"
+          :hoy="hoy"
+          @elegir-dia="elegirDia"
+        />
+
+        <CalendarioJuntas
+          v-else
+          :vista="vista"
+          :fecha="fecha"
+          :juntas="juntas"
+          :usuario-id="session.id"
+          :vencimientos="vencimientos"
+          :rol="session.rol ?? ''"
+          :agenda-id="agendaId"
+          :con-fin-de-semana="conFinDeSemana"
+          :resaltada-id="juntaResaltadaId"
+          @abrir-junta="abrirDetalle"
+          @nueva-junta="abrirNueva"
+          @abrir-vencimiento="abrirVencimiento"
+        />
+      </div>
     </template>
 
     <JuntaDetalleDialog
@@ -221,6 +264,7 @@
       @editar="abrirEdicion"
       @borrada="alBorrar"
       @respondida="alResponder"
+      @cerrada="alCerrarFicha"
     />
 
     <JuntaFormDialog
@@ -231,12 +275,13 @@
       :invitado-inicial="invitadoInicial"
       :organizador="organizadorDeLaJunta"
       @guardada="alGuardar"
+      @cerrada="alCerrarFormulario"
     />
   </q-page>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -255,15 +300,18 @@ import { formatearRol } from '../utils/formateadores.js'
 import {
   administraAAdministrador,
   agendaInicialDeRecepcion,
+  conJuntaGuardada,
   esJuntaOcupada,
   hoyISO,
   invitadoInicialDeAlta,
+  juntaCaeEnRango,
   leerAgendaDeUrl,
   leerVistaDeUrl,
   moverPeriodo,
   organizadorDeAlta,
   rangoVisible,
   semanaMuestraFinDeSemana,
+  sinJunta,
   textoAdministradoresAtendidos,
   textoPeriodo,
 } from '../utils/juntas.js'
@@ -412,6 +460,8 @@ const cargarPersonas = async () => {
 
 const juntas = ref([])
 const cargando = ref(true)
+// Verdadero cuando ya hubo una carga buena: desde entonces el calendario no se desmonta al cambiar de periodo.
+const cargadoUnaVez = ref(false)
 const errorCarga = ref('')
 // Solo vale la última petición: una respuesta lenta de un periodo anterior se descarta.
 let peticionActual = 0
@@ -437,8 +487,11 @@ const cargar = async ({ silencioso = false } = {}) => {
     juntas.value = lista
     usuarioAgenda.value = respuesta ? respuesta.usuario : null
     errorCarga.value = ''
+    cargadoUnaVez.value = true
   } catch (error) {
     if (numero !== peticionActual || silencioso) return
+    // Las juntas que se veían son de otro periodo: se vacían para no mostrarlas en el nuevo.
+    juntas.value = []
     errorCarga.value = error?.mensaje ?? MENSAJE_DE_CARGA
   } finally {
     if (numero === peticionActual) cargando.value = false
@@ -566,27 +619,77 @@ const abrirNueva = (hueco = null) => {
   formularioAbierto.value = true
 }
 
+// «Editar» desde la ficha: el formulario se abre cuando la ficha termina de cerrarse, para que no haya dos fondos a la vez.
+let edicionPendiente = false
+
 const abrirEdicion = (junta) => {
-  detalleAbierto.value = false
   juntaEnEdicion.value = junta
   precarga.value = { fecha: '', hora: '' }
+  edicionPendiente = true
+  detalleAbierto.value = false
+}
+
+const alCerrarFicha = () => {
+  if (!edicionPendiente) return
+  edicionPendiente = false
   formularioAbierto.value = true
 }
 
-const alGuardar = () => {
-  $q.notify({ type: 'positive', message: 'Junta guardada.' })
-  cargar({ silencioso: true })
+// Junta resaltada unos 3 s después de guardarla y junta a la que vuelve el foco al cerrar el formulario.
+const juntaResaltadaId = ref(null)
+let temporizadorResaltado = null
+let juntaParaEnfocar = null
+
+const resaltar = (id) => {
+  juntaResaltadaId.value = id
+  clearTimeout(temporizadorResaltado)
+  temporizadorResaltado = setTimeout(() => {
+    juntaResaltadaId.value = null
+  }, 3000)
+}
+onBeforeUnmount(() => clearTimeout(temporizadorResaltado))
+
+// El foco vuelve al bloque de la junta si está a la vista; si no hay bloque (por ejemplo, «Ocupado»), no se mueve.
+const alCerrarFormulario = async () => {
+  const id = juntaParaEnfocar ?? juntaEnEdicion.value?.id ?? null
+  juntaParaEnfocar = null
+  if (id === null) return
+  await nextTick()
+  const bloque = document.querySelector(`[data-junta-id="${id}"]`)
+  if (!bloque) return
+  const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  bloque.scrollIntoView({ block: 'nearest', behavior: sinMovimiento ? 'auto' : 'smooth' })
+  bloque.focus({ preventScroll: true })
 }
 
-const alBorrar = () => {
+/**
+ * La junta que devolvió la API entra a la lista al instante. Si cae fuera del periodo o de la vista que se ve,
+ * la pantalla navega a su fecha (esa carga ya la reconcilia); si no, una recarga silenciosa lo hace.
+ */
+const alGuardar = async (guardada) => {
+  $q.notify({ type: 'positive', message: 'Junta guardada.' })
+  const visible = juntaCaeEnRango(guardada, rango.value)
+  juntas.value = conJuntaGuardada(juntas.value, guardada, rango.value)
+  juntaParaEnfocar = guardada.id
+  resaltar(guardada.id)
+  if (visible) {
+    cargar({ silencioso: true })
+    return
+  }
+  await irA(vista.value, guardada.inicio.slice(0, 10))
+  juntas.value = conJuntaGuardada(juntas.value, guardada, rango.value)
+}
+
+const alBorrar = (junta) => {
   $q.notify({ type: 'positive', message: 'Junta borrada.' })
+  juntas.value = sinJunta(juntas.value, junta.id)
   cargar({ silencioso: true })
 }
 
 // La ficha abierta pasa a la versión nueva (con tu respuesta y el estado) y el calendario se recarga.
+// No se notifica: el botón marcado de la ficha ya confirma la respuesta.
 const alResponder = (junta) => {
   juntaSeleccionada.value = junta
-  $q.notify({ type: 'positive', message: 'Respuesta guardada.' })
   cargar({ silencioso: true })
 }
 
@@ -723,10 +826,52 @@ watch(
   color: var(--dg-aviso-texto);
 }
 
-.juntas-page__vacio {
+/* El contenido (calendario) se queda montado al cambiar de periodo: con la carga baja su opacidad. */
+.juntas-page__contenido {
+  position: relative;
+  transition: opacity 150ms var(--dg-curva-salida);
+}
+
+.juntas-page__contenido--cargando {
+  opacity: 0.6;
+}
+
+/* Barra fina arriba de la tarjeta: va sobre ella para no cambiar el alto de la página. */
+.juntas-page__progreso {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  border-radius: 12px 12px 0 0;
+}
+
+.juntas-page__aviso-carga {
   margin-bottom: 12px;
+  border: 1px solid var(--dg-error-borde-suave);
+  background: var(--dg-error-fondo);
+  color: var(--dg-error);
+}
+
+/* «No tienes juntas»: flota sobre la tarjeta (sin empujar el calendario) y deja pasar los clics a los huecos. */
+.juntas-page__vacio {
+  position: absolute;
+  top: 96px;
+  left: 50%;
+  z-index: 3;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  transform: translateX(-50%);
   border: 1px solid var(--dg-info-borde);
   background: var(--dg-info-fondo);
   color: var(--dg-info-texto);
+  box-shadow: var(--dg-sombra-menu);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juntas-page__contenido {
+    transition: none;
+  }
 }
 </style>

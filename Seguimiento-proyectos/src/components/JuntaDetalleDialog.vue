@@ -6,6 +6,7 @@
     transition-hide="dialogo-sale"
     :transition-duration="220"
     aria-labelledby="junta-detalle-titulo"
+    @hide="emit('cerrada')"
   >
     <q-card class="junta-detalle">
       <q-card-section class="junta-detalle__head">
@@ -41,6 +42,9 @@
       </q-card-section>
 
       <q-card-section class="junta-detalle__body">
+        <!-- Anuncia la respuesta guardada a los lectores de pantalla; el botón marcado es la confirmación visual. -->
+        <p class="sr-only" role="status" aria-live="polite">{{ anuncioDeRespuesta }}</p>
+
         <section class="detalle-seccion">
           <h3 class="detalle-seccion__titulo">Datos de la junta</h3>
           <div class="detalle-campo">
@@ -130,7 +134,10 @@
             :key="administrador.id"
             class="detalle-seccion"
           >
-            <h3 class="detalle-seccion__titulo">Responder por {{ administrador.nombre }}</h3>
+            <h3 class="detalle-seccion__titulo">
+              Responder por
+              <span class="detalle-seccion__nombre">{{ administrador.nombre }}</span>
+            </h3>
             <p class="junta-detalle__mi-respuesta">
               {{ textoRespuestaDe(administrador) }}
             </p>
@@ -329,7 +336,7 @@ const props = defineProps({
   junta: { type: Object, required: true },
 })
 
-const emit = defineEmits(['editar', 'borrada', 'respondida'])
+const emit = defineEmits(['editar', 'borrada', 'respondida', 'cerrada'])
 
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 
@@ -381,6 +388,10 @@ const errorRespuesta = ref('')
 // Lo mismo al responder por un administrador: `${id}-${respuesta}` mientras se guarda.
 const respondiendoPor = ref('')
 const errorRespuestaPor = ref('')
+// Texto que anuncia la región aria-live al guardar una respuesta.
+const anuncioDeRespuesta = ref('')
+
+const TEXTO_ANUNCIO = { aceptada: 'aceptada', rechazada: 'rechazada' }
 
 // Respuesta de la cuenta a esta junta; null si la organiza (no responde su propia invitación).
 const miRespuesta = computed(() =>
@@ -420,6 +431,7 @@ watch(dialogoAbierto, (abierto) => {
     errorBorrado.value = ''
     errorRespuesta.value = ''
     errorRespuestaPor.value = ''
+    anuncioDeRespuesta.value = ''
     confirmacionAbierta.value = false
   }
 })
@@ -434,6 +446,7 @@ const responderInvitacion = async (respuesta) => {
   errorRespuesta.value = ''
   try {
     const juntaNueva = await responder(props.junta.id, respuesta)
+    anuncioDeRespuesta.value = `Respuesta guardada: ${TEXTO_ANUNCIO[respuesta]}.`
     emit('respondida', juntaNueva)
   } catch (error) {
     errorRespuesta.value =
@@ -450,6 +463,7 @@ const responderPorAdministrador = async (administrador, respuesta) => {
   errorRespuestaPor.value = ''
   try {
     const juntaNueva = await responder(props.junta.id, respuesta, administrador.id)
+    anuncioDeRespuesta.value = `Respuesta guardada: ${administrador.nombre}, ${TEXTO_ANUNCIO[respuesta]}.`
     emit('respondida', juntaNueva)
   } catch (error) {
     errorRespuestaPor.value =
@@ -566,16 +580,24 @@ const borrarJunta = async () => {
   scrollbar-color: var(--dg-borde-fuerte) transparent;
 }
 
+/* Pie fijo con borde: solo el cuerpo se desplaza y el pie nunca tapa una sección. */
 .junta-detalle__actions {
+  flex: none;
   flex-wrap: wrap;
   gap: 4px;
   padding: 8px 16px 16px;
+  border-top: 1px solid var(--dg-borde);
 }
 
 .detalle-seccion + .detalle-seccion {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--dg-borde);
+}
+
+/* El nombre de la persona se ve como está escrito, aunque el título vaya en mayúsculas. */
+.detalle-seccion__nombre {
+  text-transform: none;
 }
 
 .detalle-seccion__titulo {
@@ -642,9 +664,15 @@ const borrarJunta = async () => {
   overflow-wrap: anywhere;
 }
 
+/* Celular: etiqueta arriba y valor abajo, y la descripción sin scroll interno (el cuerpo ya se desplaza). */
 @media (max-width: 599px) {
   .detalle-campo {
-    grid-template-columns: minmax(96px, 110px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detalle-texto {
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
