@@ -4,7 +4,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 
 ## Estado actual
 
-- **Ramas (2026-11-17):** `main` = `experimento`, ambas en `origin`, con «Mis actividades» (rebanadas 10–17), el calendario del administrador (18–19) y la edición de cuentas.
+- **Ramas (2026-11-18):** `main` = `experimento` (8c4b1be), ambas en `origin`, con «Mis actividades» (10–17), el calendario del administrador (18–19), la edición de cuentas y el módulo «Mi Calendario» (20–33).
 - **Docker = `main` 8911a26 (edición de cuentas).** Faltan «Mis actividades» y el calendario. Antes de publicar: respaldo; el seed crea las tablas de actividades (en producción no existen); validar la regla fiscal con los contadores; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`).
 - **Publicar:** respaldo dentro del contenedor (`mariadb-dump --single-transaction --routines --triggers --events > /tmp/...` + `docker compose cp`; la tubería de PowerShell daña acentos; los `.sql` nunca se versionan). Etiquetar las imágenes anteriores (última: `antes-editar-usuarios-2026-11-17`). `docker compose build` desde PowerShell (en Git Bash `API_URL=/api` se rompe). `up -d --no-deps backend frontend` para que el túnel conserve su URL.
 - **Túnel cloudflared:** la URL cambia en cada reinicio (`docker compose logs tunnel`). Agregarla a `CORS_ORIGENES` y `up -d backend`; si no, el login da 403.
