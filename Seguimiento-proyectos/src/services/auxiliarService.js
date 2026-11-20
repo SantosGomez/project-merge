@@ -86,6 +86,20 @@ export const crearAuxiliarService = (opciones = {}) => {
     return { mensaje: data.mensaje, caso: data.caso }
   }
 
+  /**
+   * POST /casos/para-mi-auxiliar: el contador registra un caso nuevo a nombre de uno de sus auxiliares.
+   * @param {number} auxiliarId - Id del auxiliar que recibe el caso.
+   * @param {Object} datos - Datos del caso { cliente, prioridad, importante, fecha_inicio, fecha_vencimiento, descripcion, observaciones }.
+   * @returns {Promise<{mensaje: string, caso: Object}>}
+   */
+  const crearCasoParaMiAuxiliar = async (auxiliarId, datos) => {
+    const { data } = await api.post('/casos/para-mi-auxiliar', {
+      auxiliar_id: auxiliarId,
+      ...datos,
+    })
+    return { mensaje: data.mensaje, caso: data.caso }
+  }
+
   return {
     listarAuxiliares,
     asignarAuxiliar,
@@ -93,6 +107,7 @@ export const crearAuxiliarService = (opciones = {}) => {
     listarContadoresQueMeTienenComoAuxiliar,
     listarDisponibles,
     crearCasoComoAuxiliar,
+    crearCasoParaMiAuxiliar,
   }
 }
 
@@ -105,3 +120,4 @@ export const quitarAuxiliar = servicioPorDefecto.quitarAuxiliar
 export const listarContadoresQueMeTienenComoAuxiliar = servicioPorDefecto.listarContadoresQueMeTienenComoAuxiliar
 export const listarDisponibles = servicioPorDefecto.listarDisponibles
 export const crearCasoComoAuxiliar = servicioPorDefecto.crearCasoComoAuxiliar
+export const crearCasoParaMiAuxiliar = servicioPorDefecto.crearCasoParaMiAuxiliar

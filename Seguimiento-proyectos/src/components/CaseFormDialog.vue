@@ -403,8 +403,8 @@
             <p id="contador-help" class="form-help">Contador que atenderá el caso.</p>
           </div>
 
-          <!-- Al registrar para otro contador el título ya dice para quién es: la fila no se muestra. -->
-          <dl v-else-if="!modoAuxiliar" class="readonly-info">
+          <!-- Al registrar para otro contador o para un auxiliar, el título ya dice para quién es: la fila no se muestra. -->
+          <dl v-else-if="!modoAuxiliar && !modoParaMiAuxiliar" class="readonly-info">
             <div class="readonly-row">
               <dt>Contador asignado</dt>
               <dd>{{ assignedCounterName }}</dd>
@@ -521,6 +521,11 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  /** Auxiliar `{ id, nombre }` cuando el contador registra el caso a nombre de uno de los suyos; null en registro normal. */
+  auxiliarDestino: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['registrado', 'guardado'])
@@ -530,6 +535,7 @@ const auxiliares = useAuxiliaresStore()
 const modoEdicion = computed(() => props.caso !== null)
 const modoAsignacion = computed(() => !modoEdicion.value && props.contadores !== null)
 const modoAuxiliar = computed(() => !modoEdicion.value && props.contadorDuenioId !== null)
+const modoParaMiAuxiliar = computed(() => !modoEdicion.value && props.auxiliarDestino !== null)
 
 const TEXTOS_REGISTRO = {
   titulo: 'Registrar caso',
@@ -579,8 +585,22 @@ const TEXTOS_AUXILIAR = {
   errorDetalle: 'el registro del caso.',
 }
 
+const textosParaMiAuxiliar = (nombre) => ({
+  ...TEXTOS_REGISTRO,
+  titulo: `Registrar caso para ${nombre}`,
+  formulario: 'Formulario de registro de caso para mi auxiliar',
+  ayuda:
+    'Completa los campos obligatorios. El caso queda a su nombre y él recibe un aviso. El estado inicial siempre es Pendiente.',
+  boton: 'Asignar caso al auxiliar',
+  tooltipBoton: 'Guarda el caso a nombre de tu auxiliar con estado Pendiente y le envía un aviso.',
+  tooltipCancelar: 'Cierra el formulario sin asignar el caso.',
+  errorGuardado: 'No se pudo asignar el caso',
+  errorDetalle: 'la asignación del caso.',
+})
+
 const textos = computed(() => {
   if (modoEdicion.value) return TEXTOS_EDICION
+  if (modoParaMiAuxiliar.value) return textosParaMiAuxiliar(props.auxiliarDestino.nombre)
   if (modoAuxiliar.value) return TEXTOS_AUXILIAR
   return modoAsignacion.value ? TEXTOS_ASIGNACION : TEXTOS_REGISTRO
 })
@@ -844,9 +864,11 @@ const submitCase = async () => {
     importante: importante.value,
     fecha_vencimiento: fechaVencimiento.value.trim(),
   }
-  const resultado = modoAuxiliar.value
-    ? await auxiliares.crearCasoComoAuxiliar(props.contadorDuenioId, datosDelCaso)
-    : modoAsignacion.value
+  const resultado = modoParaMiAuxiliar.value
+    ? await auxiliares.crearCasoParaMiAuxiliar(props.auxiliarDestino.id, datosDelCaso)
+    : modoAuxiliar.value
+      ? await auxiliares.crearCasoComoAuxiliar(props.contadorDuenioId, datosDelCaso)
+      : modoAsignacion.value
       ? await cases.asignarCaso(contadorId.value, [
           datosDelCaso.cliente,
           datosDelCaso.prioridad,

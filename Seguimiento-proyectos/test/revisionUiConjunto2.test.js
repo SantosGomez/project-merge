@@ -16,7 +16,7 @@ describe('Revisión de UI (2026-11-12): bugs', () => {
   it('«Contador asignado» muestra al dueño del caso al editar y no aparece al registrar para otro', () => {
     const formulario = componente('CaseFormDialog')
     assert.match(formulario, /modoEdicion\.value && props\.caso\?\.nombre_contador\) return props\.caso\.nombre_contador/)
-    assert.match(formulario, /<dl v-else-if="!modoAuxiliar" class="readonly-info">/)
+    assert.match(formulario, /<dl v-else-if="!modoAuxiliar(?: && !modoParaMiAuxiliar)?" class="readonly-info">/)
   })
 
   it('el diálogo «Contador que apoya» descarta la respuesta de una carga anterior', () => {

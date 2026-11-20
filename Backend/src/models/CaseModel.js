@@ -282,4 +282,30 @@ async function updatePatch(id, campos = {}, ejecutar = query) {
   await ejecutar(`UPDATE casos SET ${asignaciones.join(', ')}, actualizado_en = ? WHERE id = ?`, [...valores, ahora, id]);
 }
 
-module.exports = { findById, findByCounter, findParaAdministrador, findImportantesParaCalendario, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch };
+/**
+ * Cambia el dueño de un caso con un UPDATE condicional: solo si el dueño sigue siendo el leído
+ * y quien lo recibe y quien lo pierde siguen en el equipo del contador (o son él).
+ * Solo toca `contador_id` y `actualizado_en`.
+ * @param {number} id - ID del caso.
+ * @param {{ anteriorId: number, nuevoId: number, contadorId: number }} datos - dueño leído, nuevo dueño y contador que pasa el caso.
+ * @param {Function} [ejecutar] - `query` o la función de una transacción (`conTransaccion`).
+ * @returns {Promise<boolean>} true si el caso cambió de dueño; false si algo cambió mientras tanto.
+ */
+async function cambiarResponsable(id, { anteriorId, nuevoId, contadorId }, ejecutar = query) {
+  const enEquipo = '(? = ? OR EXISTS (SELECT 1 FROM contador_auxiliar WHERE contador_id = ? AND auxiliar_id = ?))';
+  const resultado = await ejecutar(
+    `UPDATE casos SET contador_id = ?, actualizado_en = ?
+      WHERE id = ? AND contador_id = ? AND ${enEquipo} AND ${enEquipo}`,
+    [
+      nuevoId,
+      formatLocalDate(nowLocal()),
+      id,
+      anteriorId,
+      nuevoId, contadorId, contadorId, nuevoId,
+      anteriorId, contadorId, contadorId, anteriorId,
+    ]
+  );
+  return resultado.affectedRows === 1;
+}
+
+module.exports = { findById, findByCounter, findParaAdministrador, findImportantesParaCalendario, findByCounterYAuxiliares, countByStatus, resumenPorContador, create, updateStatus, updatePriority, updatePatch, cambiarResponsable };

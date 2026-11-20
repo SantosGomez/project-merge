@@ -71,6 +71,22 @@
                 </q-tooltip>
               </q-btn>
             </span>
+
+            <q-btn
+              flat
+              no-caps
+              color="primary"
+              icon="add_circle"
+              label="Registrar caso"
+              class="mi-equipo__registrar control-touch boton-presionable"
+              aria-haspopup="dialog"
+              :aria-label="`Registrar caso para ${fila.nombre}`"
+              @click="abrirRegistro(fila)"
+            >
+              <q-tooltip
+                >Registra un caso nuevo a nombre de {{ fila.nombre }} y le avisa.</q-tooltip
+              >
+            </q-btn>
           </q-item>
         </q-list>
       </section>
@@ -111,7 +127,9 @@
               v-for="caso in filasDeCasos"
               :key="caso.id"
               :caso="caso"
-              :deshabilitado="guardandoId === caso.id"
+              :deshabilitado="guardandoId === caso.id || pasandoId === caso.id"
+              :equipo-para-pasar="equipoParaPasar"
+              @pasar="(destino) => pedirPasarCaso(caso, destino)"
               @alternar-importante="emit('alternar-importante', caso.id, !caso.important)"
               @cambiar-estado="(estado) => emit('cambiar-estado', caso.id, estado)"
               @editar="emit('editar', caso.id)"
@@ -136,6 +154,12 @@
         </template>
       </section>
     </div>
+
+    <CaseFormDialog
+      v-model="registroAbierto"
+      :auxiliar-destino="auxiliarDestino"
+      @registrado="alRegistrar"
+    />
   </div>
 </template>
 
@@ -143,6 +167,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 
+import CaseFormDialog from './CaseFormDialog.vue'
 import CasoItem from './CasoItem.vue'
 import FiltrosCasos from './FiltrosCasos.vue'
 import ResumenEquipo from './ResumenEquipo.vue'
@@ -155,6 +180,9 @@ import {
   filtrarCasos,
   paginar,
 } from '../utils/filtrosCasos.js'
+import { useCasesStore } from '../stores/cases.js'
+import { useSessionStore } from '../stores/session.js'
+import { armarEquipoParaPasar, textoDestino } from '../utils/pasarCaso.js'
 
 /*
  * Pestaña «Mi equipo» de «Mi resumen»: el contador ve a sus auxiliares como el administrador ve
@@ -180,6 +208,63 @@ const props = defineProps({
 const emit = defineEmits(['reintentar', 'alternar-importante', 'cambiar-estado', 'editar', 'ver'])
 
 const $q = useQuasar()
+const cases = useCasesStore()
+const session = useSessionStore()
+
+// Equipo al que se puede pasar un caso: el contador y los auxiliares de las filas.
+const equipoParaPasar = computed(() =>
+  armarEquipoParaPasar(
+    session.id,
+    props.filas.map((fila) => ({ id: fila.id, nombre: fila.nombre })),
+  ),
+)
+
+// Caso que se está pasando: su fila se deshabilita para evitar un doble envío.
+const pasandoId = ref(null)
+
+// Confirma y pasa el caso; el store lo mueve de dueño en la lista sin recargar.
+const pedirPasarCaso = (caso, destino) => {
+  const cliente = caso.client
+  $q.dialog({
+    title: 'Pasar caso',
+    message: `¿Pasar «${cliente}» a ${textoDestino(destino)}?`,
+    cancel: { label: 'Cancelar', flat: true, noCaps: true },
+    ok: { label: 'Pasar caso', color: 'primary', noCaps: true },
+    persistent: true,
+  }).onOk(async () => {
+    const nombre = destino.esPropio ? session.nombreVisible : destino.nombre
+    pasandoId.value = caso.id
+    const resultado = await cases.pasarCaso(caso.id, destino.id, nombre)
+    pasandoId.value = null
+    if (resultado.ok) {
+      $q.notify({ type: 'positive', message: `Caso pasado a ${textoDestino(destino)}` })
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: `No se pasó el caso de ${cliente}.`,
+        caption: resultado.error?.mensaje ?? 'Revisa tu conexión y vuelve a intentarlo.',
+        timeout: 8000,
+      })
+      // Conflicto: el caso o el equipo cambiaron; se relee la lista para mostrar lo actual
+      if (resultado.error?.codigoHttp === 409) cases.refrescarEnSilencio()
+    }
+  })
+}
+
+// Registro de un caso nuevo a nombre del auxiliar de la fila.
+const registroAbierto = ref(false)
+const auxiliarDestino = ref(null)
+
+const abrirRegistro = (fila) => {
+  auxiliarDestino.value = { id: fila.id, nombre: fila.nombre }
+  registroAbierto.value = true
+}
+
+// El caso se guardó en otro store: se relee la lista para que aparezca aquí y en «Mis casos».
+const alRegistrar = async () => {
+  $q.notify({ type: 'positive', message: `Caso asignado a ${auxiliarDestino.value?.nombre}.` })
+  await cases.refrescarEnSilencio()
+}
 
 const seleccionadoId = ref(null)
 // Sin elección (o si el auxiliar elegido ya no está en el equipo) se muestra el primero: el más urgente.

@@ -16,6 +16,7 @@ import {
   asignarCaso as asignarCasoPorDefecto,
   crearCaso as crearCasoPorDefecto,
   getMisCasos as getMisCasosPorDefecto,
+  pasarCaso as pasarCasoPorDefecto,
 } from '../services/caseService.js'
 import { QUE_HACER } from '../utils/mensajes.js'
 import { screenState } from '../utils/screenState.js'
@@ -25,6 +26,7 @@ const casosPorDefecto = {
   crearCaso: crearCasoPorDefecto,
   asignarCaso: asignarCasoPorDefecto,
   actualizarCaso: actualizarCasoPorDefecto,
+  pasarCaso: pasarCasoPorDefecto,
 }
 
 // Si el servicio entrega un error normalizado se conserva; si no, se construye
@@ -229,6 +231,33 @@ export const crearCasesStore = (dependencias = {}) => {
           if (versionActual === version) {
             this.guardando = false
           }
+        }
+      },
+
+      /**
+       * El contador pasa un caso a otra persona de su equipo y lo mueve de dueño en la lista local,
+       * sin recargar. La respuesta no trae el nombre del dueño: se conserva el que se indica.
+       * @param {number|string} id - identificador del caso.
+       * @param {number} responsableId - nueva persona responsable.
+       * @param {string} nombreResponsable - su nombre, para la etiqueta «de …».
+       * @returns {Promise<{ ok: boolean, caso?: Object, error?: Object }>}
+       */
+      async pasarCaso(id, responsableId, nombreResponsable) {
+        this.guardando = true
+        try {
+          const recibido = await servicio.pasarCaso(id, responsableId)
+          const caso = { ...recibido, nombre_contador: nombreResponsable }
+          this.casos = this.casos.map((uno) =>
+            String(uno.id) === String(id) ? { ...uno, ...caso } : uno,
+          )
+          return { ok: true, caso }
+        } catch (error) {
+          return {
+            ok: false,
+            error: normalizarErrorDeGuardado(error, 'el cambio de responsable del caso'),
+          }
+        } finally {
+          this.guardando = false
         }
       },
 

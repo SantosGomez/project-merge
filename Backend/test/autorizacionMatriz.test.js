@@ -45,8 +45,10 @@ const MATRIZ = [
   // casos
   ['POST', '/casos', CONTADOR_O_AUXILIAR, {}],
   ['POST', '/casos/para-auxiliar', CONTADOR_O_AUXILIAR, {}],
+  ['POST', '/casos/para-mi-auxiliar', [CONTADOR], {}],
   ['PATCH', '/casos/:x', CONTADOR_O_AUXILIAR, {}],
   ['PATCH', '/casos/:x/prioridad', [ADMIN], {}],
+  ['PATCH', '/casos/:x/responsable', [CONTADOR], {}],
   ['GET', '/casos/mis-casos', TODOS],
   // contadores
   ['GET', '/contadores', [ADMIN]],

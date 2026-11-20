@@ -70,6 +70,30 @@
         <template #prepend><q-icon name="person_add" /></template>
         <q-tooltip>Registra el caso a nombre de este contador (tú eres su auxiliar).</q-tooltip>
       </q-select>
+      <q-select
+        :transition-duration="180"
+        v-if="misAuxiliares.length > 0"
+        v-model="auxiliarSeleccionadoParaRegistro"
+        :options="misAuxiliares.map((a) => ({ label: a.nombre, value: a.id }))"
+        option-label="label"
+        option-value="value"
+        emit-value
+        map-options
+        dense
+        outlined
+        options-dense
+        clearable
+        dropdown-icon="expand_more"
+        popup-content-class="menu-seleccion-custom"
+        transition-show="jump-down"
+        transition-hide="jump-up"
+        class="selector-moderno my-cases-page__registrar-para"
+        :disable="cases.guardando"
+        label="Registrar caso para"
+      >
+        <template #prepend><q-icon name="person_add" /></template>
+        <q-tooltip>Registra el caso a nombre de este auxiliar y le avisa.</q-tooltip>
+      </q-select>
     </div>
 
     <ScreenLoader v-if="screenStateName === SCREEN_STATES.loading" text="Cargando tus casos…" />
@@ -131,6 +155,8 @@
               :deshabilitado="guardandoId === item.id"
               :contador-autenticado-id="contadorAutenticadoId"
               :puede-marcar-importante="!session.esAuxiliar"
+              :equipo-para-pasar="equipoParaPasar"
+              @pasar="(destino) => pedirPasarCaso(item.id, destino)"
               @alternar-importante="guardarCambio(item.id, { importante: !item.important })"
               @cambiar-estado="(v) => guardarCambio(item.id, { estado: v })"
               @editar="abrirEdicion(item.id)"
@@ -190,6 +216,7 @@
       v-model="dialogoRegistroAbierto"
       :caso="casoEnEdicion"
       :contador-duenio-id="contadorSeleccionadoParaRegistro"
+      :auxiliar-destino="auxiliarDestino"
       @registrado="alRegistrar"
       @guardado="alGuardarEdicion"
     />
@@ -237,6 +264,7 @@ import {
   paginar,
   ubicarCaso,
 } from '../utils/filtrosCasos.js'
+import { armarEquipoParaPasar, textoDestino } from '../utils/pasarCaso.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
 const cases = useCasesStore()
@@ -263,6 +291,56 @@ const contadorAutenticadoId = computed(() => (session.id ? Number(session.id) : 
 // Contadores para los que el contador autenticado es auxiliar; se usa para registrar casos en su nombre.
 const contadoresQueMeTienenComoAuxiliar = ref([])
 const contadorSeleccionadoParaRegistro = ref(null)
+
+// Auxiliares del contador autenticado: se les puede registrar un caso a su nombre.
+const misAuxiliares = computed(() => (session.esContador ? auxiliaresStore.auxiliares : []))
+const auxiliarSeleccionadoParaRegistro = ref(null)
+const auxiliarDestino = computed(() => {
+  const auxiliar = misAuxiliares.value.find((a) => a.id === auxiliarSeleccionadoParaRegistro.value)
+  return auxiliar ? { id: auxiliar.id, nombre: auxiliar.nombre } : null
+})
+
+// Equipo al que el contador puede pasar casos (él y sus auxiliares); vacío si no tiene auxiliares.
+const equipoParaPasar = computed(() =>
+  session.esContador ? armarEquipoParaPasar(session.id, auxiliaresStore.auxiliares) : [],
+)
+
+// Confirma y pasa el caso; el store lo mueve de dueño en la lista sin recargar.
+const pedirPasarCaso = (caseId, destino) => {
+  const cliente = clienteDe(caseId)
+  $q.dialog({
+    title: 'Pasar caso',
+    message: `¿Pasar «${cliente}» a ${textoDestino(destino)}?`,
+    cancel: { label: 'Cancelar', flat: true, noCaps: true },
+    ok: { label: 'Pasar caso', color: 'primary', noCaps: true },
+    persistent: true,
+  }).onOk(async () => {
+    const nombre = destino.esPropio ? session.nombreVisible : destino.nombre
+    guardandoId.value = caseId
+    const resultado = await cases.pasarCaso(caseId, destino.id, nombre)
+    guardandoId.value = null
+    if (resultado.ok) {
+      $q.notify({ type: 'positive', message: `Caso pasado a ${textoDestino(destino)}` })
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: `No se pasó el caso de ${cliente}.`,
+        caption: resultado.error?.mensaje ?? 'Revisa tu conexión y vuelve a intentarlo.',
+        timeout: 8000,
+      })
+      // Conflicto: el caso o el equipo cambiaron; se relee la lista para mostrar lo actual
+      if (resultado.error?.codigoHttp === 409) cases.refrescarEnSilencio()
+    }
+  })
+}
+
+// Un caso nuevo tiene un solo destino: elegir un auxiliar suelta al contador y al revés.
+watch(auxiliarSeleccionadoParaRegistro, (id) => {
+  if (id !== null) contadorSeleccionadoParaRegistro.value = null
+})
+watch(contadorSeleccionadoParaRegistro, (id) => {
+  if (id !== null) auxiliarSeleccionadoParaRegistro.value = null
+})
 
 // «Mi resumen» abre esta pantalla ya filtrada (?filtro=vencidos, ?filtro=pendiente…).
 const filtros = ref(filtrosDesdeConsulta(route.query.filtro))
@@ -421,11 +499,15 @@ const alRegistrar = async () => {
   } else if (contadorSeleccionadoParaRegistro.value !== null) {
     // El caso para el contador al que apoyas se guardó en otro store: se relee la lista.
     await cases.refrescarEnSilencio()
+  } else if (auxiliarSeleccionadoParaRegistro.value !== null) {
+    // Lo mismo con el caso que registraste para uno de tus auxiliares.
+    await cases.refrescarEnSilencio()
   }
 
-  // Después de registrar, se limpia el selector para no crear el siguiente caso
-  // para el mismo auxiliar por error.
+  // Después de registrar, se limpian los selectores para no crear el siguiente caso
+  // para la misma persona por error.
   contadorSeleccionadoParaRegistro.value = null
+  auxiliarSeleccionadoParaRegistro.value = null
 }
 
 const retry = () => cases.reintentar()
@@ -478,6 +560,7 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', actualizarHoy)
 
   const idPropio = Number(session.id)
+  if (session.esContador) auxiliaresStore.cargarAuxiliares(idPropio)
   const resultado = await auxiliaresStore.listarContadoresQueMeTienenComoAuxiliar(idPropio)
   if (resultado.ok) {
     contadoresQueMeTienenComoAuxiliar.value = resultado.contadores ?? []

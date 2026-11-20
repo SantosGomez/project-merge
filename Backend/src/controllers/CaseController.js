@@ -533,4 +533,121 @@ async function crearCasoComoAuxiliar(req, res) {
   });
 }
 
-module.exports = { createCase, updateCase, cambiarPrioridadComoAdmin, asignarCaso, crearCasoComoAuxiliar };
+/**
+ * El contador registra un caso nuevo a nombre de uno de sus auxiliares y le avisa;
+ * el caso y el aviso se guardan juntos. Puede marcarlo como importante.
+ * @param {Object} req - Petición Express con cuerpo { auxiliar_id, cliente, prioridad, ... }.
+ * @param {Object} res - Respuesta Express.
+ */
+async function crearCasoParaMiAuxiliar(req, res) {
+  const auxiliarId = parseCounterId(req.body.auxiliar_id);
+  const auxiliar = auxiliarId ? await UserModel.findById(auxiliarId) : null;
+  if (!auxiliar || auxiliar.rol !== 'auxiliar') {
+    return res.status(404).json(
+      buildError('No se encontró el auxiliar', 'auxiliar solicitado', 'Revisa que el auxiliar exista y actualiza la lista')
+    );
+  }
+
+  const misAuxiliares = await AuxiliarModel.listarAuxiliares(req.user.id);
+  if (!misAuxiliares.some((a) => a.id === auxiliar.id)) {
+    return res.status(403).json(
+      buildError('Acceso denegado', 'auxiliar', 'No es tu auxiliar. Elige uno de los auxiliares de tu equipo')
+    );
+  }
+
+  const { error, datos } = validarNuevoCaso(req.body);
+  if (error) {
+    return res.status(400).json(error);
+  }
+
+  const contador = await UserModel.findById(req.user.id);
+  const mensaje = `${contador.nombre} te asignó el caso «${datos.cliente}».`;
+
+  const casoId = await conTransaccion(async (ejecutar) => {
+    const id = await CaseModel.create({ ...datos, contador_id: auxiliar.id }, ejecutar);
+    await NotificacionModel.crear({ usuarioId: auxiliar.id, casoId: id, mensaje }, ejecutar);
+    return id;
+  });
+  // Tiempo real: la campanita del auxiliar y los administradores se enteran al instante
+  eventos.enviarAUsuario(auxiliar.id, 'aviso-nuevo', { casoId });
+  eventos.enviarARol('administrador', 'caso-actualizado', { casoId, contadorId: auxiliar.id });
+
+  const caso = await CaseModel.findById(casoId);
+  return res.status(201).json({
+    mensaje: 'Caso asignado correctamente',
+    caso: conFechasLocales(caso),
+  });
+}
+
+/**
+ * El contador pasa un caso suyo o de uno de sus auxiliares a otra persona de su equipo
+ * (él mismo o un auxiliar). Solo cambia el dueño; los avisos se guardan en la misma transacción.
+ * @param {Object} req - Petición Express con params.id y cuerpo { responsable_id }.
+ * @param {Object} res - Respuesta Express.
+ */
+async function pasarCaso(req, res) {
+  const casoId = parseCounterId(req.params.id);
+  const caso = casoId ? await CaseModel.findById(casoId) : null;
+  const contadorId = Number(req.user.id);
+  const misAuxiliares = await AuxiliarModel.listarAuxiliares(contadorId);
+  const equipo = [{ id: contadorId }, ...misAuxiliares];
+
+  // Un caso ajeno se trata como inexistente para no revelar que existe
+  if (!caso || !equipo.some((p) => Number(p.id) === Number(caso.contador_id))) {
+    return res.status(404).json(
+      buildError('No se encontró el caso', 'ID del caso', 'Revisa que el caso exista y actualiza la lista')
+    );
+  }
+
+  const nuevoId = parseCounterId(req.body.responsable_id);
+  const nuevo = nuevoId ? equipo.find((p) => Number(p.id) === nuevoId) : null;
+  if (!nuevo) {
+    return res.status(400).json(
+      buildError('Responsable no válido', 'responsable', 'Elige a ti o a uno de tus auxiliares')
+    );
+  }
+
+  const anteriorId = Number(caso.contador_id);
+  if (nuevoId === anteriorId) {
+    return res.status(400).json(
+      buildError('El caso ya es de esa persona', 'responsable', 'Elige a otra persona de tu equipo')
+    );
+  }
+
+  const contador = await UserModel.findById(contadorId);
+  const nombreNuevo = nuevoId === contadorId ? null : nuevo.nombre;
+  const mensajeNuevo = `${contador.nombre} te pasó el caso «${caso.cliente}».`;
+  const mensajePierde = nombreNuevo
+    ? `${contador.nombre} te quitó el caso «${caso.cliente}» y se lo pasó a ${nombreNuevo}.`
+    : `${contador.nombre} te quitó el caso «${caso.cliente}» y lo regresó a su lista.`;
+
+  // El UPDATE es condicional: si el dueño o el equipo cambiaron desde la lectura, no cambia nada ni avisa
+  const cambio = await conTransaccion(async (ejecutar) => {
+    const cambiado = await CaseModel.cambiarResponsable(caso.id, { anteriorId, nuevoId, contadorId }, ejecutar);
+    if (!cambiado) return false;
+    if (nuevoId !== contadorId) {
+      await NotificacionModel.crear({ usuarioId: nuevoId, casoId: caso.id, mensaje: mensajeNuevo }, ejecutar);
+    }
+    if (anteriorId !== contadorId) {
+      await NotificacionModel.crear({ usuarioId: anteriorId, casoId: caso.id, mensaje: mensajePierde }, ejecutar);
+    }
+    return true;
+  });
+  if (!cambio) {
+    return res.status(409).json(
+      buildError('El caso cambió mientras lo pasabas', 'caso', 'Actualiza la lista e inténtalo de nuevo')
+    );
+  }
+  // Tiempo real: campanita de quien recibe y de quien pierde el caso; administradores al instante
+  if (nuevoId !== contadorId) eventos.enviarAUsuario(nuevoId, 'aviso-nuevo', { casoId: caso.id });
+  if (anteriorId !== contadorId) eventos.enviarAUsuario(anteriorId, 'aviso-nuevo', { casoId: caso.id });
+  eventos.enviarARol('administrador', 'caso-actualizado', { casoId: caso.id, contadorId: nuevoId });
+
+  const actualizado = await CaseModel.findById(caso.id);
+  return res.status(200).json({
+    mensaje: 'Caso pasado correctamente',
+    caso: conFechasLocales(actualizado),
+  });
+}
+
+module.exports = { createCase, updateCase, cambiarPrioridadComoAdmin, asignarCaso, crearCasoComoAuxiliar, crearCasoParaMiAuxiliar, pasarCaso };

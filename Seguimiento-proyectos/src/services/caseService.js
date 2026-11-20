@@ -256,7 +256,26 @@ export const crearCaseService = (opciones = {}) => {
     return leerCaso(data, 'el caso con la prioridad nueva')
   }
 
-  return { getMisCasos, crearCaso, asignarCaso, actualizarCaso, cambiarPrioridadComoAdmin }
+  /**
+   * El contador pasa un caso a él mismo o a uno de sus auxiliares (PATCH /casos/:id/responsable).
+   * El backend avisa a quien lo recibe y a quien lo pierde; solo cambia el dueño.
+   * @param {number|string} id - caso.
+   * @param {number} responsableId - nueva persona responsable.
+   * @returns {Promise<Object>} caso actualizado, ya traducido.
+   */
+  const pasarCaso = async (id, responsableId) => {
+    const { data } = await api.patch(`/casos/${id}/responsable`, { responsable_id: responsableId })
+    return leerCaso(data, 'el caso pasado')
+  }
+
+  return {
+    getMisCasos,
+    crearCaso,
+    asignarCaso,
+    actualizarCaso,
+    cambiarPrioridadComoAdmin,
+    pasarCaso,
+  }
 }
 
 // Servicio por defecto con la instancia de axios real.
@@ -267,3 +286,4 @@ export const crearCaso = servicioPorDefecto.crearCaso
 export const asignarCaso = servicioPorDefecto.asignarCaso
 export const actualizarCaso = servicioPorDefecto.actualizarCaso
 export const cambiarPrioridadComoAdmin = servicioPorDefecto.cambiarPrioridadComoAdmin
+export const pasarCaso = servicioPorDefecto.pasarCaso

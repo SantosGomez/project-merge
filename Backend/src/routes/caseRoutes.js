@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/authMiddleware');
-const { requireAdmin, requireContadorOAuxiliar } = require('../middlewares/roleMiddleware');
+const { requireAdmin, requireContador, requireContadorOAuxiliar } = require('../middlewares/roleMiddleware');
 const { checkCaseOwnership } = require('../middlewares/ownershipMiddleware');
 const {
   createCase,
   updateCase,
   cambiarPrioridadComoAdmin,
   crearCasoComoAuxiliar,
+  crearCasoParaMiAuxiliar,
+  pasarCaso,
 } = require('../controllers/CaseController');
 const { getMyCases } = require('../controllers/CounterController');
 const { asyncHandler } = require('../utils/asyncHandler');
@@ -23,8 +25,14 @@ router.post(
   asyncHandler(crearCasoComoAuxiliar)
 );
 
+// POST /casos/para-mi-auxiliar — El contador registra un caso nuevo a nombre de uno de sus auxiliares
+router.post('/para-mi-auxiliar', authenticateToken, requireContador, asyncHandler(crearCasoParaMiAuxiliar));
+
 // PATCH /casos/:id — Editar un caso propio o del equipo (contador o auxiliar, checkCaseOwnership) (RF-22)
 router.patch('/:id', authenticateToken, requireContadorOAuxiliar, asyncHandler(checkCaseOwnership), asyncHandler(updateCase));
+
+// PATCH /casos/:id/responsable — El contador pasa un caso a él mismo o a uno de sus auxiliares
+router.patch('/:id/responsable', authenticateToken, requireContador, asyncHandler(pasarCaso));
 
 // PATCH /casos/:id/prioridad — El administrador cambia la prioridad del caso de cualquier contador y lo avisa
 router.patch('/:id/prioridad', authenticateToken, requireAdmin, asyncHandler(cambiarPrioridadComoAdmin));

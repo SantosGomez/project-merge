@@ -16,6 +16,7 @@ import {
   listarContadoresQueMeTienenComoAuxiliar as listarContadoresServicio,
   listarDisponibles as listarDisponiblesServicio,
   crearCasoComoAuxiliar as crearCasoComoAuxiliarServicio,
+  crearCasoParaMiAuxiliar as crearCasoParaMiAuxiliarServicio,
 } from '../services/auxiliarService.js'
 import { QUE_HACER } from '../utils/mensajes.js'
 
@@ -26,6 +27,7 @@ const servicioPorDefecto = {
   listarContadoresQueMeTienenComoAuxiliar: listarContadoresServicio,
   listarDisponibles: listarDisponiblesServicio,
   crearCasoComoAuxiliar: crearCasoComoAuxiliarServicio,
+  crearCasoParaMiAuxiliar: crearCasoParaMiAuxiliarServicio,
 }
 
 // Si el servicio entrega un error normalizado se conserva; si no, se construye
@@ -295,6 +297,41 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
           }
 
           this.error = normalizarErrorDeGuardado(error, 'la creación del caso')
+          return { ok: false, error: this.error }
+        } finally {
+          if (versionActual === version) {
+            this.guardando = false
+          }
+        }
+      },
+
+      /**
+       * El contador registra un caso nuevo a nombre de uno de sus auxiliares.
+       * @param {number} auxiliarId - Id del auxiliar que recibe el caso.
+       * @param {Object} datos - Datos del caso { cliente, prioridad, importante, fecha_inicio, fecha_vencimiento, descripcion, observaciones }.
+       * @returns {Promise<{ ok: boolean, caso?: Object, error?: Object }>}
+       */
+      async crearCasoParaMiAuxiliar(auxiliarId, datos) {
+        const versionActual = ++version
+
+        this.guardando = true
+        this.error = null
+
+        try {
+          const resultado = await servicio.crearCasoParaMiAuxiliar(auxiliarId, datos)
+
+          if (versionActual !== version) {
+            return { ok: false, descartado: true }
+          }
+
+          this.guardando = false
+          return { ok: true, caso: resultado.caso }
+        } catch (error) {
+          if (versionActual !== version) {
+            return { ok: false, descartado: true }
+          }
+
+          this.error = normalizarErrorDeGuardado(error, 'el registro del caso para tu auxiliar')
           return { ok: false, error: this.error }
         } finally {
           if (versionActual === version) {

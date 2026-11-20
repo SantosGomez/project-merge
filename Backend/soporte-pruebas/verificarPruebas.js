@@ -31,6 +31,8 @@ const MINIMOS = {
   'authMiddleware.test.js': 13,
   'authRoutes.test.js': 9,
   'auxiliarCreaCaso.test.js': 4,
+  'contadorPasaCasoAEquipo.test.js': 12,
+  'contadorRegistraCasoParaAuxiliar.test.js': 6,
   'auxiliarEditaCaso.test.js': 2,
   'auxiliarModel.test.js': 9,
   'auxiliarRoutes.test.js': 14,

@@ -201,6 +201,33 @@
         <q-tooltip>Abre la ficha del caso en modo consulta. Desde ahí no puedes modificar nada.</q-tooltip>
       </q-btn>
       <q-btn
+        v-if="destinosPasar.length > 0"
+        flat
+        no-caps
+        color="dg-acento"
+        icon="swap_horiz"
+        label="Pasar a…"
+        aria-haspopup="menu"
+        :aria-label="`Pasar el caso de ${caso.client} a otra persona de tu equipo`"
+        :disable="deshabilitado"
+        class="control-touch boton-presionable"
+      >
+        <q-tooltip>Pasa este caso a otra persona de tu equipo</q-tooltip>
+        <q-menu transition-show="jump-down" transition-hide="jump-up" :transition-duration="180">
+          <q-list dense style="min-width: 200px">
+            <q-item
+              v-for="destino in destinosPasar"
+              :key="destino.id"
+              v-close-popup
+              clickable
+              @click="emit('pasar', destino)"
+            >
+              <q-item-section>{{ destino.esPropio ? 'A mí' : destino.nombre }}</q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
+      <q-btn
         v-if="!soloCambiaEstado"
         outline
         no-caps
@@ -224,6 +251,7 @@ import { computed } from 'vue'
 
 import PriorityTag from './PriorityTag.vue'
 import { PRIORITIES, PRIORITY_LABELS, STATUSES, STATUS_LABELS } from '../utils/constants.js'
+import { destinosParaPasar } from '../utils/pasarCaso.js'
 
 /*
  * Un caso de «Mis casos» como QItem: estrella de importante, datos del caso y acciones rápidas
@@ -268,6 +296,11 @@ const props = defineProps({
     type: [String, Number],
     default: null,
   },
+  /** Equipo del contador (`armarEquipoParaPasar`); vacío si no tiene auxiliares: no se ofrece «Pasar a…». */
+  equipoParaPasar: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 /* Caso de otro integrante del equipo: de un auxiliar tuyo o de un contador al que apoyas. */
@@ -284,6 +317,13 @@ const esCasoDeOtroContador = computed(
  * el estado; en los de tus auxiliares la edición es completa (estrella y «Editar»).
  */
 const soloCambiaEstado = computed(() => props.caso.soloEstado === true)
+
+/* «Pasar a…» solo lo ve el contador con equipo, nunca en la vista del administrador ni en casos de solo estado. */
+const destinosPasar = computed(() =>
+  props.soloLectura || soloCambiaEstado.value
+    ? []
+    : destinosParaPasar(props.equipoParaPasar, props.caso.counterId),
+)
 
 const ayudaDuenio = computed(() => {
   if (props.soloLectura) return 'Caso de un auxiliar de este contador: el contador lo marcó como importante.'
@@ -314,7 +354,14 @@ const ayudaEstado = computed(() =>
 /* El verde de Finalizado aplica al contador y a la vista de consulta del administrador. */
 const esFinalizado = computed(() => props.caso.status === 'finalizado')
 
-const emit = defineEmits(['alternar-importante', 'cambiar-estado', 'editar', 'cambiar-prioridad', 'ver'])
+const emit = defineEmits([
+  'alternar-importante',
+  'cambiar-estado',
+  'editar',
+  'cambiar-prioridad',
+  'ver',
+  'pasar',
+])
 
 const opcionesEstado = STATUSES.map((s) => ({ label: STATUS_LABELS[s], value: s }))
 const opcionesPrioridad = PRIORITIES.map((p) => ({ label: PRIORITY_LABELS[p], value: p }))

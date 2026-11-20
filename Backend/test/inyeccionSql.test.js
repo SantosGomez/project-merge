@@ -49,7 +49,7 @@ const PAYLOADS_TIPADOS = [
 const CAMPOS = [
   'cliente', 'estado', 'prioridad', 'fecha_inicio', 'fecha_vencimiento', 'descripcion', 'observaciones',
   'observacion', 'importante', 'nombre', 'correo', 'password', 'rol', 'rfc', 'activo', 'regla_vencimiento',
-  'dia_del_mes', 'titulo', 'inicio', 'fin', 'participantes', 'privada', 'organizador_id', 'en_nombre_de', 'respuesta', 'cobrable', 'agregar', 'quitar', 'contadores', 'contador_id', 'no_expediente', 'dependencia',
+  'dia_del_mes', 'titulo', 'inicio', 'fin', 'participantes', 'privada', 'organizador_id', 'en_nombre_de', 'respuesta', 'cobrable', 'agregar', 'quitar', 'contadores', 'contador_id', 'auxiliar_id', 'responsable_id', 'no_expediente', 'dependencia',
   'tipo_auditoria', 'estatal', 'evento', 'fase_id', 'fecha', 'hecha', 'texto', 'cliente_id', 'tipo_id', 'mes',
   'minutos', 'paso', 'jornada_base_minutos', 'entrada', 'salida', 'descanso_inicio', 'descanso_fin',
 ];
@@ -116,8 +116,10 @@ const ENDPOINTS = [
   ['PATCH', '/usuarios/{P}', 'sistema', true],
   ['GET', '/casos/mis-casos', 'contador', false],
   ['POST', '/casos', 'contador', true],
+  ['POST', '/casos/para-mi-auxiliar', 'contador', true],
   ['PATCH', '/casos/{P}', 'contador', true],
   ['PATCH', '/casos/{P}/prioridad', 'administrador', true],
+  ['PATCH', '/casos/{P}/responsable', 'contador', true],
   ['GET', '/contadores', 'administrador', false],
   ['GET', '/contadores/resumen', 'administrador', false],
   ['GET', '/contadores/casos-importantes', 'administrador', false],

@@ -4,7 +4,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 
 ## Estado actual
 
-- **Ramas (2026-11-18):** `main` = `experimento` (8c4b1be), ambas en `origin`, con «Mis actividades» (10–17), el calendario del administrador (18–19), la edición de cuentas y el módulo «Mi Calendario» (20–33).
+- **Ramas (2026-11-20):** `main` = `experimento` (9988877, rebanadas 34 a 36), ambas en `origin`, con «Mis actividades» (10–17), el calendario del administrador (18–19), la edición de cuentas y el módulo «Mi Calendario» (20–33).
 - **Docker = `main` 8911a26 (edición de cuentas).** Faltan «Mis actividades» y el calendario. Antes de publicar: respaldo; el seed crea las tablas de actividades (en producción no existen); validar la regla fiscal con los contadores; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`).
 - **Publicar:** respaldo dentro del contenedor (`mariadb-dump --single-transaction --routines --triggers --events > /tmp/...` + `docker compose cp`; la tubería de PowerShell daña acentos; los `.sql` nunca se versionan). Etiquetar las imágenes anteriores (última: `antes-editar-usuarios-2026-11-17`). `docker compose build` desde PowerShell (en Git Bash `API_URL=/api` se rompe). `up -d --no-deps backend frontend` para que el túnel conserve su URL.
 - **Túnel cloudflared:** la URL cambia en cada reinicio (`docker compose logs tunnel`). Agregarla a `CORS_ORIGENES` y `up -d backend`; si no, el login da 403.
@@ -16,6 +16,8 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
 - **«Mis actividades» (10–17):** «Mi trabajo» con pestañas Mis casos | Mis actividades. Clientes y tipos propios de cada quien; la jornada solo la ve cada quien; informes sin tarifa. El vencimiento se calcula en `utils/vencimientoActividad.js` (festivos LFT). El cronómetro usa la hora del servidor y `FOR UPDATE`.
 - **Calendario del administrador (18–19):** franja «Requiere atención» (solo casos importantes), dos columnas desde 1280 px, modo día o rango (`?dia=`/`?rango=`). Endpoints `GET /contadores/casos-importantes` y `GET /auditorias/calendario` (`GET /auditorias` no trae los eventos). «Vence pronto» va en amarillo (`dg-vence-pronto`).
 - **Editar cuentas:** `PATCH /usuarios/:id` con `NewUserDialog.vue` (prop `cuenta`). Nunca cambia la contraseña; si cambia el rol, revoca las sesiones. Sin cubrir: auditorías de un contador que cambia de rol.
+- **Contador reparte casos a su equipo (37–38, 2026-11-20, sin commit):** `POST /casos/para-mi-auxiliar` (caso nuevo; acepta «Importante») y `PATCH /casos/:id/responsable` (pasar un caso existente entre el contador y sus auxiliares; UPDATE condicional con 409 si algo cambió; avisos a quien recibe y a quien pierde). Solo rol contador; el auxiliar no pasa casos. UI: selector «Registrar caso para» y «Pasar a…» en «Mis casos» y «Mi equipo» (`CaseFormDialog` prop `auxiliarDestino`, `utils/pasarCaso.js`).
+- **Trampas de prueba:** `limpiarDatosDePrueba` borra todo aviso que mencione `zz_test_`, así que no se prueba en navegador mientras corre el backend. Con el panel del navegador oculto, las animaciones van a ~1 cuadro/s: usar `ref` y esperar 4–5 s.
 - **«Mi perfil»:** «Cambiar contraseña» está oculto (`CAMBIO_CONTRASENA_HABILITADO = false`); el backend sigue ahí.
 
 - **Módulo de calendario (desde 2026-11-18):** rebanadas:
@@ -54,7 +56,7 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
   - Pendientes:
     - opcionales de la revisión sin aplicar (en cada `docs/rebanadas/29` a `33`), entre ellos probar en el navegador la agenda de la recepcionista con los bloques nuevos;
     - formatear `MaquetaLayout.vue` y `router/index.js` (ya fallaban `prettier --check`);
-    - rebanadas 35 y 36 (2026-11-20) aprobadas y probadas en navegador, sin commit.
+    - rebanadas 35 y 36 (2026-11-20) aprobadas, probadas en navegador y subidas (9988877).
 
   Decisiones:
   - Calendario propio (Google queda aparte), solo juntas internas y privacidad por junta.
