@@ -104,7 +104,8 @@ const numeroDe = (dia) => Number(dia.slice(8, 10))
 
 const etiquetaAccesible = (dia) => {
   const marca = props.marcas[dia]
-  return marca ? `${tituloDeDia(dia)} — ${TEXTOS_DE_MARCA[marca]}` : tituloDeDia(dia)
+  const titulo = `${tituloDeDia(dia)}${dia === props.hoy ? ' (hoy)' : ''}`
+  return marca ? `${titulo} — ${TEXTOS_DE_MARCA[marca]}` : titulo
 }
 
 const mesDeLaTira = computed(() => {
@@ -212,13 +213,13 @@ watch(base, alinearSemana)
   background: var(--dg-acento);
 }
 
-.semana__dia--hoy {
-  border-color: var(--dg-acento);
-}
-
 .semana__dia--elegido {
   border-color: var(--dg-acento);
   background: var(--dg-fondo-seleccion);
+}
+
+.semana__dia--hoy {
+  border-color: var(--dg-acento);
 }
 
 .semana__dia:focus-visible {

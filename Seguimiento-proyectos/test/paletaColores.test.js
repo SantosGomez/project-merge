@@ -111,6 +111,11 @@ for (const texto of ['texto-claro', 'texto-claro-tenue']) {
   })
 }
 
+test('«superficie» (blanco) sobre el azul marino ($primary) de la celda de hoy tiene contraste de al menos 4.5:1', () => {
+  const razon = contraste(paleta().superficie, primario())
+  assert.ok(razon >= 4.5, `contraste ${razon.toFixed(2)}:1`)
+})
+
 for (const [texto, fondo] of PARES_DE_TEXTO) {
   test(`«${texto}» sobre «${fondo}» tiene contraste de al menos 4.5:1`, () => {
     const p = paleta()

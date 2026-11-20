@@ -156,6 +156,7 @@
         @click-time="alElegirHueco"
       >
         <template #head-day-event="{ scope }">
+          <span v-if="scope.timestamp.current" class="sr-only">Hoy</span>
           <div
             v-if="hayEtiquetasArriba(scope.timestamp.date)"
             class="calendario-juntas__vencimientos"
@@ -523,6 +524,46 @@ const alElegirHueco = ({ scope }) => {
 
 .calendario-juntas__calendario--semana {
   min-width: 640px;
+}
+
+/* Semana y Día de escritorio: la cabecera de hoy va pintada completa, sin círculo en el número. */
+.calendario-juntas :deep(.q-calendar-day__head--day.q-current-day) {
+  background: var(--q-primary);
+  color: var(--dg-superficie);
+}
+
+.calendario-juntas :deep(.q-calendar-day__head--day.q-current-day .q-calendar__button) {
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+.calendario-juntas
+  :deep(.q-calendar-day__head--day.q-current-day .q-calendar__button:focus-visible) {
+  outline: 3px solid var(--dg-superficie) !important;
+  outline-offset: 2px;
+}
+
+/*
+ * Celular, Semana y Día: el día de hoy de la tira va pintado completo (solo en «Mi Calendario»; el calendario
+ * del administrador usa la misma tira y no cambia). Si además es el día elegido, un aro interior blanco lo distingue.
+ */
+.calendario-juntas__tira :deep(.semana__dia--hoy) {
+  border-color: var(--q-primary);
+  background: var(--q-primary);
+  color: var(--dg-superficie);
+}
+
+.calendario-juntas__tira :deep(.semana__dia--hoy .semana__nombre) {
+  color: var(--dg-superficie);
+}
+
+.calendario-juntas__tira :deep(.semana__dia--hoy .semana__marca--junta) {
+  background: var(--dg-superficie);
+}
+
+.calendario-juntas__tira :deep(.semana__dia--hoy.semana__dia--elegido) {
+  box-shadow: inset 0 0 0 2px var(--dg-superficie);
 }
 
 /* Capas de QCalendar que usan blanco y negro fijos: se llevan a la paleta. */
