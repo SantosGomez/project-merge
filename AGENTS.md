@@ -94,6 +94,11 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - Datos de prueba: las cuentas y registros de prueba usan el prefijo `zz_test_`; al terminar deben quedar 0 filas `zz_test_%`.
 - Navegador: `backend-experimento-3011` + `frontend-experimento-9012` de `.claude/launch.json`; cerrar los servidores que se abran.
 - El reviewer solo corre las puertas de pruebas y lectura; nunca modifica archivos.
+- Backend: correr `node --test --test-concurrency=1` y por archivo (todo junto se cuelga; en paralelo falla al azar por la BD compartida). Cada archivo de `Backend/test` va en `MINIMOS`. Una ruta nueva va en la tabla de `autorizacionMatriz.test.js` (si no, la prueba falla).
+- `lint:check` no revisa formato: correr también `npx prettier --check`.
+- Nunca `DROP`/`ALTER` destructivo en pruebas. Borrar las `sesiones` antes que la cuenta. `limpiarDatosDePrueba` borra todo aviso que mencione `zz_test_`: no probar en navegador mientras corren las pruebas del backend.
+- Si una prueba pasa sin el cambio, no prueba nada. Nunca esquivar una prueba de texto moviendo el texto a otro archivo.
+- Con el panel del navegador oculto, `requestAnimationFrame` va a ~1 cuadro/s y los clics y teclas pueden fallar: mostrar el panel antes de probar. El 3011 puede figurar «running» estando caído. En Playwright, esperar 3 s antes de capturar.
 
 ## Convenciones
 
@@ -129,7 +134,28 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - «Mi equipo» es una pestaña de «Mi resumen» (`ContadorDashboardPage.vue`, `?tab=equipo`), no una vista ni un ítem de menú: solo la ve el contador que tiene al menos un auxiliar. La pinta `components/MiEquipo.vue` (tarjetas del equipo con `ResumenEquipo`, una fila por auxiliar con sus conteos y el detalle con `CasoItem` y todas sus acciones). Las cifras se calculan en el frontend con `resumenDeAuxiliares` (`utils/resumenMisCasos.js`) sobre los casos del store, que ya traen los de los auxiliares; no hay endpoint nuevo. Cuenta todos los casos del auxiliar, no solo los importantes.
 - «Mi Calendario» (ruta `/juntas`, `JuntasPage.vue`; se llamaba «Juntas») lo usan administrador, contador, auxiliar y recepcionista; el usuario de sistema no. Una junta puede no tener invitados (bloquea el horario). Si hay administradores invitados, la junta queda «Por confirmar» hasta que respondan; un rechazo la cancela. El estado se calcula (`estadoJunta.js`), no se guarda. Un tercero nunca recibe id, descripción ni invitados de una junta ajena; si es privada, solo «Ocupado».
 - La recepcionista funciona como secretaria solo de los administradores de la variable `ADMINISTRADORES_DE_RECEPCION` (`config/recepcion.js`; producción `7947`, local `1`; sin definir: todos fuera de producción y nadie en producción). Con ellos: crea juntas a nombre de un administrador (el organizador es él), edita y borra las que organiza un administrador, responde por él a sus invitaciones y ve completas sus juntas, incluidas las privadas. Fuera de eso, solo consulta el directorio.
+- Roles: el seed fija el ENUM `usuarios.rol` en cada arranque y MariaDB no está en modo estricto. Un rol agregado a mano que no esté en el seed queda en `''` sin error: agregarlo siempre en `seed.js` (CREATE y ALTER).
+- Pasar casos dentro del equipo: solo el contador (`POST /casos/para-mi-auxiliar` para un caso nuevo, que acepta «Importante»; `PATCH /casos/:id/responsable` para pasar uno existente entre el contador y sus auxiliares, UPDATE condicional con 409 si algo cambió y aviso a quien recibe y a quien pierde). El auxiliar no pasa casos.
+- «Mis actividades» solo para las cuentas de `USUARIOS_CON_ACTIVIDADES` (`config/modulos.js`, se lee en cada petición; ids separados por comas, `*` = todos, vacío = nadie, sin definir = abierto en desarrollo y cerrado en producción). `requireModuloActividades` va en todas sus rutas (403 «Módulo no habilitado»); login y `/auth/perfil` traen `actividades_habilitadas`. `soporte-pruebas/http.js` fija `*`.
+- «Mi Calendario»: las reglas de acceso viven solo en `utils/accesoJuntas.js` y `JuntaModel` recibe al consultante como `{id, rol}`. dotenv carga `Backend/.env` en las pruebas: la prueba que necesite a todos los administradores debe quitar `ADMINISTRADORES_DE_RECEPCION`.
+- «Vence pronto» va en amarillo (`dg-vence-pronto`).
+- «Mi perfil»: «Cambiar contraseña» está oculto (`CAMBIO_CONTRASENA_HABILITADO = false`); el backend sigue ahí.
+- Seguridad: Apache de XAMPP sirve todo `htdocs` en la LAN; no dejar secretos ni respaldos dentro del proyecto y no quitar el `.htaccess` de la raíz. Rotar claves con `Backend/src/utils/rotarSecretos.js`. `db.js` solo acepta parámetros primitivos (para `IN`/`VALUES` armar los `?` a mano). Registrar con `registrar`/`registrarError` de `utils/bitacoraSeguridad.js`, no con `console.error`. Con la cookie `sp_sesion`, las escrituras exigen `X-Requested-With: SeguimientoProyectos`; Bearer sigue válido. Contraseñas ≥12 y no comunes (`validarPasswordNueva`).
 - <Limites: que no tocar, que no agregar ni modificar sin preguntar.>
+
+## Trampas del entorno
+
+- Shell: PowerShell no admite `&&`/`||`. En Git Bash, `MSYS_NO_PATHCONV=1`. Varios `.vue` usan CRLF y `sed` falla con varias líneas o con `\\`: usar Edit. No usar `git stash` (cambia LF/CRLF y rompe `prettier --check`).
+- Quasar: el fondo de `q-dialog` responde a `mousedown`; `scoped` no alcanza los menús montados en `body`; con la prop `padding` de `q-btn`, el `min-height` necesita `!important` (igual el foco de los `q-btn` del calendario frente a `app.scss`); `sticky` no sirve dentro de `q-tab-panels`; `q-avatar` se ajusta con `size`; `tabular-nums` solo va en cifras.
+- Si `npm install` da EBUSY, cerrar el servidor de desarrollo. Si una tabla de XAMPP da «doesn't exist in engine», no borrar tablas sueltas.
+- `session.id` es texto: comparar con `Number(...)`.
+
+## Despliegue (solo cuando se pida)
+
+- Bases: producción en Docker (puerto 3307), solo en una publicación pedida; pruebas en XAMPP (3306), compartida con el backend de desarrollo. Guía completa en `docs/seguridad-despliegue.md`.
+- Respaldo dentro del contenedor (`mariadb-dump --single-transaction --routines --triggers --events > /tmp/...` + `docker compose cp`); la tubería de PowerShell daña acentos; los `.sql` nunca se versionan. Etiquetar las imágenes anteriores antes de reconstruir.
+- `docker compose build` desde PowerShell (en Git Bash `API_URL=/api` se rompe) y `up -d --no-deps backend frontend` para que el túnel conserve su URL.
+- Túnel cloudflared: la URL cambia al reiniciarlo o recrearlo (`docker compose logs tunnel`). Agregarla a `CORS_ORIGENES` y hacer `up -d backend`; si no, el login da 403.
 
 ## Forma de trabajar
 
@@ -142,6 +168,8 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - no agregar inputs o campos a formularios si no estan en la tabla donde se guardara informacion, en caso de necesitar mas campos proponer un cambio a la tabla y preguntar si se procede a modificar.
 - versionar proyecto: al pedirte hacer "Commit" primero hacer un git add de los archivos modificados, despues hacer el git commit con un mensaje descriptivo del o los cambios realizados y por ultimo hacer un git push. No hagas push sin antes preguntar, ya que puede que no tenga tiempo de revisar los cambios.
 - al terminar cada tarea, siempre actualizar `MEMORY.md` con los cambios realizados.
+- Proceso: rebanadas verticales con TDD (`docs/flujo-agentes.md`); cada una en `docs/rebanadas/NN-*.md` con su reporte y opcionales. `implementer` con sonnet; `reviewer` (opus) en riesgo medio o alto y `reviewer-ligero` en bajo. Solo el orquestador edita `MEMORY.md`.
+- A los subagentes se les pide que no dejen procesos en segundo plano, que no toquen `MEMORY.md` y que usen solo cuentas `zz_test_`.
 
 ## Memoria
 
