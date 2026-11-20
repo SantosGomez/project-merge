@@ -20,7 +20,7 @@ describe('Tiempo real en las pantallas', () => {
 
   it('la campanita se actualiza al instante con «aviso-nuevo» y al reconectarse; el respaldo es cada 5 minutos', () => {
     const campana = leer('../src/components/CampanaAvisos.vue')
-    assert.match(campana, /eventos\.escuchar\('aviso-nuevo', cargar\)/)
+    assert.match(campana, /eventos\.escuchar\('aviso-nuevo', cargarYNotificar\)/)
     assert.match(campana, /eventos\.escuchar\('reconectado', cargar\)/)
     assert.match(campana, /setInterval\(cargar, 5 \* 60 \* 1000\)/)
     assert.doesNotMatch(campana, /setInterval\(cargar, 60 \* 1000\)/)

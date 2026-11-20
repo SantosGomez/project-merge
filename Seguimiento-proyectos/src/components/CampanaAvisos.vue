@@ -30,6 +30,28 @@
     >
       <div class="campana-avisos__cabecera">Avisos</div>
       <q-separator />
+      <div v-if="puedeActivarNotificaciones" class="campana-avisos__activar">
+        <q-btn
+          flat
+          no-caps
+          dense
+          color="primary"
+          icon="notifications_active"
+          label="Activar avisos en este equipo"
+          class="control-touch boton-presionable"
+          :loading="activando"
+          @click="activarNotificaciones"
+        >
+          <q-tooltip
+            >Recibe una notificación de Windows cuando llegue un aviso y no estés viendo la
+            app.</q-tooltip
+          >
+        </q-btn>
+        <p v-if="mensajeActivacion" class="campana-avisos__bloqueo" role="alert">
+          {{ mensajeActivacion }}
+        </p>
+      </div>
+      <q-separator v-if="puedeActivarNotificaciones" />
       <p v-if="error" class="campana-avisos__vacio" role="alert">{{ error }}</p>
       <p v-else-if="avisos.length === 0" class="campana-avisos__vacio">No tienes avisos.</p>
       <q-list v-else separator class="campana-avisos__lista">
@@ -68,13 +90,15 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
 import { eventos } from '../services/eventosService.js'
 import { getNotificaciones, marcarLeidas } from '../services/notificacionService.js'
 import { useSessionStore } from '../stores/session.js'
 import { destinoDeAviso } from '../utils/avisos.js'
+import { crearNotificadorNavegador, mensajeDeActivacion } from '../utils/notificacionesNavegador.js'
 
 /*
  * Campanita del contador: muestra cuántos avisos no ha leído (p. ej. el administrador cambió
@@ -92,23 +116,63 @@ const session = useSessionStore()
 const router = useRouter()
 const route = useRoute()
 
+const $q = useQuasar()
+
 const avisos = ref([])
 const noLeidas = ref(0)
 const error = ref('')
 
-const cargar = async () => {
+/** Lleva al caso o junta del aviso; los avisos sin destino no navegan. */
+const irAlCaso = (aviso) => {
+  const destino = destinoDeAviso(aviso, session.rol)
+  if (destino) router.push(destino)
+}
+
+// Notificaciones del sistema (por equipo): al tocar una, se abre el mismo destino que en la campana.
+const notificador = crearNotificadorNavegador({ alHacerClic: irAlCaso })
+const notificacionesActivas = ref(notificador.activas())
+// Qué pasó al pedir el permiso (bloqueado, ventana cerrada o el navegador no contestó); vacío si salió bien.
+const mensajeActivacion = ref('')
+const activando = ref(false)
+const puedeActivarNotificaciones = computed(
+  () => notificador.soportado && !notificacionesActivas.value,
+)
+
+const activarNotificaciones = async () => {
+  activando.value = true
+  mensajeActivacion.value = ''
+  try {
+    const resultado = await notificador.activar()
+    notificacionesActivas.value = notificador.activas()
+    mensajeActivacion.value = mensajeDeActivacion(resultado)
+    if (resultado === 'granted') {
+      $q.notify({ type: 'positive', message: 'Listo: te avisaremos aunque no estés viendo la app' })
+    }
+  } finally {
+    activando.value = false
+  }
+}
+
+/** Recarga la campana; `notificar` solo es true cuando el servidor avisa de un aviso nuevo. */
+const cargar = async (notificar = false) => {
   try {
     const resultado = await getNotificaciones()
     avisos.value = resultado.avisos
     noLeidas.value = resultado.noLeidas
     error.value = ''
+    if (notificar === true) notificador.notificarNuevos(resultado.avisos)
+    else notificador.registrarVistos(resultado.avisos)
   } catch (fallo) {
     error.value = fallo?.mensaje ?? 'No se pudieron cargar los avisos.'
   }
 }
 
+const cargarYNotificar = () => cargar(true)
+
 /** Al abrir la lista se ven los avisos nuevos y se marcan como leídos en el servidor. */
 const alAbrir = async () => {
+  // La preferencia pudo cambiarse en «Mi perfil» desde la última vez.
+  notificacionesActivas.value = notificador.activas()
   await cargar()
   if (noLeidas.value === 0) return
   try {
@@ -119,15 +183,9 @@ const alAbrir = async () => {
   }
 }
 
-/** Lleva al caso del aviso; los avisos sin caso no navegan. */
-const irAlCaso = (aviso) => {
-  const destino = destinoDeAviso(aviso, session.rol)
-  if (destino) router.push(destino)
-}
-
 let intervalo = null
 const dejarDeEscuchar = [
-  eventos.escuchar('aviso-nuevo', cargar),
+  eventos.escuchar('aviso-nuevo', cargarYNotificar),
   // Si la conexión se cayó, pudo perderse algún aviso
   eventos.escuchar('reconectado', cargar),
 ]
@@ -164,6 +222,18 @@ watch(() => route.path, cargar)
   padding: 10px 16px;
   color: var(--dg-texto);
   font-weight: 600;
+}
+
+.campana-avisos__activar {
+  padding: 8px 12px;
+}
+
+.campana-avisos__bloqueo {
+  margin: 8px 0 0;
+  max-width: min(360px, 90vw);
+  color: var(--dg-texto-secundario);
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .campana-avisos__vacio {

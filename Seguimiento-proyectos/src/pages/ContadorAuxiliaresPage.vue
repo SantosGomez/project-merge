@@ -52,6 +52,19 @@
             </q-item>
           </q-list>
 
+          <div v-if="notificador.soportado" class="perfil-avisos">
+            <q-toggle
+              :model-value="avisosActivos"
+              :disable="avisosBloqueados"
+              label="Avisos en este equipo"
+              class="control-touch"
+              @update:model-value="cambiarAvisos"
+            >
+              <q-tooltip>Recibe una notificación de Windows cuando llegue un aviso y no estés viendo la app.</q-tooltip>
+            </q-toggle>
+            <p class="perfil-avisos__ayuda">{{ textoAyudaAvisos }}</p>
+          </div>
+
           <q-btn
             v-if="CAMBIO_CONTRASENA_HABILITADO"
             outline
@@ -311,6 +324,7 @@ import { carteraDeClientes } from '../utils/carteraClientes.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { filtrarContadores } from '../utils/filtrosCasos.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
+import { crearNotificadorNavegador, mensajeDeActivacion } from '../utils/notificacionesNavegador.js'
 import { obtenerPerfil } from '../services/authService.js'
 import { useAuxiliaresStore } from '../stores/auxiliares.js'
 import { useCasesStore } from '../stores/cases.js'
@@ -327,6 +341,36 @@ const dialogoContrasenaAbierto = ref(false)
 // «Cambiar contraseña» está desactivado de momento (decisión del usuario, 2026-11-11).
 // Para volver a mostrar el botón y el diálogo basta con poner true.
 const CAMBIO_CONTRASENA_HABILITADO = false
+
+// «Avisos en este equipo»: la preferencia es por equipo (la guarda el notificador en localStorage).
+const notificador = crearNotificadorNavegador()
+const avisosActivos = ref(notificador.activas())
+const avisosBloqueados = ref(notificador.permiso() === 'denied')
+// Último resultado al pedir el permiso: si la ventana se cerró o el navegador no contestó, se explica aquí.
+const resultadoActivacion = ref('')
+const textoAyudaAvisos = computed(() => {
+  if (avisosBloqueados.value) return mensajeDeActivacion('denied')
+  return (
+    mensajeDeActivacion(resultadoActivacion.value) ||
+    'Recibe una notificación de Windows cuando llegue un aviso y no estés viendo la app. Al apagarlo dejarás de recibirlas en este equipo, pero el permiso del navegador sigue concedido: para retirarlo usa la configuración del sitio (candado junto a la dirección).'
+  )
+})
+
+const cambiarAvisos = async (encender) => {
+  if (!encender) {
+    notificador.desactivar()
+    avisosActivos.value = false
+    return
+  }
+  resultadoActivacion.value = ''
+  const resultado = await notificador.activar()
+  avisosActivos.value = notificador.activas()
+  avisosBloqueados.value = resultado === 'denied'
+  resultadoActivacion.value = resultado
+  if (resultado === 'granted') {
+    $q.notify({ type: 'positive', message: 'Listo: te avisaremos aunque no estés viendo la app' })
+  }
+}
 
 // «Mi cuenta»: datos de la cuenta de la sesión. Si fallan, solo esa sección muestra el error.
 const perfil = ref(null)
@@ -533,6 +577,17 @@ onMounted(() => {
 .perfil-cuenta__rol {
   color: var(--dg-texto-secundario);
   font-size: 0.85rem;
+}
+
+.perfil-avisos {
+  margin-top: 8px;
+}
+
+.perfil-avisos__ayuda {
+  margin: 4px 0 0;
+  color: var(--dg-texto-secundario);
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .perfil-cuenta__cambiar-contrasena {
