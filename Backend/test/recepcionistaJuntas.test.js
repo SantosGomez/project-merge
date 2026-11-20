@@ -386,15 +386,32 @@ describe('la recepcionista como secretaria del administrador', () => {
         [
           `${cuentas.contador.nombre} te invitó a «${junta.titulo}» el 12-03-2035 a las 09:00`,
           `${cuentas.recepcion.nombre} aceptó por ti «${junta.titulo}»`,
+          `La junta «${junta.titulo}» quedó confirmada`,
         ]
       );
       assert.strictEqual(delAdmin[1].junta_id, junta.id);
+      assert.strictEqual(delAdmin[2].junta_id, junta.id);
       assert.deepStrictEqual(await mensajesDe('recepcion', junta.titulo), []);
       await responderPor('recepcion', junta, 'rechazada', cuentas.admin.id);
-      assert.strictEqual(
-        (await mensajesDe('admin', junta.titulo)).at(-1),
-        `${cuentas.recepcion.nombre} rechazó por ti «${junta.titulo}»`
-      );
+      assert.deepStrictEqual((await mensajesDe('admin', junta.titulo)).slice(-2), [
+        `${cuentas.recepcion.nombre} rechazó por ti «${junta.titulo}»`,
+        `La junta «${junta.titulo}» se canceló`,
+      ]);
+    });
+
+    test('si la respuesta no cambia el estado, el administrador solo recibe el aviso «por ti»', async () => {
+      const junta = await crear('contador', { participantes: [cuentas.admin.id, cuentas.admin2.id] });
+      const r = await responderPor('recepcion', junta, 'aceptada', cuentas.admin.id);
+      assert.strictEqual(r.body.junta.estado, 'por_confirmar');
+      assert.deepStrictEqual((await mensajesDe('admin', junta.titulo)).slice(1), [
+        `${cuentas.recepcion.nombre} aceptó por ti «${junta.titulo}»`,
+      ]);
+    });
+
+    test('cuando el administrador responde él mismo no recibe aviso de su propia respuesta ni del estado', async () => {
+      const junta = await crear('contador', { participantes: [cuentas.admin.id] });
+      await api('admin', 'PATCH', `/juntas/${junta.id}/respuesta`, { respuesta: 'aceptada' });
+      assert.strictEqual((await mensajesDe('admin', junta.titulo)).length, 1, 'solo la invitación');
     });
 
     test('repetir la misma respuesta no vuelve a avisar', async () => {

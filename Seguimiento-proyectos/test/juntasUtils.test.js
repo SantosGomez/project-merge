@@ -7,6 +7,7 @@ import { describe, it } from 'node:test'
 
 import {
   administraAAdministrador,
+  altaDesdeDirectorio,
   agendaInicialDeRecepcion,
   armarFechaHora,
   campoDeErrorJunta,
@@ -31,6 +32,7 @@ import {
   notaDeRecorte,
   organizadorDeAlta,
   parsearFechaISO,
+  puedeAgendarDesdeDirectorio,
   rangoVisible,
   segmentoDelDia,
   semanaMuestraFinDeSemana,
@@ -944,5 +946,112 @@ describe('marcasDeJunta en la agenda de otra persona', () => {
     }
     assert.deepEqual(marcasDeJunta(junta, 3, '7'), ['Por confirmar', 'Responder por Ana Pérez'])
     assert.deepEqual(marcasDeJunta({ ocupado: true }, 3, '7'), [])
+  })
+})
+
+describe('agendar junta desde el directorio (rebanada 36)', () => {
+  const contador = { id: 5, nombre: 'Carlos Ruiz', rolClave: 'contador' }
+  const sistema = { id: 9, nombre: 'Sistema', rolClave: 'usuarios_de_sistema' }
+  const adminAtendido = { id: 1, nombre: 'Ana Pérez', rolClave: 'administrador' }
+  const otroAdmin = { id: 2, nombre: 'Luis Soto', rolClave: 'administrador' }
+
+  describe('puedeAgendarDesdeDirectorio', () => {
+    it('el administrador y la recepcionista lo ven en las cuentas que usan el calendario', () => {
+      for (const rolClave of ['administrador', 'contador', 'auxiliar', 'recepcionista']) {
+        assert.equal(puedeAgendarDesdeDirectorio('administrador', { id: 5, rolClave }, 1), true)
+        assert.equal(puedeAgendarDesdeDirectorio('recepcionista', { id: 5, rolClave }, 8), true)
+      }
+    })
+
+    it('los demás roles no lo ven', () => {
+      for (const rol of ['contador', 'auxiliar', 'usuarios_de_sistema', null]) {
+        assert.equal(puedeAgendarDesdeDirectorio(rol, contador, 1), false)
+      }
+    })
+
+    it('no sale en la fila del usuario de sistema ni en la de quien tiene la sesión', () => {
+      assert.equal(puedeAgendarDesdeDirectorio('administrador', sistema, 1), false)
+      assert.equal(puedeAgendarDesdeDirectorio('administrador', contador, '5'), false)
+      assert.equal(puedeAgendarDesdeDirectorio('administrador', contador, 5), false)
+    })
+  })
+
+  describe('altaDesdeDirectorio', () => {
+    it('el administrador organiza y la persona de la fila va invitada', () => {
+      assert.deepEqual(altaDesdeDirectorio('administrador', contador, []), [
+        {
+          organizador: null,
+          invitadoInicial: { id: 5, nombre: 'Carlos Ruiz', rol: 'contador' },
+          texto: 'Carlos Ruiz',
+        },
+      ])
+    })
+
+    it('la recepcionista con la fila de un administrador que atiende agenda a nombre de él, sin invitados', () => {
+      assert.deepEqual(
+        altaDesdeDirectorio('recepcionista', adminAtendido, [{ id: 1, nombre: 'Ana Pérez' }]),
+        [
+          {
+            organizador: { id: 1, nombre: 'Ana Pérez' },
+            invitadoInicial: null,
+            texto: 'Ana Pérez',
+          },
+        ],
+      )
+    })
+
+    it('con un administrador atendido, la fila de otra persona va invitada y el organizador es él', () => {
+      assert.deepEqual(
+        altaDesdeDirectorio('recepcionista', contador, [{ id: 1, nombre: 'Ana Pérez' }]),
+        [
+          {
+            organizador: { id: 1, nombre: 'Ana Pérez' },
+            invitadoInicial: { id: 5, nombre: 'Carlos Ruiz', rol: 'contador' },
+            texto: 'Ana Pérez',
+          },
+        ],
+      )
+      // Un administrador que no atiende también va como invitado.
+      assert.equal(
+        altaDesdeDirectorio('recepcionista', otroAdmin, [{ id: 1, nombre: 'Ana Pérez' }])[0]
+          .invitadoInicial.id,
+        2,
+      )
+    })
+
+    it('con varios administradores atendidos hay una opción por cada uno, para el menú «A nombre de…»', () => {
+      const atendidos = [
+        { id: 1, nombre: 'Ana Pérez' },
+        { id: 2, nombre: 'Luis Soto' },
+      ]
+      const opciones = altaDesdeDirectorio('recepcionista', contador, atendidos)
+      assert.deepEqual(
+        opciones.map((o) => [o.texto, o.organizador.id, o.invitadoInicial.id]),
+        [
+          ['Ana Pérez', 1, 5],
+          ['Luis Soto', 2, 5],
+        ],
+      )
+    })
+
+    it('con varios atendidos, la fila de uno de ellos se agenda directo a nombre de él', () => {
+      const atendidos = [
+        { id: 1, nombre: 'Ana Pérez' },
+        { id: 2, nombre: 'Luis Soto' },
+      ]
+      assert.deepEqual(altaDesdeDirectorio('recepcionista', adminAtendido, atendidos), [
+        { organizador: { id: 1, nombre: 'Ana Pérez' }, invitadoInicial: null, texto: 'Ana Pérez' },
+      ])
+    })
+
+    it('sin administradores atendidos la junta queda a nombre de la recepcionista con la fila invitada', () => {
+      assert.deepEqual(altaDesdeDirectorio('recepcionista', contador, []), [
+        {
+          organizador: null,
+          invitadoInicial: { id: 5, nombre: 'Carlos Ruiz', rol: 'contador' },
+          texto: 'Carlos Ruiz',
+        },
+      ])
+    })
   })
 })

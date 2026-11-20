@@ -397,21 +397,22 @@ async function responderJunta(req, res) {
   const despues = existente.participantes.map((p) => (p.id === quien.id ? { ...p, respuesta: datos.valor } : p));
   const estado = calcularEstado(despues);
   const cambioElEstado = quien.rol === 'administrador' && estado !== existente.estado && estado !== 'por_confirmar';
-  const generales = crearAvisos(consultante.id, [quien.id]);
+  const generales = crearAvisos(consultante.id);
   const propio = crearAvisos(consultante.id);
   const repetida = quien.respuesta === datos.valor;
   const junta = await JuntaModel.responder(existente.id, quien.id, consultante, datos.valor, async (ejecutar) => {
     if (repetida) return;
     const organizadorId = existente.creado_por.id;
     await generales.avisar(ejecutar, [organizadorId], mensajeDeRespuesta(quien.nombre, existente.titulo, datos.valor), existente.id);
-    if (cambioElEstado) {
-      const todos = [organizadorId, ...existente.participantes.map((p) => p.id)];
-      await generales.avisar(ejecutar, todos, mensajeDeEstado(existente.titulo, estado), existente.id);
-    }
+    // El aviso «por ti» va antes que el de estado en la campana del administrador.
     if (porOtro) {
       const secretaria = await nombreDe(consultante.id);
       const mensaje = mensajeDeRespuestaPorSecretaria(secretaria, existente.titulo, datos.valor);
       await propio.avisar(ejecutar, [quien.id], mensaje, existente.id);
+    }
+    if (cambioElEstado) {
+      const todos = [organizadorId, ...existente.participantes.map((p) => p.id)];
+      await generales.avisar(ejecutar, todos, mensajeDeEstado(existente.titulo, estado), existente.id);
     }
   });
   generales.enviar();

@@ -49,10 +49,12 @@ Memoria entre sesiones (máx. ~50 líneas). El detalle está en los commits y en
     - vista Año con foco itinerante;
     - trampa: el foco de los `q-btn` del calendario necesita `!important` para ganar a `app.scss`.
     - rebanada 34: la recepcionista ve en la agenda de su administrador también las canceladas y rechazadas; cancelada en rojo (`--dg-error*`), no gris; marcas en compacto como iconos (máx. 2); «Sin invitados» si no organizas. Trampa: no usar `git stash` aquí (cambia LF/CRLF y rompe `prettier --check`).
+    - rebanada 35: si la recepcionista responde por el administrador y eso confirma o cancela la junta, él recibe dos avisos («por ti» y luego el de estado).
+    - rebanada 36: «Agendar junta» en el directorio, solo para administrador y recepcionista, en filas de cuentas con calendario (no la propia ni usuario de sistema). La recepcionista agenda a nombre del administrador que atiende (con varios, `q-menu` «A nombre de…»; sin ninguno, a su nombre). Reglas en `altaDesdeDirectorio`/`puedeAgendarDesdeDirectorio` de `utils/juntas.js`. `CountersDirectoryPage.vue` ya fallaba `prettier --check`.
   - Pendientes:
     - opcionales de la revisión sin aplicar (en cada `docs/rebanadas/29` a `33`), entre ellos probar en el navegador la agenda de la recepcionista con los bloques nuevos;
     - formatear `MaquetaLayout.vue` y `router/index.js` (ya fallaban `prettier --check`);
-    - decidir si el administrador recibe el aviso de estado cuando la recepcionista responde por él.
+    - rebanadas 35 y 36 (2026-11-20) aprobadas y probadas en navegador, sin commit.
 
   Decisiones:
   - Calendario propio (Google queda aparte), solo juntas internas y privacidad por junta.

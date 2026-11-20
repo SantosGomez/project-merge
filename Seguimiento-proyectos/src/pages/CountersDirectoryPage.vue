@@ -44,6 +44,14 @@
         v-model="dialogoCasosAuxiliarAbierto"
         :cuenta="cuentaCasosAuxiliar"
       />
+      <JuntaFormDialog
+        v-if="session.esAdministrador || session.esRecepcionista"
+        v-model="dialogoJuntaAbierto"
+        :invitado-inicial="altaJunta.invitadoInicial"
+        :organizador="altaJunta.organizador"
+        @guardada="alAgendarJunta"
+        @cerrada="alCerrarDialogoJunta"
+      />
       <ResetPasswordDialog
         v-if="session.esUsuarioSistema"
         v-model="dialogoRestablecerAbierto"
@@ -199,6 +207,39 @@
                 <q-tooltip>Elige a qué contador apoya este auxiliar (solo uno).</q-tooltip>
               </q-btn>
               <q-btn
+                v-if="puedeAgendar(props.row)"
+                flat
+                no-caps
+                color="primary"
+                icon="event"
+                label="Agendar junta"
+                aria-haspopup="dialog"
+                :aria-label="`Agendar junta con ${props.row.nombre}`"
+                class="control-touch boton-presionable"
+                @click="alPulsarAgendar(props.row, $event)"
+              >
+                <q-menu
+                  v-if="opcionesDeAlta(props.row).length > 1"
+                  transition-show="jump-down"
+                  transition-hide="jump-up"
+                  :transition-duration="180"
+                >
+                  <q-list>
+                    <q-item-label header>A nombre de…</q-item-label>
+                    <q-item
+                      v-for="opcion in opcionesDeAlta(props.row)"
+                      :key="opcion.organizador.id"
+                      v-close-popup
+                      clickable
+                      @click="agendarJunta(opcion)"
+                    >
+                      <q-item-section>{{ opcion.texto }}</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+                <q-tooltip>Abre el formulario para agendar una junta con esta persona.</q-tooltip>
+              </q-btn>
+              <q-btn
                 v-if="session.esUsuarioSistema"
                 flat
                 no-caps
@@ -284,6 +325,39 @@
                     <q-tooltip>Elige a qué contador apoya este auxiliar (solo uno).</q-tooltip>
                   </q-btn>
                   <q-btn
+                    v-if="puedeAgendar(props.row)"
+                    flat
+                    no-caps
+                    color="primary"
+                    icon="event"
+                    label="Agendar junta"
+                    aria-haspopup="dialog"
+                    :aria-label="`Agendar junta con ${props.row.nombre}`"
+                    class="control-touch boton-presionable"
+                    @click="alPulsarAgendar(props.row, $event)"
+                  >
+                    <q-menu
+                      v-if="opcionesDeAlta(props.row).length > 1"
+                      transition-show="jump-down"
+                      transition-hide="jump-up"
+                      :transition-duration="180"
+                    >
+                      <q-list>
+                        <q-item-label header>A nombre de…</q-item-label>
+                        <q-item
+                          v-for="opcion in opcionesDeAlta(props.row)"
+                          :key="opcion.organizador.id"
+                          v-close-popup
+                          clickable
+                          @click="agendarJunta(opcion)"
+                        >
+                          <q-item-section>{{ opcion.texto }}</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                    <q-tooltip>Abre el formulario para agendar una junta con esta persona.</q-tooltip>
+                  </q-btn>
+                  <q-btn
                     v-if="session.esUsuarioSistema"
                     flat
                     no-caps
@@ -329,6 +403,7 @@ import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import CasosDeAuxiliarDialog from '../components/CasosDeAuxiliarDialog.vue'
 import ContadoresDeAuxiliarDialog from '../components/ContadoresDeAuxiliarDialog.vue'
+import JuntaFormDialog from '../components/JuntaFormDialog.vue'
 import NewUserDialog from '../components/NewUserDialog.vue'
 import ResetPasswordDialog from '../components/ResetPasswordDialog.vue'
 import { listarUsuarios } from '../services/userService.js'
@@ -337,6 +412,7 @@ import { useSessionStore } from '../stores/session.js'
 import { PROFILES } from '../utils/constants.js'
 import { compararUltimoAcceso, usuarioAFila } from '../utils/filasVista.js'
 import { formatearRol } from '../utils/formateadores.js'
+import { altaDesdeDirectorio, puedeAgendarDesdeDirectorio } from '../utils/juntas.js'
 import { filtrarUsuarios } from '../utils/filtrosCasos.js'
 import { SCREEN_STATES, screenState } from '../utils/screenState.js'
 
@@ -512,8 +588,51 @@ const abrirCasosDeAuxiliar = (fila) => {
   dialogoCasosAuxiliarAbierto.value = true
 }
 
+// «Agendar junta»: el formulario de «Mi Calendario» se abre aquí con la persona de la fila ya invitada.
+const dialogoJuntaAbierto = ref(false)
+const altaJunta = ref({ organizador: null, invitadoInicial: null })
+let botonAgendar = null
+
+const puedeAgendar = (fila) => puedeAgendarDesdeDirectorio(session.rol, fila, session.id)
+
+const opcionesDeAlta = (fila) => altaDesdeDirectorio(session.rol, fila, session.administradoresAtendidos)
+
+const agendarJunta = ({ organizador, invitadoInicial }) => {
+  altaJunta.value = { organizador, invitadoInicial }
+  dialogoJuntaAbierto.value = true
+}
+
+// Con varios administradores atendidos el clic solo abre el menú «A nombre de…»; con uno se abre el formulario.
+const alPulsarAgendar = (fila, evento) => {
+  botonAgendar = evento.currentTarget
+  const opciones = opcionesDeAlta(fila)
+  if (opciones.length === 1) agendarJunta(opciones[0])
+}
+
+const alAgendarJunta = () => {
+  $q.notify({
+    type: 'positive',
+    message: 'Junta agendada',
+    actions: [
+      {
+        label: 'Ver en Mi Calendario',
+        color: 'dg-texto-claro',
+        noCaps: true,
+        handler: () => router.push('/juntas'),
+      },
+    ],
+  })
+}
+
+// El foco vuelve al botón que abrió el formulario.
+const alCerrarDialogoJunta = () => {
+  if (botonAgendar?.isConnected) botonAgendar.focus()
+  botonAgendar = null
+}
+
 // En celular la tarjeta solo lleva barra de acciones si tiene algún botón que mostrar.
 const tieneAccionesTarjeta = (fila) =>
+  puedeAgendar(fila) ||
   (fila.puedeVerCasos && session.esAdministrador) ||
   session.esUsuarioSistema ||
   (fila.rolClave === 'auxiliar' && !session.esRecepcionista)

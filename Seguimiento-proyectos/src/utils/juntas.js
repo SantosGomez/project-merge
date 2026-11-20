@@ -738,3 +738,44 @@ export const marcasDeDiasConJuntas = (juntas, dias) =>
   Object.fromEntries(
     dias.filter((dia) => juntasDelDia(juntas, dia).length > 0).map((dia) => [dia, 'junta']),
   )
+
+// --- agendar desde el directorio de usuarios ---------------------------------------------------------
+
+const ROLES_CON_CALENDARIO = ['administrador', 'contador', 'auxiliar', 'recepcionista']
+
+/**
+ * Indica si el directorio ofrece «Agendar junta» en la fila: solo al administrador y a la recepcionista, en las
+ * cuentas que usan el calendario y nunca en la propia.
+ * @param {string|null} rolSesion - rol de la cuenta que usa el directorio.
+ * @param {{ id: number|string|null, rolClave: string|null }} fila - cuenta de la fila.
+ * @param {number|string|null} idSesion - cuenta de la sesión.
+ * @returns {boolean}
+ */
+export const puedeAgendarDesdeDirectorio = (rolSesion, fila, idSesion) =>
+  (rolSesion === 'administrador' || rolSesion === 'recepcionista') &&
+  ROLES_CON_CALENDARIO.includes(fila?.rolClave) &&
+  String(fila.id) !== String(idSesion)
+
+/**
+ * Cómo se abre el formulario de junta desde la fila del directorio. Una sola opción es el alta directa; varias
+ * (la recepcionista con varios administradores atendidos) son las del menú «A nombre de…», con `texto` para cada una.
+ * @param {string} rolSesion - rol de la cuenta que usa el directorio.
+ * @param {{ id: number, nombre: string, rolClave: string }} fila - cuenta de la fila.
+ * @param {Array<{ id: number, nombre: string }>} [atendidos] - administradores atendidos (de la sesión).
+ * @returns {Array<{ organizador: { id: number, nombre: string }|null, invitadoInicial: { id: number, nombre: string, rol: string }|null, texto: string }>}
+ */
+export const altaDesdeDirectorio = (rolSesion, fila, atendidos = []) => {
+  const persona = { id: fila.id, nombre: fila.nombre, rol: fila.rolClave }
+  if (rolSesion !== 'recepcionista' || atendidos.length === 0) {
+    return [{ organizador: null, invitadoInicial: persona, texto: persona.nombre }]
+  }
+  if (administraAAdministrador(persona, atendidos)) {
+    const organizador = organizadorDeAlta(rolSesion, persona, atendidos)
+    return [{ organizador, invitadoInicial: null, texto: organizador.nombre }]
+  }
+  return atendidos.map((administrador) => ({
+    organizador: { id: administrador.id, nombre: administrador.nombre },
+    invitadoInicial: persona,
+    texto: administrador.nombre,
+  }))
+}
