@@ -476,3 +476,62 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
   min-width: 44px;
   min-height: 44px;
 }
+
+/*
+ * Entrada animada (prueba en «experimento», idea de Animated Content): la directiva `vAparecer`
+ * (utils/aparecer.js) pone estas clases y variables y las quita al terminar. Global porque la
+ * usan varias pantallas.
+ */
+.aparecer {
+  opacity: 0;
+}
+
+.aparecer--activo {
+  animation: aparecer var(--aparecer-duracion) var(--dg-curva-salida) var(--aparecer-retraso) both;
+}
+
+/* Cortina: un borde suave que descubre el elemento de izquierda a derecha. */
+.aparecer--cortina.aparecer--activo {
+  -webkit-mask-image: linear-gradient(to right, black 45%, transparent 55%);
+  mask-image: linear-gradient(to right, black 45%, transparent 55%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  animation:
+    aparecer var(--aparecer-duracion) var(--dg-curva-salida) var(--aparecer-retraso) both,
+    aparecer-cortina var(--aparecer-duracion) var(--dg-curva-salida) var(--aparecer-retraso) both;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    filter: blur(var(--aparecer-desenfoque));
+    transform: translateY(var(--aparecer-distancia));
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+@keyframes aparecer-cortina {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aparecer {
+    opacity: 1;
+  }
+
+  .aparecer--activo,
+  .aparecer--cortina.aparecer--activo {
+    animation: none;
+  }
+}

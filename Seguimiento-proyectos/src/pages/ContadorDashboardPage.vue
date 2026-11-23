@@ -1,7 +1,7 @@
 <template>
   <q-page class="dashboard-page">
     <div class="dashboard-page__inner">
-      <div class="dashboard-page__head">
+      <div v-aparecer="{ orden: 0 }" class="dashboard-page__head">
         <div class="dashboard-page__title-area">
           <h2 class="dashboard-page__title">
             Hola<template v-if="session.nombreVisible">, {{ session.nombreVisible }}</template>
@@ -66,6 +66,7 @@
 
       <q-tabs
         v-model="pestana"
+        v-aparecer="{ orden: 1 }"
         no-caps
         inline-label
         align="left"
@@ -86,6 +87,7 @@
 
       <q-tab-panels
         v-model="pestana"
+        v-aparecer="{ orden: 2 }"
         keep-alive
         animated
         transition-prev="fade"
@@ -167,6 +169,7 @@ import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { agendaCasos, hoyLocal } from '../utils/filtrosCasos.js'
+import { vAparecer } from '../utils/aparecer.js'
 import { resumenDeAuxiliares, resumenMisCasos } from '../utils/resumenMisCasos.js'
 
 /*

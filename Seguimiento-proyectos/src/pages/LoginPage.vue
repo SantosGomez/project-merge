@@ -1,6 +1,9 @@
 <template>
   <main class="login-page">
-    <div class="login-page__card">
+    <div
+      v-aparecer="{ cortina: true, duracion: 900, desenfoque: 12, distancia: 40 }"
+      class="login-page__card"
+    >
       <!-- Login sencillo por decisión del usuario: logo, bienvenida y formulario. -->
       <div class="login-page__intro">
         <q-img
@@ -205,6 +208,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { arranqueFallido } from '../router/accessState.js'
+import { vAparecer } from '../utils/aparecer.js'
 import { ESTADOS_ERROR } from '../services/api.js'
 import { useSessionStore } from '../stores/session.js'
 import { MENSAJE_BLOQUEO_LOGIN, errorDeConexionLogin } from '../utils/mensajesInicioSesion.js'

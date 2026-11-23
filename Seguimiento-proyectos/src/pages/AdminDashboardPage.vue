@@ -1,7 +1,7 @@
 <template>
   <q-page class="dashboard-page">
     <div class="dashboard-page__inner">
-      <div class="dashboard-page__head">
+      <div v-aparecer="{ orden: 0 }" class="dashboard-page__head">
         <div class="dashboard-page__title-area">
           <h2 class="dashboard-page__title">
             Hola<template v-if="session.nombreVisible">, {{ session.nombreVisible }}</template>
@@ -111,6 +111,7 @@
       />
       <ResumenAtencion
         v-else
+        v-aparecer="{ orden: 1 }"
         :cifras="cifras"
         :activo="vista.rango"
         @elegir="elegirRango"
@@ -119,6 +120,7 @@
       <div class="dashboard-page__cuerpo">
         <CalendarioAdministrador
           v-model:contador="contadorElegido"
+          v-aparecer="{ orden: 2 }"
           class="dashboard-page__calendario"
           :marcas="marcas"
           :dia-elegido="vista.dia"
@@ -128,7 +130,7 @@
           @elegir-dia="elegirDia"
         />
 
-        <div class="dashboard-page__principal">
+        <div v-aparecer="{ orden: 3 }" class="dashboard-page__principal">
           <VencimientosDelDia
             v-if="enModoDia"
             ref="vencimientos"
@@ -393,6 +395,8 @@
 import { useQuasar } from 'quasar'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+import { vAparecer } from '../utils/aparecer.js'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import CalendarioAdministrador from '../components/CalendarioAdministrador.vue'
