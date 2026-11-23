@@ -86,8 +86,8 @@
       </q-tabs>
 
       <q-tab-panels
+        ref="paneles"
         v-model="pestana"
-        v-aparecer="{ orden: 2 }"
         keep-alive
         animated
         transition-prev="fade"
@@ -96,7 +96,9 @@
         class="dashboard-page__paneles"
       >
         <q-tab-panel name="casos" class="dashboard-page__panel">
+          <!-- Cada pestaña entra por bloques la primera vez que se abre (las pestañas se conservan). -->
           <ResumenEquipo
+            v-aparecer="{ orden: 2 }"
             propios
             seleccionable
             :resumen="resumen"
@@ -110,6 +112,7 @@
           <q-skeleton v-if="cases.cargando" type="rect" height="180px" class="dashboard-page__esqueleto" />
           <AgendaCasos
             v-else-if="!cases.error"
+            v-aparecer="{ orden: 3 }"
             :casos="agenda"
             :total-abiertos="resumen.abiertos"
             :hoy="hoy"
@@ -154,7 +157,7 @@
 
 <script setup>
 import { useQuasar } from 'quasar'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AgendaCasos from '../components/AgendaCasos.vue'
@@ -169,7 +172,7 @@ import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
 import { STATUS_LABELS } from '../utils/constants.js'
 import { agendaCasos, hoyLocal } from '../utils/filtrosCasos.js'
-import { vAparecer } from '../utils/aparecer.js'
+import { reproducirAparicion, vAparecer } from '../utils/aparecer.js'
 import { resumenDeAuxiliares, resumenMisCasos } from '../utils/resumenMisCasos.js'
 
 /*
@@ -198,6 +201,10 @@ const pestana = computed({
   get: () => (pestanas.value.includes(route.query.tab) ? route.query.tab : 'casos'),
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
 })
+
+// Las pestañas se conservan en memoria y no se montan de nuevo: al cambiar, se repite su entrada.
+const paneles = ref(null)
+watch(pestana, () => nextTick(() => reproducirAparicion(paneles.value?.$el)))
 
 // «Hoy» se recalcula al volver a la ventana: si la app queda abierta de un día para otro,
 // los vencidos, los próximos a vencer y la agenda se actualizan.

@@ -22,10 +22,17 @@
 
     <template v-else>
       <!-- «Mi resumen»: las vencidas y críticas del contador, a la vista antes de los indicadores -->
-      <AlertasAuditoria v-if="propias" :auditorias="auditorias" @ir-ficha="verFicha" />
+      <!-- Entrada por bloques al mostrarse el tablero (prueba en «experimento»). -->
+      <AlertasAuditoria
+        v-if="propias"
+        v-aparecer="{ orden: 0 }"
+        :auditorias="auditorias"
+        @ir-ficha="verFicha"
+      />
 
       <q-tabs
         v-model="vista"
+        v-aparecer="{ orden: 1 }"
         dense
         no-caps
         inline-label
@@ -49,6 +56,8 @@
 
       <q-tab-panels
         v-model="vista"
+        v-aparecer="{ orden: 2 }"
+        ref="paneles"
         animated
         transition-prev="fade"
         transition-next="fade"
@@ -322,7 +331,7 @@
 </template>
 
 <script setup>
-import { computed, onActivated, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AlertasAuditoria from './AlertasAuditoria.vue'
@@ -342,6 +351,7 @@ import {
 import { claseSemaforo, etiquetaSemaforo, textoDiasPlazo } from '../utils/semaforoAuditoria.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { hoyLocal } from '../utils/filtrosCasos.js'
+import { reproducirAparicion, vAparecer } from '../utils/aparecer.js'
 
 defineProps({
   /** Textos para el contador («Mi resumen»): la API ya le entrega solo sus auditorías. */
@@ -357,6 +367,10 @@ const vista = computed({
   get: () => (VISTAS.includes(route.query.vista) ? route.query.vista : 'resumen'),
   set: (valor) => router.replace({ query: { ...route.query, vista: valor } }),
 })
+
+// Al cambiar entre Resumen, Avance y Kanban se repite la entrada del contenido.
+const paneles = ref(null)
+watch(vista, () => nextTick(() => reproducirAparicion(paneles.value?.$el)))
 
 const tarjetasIndicadores = [
   { clave: 'activas', etiqueta: 'Activas', ayuda: 'Auditorías que no están concluidas.' },

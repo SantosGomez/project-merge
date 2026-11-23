@@ -1,6 +1,8 @@
 <template>
   <div class="mi-equipo">
+    <!-- Entrada por bloques al abrir la pestaña «Mi equipo» (prueba en «experimento»). -->
     <ResumenEquipo
+      v-aparecer="{ orden: 0 }"
       :resumen="equipo"
       :cargando="cargando"
       :error="error"
@@ -8,7 +10,11 @@
     />
 
     <div v-if="!cargando && !error" class="mi-equipo__columnas">
-      <section class="mi-equipo__panel" aria-labelledby="mi-equipo-auxiliares-titulo">
+      <section
+        v-aparecer="{ orden: 1 }"
+        class="mi-equipo__panel"
+        aria-labelledby="mi-equipo-auxiliares-titulo"
+      >
         <h2 id="mi-equipo-auxiliares-titulo" class="mi-equipo__titulo">Auxiliares de tu equipo</h2>
         <p class="mi-equipo__ayuda">
           Cada número es la cantidad de casos del auxiliar en ese estado. Haz clic en el nombre para
@@ -93,6 +99,7 @@
 
       <section
         v-if="seleccionada"
+        v-aparecer="{ orden: 2 }"
         ref="panelDetalle"
         class="mi-equipo__panel"
         aria-labelledby="mi-equipo-detalle-titulo"
@@ -181,6 +188,7 @@ import {
   paginar,
 } from '../utils/filtrosCasos.js'
 import { useCasesStore } from '../stores/cases.js'
+import { vAparecer } from '../utils/aparecer.js'
 import { useSessionStore } from '../stores/session.js'
 import { armarEquipoParaPasar, textoDestino } from '../utils/pasarCaso.js'
 
