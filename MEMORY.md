@@ -4,7 +4,11 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 
 ## Estado actual (2026-11-23)
 
-- `main` en `origin` hasta la rebanada 41 (50f7bfa). `experimento` = `main` + 2 commits de prueba de fondo general: «bg 1» (cuadrícula) y «bg 2» (degradado radial azul con `degradado-1`/`degradado-2` en la paleta; en la esquina `texto-tenue` baja a 3.7:1). Se descartaron un degradado naranja (contraste) y un fondo WebGL animado (consumo y distracción). Encima, pruebas de menú (en `origin`, cea061c): «menu 1» (ítems como píldoras con relleno celeste y punto activo, idea de PillNav; cambió la prueba que prohibía hover propio) y «menu 2» (`MenuDock.vue`: dock flotante en escritorio, menú lateral en celular; choca con las reglas de menú de altura completa y sin tooltips). Descartado: efectos de luz de Magic Bento en las cifras de los dashboards.
+- `main` = `experimento` en `origin` (2026-11-23): rebanada 41 + rediseño visual mezclado a `main`:
+  - Fondo general: degradado radial azul («bg 2», `degradado-1`/`degradado-2` en la paleta; en la esquina `texto-tenue` baja a 3.7:1).
+  - Menú: dock flotante en escritorio (`MenuDock.vue`, «menu 2»); en celular el menú lateral con píldoras, relleno celeste y punto activo («menu 1»; cambió la prueba que prohibía hover propio).
+  - Pendiente: actualizar en `AGENTS.md` las reglas del menú (altura completa con nombre de empresa y app; ítems sin tooltip), que el dock ya no cumple. Las opciones del menú están duplicadas (plantilla del menú lateral y `opcionesDock`).
+  - Descartados: degradado naranja (contraste), fondo WebGL animado (consumo y distracción) y efectos de luz de Magic Bento en las cifras.
 - Docker corre `main` 7e584f7 (despliegue 2026-11-18): tiene «Mis actividades» restringido (`USUARIOS_CON_ACTIVIDADES=7917`); le faltan el calendario y las rebanadas 20 a 40 (21 commits).
 - Antes del próximo despliegue: respaldo; el seed crea las tablas nuevas; confirmar que el 7947 es administrador en la base de Docker; validar la regla fiscal con los contadores; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`). Última etiqueta de imagen: `antes-editar-usuarios-2026-11-17`; respaldo previo e imágenes `:anterior` del 2026-11-18.
 - Pendiente de producción: restablecer desde la app las contraseñas de las cuentas reales (≥12), activar el hook (`git config core.hooksPath .githooks`) y corregir las auditorías migradas con «Periodo por confirmar».
