@@ -4,7 +4,7 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 
 ## Estado actual (2026-11-23)
 
-- `main` = `experimento`, ambas en `origin`, hasta la rebanada 40 (c713bc1). Rebanada 41 (pendientes de la revisión UI 2) hecha y sin commit.
+- `main` en `origin` hasta la rebanada 41 (50f7bfa). `experimento` = `main` + 2 commits de prueba de fondo general: «bg 1» (cuadrícula) y «bg 2» (degradado radial azul con `degradado-1`/`degradado-2` en la paleta; en la esquina `texto-tenue` baja a 3.7:1). Se descartaron un degradado naranja (contraste) y un fondo WebGL animado (consumo y distracción).
 - Docker corre `main` 7e584f7 (despliegue 2026-11-18): tiene «Mis actividades» restringido (`USUARIOS_CON_ACTIVIDADES=7917`); le faltan el calendario y las rebanadas 20 a 40 (21 commits).
 - Antes del próximo despliegue: respaldo; el seed crea las tablas nuevas; confirmar que el 7947 es administrador en la base de Docker; validar la regla fiscal con los contadores; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`). Última etiqueta de imagen: `antes-editar-usuarios-2026-11-17`; respaldo previo e imágenes `:anterior` del 2026-11-18.
 - Pendiente de producción: restablecer desde la app las contraseñas de las cuentas reales (≥12), activar el hook (`git config core.hooksPath .githooks`) y corregir las auditorías migradas con «Periodo por confirmar».
