@@ -141,3 +141,44 @@ describe('se repite al cambiar de pestaña', () => {
     )
   })
 })
+
+describe('dashboard del administrador: pestañas «Casos» y «Auditorías»', () => {
+  const admin = readFileSync(
+    new URL('../src/pages/AdminDashboardPage.vue', import.meta.url),
+    'utf8',
+  )
+
+  it('el panel principal ya no entra como un solo bloque: entran sus partes', () => {
+    assert.doesNotMatch(admin, /v-aparecer="\{ orden: 3 \}" class="dashboard-page__principal"/)
+    assert.match(admin, /<VencimientosDelDia\s+v-if="enModoDia"\s+v-aparecer="\{ orden: 3 \}"/)
+    assert.match(admin, /<q-tabs\s+v-model="pestana"\s+v-aparecer="\{ orden: 3 \}"/)
+    assert.match(admin, /<ResumenEquipo\s+v-aparecer="\{ orden: 4 \}"\s+seleccionable/)
+    assert.match(admin, /<div v-else v-aparecer="\{ orden: 5 \}" class="dashboard-page__grid">/)
+  })
+
+  it('al cambiar de pestaña se repite la entrada', () => {
+    assert.match(
+      admin,
+      /watch\(pestana, \(\) =>\s*nextTick\(\(\) => reproducirAparicion\(paneles\.value\?\.\$el\)\),?\s*\)/,
+    )
+  })
+})
+
+describe('reproducirAparicion ignora la pestaña que está saliendo', () => {
+  it('no relanza ni cuenta los bloques dentro de una transición de salida', () => {
+    const llamadas = []
+    const bloque = (orden, saliendo = false) => ({
+      _aparecerOrden: orden,
+      _aparecerReproducir: (desfase) => llamadas.push([orden, desfase]),
+      closest: (selector) => (saliendo && selector.includes('leave-active') ? {} : null),
+    })
+    const raiz = { querySelectorAll: () => [bloque(1, true), bloque(4), bloque(5)] }
+
+    reproducirAparicion(raiz)
+
+    assert.deepEqual(llamadas, [
+      [4, 4],
+      [5, 4],
+    ])
+  })
+})

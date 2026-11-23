@@ -130,9 +130,11 @@
           @elegir-dia="elegirDia"
         />
 
-        <div v-aparecer="{ orden: 3 }" class="dashboard-page__principal">
+        <!-- Entra por partes (pestañas, cifras, contadores); al cambiar de pestaña se repite. -->
+        <div class="dashboard-page__principal">
           <VencimientosDelDia
             v-if="enModoDia"
+            v-aparecer="{ orden: 3 }"
             ref="vencimientos"
             :elementos="elementosDeLaVista"
             :titulo="tituloDeLaVista"
@@ -147,6 +149,7 @@
           <div v-show="!enModoDia">
             <q-tabs
               v-model="pestana"
+              v-aparecer="{ orden: 3 }"
               no-caps
               inline-label
               align="left"
@@ -165,6 +168,7 @@
             <!-- keep-alive: al cambiar de pestaña no se pierde el contador elegido en «Casos» -->
             <q-tab-panels
               v-model="pestana"
+              ref="paneles"
               keep-alive
               animated
               transition-prev="fade"
@@ -174,6 +178,7 @@
             >
               <q-tab-panel name="casos" class="dashboard-page__panel">
                 <ResumenEquipo
+                  v-aparecer="{ orden: 4 }"
                   seleccionable
                   :resumen="resumen"
                   :cargando="cargandoResumen"
@@ -200,7 +205,7 @@
                   message="El equipo todavía no tiene contadores registrados, por eso no hay conteos ni casos que mostrar."
                 />
 
-                <div v-else class="dashboard-page__grid">
+                <div v-else v-aparecer="{ orden: 5 }" class="dashboard-page__grid">
                   <section class="dashboard-panel" aria-labelledby="counter-list-title">
                     <div class="dashboard-panel__head">
                       <h2 id="counter-list-title" class="dashboard-panel__title">
@@ -396,7 +401,7 @@ import { useQuasar } from 'quasar'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { vAparecer } from '../utils/aparecer.js'
+import { reproducirAparicion, vAparecer } from '../utils/aparecer.js'
 
 import AuditoriaFormDialog from '../components/AuditoriaFormDialog.vue'
 import CalendarioAdministrador from '../components/CalendarioAdministrador.vue'
@@ -470,6 +475,10 @@ const pestana = computed({
   get: () => (PESTANAS.includes(route.query.tab) ? route.query.tab : 'casos'),
   set: (valor) => router.replace({ query: { ...route.query, tab: valor } }),
 })
+
+// Las pestañas se conservan en memoria y no se montan de nuevo: al cambiar, se repite su entrada.
+const paneles = ref(null)
+watch(pestana, () => nextTick(() => reproducirAparicion(paneles.value?.$el)))
 
 /*
  * Calendario y franja «Requiere atención»: casos importantes, auditorías y entregas se piden una

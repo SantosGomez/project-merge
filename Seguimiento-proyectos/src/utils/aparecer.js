@@ -108,8 +108,10 @@ export const vAparecer = {
  */
 export const reproducirAparicion = (raiz) => {
   if (!raiz) return
+  // Durante el fundido entre pestañas la que se va sigue en pantalla: sus bloques no cuentan.
   const bloques = [raiz, ...raiz.querySelectorAll('*')].filter(
-    (el) => typeof el._aparecerReproducir === 'function',
+    (el) =>
+      typeof el._aparecerReproducir === 'function' && !el.closest?.('[class*="leave-active"]'),
   )
   if (bloques.length === 0) return
   const desfase = Math.min(...bloques.map((el) => el._aparecerOrden ?? 0))
