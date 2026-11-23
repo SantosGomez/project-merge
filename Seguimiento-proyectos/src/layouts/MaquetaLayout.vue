@@ -746,23 +746,23 @@ onBeforeUnmount(() => {
  * la página se estira con el resto.
  */
 /*
- * Fondo general (prueba en «experimento», idea de Uiverse): cuadrícula fina que se desvanece
- * hacia abajo. La capa radial de arriba hace el desvanecido sin `mask-image`, así el contenido
- * no se enmascara; `fixed` la deja quieta respecto a la ventana en páginas largas.
+ * Fondo general (prueba en «experimento», idea de Uiverse): degradado radial desde la esquina
+ * inferior izquierda con los azules claros de la paleta, hasta blanco arriba a la derecha.
+ * Solo la esquina (hasta el 22 %) es más oscura que `degradado-2`: fuera de ella todo texto
+ * suelto sigue en 4.5:1. `fixed` lo deja quieto respecto a la ventana en páginas largas.
  */
 .contenedor-paginas {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: var(--dg-fondo-suave);
-  background-image:
-    radial-gradient(ellipse 70% 60% at 50% 0%, transparent 60%, var(--dg-fondo-suave) 100%),
-    linear-gradient(to right, var(--dg-borde) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--dg-borde) 1px, transparent 1px);
-  background-size:
-    100% 100%,
-    20px 30px,
-    20px 30px;
+  background: radial-gradient(
+    125% 125% at -2% 101%,
+    var(--dg-degradado-1) 10.5%,
+    var(--dg-degradado-2) 22%,
+    var(--dg-fondo-seleccion) 50%,
+    var(--dg-fondo-hover) 75%,
+    var(--dg-superficie) 100%
+  );
   background-attachment: fixed;
 }
 

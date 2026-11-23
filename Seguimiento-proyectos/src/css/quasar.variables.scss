@@ -60,6 +60,11 @@ $dg-colores: (
   fondo-suave: #f5f8fb,
   fondo-hover: #f0f6fc,
   fondo-seleccion: #e6f0fb,
+  // Fondo general en degradado (prueba en «experimento»): los azules más oscuros del degradado.
+  // `degradado-1` (solo la esquina) cumple 4.5:1 con `texto` y `texto-secundario`, no con
+  // `texto-tenue`; `degradado-2` es el límite para que `texto-tenue` siga en 4.5:1 encima.
+  degradado-1: #b3cdec,
+  degradado-2: #d3e3f4,
   // Error y éxito
   error: #a3231b,
   error-oscuro: #7a1f1a,

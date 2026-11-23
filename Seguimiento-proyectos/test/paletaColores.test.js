@@ -34,6 +34,8 @@ const NOMBRES = [
   'texto', 'texto-secundario', 'texto-tenue', 'foco', 'acento',
   'borde', 'borde-fuerte', 'borde-discontinuo',
   'superficie', 'fondo-panel', 'fondo-suave', 'fondo-hover', 'fondo-seleccion',
+  // Fondo general en degradado (prueba en «experimento»)
+  'degradado-1', 'degradado-2',
   'error', 'error-oscuro', 'error-fondo', 'exito', 'exito-fondo',
   'importante', 'importante-texto', 'importante-fondo',
   'estado-pendiente', 'estado-en-proceso', 'estado-finalizado',
@@ -77,6 +79,9 @@ test('los colores conservan los valores que ya usaban las vistas (no cambia nada
 // Texto sobre su fondo: mínimo 4.5:1 (WCAG 2, texto normal).
 const PARES_DE_TEXTO = [
   ['texto', 'superficie'], ['texto-secundario', 'superficie'], ['texto-tenue', 'superficie'],
+  // Texto suelto de las páginas sobre el fondo en degradado
+  ['texto', 'degradado-1'], ['texto-secundario', 'degradado-1'],
+  ['texto', 'degradado-2'], ['texto-secundario', 'degradado-2'], ['texto-tenue', 'degradado-2'],
   ['texto', 'fondo-panel'], ['texto-secundario', 'fondo-panel'], ['texto', 'fondo-seleccion'],
   ['acento', 'superficie'], ['error', 'superficie'], ['error-oscuro', 'error-fondo'],
   ['exito', 'exito-fondo'], ['importante-texto', 'importante-fondo'],
