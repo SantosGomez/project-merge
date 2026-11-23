@@ -4,7 +4,8 @@
  * desenfocado, subiendo y desvaneciéndose, la primera vez que aparece en pantalla. `orden` lo
  * escalona (90 ms por paso) y `cortina` lo descubre con un borde suave desde la izquierda.
  * Al terminar se quitan clases y variables (no queda ningún transform que afecte al contenido).
- * Con «reducir movimiento» o sin IntersectionObserver no hace nada: el contenido se ve de inmediato.
+ * Con «reducir movimiento», sin IntersectionObserver o con `apagado: true` no hace nada: el contenido
+ * se ve de inmediato.
  */
 
 const PASO_ORDEN_MS = 90
@@ -32,7 +33,7 @@ const sinMovimiento = () => window.matchMedia?.('(prefers-reduced-motion: reduce
 
 export const vAparecer = {
   mounted(el, { value = {} }) {
-    if (sinMovimiento() || typeof IntersectionObserver === 'undefined') return
+    if (value.apagado || sinMovimiento() || typeof IntersectionObserver === 'undefined') return
 
     const variables = variablesDeAparicion(value)
     for (const [nombre, valor] of Object.entries(variables)) el.style.setProperty(nombre, valor)

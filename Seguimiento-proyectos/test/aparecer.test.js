@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 
-import { variablesDeAparicion } from '../src/utils/aparecer.js'
+import { vAparecer, variablesDeAparicion } from '../src/utils/aparecer.js'
 
 describe('variablesDeAparicion', () => {
   it('sin opciones usa la entrada suave de la app (0.5 s, 6 px de desenfoque, 24 px)', () => {
@@ -49,5 +49,32 @@ describe('dónde se usa', () => {
       assert.match(admin, new RegExp(`v-aparecer="\\{ orden: ${orden} \\}"`))
     for (const orden of [0, 1, 2])
       assert.match(contador, new RegExp(`v-aparecer="\\{ orden: ${orden} \\}"`))
+  })
+
+  it('las demás páginas entran completas desde el layout; los dashboards usan su propia entrada', () => {
+    const layout = leer('../src/layouts/MaquetaLayout.vue')
+    assert.match(
+      layout,
+      /<router-view v-else #default="\{ Component, route: rutaActual \}">\s*<component\s+:is="Component"\s+v-aparecer="\{ apagado: RUTAS_CON_ENTRADA_PROPIA\.includes\(rutaActual\.name\) \}"/,
+    )
+    assert.match(
+      layout,
+      /const RUTAS_CON_ENTRADA_PROPIA = \['admin-dashboard', 'contador-dashboard'\]/,
+    )
+  })
+
+  it('con `apagado` la directiva no toca el elemento', () => {
+    const clases = new Set()
+    const el = {
+      classList: { add: (c) => clases.add(c) },
+      style: { setProperty: () => clases.add('estilo') },
+    }
+    globalThis.window = { matchMedia: () => ({ matches: false }) }
+    globalThis.IntersectionObserver = class {
+      observe() {}
+      disconnect() {}
+    }
+    vAparecer.mounted(el, { value: { apagado: true } })
+    assert.equal(clases.size, 0)
   })
 })

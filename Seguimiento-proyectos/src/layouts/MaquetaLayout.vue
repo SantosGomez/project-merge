@@ -407,7 +407,13 @@
       <q-page v-else-if="accessDenied" class="access-page">
         <AccessDenied />
       </q-page>
-      <router-view v-else />
+      <!-- Prueba en «experimento»: cada página entra con `v-aparecer`; los dashboards tienen la suya. -->
+      <router-view v-else #default="{ Component, route: rutaActual }">
+        <component
+          :is="Component"
+          v-aparecer="{ apagado: RUTAS_CON_ENTRADA_PROPIA.includes(rutaActual.name) }"
+        />
+      </router-view>
     </q-page-container>
 
     <!-- Fundido corto: nada aparece desde escala 0. Quasar pone el rol de diálogo; aquí solo el nombre. -->
@@ -463,6 +469,10 @@ import { useQuasar } from 'quasar'
 import AccessDenied from '../components/AccessDenied.vue'
 import CampanaAvisos from '../components/CampanaAvisos.vue'
 import MenuDock from '../components/MenuDock.vue'
+import { vAparecer } from '../utils/aparecer.js'
+
+/** Pantallas que ya entran por bloques con `v-aparecer`: el layout no las anima otra vez. */
+const RUTAS_CON_ENTRADA_PROPIA = ['admin-dashboard', 'contador-dashboard']
 import AvisoSesionCaducada from '../components/AvisoSesionCaducada.vue'
 import { accessDenied } from '../router/accessState.js'
 import { eventos } from '../services/eventosService.js'
