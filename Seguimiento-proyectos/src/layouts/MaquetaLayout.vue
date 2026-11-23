@@ -40,7 +40,22 @@
       </div>
     </q-header>
 
+    <!-- Prueba en «experimento»: en escritorio el menú es un dock flotante; en celular, el de siempre. -->
+    <MenuDock
+      v-if="usarDock"
+      :opciones="opcionesDock"
+      :iniciales="iniciales"
+      :nombre-usuario="session.nombreVisible"
+      :rol="rolLegible"
+      :perfil-to="session.trabajaCasos ? { name: 'mi-perfil' } : null"
+      :perfil-activo="route.name === 'mi-perfil'"
+      :cerrando-sesion="cerrandoSesion"
+      :inert="fondoBloqueado"
+      @cerrar-sesion="abrirDialogoCierre"
+    />
+
     <q-drawer
+      v-if="!usarDock"
       id="menu-lateral"
       v-model="drawerOpen"
       show-if-above
@@ -375,7 +390,10 @@
       id="contenido-principal"
       tabindex="-1"
       class="contenedor-paginas"
-      :class="{ 'contenedor-paginas--acompana-menu': acompanarMenu }"
+      :class="{
+        'contenedor-paginas--acompana-menu': acompanarMenu,
+        'contenedor-paginas--con-dock': usarDock,
+      }"
       :inert="fondoBloqueado"
     >
       <header v-if="$q.screen.gt.sm" class="page-header">
@@ -444,6 +462,7 @@ import { useQuasar } from 'quasar'
 
 import AccessDenied from '../components/AccessDenied.vue'
 import CampanaAvisos from '../components/CampanaAvisos.vue'
+import MenuDock from '../components/MenuDock.vue'
 import AvisoSesionCaducada from '../components/AvisoSesionCaducada.vue'
 import { accessDenied } from '../router/accessState.js'
 import { eventos } from '../services/eventosService.js'
@@ -613,6 +632,63 @@ const saltarAlContenido = () => {
 
 const iniciales = computed(() => formatearIniciales(session.nombreVisible))
 const rolLegible = computed(() => formatearRol(session.rol))
+
+/*
+ * Dock de escritorio (prueba en «experimento»): las mismas opciones del menú lateral por rol,
+ * como datos. En celular se sigue usando el menú lateral.
+ */
+const usarDock = computed(() => esEscritorio.value && session.autenticado)
+
+const opcionesDock = computed(() => {
+  const opcion = (clave, nombre, descripcion, icono, ruta, ariaLabel, activa) => ({
+    clave,
+    nombre,
+    descripcion,
+    icono,
+    to: { name: ruta },
+    ariaLabel,
+    activa: activa ?? route.name === ruta,
+  })
+  const calendario = opcion('juntas', 'Mi Calendario', 'Juntas y vencimientos', 'event', 'juntas', 'Ir a Mi Calendario')
+  const auditorias = opcion(
+    'auditorias',
+    'Auditorías',
+    'Registrar y dar seguimiento',
+    'fact_check',
+    'auditorias',
+    'Ir a auditorías',
+    enAuditorias.value,
+  )
+  const lista = []
+  if (session.esAdministrador) {
+    lista.push(
+      opcion('admin-dashboard', 'Resumen del equipo', 'Ver conteos y casos', 'dashboard', 'admin-dashboard', 'Ir al resumen del equipo'),
+      opcion('admin-directorio', 'Directorio', 'Ver cuentas y elegir contador', 'group', 'admin-directorio', 'Ir al directorio de usuarios'),
+      auditorias,
+      calendario,
+    )
+  }
+  if (session.trabajaCasos) {
+    lista.push(
+      opcion('contador-dashboard', 'Mi resumen', 'Gráficas de casos y auditorías', 'insights', 'contador-dashboard', 'Ir a mi resumen'),
+      opcion('contador-casos', 'Mi trabajo', 'Registrar, revisar y editar', 'list_alt', 'contador-casos', 'Ir a mi trabajo'),
+    )
+    if (session.esContador) lista.push(auditorias)
+    lista.push(calendario)
+  }
+  if (session.esUsuarioSistema) {
+    lista.push(
+      opcion('admin-directorio', 'Directorio', 'Crear cuentas y cambiar contraseñas', 'group', 'admin-directorio', 'Ir al directorio de usuarios'),
+    )
+  }
+  if (session.esRecepcionista) {
+    lista.push(
+      calendario,
+      opcion('admin-directorio', 'Directorio', 'Consultar cuentas del equipo', 'group', 'admin-directorio', 'Ir al directorio de usuarios'),
+    )
+  }
+  return lista
+})
 
 const abrirDialogoCierre = () => {
   dialogoCierreAbierto.value = true
@@ -820,6 +896,12 @@ onBeforeUnmount(() => {
     var(--dg-superficie) 100%
   );
   background-attachment: fixed;
+}
+
+/* Con el dock flotante: deja libre su ancho (72 px) más el margen a cada lado.
+   `!important` porque QPageContainer pone su padding en línea según el menú lateral. */
+.contenedor-paginas--con-dock {
+  padding-left: 104px !important;
 }
 
 .contenedor-paginas > :deep(.q-page) {
