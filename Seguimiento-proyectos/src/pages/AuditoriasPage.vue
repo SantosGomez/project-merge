@@ -221,6 +221,7 @@ import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import { listarAuditorias } from '../services/auditoriaService.js'
 import { listCounters } from '../services/counterService.js'
+import { eventos } from '../services/eventosService.js'
 import {
   contarPorSemaforo,
   filtrarAuditorias,
@@ -331,17 +332,31 @@ const cargar = async () => {
 
 onMounted(cargar)
 
-// Al volver a la ventana (por ejemplo, al día siguiente) el semáforo y los días se refrescan sin esqueleto.
-const alVolver = async () => {
-  if (document.visibilityState !== 'visible' || cargando.value || errorCarga.value) return
+// Relee la lista sin esqueleto (al volver a la ventana o cuando otro cambia una auditoría).
+const refrescarEnSilencio = async () => {
+  if (cargando.value || errorCarga.value) return
   try {
     auditorias.value = await listarAuditorias()
   } catch {
     // Se conserva la lista que ya se ve; la siguiente visita la actualiza.
   }
 }
+
+// Al volver a la ventana (por ejemplo, al día siguiente) el semáforo y los días se refrescan.
+const alVolver = () => {
+  if (document.visibilityState === 'visible') refrescarEnSilencio()
+}
 document.addEventListener('visibilitychange', alVolver)
-onBeforeUnmount(() => document.removeEventListener('visibilitychange', alVolver))
+
+const dejarDeEscuchar = [
+  eventos.escuchar('auditoria-actualizada', refrescarEnSilencio),
+  // Si la conexión se cayó, pudo perderse algún cambio
+  eventos.escuchar('reconectado', refrescarEnSilencio),
+]
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', alVolver)
+  dejarDeEscuchar.forEach((dejar) => dejar())
+})
 
 const abrirRegistro = () => {
   auditoriaEnEdicion.value = null

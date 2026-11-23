@@ -1,12 +1,13 @@
 <template>
   <q-dialog
     v-model="dialogoAbierto"
-    :persistent="guardando"
+    :persistent="guardando || hayDatosSinGuardar"
     transition-show="dialogo-entra"
     transition-hide="dialogo-sale"
     :transition-duration="220"
     aria-labelledby="agregar-auxiliares-titulo"
     @show="alAbrir"
+    @shake="pedirDescartar"
   >
     <q-card class="agregar-auxiliares">
       <q-card-section>
@@ -87,7 +88,7 @@
           color="primary"
           class="control-touch boton-presionable"
           :disable="guardando"
-          @click="dialogoAbierto = false"
+          @click="cerrar"
         />
         <q-btn
           unelevated
@@ -109,6 +110,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useQuasar } from 'quasar'
 
 import { useAuxiliaresStore } from '../stores/auxiliares.js'
 import { useSessionStore } from '../stores/session.js'
@@ -131,6 +133,32 @@ const guardando = computed(() => auxiliares.guardando)
 const visibles = computed(() => filtrarContadores(auxiliares.disponibles, filtro.value ?? ''))
 
 const cargar = () => auxiliares.cargarDisponibles(Number(session.id))
+
+const $q = useQuasar()
+const DIALOGO = { transitionShow: 'dialogo-entra', transitionHide: 'dialogo-sale', transitionDuration: 220 }
+
+// Con personas marcadas, Esc, clic fuera o «Cancelar» preguntan antes de perder la selección.
+const hayDatosSinGuardar = computed(() => seleccionados.value.length > 0)
+
+const pedirDescartar = () => {
+  if (guardando.value) return
+  $q.dialog({
+    ...DIALOGO,
+    title: '¿Descartar los cambios?',
+    message: 'Las personas que marcaste no se asignarán.',
+    cancel: { label: 'Seguir editando', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
+    focus: 'cancel',
+  }).onOk(() => {
+    dialogoAbierto.value = false
+  })
+}
+
+const cerrar = () => {
+  if (guardando.value) return
+  if (hayDatosSinGuardar.value) pedirDescartar()
+  else dialogoAbierto.value = false
+}
 
 // Cada vez que se abre: empieza limpio y relee los disponibles por si alguien dio de alta uno nuevo.
 const alAbrir = () => {

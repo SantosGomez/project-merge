@@ -26,8 +26,11 @@
           <div class="ficha__titulo-fila">
             <h2 class="ficha__cliente">{{ auditoria.cliente }}</h2>
             <q-chip dense square class="ficha__chip" :class="`ficha__estado--${estadoClase}`">
-              {{ etiquetaEstado(auditoria.estado) }}
-              <q-tooltip>Estado de la auditoría; se cambia con «Editar».</q-tooltip>
+              <!-- QChip no clicable ignora tabindex: el span enfocable deja ver el tooltip con teclado -->
+              <span tabindex="0" class="chip-con-ayuda">
+                {{ etiquetaEstado(auditoria.estado) }}
+                <q-tooltip>Estado de la auditoría; se cambia con «Editar».</q-tooltip>
+              </span>
             </q-chip>
             <q-chip
               dense
@@ -266,11 +269,16 @@ const errorCarga = ref(null)
 const dialogoEdicionAbierto = ref(false)
 const chatAbierto = ref(false)
 
-// Desde el aviso «Ver mensajes» se llega con ?chat=1: la ficha abre el chat directamente.
+// Desde el aviso «Ver mensajes» se llega con ?chat=1: la ficha abre el chat directamente y quita
+// el parámetro, así recargar no lo reabre y un segundo «Ver mensajes» sí lo abre.
 watch(
   () => route.query.chat,
   (chat) => {
-    if (chat) chatAbierto.value = true
+    if (!chat) return
+    chatAbierto.value = true
+    const resto = { ...route.query }
+    delete resto.chat
+    router.replace({ query: resto })
   },
   { immediate: true },
 )

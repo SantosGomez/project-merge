@@ -52,7 +52,11 @@
         </p>
       </div>
       <q-separator v-if="puedeActivarNotificaciones" />
-      <p v-if="error" class="campana-avisos__vacio" role="alert">{{ error }}</p>
+      <p v-if="!cargado" class="campana-avisos__vacio" role="status">
+        <q-spinner size="16px" color="dg-acento" aria-hidden="true" />
+        Cargando avisos…
+      </p>
+      <p v-else-if="error" class="campana-avisos__vacio" role="alert">{{ error }}</p>
       <p v-else-if="avisos.length === 0" class="campana-avisos__vacio">No tienes avisos.</p>
       <q-list v-else separator class="campana-avisos__lista">
         <q-item
@@ -121,6 +125,8 @@ const $q = useQuasar()
 const avisos = ref([])
 const noLeidas = ref(0)
 const error = ref('')
+// Hasta la primera respuesta no se sabe si hay avisos: se dice que está cargando.
+const cargado = ref(false)
 
 /** Lleva al caso o junta del aviso; los avisos sin destino no navegan. */
 const irAlCaso = (aviso) => {
@@ -164,6 +170,8 @@ const cargar = async (notificar = false) => {
     else notificador.registrarVistos(resultado.avisos)
   } catch (fallo) {
     error.value = fallo?.mensaje ?? 'No se pudieron cargar los avisos.'
+  } finally {
+    cargado.value = true
   }
 }
 
@@ -237,6 +245,9 @@ watch(() => route.path, cargar)
 }
 
 .campana-avisos__vacio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   padding: 16px;
   color: var(--dg-texto-secundario);

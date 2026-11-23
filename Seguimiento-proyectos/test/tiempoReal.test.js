@@ -28,8 +28,8 @@ describe('Tiempo real en las pantallas', () => {
 
   it('el dashboard del administrador recarga resumen y contador al llegar «caso-actualizado»', () => {
     const dashboard = leer('../src/pages/AdminDashboardPage.vue')
-    assert.match(dashboard, /eventos\.escuchar\('caso-actualizado', \(\{ contadorId \}\) => \{[\s\S]*?cargarResumen\(\)[\s\S]*?contadoresStore\.refrescarEnSilencio\(contadorId\)/)
-    assert.match(dashboard, /eventos\.escuchar\('reconectado', \(\) => \{[\s\S]*?cargarResumen\(\)[\s\S]*?contadoresStore\.refrescarEnSilencio\(\)/)
+    assert.match(dashboard, /eventos\.escuchar\('caso-actualizado', \(\{ contadorId \}\) => \{[\s\S]*?cargarResumen\(\{ silencioso: true \}\)[\s\S]*?contadoresStore\.refrescarEnSilencio\(contadorId\)/)
+    assert.match(dashboard, /eventos\.escuchar\('reconectado', \(\) => \{[\s\S]*?cargarResumen\(\{ silencioso: true \}\)[\s\S]*?contadoresStore\.refrescarEnSilencio\(\)/)
     assert.match(dashboard, /onBeforeUnmount\(/, 'deja de escuchar al salir de la pantalla')
   })
 

@@ -125,3 +125,103 @@ describe('Grupo B: store de auxiliares', () => {
     assert.strictEqual(store.error, null)
   })
 })
+
+describe('Rebanada 41: recarga en silencio de los auxiliares («Mi perfil»)', () => {
+  it('actualiza la lista sin pasar por «cargando»', async () => {
+    let cargandoDurante = null
+    const store = montarStore({
+      listarAuxiliares: async () => {
+        cargandoDurante = store.cargando
+        return [{ id: 3, nombre: 'Auxiliar Tres' }]
+      },
+    })
+    store.auxiliares = [{ id: 2, nombre: 'Auxiliar Dos' }]
+
+    const resultado = await store.refrescarAuxiliaresEnSilencio(1)
+
+    assert.strictEqual(resultado.ok, true)
+    assert.strictEqual(cargandoDurante, false)
+    assert.deepStrictEqual(store.auxiliares, [{ id: 3, nombre: 'Auxiliar Tres' }])
+  })
+
+  it('un fallo conserva la lista y no muestra error', async () => {
+    const store = montarStore({
+      listarAuxiliares: async () => {
+        throw new Error('sin red')
+      },
+    })
+    store.auxiliares = [{ id: 2, nombre: 'Auxiliar Dos' }]
+
+    const resultado = await store.refrescarAuxiliaresEnSilencio(1)
+
+    assert.strictEqual(resultado.ok, false)
+    assert.strictEqual(store.error, null)
+    assert.deepStrictEqual(store.auxiliares, [{ id: 2, nombre: 'Auxiliar Dos' }])
+  })
+
+  it('una carga completa iniciada después gana sobre la recarga en silencio', async () => {
+    let soltar
+    let llamada = 0
+    const store = montarStore({
+      listarAuxiliares: async () => {
+        llamada += 1
+        if (llamada === 1) {
+          await new Promise((r) => (soltar = r))
+          return [{ id: 9, nombre: 'Vieja' }]
+        }
+        return [{ id: 3, nombre: 'Nueva' }]
+      },
+    })
+
+    const silenciosa = store.refrescarAuxiliaresEnSilencio(1)
+    await store.cargarAuxiliares(1)
+    soltar()
+    await silenciosa
+
+    assert.deepStrictEqual(store.auxiliares, [{ id: 3, nombre: 'Nueva' }])
+  })
+})
+
+describe('Rebanada 41: la recarga en silencio no deja colgada una carga completa', () => {
+  it('con una carga completa en curso no hace nada y esa carga termina', async () => {
+    let soltar
+    let llamadas = 0
+    const store = montarStore({
+      listarAuxiliares: async () => {
+        llamadas += 1
+        await new Promise((r) => (soltar = r))
+        return [{ id: 3, nombre: 'Nueva' }]
+      },
+    })
+
+    const completa = store.cargarAuxiliares(1)
+    const resultado = await store.refrescarAuxiliaresEnSilencio(1)
+    soltar()
+    await completa
+
+    assert.strictEqual(resultado.descartado, true)
+    assert.strictEqual(llamadas, 1)
+    assert.strictEqual(store.cargando, false)
+    assert.deepStrictEqual(store.auxiliares, [{ id: 3, nombre: 'Nueva' }])
+  })
+})
+
+describe('Rebanada 41: la recarga en silencio correcta quita un error anterior', () => {
+  it('tras un fallo de la carga inicial, un refresco exitoso deja de mostrar el error', async () => {
+    let falla = true
+    const store = montarStore({
+      listarAuxiliares: async () => {
+        if (falla) throw new Error('sin red')
+        return [{ id: 3, nombre: 'Nueva' }]
+      },
+    })
+    await store.cargarAuxiliares(1)
+    assert.ok(store.error, 'la carga inicial deja el error')
+
+    falla = false
+    await store.refrescarAuxiliaresEnSilencio(1)
+
+    assert.strictEqual(store.error, null)
+    assert.deepStrictEqual(store.auxiliares, [{ id: 3, nombre: 'Nueva' }])
+  })
+})

@@ -1,12 +1,13 @@
 <template>
   <q-dialog
     v-model="dialogoAbierto"
-    :persistent="guardando"
+    :persistent="guardando || hayDatosSinGuardar"
     transition-show="dialogo-entra"
     transition-hide="dialogo-sale"
     :transition-duration="220"
     aria-labelledby="contadores-auxiliar-titulo"
     @show="cargar"
+    @shake="pedirDescartar"
   >
     <q-card class="contadores-auxiliar">
       <q-card-section>
@@ -61,7 +62,7 @@
           color="primary"
           class="control-touch boton-presionable"
           :disable="guardando"
-          @click="dialogoAbierto = false"
+          @click="cerrar"
         />
         <q-btn
           unelevated
@@ -110,6 +111,35 @@ const cargados = ref([])
 const cargando = ref(false)
 const guardando = ref(false)
 const error = ref('')
+
+const DIALOGO = { transitionShow: 'dialogo-entra', transitionHide: 'dialogo-sale', transitionDuration: 220 }
+
+// Si se eligió otro contador, Esc, clic fuera o «Cancelar» preguntan antes de perder el cambio.
+const hayDatosSinGuardar = computed(() => {
+  if (cargando.value || error.value) return false
+  const cambios = calcularCambiosDeContadores(cargados.value, elegidos.value)
+  return cambios.agregar.length > 0 || cambios.quitar.length > 0
+})
+
+const pedirDescartar = () => {
+  if (guardando.value) return
+  $q.dialog({
+    ...DIALOGO,
+    title: '¿Descartar los cambios?',
+    message: 'El contador que elegiste no se guardará.',
+    cancel: { label: 'Seguir editando', flat: true, noCaps: true, class: 'control-touch boton-presionable' },
+    ok: { label: 'Descartar', color: 'dg-error', noCaps: true, unelevated: true, class: 'control-touch boton-presionable' },
+    focus: 'cancel',
+  }).onOk(() => {
+    dialogoAbierto.value = false
+  })
+}
+
+const cerrar = () => {
+  if (guardando.value) return
+  if (hayDatosSinGuardar.value) pedirDescartar()
+  else dialogoAbierto.value = false
+}
 
 // Número de la última carga: una respuesta vieja (de otro auxiliar) no pisa a la actual.
 let peticion = 0

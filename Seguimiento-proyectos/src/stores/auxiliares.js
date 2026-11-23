@@ -119,6 +119,28 @@ export const crearAuxiliaresStore = (dependencias = {}) => {
       },
 
       /**
+       * Relee los auxiliares sin pasar por «cargando» («Mi perfil» al volver o con un aviso).
+       * Un fallo conserva la lista y no muestra error; un éxito quita el error; una carga posterior gana.
+       * @param {number} contadorId - Id del contador.
+       * @returns {Promise<{ ok: boolean, descartado?: boolean }>}
+       */
+      async refrescarAuxiliaresEnSilencio(contadorId) {
+        // Con una carga completa en curso no se pisa: esa ya trae la lista nueva.
+        if (this.cargando) return { ok: false, descartado: true }
+        const versionActual = ++version
+        try {
+          const auxiliares = await servicio.listarAuxiliares(contadorId)
+          if (versionActual !== version) return { ok: false, descartado: true }
+          this.auxiliares = auxiliares
+          // Si la carga inicial había fallado, la lista ya llegó: la pantalla sale del error.
+          this.error = null
+          return { ok: true }
+        } catch {
+          return { ok: false }
+        }
+      },
+
+      /**
        * Contadores para los que el usuario es auxiliar (selector «Registrar caso para» de «Mis casos»).
        * No guarda estado: la lista es de esa pantalla. Un fallo no lanza; devuelve el error.
        * @param {number} auxiliarId - Id del contador autenticado.

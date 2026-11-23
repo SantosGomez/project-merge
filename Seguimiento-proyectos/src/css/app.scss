@@ -87,6 +87,14 @@ body {
   outline-offset: -2px;
 }
 
+// Texto de un q-chip no clicable con tooltip: QChip ignora tabindex, así que el foco
+// (y el tooltip por teclado) va en este span dentro del chip.
+.chip-con-ayuda:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 // Paleta de la app ($dg-colores en quasar.variables.scss): variables CSS y clases de color
 // con el mismo formato que las de Quasar, para usar `color="dg-..."` o `text-color="dg-..."`.
 :root {

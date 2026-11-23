@@ -69,7 +69,7 @@ describe('Grupo B: comportamiento', () => {
   it('al volver a la pestaña se recargan el resumen y los conteos en silencio', () => {
     assert.match(pagina, /addEventListener\('visibilitychange', alVolver\)/)
     assert.match(pagina, /removeEventListener\('visibilitychange', alVolver\)/)
-    assert.match(pagina, /const alVolver = \(\) => \{[\s\S]*?cargarResumen\(\)[\s\S]*?contadoresStore\.refrescarEnSilencio\(\)/)
+    assert.match(pagina, /const alVolver = \(\) => \{[\s\S]*?cargarResumen\(\{ silencioso: true \}\)[\s\S]*?contadoresStore\.refrescarEnSilencio\(\)/)
   })
 })
 

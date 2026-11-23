@@ -559,7 +559,7 @@ describe('Dashboard: tarjetas KPI del equipo (rediseño, rebanada 1)', () => {
 
   it('el resumen se pide aparte con getResumenEquipo y su error no toca el store de la lista', () => {
     const cargar = pagina.slice(pagina.indexOf('const cargarResumen'), pagina.indexOf('\n}', pagina.indexOf('const cargarResumen')))
-    assert.match(cargar, /resumen\.value = await getResumenEquipo\(\{ soloImportantes: true \}\)/)
+    assert.match(cargar, /const datos = await getResumenEquipo\(\{ soloImportantes: true \}\)[\s\S]*?resumen\.value = datos/)
     assert.match(cargar, /errorResumen\.value = fallo/)
     assert.doesNotMatch(cargar, /contadoresStore/)
     assert.match(pagina, /onMounted\(async \(\) => \{\s*cargarResumen\(\)/, 'se lanza sin esperar a la lista')

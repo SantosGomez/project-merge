@@ -287,8 +287,11 @@
                     <q-item-label class="cartera-item__nombre">{{ cliente.nombre }}</q-item-label>
                     <q-item-label v-if="cliente.importante" class="cartera-item__marca">
                       <q-chip dense square icon="star" class="cartera-item__importante">
-                        Importante
-                        <q-tooltip>Tiene al menos un caso abierto marcado como importante.</q-tooltip>
+                        <!-- QChip no clicable ignora tabindex: el span enfocable deja ver el tooltip con teclado -->
+                        <span tabindex="0" class="chip-con-ayuda">
+                          Importante
+                          <q-tooltip>Tiene al menos un caso abierto marcado como importante.</q-tooltip>
+                        </span>
                       </q-chip>
                     </q-item-label>
                   </q-item-section>
@@ -311,7 +314,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onBeforeUnmount, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 
 import AgregarAuxiliaresDialog from '../components/AgregarAuxiliaresDialog.vue'
@@ -326,6 +329,7 @@ import { filtrarContadores } from '../utils/filtrosCasos.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
 import { crearNotificadorNavegador, mensajeDeActivacion } from '../utils/notificacionesNavegador.js'
 import { obtenerPerfil } from '../services/authService.js'
+import { eventos } from '../services/eventosService.js'
 import { useAuxiliaresStore } from '../stores/auxiliares.js'
 import { useCasesStore } from '../stores/cases.js'
 import { useSessionStore } from '../stores/session.js'
@@ -505,6 +509,41 @@ onMounted(() => {
   if (session.esAuxiliar) {
     cargarContadoresQueApoyo()
   }
+})
+
+/*
+ * Tiempo real sin esqueletos: al volver a la ventana o con un aviso (por ejemplo, el despacho
+ * cambió tu equipo) se releen cuenta, cartera y equipo. Un fallo conserva lo que ya se ve.
+ */
+const refrescarEnSilencio = async () => {
+  cases.refrescarEnSilencio()
+  if (session.esContador) auxiliares.refrescarAuxiliaresEnSilencio(Number(session.id))
+  if (session.esAuxiliar && !cargandoContadores.value && !errorContadores.value) {
+    const resultado = await auxiliares.listarContadoresQueMeTienenComoAuxiliar(Number(session.id))
+    if (resultado.ok) contadoresQueApoyo.value = resultado.contadores ?? []
+  }
+  if (!cargandoPerfil.value && !errorPerfil.value) {
+    try {
+      perfil.value = await obtenerPerfil()
+    } catch {
+      // Se conservan los datos de la cuenta que ya se ven.
+    }
+  }
+}
+
+const alVolver = () => {
+  if (document.visibilityState === 'visible') refrescarEnSilencio()
+}
+document.addEventListener('visibilitychange', alVolver)
+
+const dejarDeEscuchar = [
+  eventos.escuchar('aviso-nuevo', refrescarEnSilencio),
+  // Si la conexión se cayó, pudo perderse algún aviso
+  eventos.escuchar('reconectado', refrescarEnSilencio),
+]
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', alVolver)
+  dejarDeEscuchar.forEach((dejar) => dejar())
 })
 </script>
 

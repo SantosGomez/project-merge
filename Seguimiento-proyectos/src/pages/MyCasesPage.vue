@@ -59,6 +59,7 @@
         dense
         outlined
         options-dense
+        clearable
         dropdown-icon="expand_more"
         popup-content-class="menu-seleccion-custom"
         transition-show="jump-down"

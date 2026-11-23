@@ -779,7 +779,7 @@ const guardarPrioridad = async (caso, prioridad, nombreContador) => {
       type: 'positive',
       message: `Prioridad actualizada. Se avisó a ${nombreContador}.`,
     })
-    cargarResumen()
+    cargarResumen({ silencioso: true })
   } catch (fallo) {
     $q.notify({
       type: 'negative',
@@ -807,7 +807,7 @@ const alAsignar = (caso) => {
   // El dashboard solo muestra casos importantes: si no lo es, se dice por qué no aparece.
   const nota = caso.importante ? '' : ' No aparece en el dashboard porque no está marcado como importante.'
   $q.notify({ type: 'positive', message: `Caso asignado. Se avisó a ${nombreContador}.${nota}` })
-  cargarResumen()
+  cargarResumen({ silencioso: true })
   cargarCalendario({ silencioso: true })
   contadoresStore.refrescarEnSilencio(caso.contador_id)
 }
@@ -832,15 +832,27 @@ const resumen = ref(null)
 const cargandoResumen = ref(false)
 const errorResumen = ref(null)
 
-const cargarResumen = async () => {
-  cargandoResumen.value = true
-  errorResumen.value = null
+// Número de la última petición del resumen: solo la más reciente cuenta y apaga el loader.
+let ultimaCargaResumen = 0
+
+// En silencio (eventos y al volver) no se muestra el loader y un fallo conserva las cifras;
+// si todavía no hay cifras que conservar, el fallo sí se muestra.
+const cargarResumen = async ({ silencioso = false } = {}) => {
+  const actual = ++ultimaCargaResumen
+  if (!silencioso) {
+    cargandoResumen.value = true
+    errorResumen.value = null
+  }
   try {
-    resumen.value = await getResumenEquipo({ soloImportantes: true })
+    const datos = await getResumenEquipo({ soloImportantes: true })
+    if (actual !== ultimaCargaResumen) return
+    resumen.value = datos
+    errorResumen.value = null
   } catch (fallo) {
-    errorResumen.value = fallo
+    if (actual !== ultimaCargaResumen) return
+    if (!silencioso || resumen.value === null) errorResumen.value = fallo
   } finally {
-    cargandoResumen.value = false
+    if (actual === ultimaCargaResumen) cargandoResumen.value = false
   }
 }
 
@@ -851,11 +863,11 @@ const cargarResumen = async () => {
  */
 const dejarDeEscuchar = [
   eventos.escuchar('caso-actualizado', ({ contadorId }) => {
-    cargarResumen()
+    cargarResumen({ silencioso: true })
     contadoresStore.refrescarEnSilencio(contadorId)
   }),
   eventos.escuchar('reconectado', () => {
-    cargarResumen()
+    cargarResumen({ silencioso: true })
     contadoresStore.refrescarEnSilencio()
   }),
 ]
@@ -865,7 +877,7 @@ onBeforeUnmount(() => dejarDeEscuchar.forEach((dejar) => dejar()))
 const alVolver = () => {
   if (document.visibilityState !== 'visible') return
   hoy.value = hoyLocal()
-  cargarResumen()
+  cargarResumen({ silencioso: true })
   cargarCalendario({ silencioso: true })
   contadoresStore.refrescarEnSilencio()
 }
