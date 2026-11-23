@@ -56,7 +56,7 @@
             "
           >
             <p class="resumen-tarjeta__titulo">{{ tarjeta.titulo }}</p>
-            <p class="resumen-tarjeta__valor">{{ tarjeta.valor }}</p>
+            <p class="resumen-tarjeta__valor"><ContadorRodante :valor="tarjeta.valor" /></p>
             <p class="resumen-tarjeta__detalle">{{ tarjeta.detalle }}</p>
           </q-card-section>
           <q-tooltip max-width="280px">{{ tarjeta.ayuda }}</q-tooltip>
@@ -77,6 +77,7 @@
 <script setup>
 import { computed } from 'vue'
 
+import ContadorRodante from './ContadorRodante.vue'
 import DonaEstados from './DonaEstados.vue'
 import ErrorState from './ErrorState.vue'
 import ScreenLoader from './ScreenLoader.vue'

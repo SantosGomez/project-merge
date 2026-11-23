@@ -27,7 +27,7 @@
       </div>
 
       <span class="cronometro-activo__reloj" role="timer" aria-label="Tiempo transcurrido">
-        {{ formatearCronometro(cronometro.segundos) }}
+        <ContadorRodante :valor="formatearCronometro(cronometro.segundos)" />
         <q-tooltip>Tiempo que lleva en marcha este cronómetro.</q-tooltip>
       </span>
 
@@ -91,6 +91,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 
+import ContadorRodante from './ContadorRodante.vue'
 import { useCronometroStore } from '../stores/cronometro.js'
 import { etiquetaDeMes, formatearCronometro, formatearDuracion } from '../utils/actividades.js'
 

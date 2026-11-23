@@ -25,7 +25,7 @@
           :aria-label="`${cifra.titulo}: ${cifra.valor}. ${cifra.ayuda}`"
           @click="emit('elegir', cifra.clave)"
         >
-          <span class="atencion__valor">{{ cifra.valor }}</span>
+          <span class="atencion__valor"><ContadorRodante :valor="cifra.valor" /></span>
           <span class="atencion__nombre">{{ cifra.titulo }}</span>
           <span class="atencion__detalle">{{ cifra.cuenta }}</span>
           <q-tooltip max-width="280px">{{ cifra.ayuda }}</q-tooltip>
@@ -43,6 +43,8 @@
 
 <script setup>
 import { computed } from 'vue'
+
+import ContadorRodante from './ContadorRodante.vue'
 
 /*
  * Franja «Requiere atención» del dashboard del administrador: cuatro cifras que abren su lista.
