@@ -203,6 +203,13 @@
           </div>
         </template>
         <template #day-body="{ scope }">
+          <!-- Hora actual: solo en la columna de hoy y dentro del horario visible; decorativa. -->
+          <div
+            v-if="scope.timestamp.date === hoyDeLaLinea && minutosDeLaLinea !== null"
+            class="linea-ahora"
+            :style="{ top: `${minutosDeLaLinea}px` }"
+            aria-hidden="true"
+          />
           <BloqueJunta
             v-for="(bloque, indice) in bloquesDelDia(scope.timestamp.date)"
             :key="claveDeJunta(bloque.junta, indice)"
@@ -224,7 +231,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { QCalendarDay } from '@quasar/quasar-ui-qcalendar/QCalendarDay'
@@ -250,7 +257,9 @@ import {
   segmentoDelDia,
   textoDiaConJuntas,
   textoPeriodo,
+  formatearFechaISO,
 } from '../utils/juntas.js'
+import { minutosDesdeInicioDeVista } from '../utils/proximaJunta.js'
 import {
   claseDeVencimiento,
   iconoDeVencimiento,
@@ -320,6 +329,24 @@ const TODOS_LOS_DIAS = [1, 2, 3, 4, 5, 6, 0]
 const MINUTOS_POR_HUECO = 30
 const ALTO_DE_HUECO = 30
 const ALTO_MINIMO_DE_BLOQUE = 24
+
+// Línea de la hora actual (rebanada 42): se recoloca cada 30 s y al volver a la ventana;
+// un minuto es un píxel.
+const ahora = ref(new Date())
+const recolocarLinea = () => (ahora.value = new Date())
+const relojDeLaLinea = setInterval(recolocarLinea, 30 * 1000)
+const alVolverLinea = () => {
+  if (document.visibilityState === 'visible') recolocarLinea()
+}
+document.addEventListener('visibilitychange', alVolverLinea)
+onBeforeUnmount(() => {
+  clearInterval(relojDeLaLinea)
+  document.removeEventListener('visibilitychange', alVolverLinea)
+})
+const hoyDeLaLinea = computed(() => formatearFechaISO(ahora.value))
+const minutosDeLaLinea = computed(() =>
+  minutosDesdeInicioDeVista(ahora.value, HORA_INICIO_VISTA, HORA_FIN_VISTA),
+)
 
 const textoDeVista = computed(() => textoPeriodo(props.vista, props.fecha))
 
@@ -724,6 +751,29 @@ const alElegirHueco = ({ scope }) => {
   z-index: 3;
   outline: 2px solid var(--dg-foco) !important;
   outline-offset: 2px;
+}
+
+/* Hora actual: línea de 2 px con un punto al inicio, sobre los bloques y sin recibir clics. */
+.linea-ahora {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--dg-acento);
+  pointer-events: none;
+}
+
+.linea-ahora::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dg-acento);
 }
 
 /* «+N más» del Mes: botón plano del ancho del día. */

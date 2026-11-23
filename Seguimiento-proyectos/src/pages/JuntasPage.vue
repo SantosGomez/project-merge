@@ -31,6 +31,8 @@
       </template>
     </q-banner>
 
+    <ProximaJunta ref="proximaJunta" @ver="abrirDetalle" />
+
     <BarraPeriodo
       :periodo="periodo"
       :vista="vista"
@@ -274,6 +276,7 @@ import CalendarioJuntas from '../components/CalendarioJuntas.vue'
 import ErrorState from '../components/ErrorState.vue'
 import JuntaDetalleDialog from '../components/JuntaDetalleDialog.vue'
 import JuntaFormDialog from '../components/JuntaFormDialog.vue'
+import ProximaJunta from '../components/ProximaJunta.vue'
 import ScreenLoader from '../components/ScreenLoader.vue'
 import { listarAuditorias } from '../services/auditoriaService.js'
 import { getMisCasos } from '../services/caseService.js'
@@ -663,6 +666,7 @@ const alCerrarFormulario = async () => {
  */
 const alGuardar = async (guardada) => {
   $q.notify({ type: 'positive', message: 'Junta guardada.' })
+  proximaJunta.value?.recargar()
   const visible = juntaCaeEnRango(guardada, rango.value)
   juntas.value = conJuntaGuardada(juntas.value, guardada, rango.value)
   juntaParaEnfocar = guardada.id
@@ -679,6 +683,7 @@ const alBorrar = (junta) => {
   $q.notify({ type: 'positive', message: 'Junta borrada.' })
   juntas.value = sinJunta(juntas.value, junta.id)
   cargar({ silencioso: true })
+  proximaJunta.value?.recargar()
 }
 
 // La ficha abierta pasa a la versión nueva (con tu respuesta y el estado) y el calendario se recarga.
@@ -686,7 +691,11 @@ const alBorrar = (junta) => {
 const alResponder = (junta) => {
   juntaSeleccionada.value = junta
   cargar({ silencioso: true })
+  proximaJunta.value?.recargar()
 }
+
+// «Tu próxima junta» (rebanada 42): se refresca sola; aquí, además, tras guardar, borrar o responder.
+const proximaJunta = ref(null)
 
 // --- enlace de un aviso ---------------------------------------------------------------------------
 
