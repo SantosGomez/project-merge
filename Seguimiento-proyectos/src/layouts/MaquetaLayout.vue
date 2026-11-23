@@ -91,6 +91,13 @@
         <!-- El menú es la navegación principal: así lo anuncian los lectores de pantalla. -->
         <nav aria-label="Navegación principal">
         <q-list padding>
+          <!-- Punto que se desliza hasta la opción activa (idea de PillNav); solo decorativo. -->
+          <span
+            class="indicador-activo"
+            :class="{ 'indicador-activo--visible': indicador.visible }"
+            :style="{ transform: `translateY(${indicador.y}px)` }"
+            aria-hidden="true"
+          />
           <template v-if="session.esAdministrador">
             <q-item-label header>Administración</q-item-label>
 
@@ -544,6 +551,55 @@ const pageTitle = computed(() => route.meta.titulo ?? 'Pantalla')
 /** `aria-current` de cada opción del menú: el lector anuncia en qué pantalla estás. */
 const paginaActual = (nombre) => (route.name === nombre ? 'page' : undefined)
 
+/*
+ * Punto de la opción activa: se mide la posición del ítem activo dentro de la lista y el punto
+ * se desliza hasta ahí (con un pequeño rebote en CSS). Se vuelve a medir al cambiar de ruta y
+ * cuando la lista cambia de tamaño (menú compacto, ventana).
+ */
+const indicador = ref({ y: 0, visible: false })
+const TAMANO_INDICADOR = 8
+const listaDelMenu = () => document.querySelector('#menu-lateral nav > .q-list')
+
+const medirIndicador = () => {
+  const activo = listaDelMenu()?.querySelector('.q-item--nav-activo')
+  // Sin alto todavía (menú sin acomodar u oculto): se deja como está y se mide después.
+  if (activo && activo.offsetHeight === 0) return
+  if (!activo) {
+    indicador.value = { ...indicador.value, visible: false }
+    return
+  }
+  indicador.value = {
+    y: activo.offsetTop + activo.offsetHeight / 2 - TAMANO_INDICADOR / 2,
+    visible: true,
+  }
+}
+
+// Las animaciones del menú (compacto ↔ abierto, móvil) duran ~300 ms: se mide al empezar y al acabar.
+const DURACION_ANIMACION_MENU = 350
+let medidaPendiente = 0
+const medirTrasAnimacion = () => {
+  nextTick(medirIndicador)
+  clearTimeout(medidaPendiente)
+  medidaPendiente = setTimeout(medirIndicador, DURACION_ANIMACION_MENU)
+}
+
+watch(() => route.fullPath, medirTrasAnimacion)
+watch([menuCompacto, drawerOpen], medirTrasAnimacion)
+
+let observadorLista = null
+onMounted(() => {
+  medirTrasAnimacion()
+  const lista = listaDelMenu()
+  if (typeof ResizeObserver !== 'undefined' && lista) {
+    observadorLista = new ResizeObserver(medirIndicador)
+    observadorLista.observe(lista)
+  }
+})
+onBeforeUnmount(() => {
+  clearTimeout(medidaPendiente)
+  observadorLista?.disconnect()
+})
+
 /** La ficha de una auditoría es una ruta hermana: «Auditorías» sigue marcado como activo. */
 const enAuditorias = computed(() =>
   ['auditorias', 'auditoria-ficha'].includes(route.name),
@@ -967,27 +1023,137 @@ onBeforeUnmount(() => {
   color: var(--q-secondary);
 }
 
+/*
+ * Ítems como píldoras (prueba en «experimento», idea de PillNav de Vue Bits): al pasar el
+ * puntero o enfocar con teclado, un círculo celeste sube y llena la píldora y los textos pasan
+ * a azul marino para conservar el contraste sobre el celeste.
+ */
+.drawer-nav .q-list {
+  position: relative;
+}
+
 .q-item--nav {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 2px 12px 2px 18px;
+  border-radius: 999px;
   color: var(--dg-texto-claro);
+}
+
+.q-item--nav::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: -1;
+  width: 160%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--q-secondary);
+  transform: translate(-50%, 100%) scale(0.4);
+  transition: transform 450ms var(--dg-curva-salida);
 }
 
 .q-item--nav .q-icon {
   color: var(--q-secondary);
+  transition: color 200ms var(--dg-curva-salida);
 }
 
 .q-item--nav .q-item__label--caption {
   color: var(--dg-texto-claro-tenue);
+  transition: color 200ms var(--dg-curva-salida);
 }
 
-/* Foco celeste en los ítems, como el logo; el anillo blanco global tapaba la franja del activo. */
+.q-item--nav {
+  transition: color 200ms var(--dg-curva-salida);
+}
+
+.q-item--nav:focus-visible::before {
+  transform: translate(-50%, 30%) scale(1);
+}
+
+.q-item--nav:focus-visible,
+.q-item--nav:focus-visible .q-icon,
+.q-item--nav:focus-visible .q-item__label--caption {
+  color: var(--q-primary);
+}
+
+/* Con ratón; en pantallas táctiles el :hover se queda pegado después de tocar. */
+@media (hover: hover) and (pointer: fine) {
+  .q-item--nav:hover::before {
+    transform: translate(-50%, 30%) scale(1);
+  }
+
+  .q-item--nav:hover,
+  .q-item--nav:hover .q-icon,
+  .q-item--nav:hover .q-item__label--caption {
+    color: var(--q-primary);
+  }
+}
+
+/* Sin el sombreado gris de Quasar al pasar el puntero: el relleno ya marca el hover. */
+.q-item--nav :deep(.q-focus-helper) {
+  display: none;
+}
+
+/* Foco celeste en los ítems, como el logo. */
 .q-item--nav:focus-visible {
   outline: 2px solid var(--q-secondary) !important;
   outline-offset: -2px;
 }
 
+/* Activa: fondo claro y contorno celeste; el punto que se desliza es solo decorativo. */
 .q-item--nav-activo {
   background: var(--dg-fondo-menu-activo);
-  box-shadow: inset 3px 0 0 var(--q-secondary);
+  box-shadow: inset 0 0 0 1px var(--q-secondary);
+}
+
+/* Punto de la opción activa: se desliza en vertical con un pequeño rebote. */
+.indicador-activo {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--q-secondary);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 500ms var(--dg-curva-rebote),
+    opacity 200ms var(--dg-curva-salida);
+}
+
+.indicador-activo--visible {
+  opacity: 1;
+}
+
+/* El logo da una vuelta al pasar el puntero (solo con ratón). */
+.drawer-marca__logo {
+  transition: transform 700ms var(--dg-curva-salida);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .drawer-marca__logo-boton:not([aria-disabled='true']):hover .drawer-marca__logo {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .q-item--nav,
+  .q-item--nav::before,
+  .q-item--nav .q-icon,
+  .q-item--nav .q-item__label--caption,
+  .indicador-activo,
+  .drawer-marca__logo {
+    transition: none;
+  }
+
+  .drawer-marca__logo-boton:hover .drawer-marca__logo {
+    transform: none;
+  }
 }
 
 /*
@@ -1002,6 +1168,19 @@ onBeforeUnmount(() => {
 
 .q-drawer--mini .drawer-usuario__fila {
   justify-content: center;
+}
+
+/*
+ * Compacto: la píldora es un círculo centrado alrededor del icono; el punto queda a su izquierda.
+ * Mismo selector que Quasar usa para fijar el ancho del ítem compacto, para poder ganarle.
+ */
+.q-drawer-container:not(.q-drawer--mini-animate) .q-drawer--mini .q-item--nav {
+  justify-content: center;
+  width: 56px;
+  min-width: 56px;
+  margin: 2px auto;
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .q-drawer--mini .drawer-usuario__fila--enlace {

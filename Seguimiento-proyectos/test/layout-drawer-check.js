@@ -464,9 +464,13 @@ describe('Drawer sidebar — verificación estática', () => {
       /box-shadow:[^;]*var\(--q-secondary\)/,
       'el activo lleva barra cian',
     )
+    // «experimento» (idea de PillNav): el hover llena la píldora de celeste ($secondary) y los
+    // textos pasan a azul marino ($primary); antes el hover lo aportaba Quasar.
+    assert.match(src, /\.q-item--nav:hover::before\s*\{[^}]*transform:/, 'el hover sube el relleno')
+    assert.match(src, /\.q-item--nav:hover \.q-icon,[\s\S]*?color:\s*var\(--q-primary\)/, 'sobre el relleno los textos van en $primary')
     assert.ok(
-      !src.includes('.q-item--nav:hover'),
-      'el hover del menú lo aporta Quasar, sin regla propia',
+      contraste(primary, secondary) >= MINIMO_WCAG,
+      `contraste ${contraste(primary, secondary).toFixed(2)}:1 del texto sobre el relleno`,
     )
   })
 

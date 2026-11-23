@@ -110,6 +110,8 @@ body {
   --dg-sombra-tarjeta: 0 12px 32px rgba(16, 42, 67, 0.12);
   --dg-anillo-foco: 0 0 0 3px rgba(11, 92, 173, 0.12);
   --dg-curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
+  // Se pasa un poco y regresa: el punto del menú lateral al cambiar de opción.
+  --dg-curva-rebote: cubic-bezier(0.34, 1.45, 0.64, 1);
 }
 
 // Superficies del navegador con la paleta: selección de texto, cursor de escritura, controles
