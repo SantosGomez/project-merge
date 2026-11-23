@@ -21,6 +21,7 @@
         <div class="layout-bar__row">
           <q-btn
             ref="botonMenu"
+            v-if="!session.sesionCaducada"
             flat
             icon="menu"
             aria-label="Abrir menú de navegación"
@@ -54,8 +55,9 @@
       @cerrar-sesion="abrirDialogoCierre"
     />
 
+    <!-- Con la sesión cerrada no hay menú: solo queda el aviso para volver a entrar. -->
     <q-drawer
-      v-if="!usarDock"
+      v-if="!usarDock && !session.sesionCaducada"
       id="menu-lateral"
       v-model="drawerOpen"
       show-if-above
@@ -863,11 +865,13 @@ onBeforeUnmount(() => {
   padding: 4px 12px;
 }
 
+/* Alto fijo del botón de menú: la barra no se encoge cuando el botón no está (sesión cerrada). */
 .layout-bar__row {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
 }
 
 .layout-bar__title {

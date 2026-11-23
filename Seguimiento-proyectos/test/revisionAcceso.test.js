@@ -155,8 +155,25 @@ describe('Textos de acceso en trato de tú y sin jerga', () => {
   it('«Sesión caducada» es un aviso breve, sin «token» ni rótulos de plantilla', () => {
     assert.match(plantillaCaducada, /<h2[^>]*>Tu sesión se cerró<\/h2>/)
     assert.doesNotMatch(caducada, /token|Qué ocurrió:|Sobre qué dato|inicie sesión|su sesión/i)
-    assert.match(plantillaCaducada, /Vuelve a iniciar sesión para continuar\./)
+    assert.match(plantillaCaducada, /Vuelve a iniciar sesión\s+para continuar\./)
     assert.match(plantillaCaducada, /label="Ir al inicio de sesión"/)
+  })
+
+  it('«Sesión caducada» sigue el estilo del login: tarjeta, ícono de aviso y entrada con cortina', () => {
+    assert.match(plantillaCaducada, /<q-card[^>]*v-aparecer="\{ cortina: true[^"]*\}"/)
+    assert.match(plantillaCaducada, /<q-avatar[^>]*icon="lock_clock"[^>]*aria-hidden="true"/)
+    assert.match(caducada, /border-radius:\s*16px/)
+    assert.match(caducada, /var\(--dg-sombra-tarjeta\)/)
+    assert.match(caducada, /var\(--dg-aviso-fondo\)/)
+    assert.match(caducada, /import \{ vAparecer \} from '\.\.\/utils\/aparecer\.js'/)
+  })
+
+  it('con la sesión cerrada no se muestra el menú lateral anterior ni el botón que lo abre', () => {
+    const maqueta = leer('../src/layouts/MaquetaLayout.vue')
+    const drawer = maqueta.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
+    const botonMenu = maqueta.match(/<q-btn\s+ref="botonMenu"[\s\S]*?\/>/)?.[0] ?? ''
+    assert.match(drawer, /v-if="!usarDock && !session\.sesionCaducada"/)
+    assert.match(botonMenu, /v-if="!session\.sesionCaducada"/)
   })
 })
 
