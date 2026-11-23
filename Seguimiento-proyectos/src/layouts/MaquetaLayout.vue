@@ -745,10 +745,25 @@ onBeforeUnmount(() => {
  * un scroll de sobra. El contenedor reparte la ventana: el encabezado toma su alto y
  * la página se estira con el resto.
  */
+/*
+ * Fondo general (prueba en «experimento», idea de Uiverse): cuadrícula fina que se desvanece
+ * hacia abajo. La capa radial de arriba hace el desvanecido sin `mask-image`, así el contenido
+ * no se enmascara; `fixed` la deja quieta respecto a la ventana en páginas largas.
+ */
 .contenedor-paginas {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: var(--dg-fondo-suave);
+  background-image:
+    radial-gradient(ellipse 70% 60% at 50% 0%, transparent 60%, var(--dg-fondo-suave) 100%),
+    linear-gradient(to right, var(--dg-borde) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--dg-borde) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    20px 30px,
+    20px 30px;
+  background-attachment: fixed;
 }
 
 .contenedor-paginas > :deep(.q-page) {
