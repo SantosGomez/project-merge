@@ -38,7 +38,8 @@ async function testSeedCreaLaTablaDeFormaIdempotente() {
   const columnas = await query('SHOW COLUMNS FROM clientes');
   assert.deepStrictEqual(
     columnas.map((c) => c.Field),
-    ['id', 'usuario_id', 'nombre', 'rfc', 'activo', 'creado_en']
+    // clave, email y telefono: unión con el módulo de documentos (fase 1)
+    ['id', 'clave', 'usuario_id', 'nombre', 'rfc', 'email', 'telefono', 'activo', 'creado_en']
   );
 }
 

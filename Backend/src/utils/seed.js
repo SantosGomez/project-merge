@@ -187,6 +187,7 @@ async function seedDatabase({ cuentasDemo = debeSembrarCuentasDemo(process.env) 
   await migrarRegistrosTiempo();
   await migrarJornadas();
   await migrarJuntas();
+  await migrarUnificacion();
 
   if (!cuentasDemo) return;
 
@@ -629,6 +630,203 @@ async function migrarAvisosDeJuntas() {
     await query(
       'ALTER TABLE notificaciones ADD CONSTRAINT fk_notificaciones_junta FOREIGN KEY (junta_id) REFERENCES juntas(id) ON DELETE CASCADE'
     );
+  }
+}
+
+/**
+ * Unión con Proyecto-documentos, fase 1 (una sola base). Idempotente y no borra datos:
+ * - `usuarios.alias`: el nombre corto con el que se entraba a documentos (opcional y único);
+ * - `usuario_modulos`: qué módulos ve cada cuenta y con qué rol dentro del módulo (NULL = su rol general).
+ *   Toda cuenta sin ningún módulo recibe «seguimiento», que es lo que ya usaba;
+ * - `clientes`: un solo catálogo para los dos módulos. El contador (`usuario_id`) pasa a ser opcional
+ *   y se agregan `clave` (carpeta de documentos), `email` y `telefono`;
+ * - `unificacion_mapa`: de qué id de la base de documentos salió cada fila importada (para deshacer);
+ * - tablas y catálogos del módulo de documentos, con el mismo esquema que tenían allá.
+ */
+async function migrarUnificacion() {
+  await query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS alias VARCHAR(50) NULL AFTER correo');
+  await query('CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_alias ON usuarios (alias)');
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS usuario_modulos (
+      usuario_id INT NOT NULL,
+      modulo VARCHAR(30) NOT NULL,
+      rol VARCHAR(30) NULL,
+      PRIMARY KEY (usuario_id, modulo),
+      CONSTRAINT fk_usuario_modulos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+  await query(`
+    INSERT INTO usuario_modulos (usuario_id, modulo, rol)
+    SELECT u.id, 'seguimiento', NULL FROM usuarios u
+    WHERE NOT EXISTS (SELECT 1 FROM usuario_modulos m WHERE m.usuario_id = u.id)
+  `);
+
+  await query(`
+    ALTER TABLE clientes
+      MODIFY usuario_id INT NULL,
+      ADD COLUMN IF NOT EXISTS clave CHAR(4) NULL AFTER id,
+      ADD COLUMN IF NOT EXISTS email VARCHAR(150) NULL AFTER rfc,
+      ADD COLUMN IF NOT EXISTS telefono VARCHAR(20) NULL AFTER email
+  `);
+  await query('CREATE UNIQUE INDEX IF NOT EXISTS uq_clientes_clave ON clientes (clave)');
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS unificacion_mapa (
+      tabla VARCHAR(30) NOT NULL,
+      id_origen INT NOT NULL,
+      id_destino INT NOT NULL,
+      accion ENUM('insertado', 'ligado') NOT NULL,
+      creado_en DATETIME NOT NULL,
+      PRIMARY KEY (tabla, id_origen)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  await migrarTablasDocumentos();
+}
+
+/**
+ * Tablas del módulo de documentos (esquema de Proyecto-documentos/Backend/schema.sql) y sus catálogos,
+ * que se siembran solo si están vacíos.
+ */
+async function migrarTablasDocumentos() {
+  const opciones = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+  await query(`
+    CREATE TABLE IF NOT EXISTS empresas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      rfc VARCHAR(15),
+      activo TINYINT(1) DEFAULT 1
+    ) ${opciones}
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS departamentos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      descripcion VARCHAR(255)
+    ) ${opciones}
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS tipos_documento (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      descripcion VARCHAR(255)
+    ) ${opciones}
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS documentos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      folio VARCHAR(50) NOT NULL UNIQUE,
+      cliente_id INT NOT NULL,
+      empresa_id INT NOT NULL,
+      tipo_doc_id INT NOT NULL,
+      departamento_id INT NOT NULL,
+      usuario_recep_id INT NOT NULL,
+      contador_id INT NULL,
+      via_entrega ENUM('PRESENCIAL', 'CORREO', 'DIGITAL', 'OTRO') NOT NULL,
+      periodo CHAR(7) NOT NULL,
+      observaciones TEXT NULL,
+      asunto VARCHAR(255) NOT NULL,
+      prioridad ENUM('BAJA', 'MEDIA', 'ALTA', 'URGENTE') DEFAULT 'MEDIA',
+      estado ENUM('RECEPCIONADO', 'EN_PROCESO', 'PENDIENTE_CLIENTE', 'COMPLETADO', 'CANCELADO') DEFAULT 'RECEPCIONADO',
+      firma_cliente LONGTEXT NULL,
+      firma_recep LONGTEXT NULL,
+      firma_contador_recep LONGTEXT NULL,
+      firma_contador LONGTEXT NULL,
+      notificar_correo TINYINT(1) DEFAULT 0,
+      fecha_recepcion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      fecha_limite_sla DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_documentos_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+      CONSTRAINT fk_documentos_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id),
+      CONSTRAINT fk_documentos_tipo FOREIGN KEY (tipo_doc_id) REFERENCES tipos_documento(id),
+      CONSTRAINT fk_documentos_departamento FOREIGN KEY (departamento_id) REFERENCES departamentos(id),
+      CONSTRAINT fk_documentos_recepcion FOREIGN KEY (usuario_recep_id) REFERENCES usuarios(id),
+      CONSTRAINT fk_documentos_contador FOREIGN KEY (contador_id) REFERENCES usuarios(id),
+      CONSTRAINT chk_documentos_periodo CHECK (periodo REGEXP '^[0-9]{4}-[0-9]{2}$')
+    ) ${opciones}
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS documento_archivos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      documento_id INT NOT NULL,
+      ruta_storage VARCHAR(255) NULL,
+      nombre_original VARCHAR(255) NOT NULL,
+      mime_type VARCHAR(100),
+      tamano_bytes BIGINT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_documento_archivos_documento FOREIGN KEY (documento_id) REFERENCES documentos(id) ON DELETE CASCADE
+    ) ${opciones}
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS documento_historial (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      documento_id INT NOT NULL,
+      usuario_id INT NOT NULL,
+      estado_anterior VARCHAR(50),
+      estado_nuevo VARCHAR(50) NOT NULL,
+      comentarios TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_documento_historial_documento FOREIGN KEY (documento_id) REFERENCES documentos(id) ON DELETE CASCADE,
+      CONSTRAINT fk_documento_historial_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    ) ${opciones}
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS cliente_doc_requeridos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      cliente_id INT NOT NULL,
+      tipo_doc_id INT NOT NULL,
+      documento_id INT NULL,
+      periodo VARCHAR(20) NOT NULL,
+      entregado TINYINT(1) DEFAULT 0,
+      fecha_limite_entrega DATE NULL,
+      fecha_entrega DATETIME NULL,
+      CONSTRAINT fk_requeridos_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+      CONSTRAINT fk_requeridos_tipo FOREIGN KEY (tipo_doc_id) REFERENCES tipos_documento(id),
+      CONSTRAINT fk_requeridos_documento FOREIGN KEY (documento_id) REFERENCES documentos(id) ON DELETE SET NULL
+    ) ${opciones}
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS contador_folio (
+      anio INT NOT NULL PRIMARY KEY,
+      consecutivo INT NOT NULL DEFAULT 0,
+      actualizado TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ${opciones}
+  `);
+
+  await sembrarSiVacia(
+    'empresas',
+    'INSERT INTO empresas (nombre, rfc) VALUES (?, ?), (?, ?)',
+    ['DCA Contadores S.C.', 'DCA101010AB1', 'DCA Asesores y Consultores', 'DAC202020CD2']
+  );
+  await sembrarSiVacia(
+    'departamentos',
+    'INSERT INTO departamentos (nombre, descripcion) VALUES (?, ?), (?, ?), (?, ?), (?, ?)',
+    [
+      'Contabilidad', 'Gestión contable e impuestos',
+      'Fiscal', 'Declaraciones y auditoría fiscal',
+      'Nóminas', 'Gestión de nóminas y seguridad social',
+      'Legal', 'Trámites legales y corporativos',
+    ]
+  );
+  await sembrarSiVacia(
+    'tipos_documento',
+    'INSERT INTO tipos_documento (nombre, descripcion) VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)',
+    [
+      'Constancia de Situación Fiscal', 'Constancia actualizada emitida por el SAT',
+      'Opinión de Cumplimiento', 'Opinión en sentido positivo del SAT',
+      'Declaración Mensual', 'Declaración de impuestos mensuales',
+      'Firma Electrónica (FIEL)', 'Archivos .cer y .key',
+      'Comprobante de Pago', 'Facturas, recibos de pago y vouchers',
+    ]
+  );
+}
+
+async function sembrarSiVacia(tabla, sql, params) {
+  const [{ total }] = await query(`SELECT COUNT(*) AS total FROM \`${tabla}\``);
+  if (Number(total) === 0) {
+    await query(sql, params);
   }
 }
 
