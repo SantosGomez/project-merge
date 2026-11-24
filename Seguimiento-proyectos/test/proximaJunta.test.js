@@ -141,4 +141,12 @@ describe('Rebanada 42: conexión en las vistas', () => {
       /@media \(min-width: 600px\)\s*\{\s*\.proxima-junta\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*520px;/,
     )
   })
+
+  it('en escritorio todo va en una sola fila: «Ver» no baja a otro renglón', () => {
+    const tarjeta = leer('../src/components/ProximaJunta.vue')
+    assert.match(
+      tarjeta,
+      /@media \(min-width: 600px\)\s*\{[^@]*\.proxima-junta__cuerpo\s*\{[^}]*flex-wrap:\s*nowrap;/,
+    )
+  })
 })

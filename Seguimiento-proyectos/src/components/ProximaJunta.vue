@@ -208,6 +208,11 @@ defineExpose({ recargar })
     min-width: 360px;
     max-width: 520px;
   }
+
+  /* Una sola fila: si falta espacio, el título se recorta con «…» (el tooltip lo muestra completo). */
+  .proxima-junta__cuerpo {
+    flex-wrap: nowrap;
+  }
 }
 
 @media (max-width: 599px) {
