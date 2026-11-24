@@ -1,6 +1,11 @@
-# AGENTS.md — DelGrow Estado Contadores
+# AGENTS.md — Seguimiento de Proyectos (unión con Recepción de documentos)
 
-Es una herramienta que permite gestionar el estado de los contadores, para saber el estado de urgencia de trabajo de los contadores para casos o clientes importantes o urgentes.
+Sistema único del despacho (Grupo DelGrow S.C.), con un solo login, una sola base de datos y varios módulos. Nació de unir `status-conta` y `Proyecto-documentos`; el plan, las fases y las decisiones de la unión están en `PLAN.md`.
+
+- **Seguimiento contable** (módulo `seguimiento`): el estado de urgencia del trabajo de los contadores en casos y clientes importantes, auditorías, «Mis actividades» y «Mi Calendario».
+- **Recepción de documentos** (módulo `documentos`): recepción de documentos con firmas, direccionamiento al contador, dashboard con semáforo por cliente, clientes y seguimiento por folio o RFC.
+- Cada persona tiene **un rol general** (`usuarios.rol`, el de seguimiento) y un **rol por módulo** en `usuario_modulos` (`modulo`, `rol`). El administrador tiene documentos por su rol, aunque no esté en la tabla (`UsuarioModuloModel.modulosDeUsuario`); si la tabla le da otro rol en documentos, gana la tabla. Toda cuenta nueva nace con `seguimiento`.
+- Al entrar, quien tiene varios módulos llega al selector `/modulos`; quien tiene uno solo entra directo. Las reglas viven en `src/utils/modulos.js` del frontend.
 
 ## Stack y estructura
 
@@ -10,9 +15,15 @@ Es una herramienta que permite gestionar el estado de los contadores, para saber
 - poner en contenedores de docker el proyecto para publicar o para usar localmente, estara por decidir cual usar, por ahora se usara docker.
 - estructura de carpetas del proyecto
 
-/status-conta/
-├── /backend/
+/Proyecto-Merge/
+├── PLAN.md # Plan y fases de la unión
+├── docker-compose.yml # db (MariaDB), backend, frontend (nginx) y tunnel
+├── /docs/ # constitución, flujo de agentes, rebanadas y despliegue
+├── /Backend/
+│ ├── /soporte-pruebas/ # http.js, bd.js y verificarPruebas.js (MINIMOS)
+│ ├── /test/ # Pruebas del backend (node --test)
 │ ├── /src/
+│ │ ├── /modulos/documentos/ # Backend de documentos en ESM (.mjs): logica/ y rutas/, con sus *.test.mjs al lado
 │ │ ├── /config/ # Configuración de base de datos, variables de entorno y constantes
 │ │ ├── /controllers/ # Lógica de negocio de cada módulo (ej. authController.js, docController.js)
 │ │ ├── /middlewares/ # Middlewares de Express (ej. autenticación JWT, Argon2id, validación de roles)
@@ -30,7 +41,8 @@ Es una herramienta que permite gestionar el estado de los contadores, para saber
 ├── src/
 │ ├── components/ # Componentes reutilizables
 │ ├── layouts/ # Layouts de la aplicación
-│ ├── pages/ # Páginas de la aplicación (vista de login, dashboard de casos, «Mis casos» del contador y directorio de usuarios, con alta y restablecimiento de contraseña en diálogos.)
+│ ├── pages/ # Páginas de seguimiento (login, selector de módulos, dashboards, «Mis casos», directorio…)
+│ ├── modulos/documentos/ # Frontend de documentos: pages, components, composables, servicios, logica, css y permisos.js
 │ ├── services/ # Servicios de la aplicación
 │ ├── utils/ # Funciones auxiliares globales
 │ ├── store/ # Stores de la aplicación
@@ -46,14 +58,14 @@ Es una herramienta que permite gestionar el estado de los contadores, para saber
 Al implementar o modificar funcionalidades en el servidor, los agentes deben cumplir las siguientes pautas:
 
 - **Ubicación de Archivos:**
-  - Nuevas rutas HTTP → `backend/src/routes/[modulo]Routes.js`
-  - Lógica de negocio y controladores → `backend/src/controllers/[modulo]Controller.js`
-  - Middlewares de validación o autenticación → `backend/src/middlewares/[middlewareName].js`
-  - Consultas y modelos de datos → `backend/src/models/[modulo]Model.js`
+  - Nuevas rutas HTTP → `Backend/src/routes/[modulo]Routes.js`
+  - Lógica de negocio y controladores → `Backend/src/controllers/[modulo]Controller.js`
+  - Middlewares de validación o autenticación → `Backend/src/middlewares/[middlewareName].js`
+  - Consultas y modelos de datos → `Backend/src/models/[modulo]Model.js`
 
 - **Reglas de Integración:**
   - Mantén `server.js` limpio; jamás agregues endpoints o lógica de negocio directamente en este archivo.
-  - Asegúrate de importar y registrar las nuevas rutas en `backend/src/app.js`.
+  - Asegúrate de importar y registrar las nuevas rutas en `Backend/src/app.js`.
   - Todas las respuestas de error o éxito desde los controladores deben mantener un formato JSON consistente.
 
 ## Comandos
@@ -80,7 +92,7 @@ npm run build
 
 - **Tests:**
   - Para pruebas unitarias de utilidades y lógica (Node.js nativo sin dependencias adicionales):
-  
+
     ```bash
     node --test
     ```
@@ -90,15 +102,15 @@ npm run build
 Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas puertas en cada carpeta que toca la rebanada. Ninguna rebanada se da por hecha con una puerta en rojo.
 
 - Frontend (`Seguimiento-proyectos/`): `npm run lint:check`, `npm run build`, `node --test` y comprobación en navegador real si toca interfaz (incluida la vista móvil).
-- Backend (`Backend/`): `node --test` y `node soporte-pruebas/verificarPruebas.js`. Requiere MariaDB en marcha (XAMPP, puerto 3306); si no responde, parar y avisar.
-- Datos de prueba: las cuentas y registros de prueba usan el prefijo `zz_test_`; al terminar deben quedar 0 filas `zz_test_%`.
-- Navegador: `backend-experimento-3011` + `frontend-experimento-9012` de `.claude/launch.json`; cerrar los servidores que se abran.
+- Backend (`Backend/`): `node --test` y `node soporte-pruebas/verificarPruebas.js`. Las pruebas de documentos son `src/modulos/documentos/**/*.test.mjs` (más `test/documentosModulo.test.js`). Requiere en marcha la base de prueba de la unión: el contenedor Docker `merge-prueba-db` (puerto 3308, base `delgrow_merge`, la que usa `Backend/.env`), no XAMPP. Si no responde, parar y avisar.
+- Datos de prueba: las cuentas y registros de prueba usan el prefijo `zz_test_` (en documentos, correos `@ejemplo.com`); al terminar deben quedar 0 filas `zz_test_%`. Nunca datos reales en pruebas ni en el repo.
+- Navegador: `merge-backend` (3100) + `merge-frontend` (9100) de `.claude/launch.json`; cerrar los servidores que se abran. Si toca documentos, probar con cada rol del módulo (el menú y los permisos cambian por rol).
 - El reviewer solo corre las puertas de pruebas y lectura; nunca modifica archivos.
 - Backend: correr `node --test --test-concurrency=1` y por archivo (todo junto se cuelga; en paralelo falla al azar por la BD compartida). Cada archivo de `Backend/test` va en `MINIMOS`. Una ruta nueva va en la tabla de `autorizacionMatriz.test.js` (si no, la prueba falla).
 - `lint:check` no revisa formato: correr también `npx prettier --check`.
 - Nunca `DROP`/`ALTER` destructivo en pruebas. Borrar las `sesiones` antes que la cuenta. `limpiarDatosDePrueba` borra todo aviso que mencione `zz_test_`: no probar en navegador mientras corren las pruebas del backend.
 - Si una prueba pasa sin el cambio, no prueba nada. Nunca esquivar una prueba de texto moviendo el texto a otro archivo.
-- Con el panel del navegador oculto, `requestAnimationFrame` va a ~1 cuadro/s y los clics y teclas pueden fallar: mostrar el panel antes de probar. El 3011 puede figurar «running» estando caído. En Playwright, esperar 3 s antes de capturar.
+- Con el panel del navegador oculto, `requestAnimationFrame` va a ~1 cuadro/s y los clics y teclas pueden fallar: mostrar el panel antes de probar. El backend puede figurar «running» estando caído. En Playwright, esperar 3 s antes de capturar.
 
 ## Convenciones
 
@@ -108,8 +120,8 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - Los comentarios deben estar en español.
 - las vistas deben ser responsivas para todo tipo de dispositivos (mobile, desktop).
 - los textos de las vistas no tienen que ser ambiguos para que todas los usuarios puedan entender
-- tener tooltips para dar contexto al usuario y evitar ambiguedad. Excepción: los ítems del menú lateral (`MaquetaLayout.vue`) no llevan tooltip, porque la etiqueta y el subtítulo ya dan el contexto; el logo (fijar menú) y el nombre del usuario sí lo conservan. Excepción 2: dentro del calendario de «Mi Calendario» (`CalendarioJuntas.vue`, `AnioJuntas.vue`) no hay tooltips; el texto visible y el `aria-label` de cada bloque dan el contexto. Los botones de esa pantalla, fuera del calendario, sí llevan tooltip.
-- Identidad visual: la app se llama «Seguimiento de Proyectos» y comparte el diseño de las demás apps de Grupo DelGrow S.C. (menú lateral oscuro de altura completa con logo, nombre de la empresa y de la app, secciones por rol y usuario con cierre de sesión al pie).
+- tener tooltips para dar contexto al usuario y evitar ambiguedad. Menú: en escritorio, el dock (`MenuDock.vue`) es de solo iconos, así que cada opción lleva `q-tooltip` y `aria-label` con el mismo texto. Excepción: los ítems del menú lateral del celular (`MaquetaLayout.vue`) no llevan tooltip, porque la etiqueta y el subtítulo ya dan el contexto; el logo y el nombre del usuario sí lo conservan. Las opciones del menú están en dos lugares (plantilla del menú lateral y `opcionesDock`): cambiar las dos. Excepción 2: dentro del calendario de «Mi Calendario» (`CalendarioJuntas.vue`, `AnioJuntas.vue`) no hay tooltips; el texto visible y el `aria-label` de cada bloque dan el contexto. Los botones de esa pantalla, fuera del calendario, sí llevan tooltip.
+- Identidad visual: la app se llama «Seguimiento de Proyectos» y comparte el diseño de las demás apps de Grupo DelGrow S.C.: fondo con degradado radial azul; en escritorio, dock flotante a la izquierda (`MenuDock.vue`: logo en azulejo, opciones del módulo actual, perfil y cierre de sesión); en celular, menú lateral con píldoras. Con varios módulos, el menú muestra «Cambiar de módulo» y solo las opciones del módulo en el que estás.
 - Componentes de Quasar en todas las vistas (`q-btn`, `q-list`/`q-item`, `q-card`, `q-chip`/`q-badge`, `q-form`, `q-input`…). HTML nativo solo cuando Quasar no tiene equivalente; la única excepción acordada es el SVG de la dona «Casos por estado» (`DonaEstados.vue`), que va dentro de un `q-card`.
 - Colores desde la paleta `$dg-colores` de `src/css/quasar.variables.scss` (`color="dg-acento"`, clases `text-dg-*`/`bg-dg-*` o `var(--dg-*)`), nunca un hexadecimal suelto en un componente. Un color nuevo se agrega a la paleta y, si es texto sobre fondo, a los pares de contraste de `test/paletaColores.test.js`.
 - Textos en tú; mensajes de error en tres partes. La parte «sobre X» de `buildError` no se cambia: el frontend la usa en `campoConError` y el alta busca «ya existe».
@@ -143,16 +155,36 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - Seguridad: Apache de XAMPP sirve todo `htdocs` en la LAN; no dejar secretos ni respaldos dentro del proyecto y no quitar el `.htaccess` de la raíz. Rotar claves con `Backend/src/utils/rotarSecretos.js`. `db.js` solo acepta parámetros primitivos (para `IN`/`VALUES` armar los `?` a mano). Registrar con `registrar`/`registrarError` de `utils/bitacoraSeguridad.js`, no con `console.error`. Con la cookie `sp_sesion`, las escrituras exigen `X-Requested-With: SeguimientoProyectos`; Bearer sigue válido. Contraseñas ≥12 y no comunes (`validarPasswordNueva`).
 - <Limites: que no tocar, que no agregar ni modificar sin preguntar.>
 
+## Módulo de documentos (Recepción de documentos)
+
+- **Origen:** el código de `Proyecto-documentos` se copió casi igual. Backend en `Backend/src/modulos/documentos/` (ESM `.mjs`, que el código CommonJS carga con `require()`); frontend en `Seguimiento-proyectos/src/modulos/documentos/`. Se cambian solo las consultas que tocan tablas unidas; la lógica no se reescribe sin preguntar.
+- **Router:** `Backend/src/routes/documentoRoutes.js`, montado en `/doc` **antes** del `express.json` de 100 kb de `app.js`, porque lleva su propio parser (las firmas en base64 pesan hasta 2 MiB y los archivos se suben en crudo hasta 25 MB; nginx acepta 26 MB solo en `/api/doc/`). Sus respuestas conservan el formato de documentos `{ error, mensaje }` (excepción acordada al formato de seguimiento). Una ruta nueva de `/doc` también va en `autorizacionMatriz.test.js`.
+- **Sesión y permisos:** usa la sesión de status-conta (no existen `/sesion`, la cookie `dca_sesion` ni scrypt; un hash `scrypt$` viejo se pasa a argon2 al entrar). Entra quien tiene el módulo o es administrador. Cada ruta pide su permiso con `hayAcceso(rolEnDocumentos, accion)` (`logica/errores.mjs`); el frontend repite la tabla en `src/utils/modulos.js` (`hayAccesoDocumentos`, usada por `modulos/documentos/permisos.js`): cambiar siempre las dos. Roles del módulo: Administrador, Contador, Recepcionista, Practicante, Sistemas (Cliente apagado: `clienteId = null`).
+- **Quién entra y con qué rol:** «Acceso al módulo» (`/documentos/accesos`, `GET /doc/usuarios` y `PUT /doc/usuarios/:id/rol`). Las cuentas se crean en el Directorio de seguimiento, nunca en documentos. A un administrador no se le quita el módulo con `rol: null`.
+- **Tablas unidas:** `clientes` es un solo catálogo (`nombre` = razón social, `usuario_id` = contador y opcional, `activo` = estado, más `clave`, `email`, `telefono`); «Contador» en documentos sale de `usuario_modulos`, no de una tabla `roles`. `usuarios.alias` es el usuario corto de documentos (no se llama `usuario` porque una migración vieja borra esa columna). El esquema lo agrega `migrarUnificacion()` en `seed.js` (repetible, no borra datos).
+- **Cliente HTTP del frontend:** llama a `${API_URL}/doc/...` y manda `X-Requested-With` (sin ella el backend rechaza las escrituras con cookie). Devuelve el cuerpo pelado; los errores se muestran con `mensajeParaUsuario(err, respaldo)`.
+- **Copias que no se formatean:** `src/modulos/documentos/logica/normalizar.js` y `estadosDocumento.js` son copias del backend (en Docker el frontend se construye sin el Backend); una prueba compara `normalizar` y deben quedar idénticas.
+- **Estados y direccionamiento:** reglas en `logica/estadosDocumento.mjs`. `RECEPCIONADO` solo pasa a `EN_PROCESO` por Direccionamiento (`POST /doc/documentos/:id/entrega`, con `SELECT … FOR UPDATE`; si ya se entregó, 400). Las dos firmas van a `firma_contador_recep` y `firma_contador`; la observación de la entrega va a `documento_historial.comentarios`, nunca a `documentos.observaciones`.
+- **Firmas:** leer el lienzo (`toDataURL()`) antes de armar los datos, o el primer clic se rechaza por «faltan las firmas». Toda acción repetible lleva bandera de reentrada.
+- **PDF:** `html2pdf.js` se importa de forma estática (`AcuseImprimir.vue`, `DireccionamientoPage.vue`); con `import()` dinámico Vite devolvía HTML. El acuse se pinta desde `acuseData`, no desde el formulario.
+- **Adjuntos:** se guardan en `CARPETA_ADJUNTOS` (en Docker, volumen `adjuntos` en `/app/storage`). Nada de texto libre en cabeceras HTTP: los nombres de archivo van en la URL.
+- **Estilos:** las clases globales de documentos van en `modulos/documentos/css/documentos.scss` con alcance propio, para no cambiar el `.selector-moderno` de seguimiento. Los estilos de un menú de `q-select` no van en `<style scoped>` (Quasar lo monta en `body`). `q-select` con opciones `{ value, label }` necesita `emit-value` y `map-options`.
+- **Tablas (`QTable`):** si una tabla desborda, la columna de Acciones se sale de la pantalla: recortar con `max-width` + `ellipsis` y tooltip, ocultar columnas en móvil y comprobar que `scrollWidth - clientWidth` de `.q-table__middle.scroll` dé 0 (1440, 1024, 768, 375 y 320). Con búsqueda activa Quasar muestra `no-results-label`, no `no-data-label`: poner las dos.
+- **Maqueta:** el autollenado usa plantillas de prueba (nunca toca periodo, archivos ni firmas); «Nuevo cliente» y «Exportar reporte» de Clientes solo muestran un aviso.
+
 ## Trampas del entorno
 
 - Shell: PowerShell no admite `&&`/`||`. En Git Bash, `MSYS_NO_PATHCONV=1`. Varios `.vue` usan CRLF y `sed` falla con varias líneas o con `\\`: usar Edit. No usar `git stash` (cambia LF/CRLF y rompe `prettier --check`).
 - Quasar: el fondo de `q-dialog` responde a `mousedown`; `scoped` no alcanza los menús montados en `body`; con la prop `padding` de `q-btn`, el `min-height` necesita `!important` (igual el foco de los `q-btn` del calendario frente a `app.scss`); `sticky` no sirve dentro de `q-tab-panels`; `q-avatar` se ajusta con `size`; `tabular-nums` solo va en cifras.
 - Si `npm install` da EBUSY, cerrar el servidor de desarrollo. Si una tabla de XAMPP da «doesn't exist in engine», no borrar tablas sueltas.
 - `session.id` es texto: comparar con `Number(...)`.
+- `.claude/launch.json` (`merge-backend`, `merge-frontend`) arranca con un `lanzar.mjs` de una carpeta temporal de otra sesión: si no arranca, avisar en lugar de inventar otra configuración.
+- Este repo es un clon de `status-conta` (remoto `status-conta` = carpeta local; GitHub `SantosGomez/project-merge`). `status-conta` y `Proyecto-documentos` siguen en `htdocs` solo de consulta: no editarlos desde aquí.
 
 ## Despliegue (solo cuando se pida)
 
-- Bases: producción en Docker (puerto 3307), solo en una publicación pedida; pruebas en XAMPP (3306), compartida con el backend de desarrollo. Guía completa en `docs/seguridad-despliegue.md`.
+- Bases: producción en Docker (puerto 3307), solo en una publicación pedida; pruebas de la unión en el contenedor `merge-prueba-db` (3308). XAMPP (3306) tiene las bases de `status-conta` y de documentos (`dca_documentos`): solo se leen para importar. Guía completa en `docs/seguridad-despliegue.md`.
+- Unión en producción (fase 5 de `PLAN.md`): respaldar `db_datos` **y** el volumen `adjuntos`; arrancar el backend nuevo (el seed migra) y correr una sola vez `node src/utils/importarDocumentos.js` con `DOCS_DB_*` apuntando a `dca_documentos` (`--deshacer` revierte; `unificacion_mapa` evita duplicados).
 - Respaldo dentro del contenedor (`mariadb-dump --single-transaction --routines --triggers --events > /tmp/...` + `docker compose cp`); la tubería de PowerShell daña acentos; los `.sql` nunca se versionan. Etiquetar las imágenes anteriores antes de reconstruir.
 - `docker compose build` desde PowerShell (en Git Bash `API_URL=/api` se rompe) y `up -d --no-deps backend frontend` para que el túnel conserve su URL.
 - Túnel cloudflared: la URL cambia al reiniciarlo o recrearlo (`docker compose logs tunnel`). Agregarla a `CORS_ORIGENES` y hacer `up -d backend`; si no, el login da 403.

@@ -1,53 +1,51 @@
-# MEMORY.md — DelGrow Estado Contadores
+# MEMORY.md — Seguimiento de Proyectos (unión con Recepción de documentos)
 
-Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.md`; el detalle, en los commits y en `docs/rebanadas/`.
+Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.md`; el plan y las decisiones de la unión, en `PLAN.md`; el detalle, en los commits y en `docs/rebanadas/`.
 
-## Unión con Proyecto-documentos (2026-11-24, este repo: Proyecto-Merge)
+## Estado de la unión (2026-11-24)
 
-- Repo `SantosGomez/project-merge`, rama `unificacion/fase-0` (fases 0 a 4 hechas; falta la 5: probar todo en Docker y publicar). `main` = status-conta sin cambios. Detalle y decisiones en `PLAN.md`.
-- Un login (correo o `alias`; los hash `scrypt$` de documentos se pasan a argon2 al entrar). Módulos en `usuario_modulos` (rol por módulo); el administrador tiene documentos por su rol (`UsuarioModuloModel.modulosDeUsuario`). Selector `/modulos` en el frontend.
-- Backend de documentos copiado como `.mjs` en `Backend/src/modulos/documentos/` y montado en `/doc` (`documentoRoutes.js`, antes del `express.json` de 100 kb). Clientes: un catálogo (`nombre`=razón social, `usuario_id`=contador, `activo`). Volumen `adjuntos` en `/app/storage`.
-- Frontend de documentos en `Seguimiento-proyectos/src/modulos/documentos/`; su cliente fetch manda `X-Requested-With` (sin ella el backend rechaza escrituras con cookie). `logica/normalizar.js` y `estadosDocumento.js` son copias del backend (una prueba compara `normalizar`): no formatearlas.
-- Importación de datos: `node Backend/src/utils/importarDocumentos.js` (`--deshacer`), con `DOCS_DB_*`. No trae documentos (los 24 de desarrollo eran de prueba) ni cuentas/clientes de prueba.
-- Base de prueba de la unión: contenedor `merge-prueba-db` (puerto 3308), no XAMPP. Respaldos de la fase 0 fuera del proyecto: `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`.
-- Pendientes: el aviso «Acceso denegado» habla del rol general en las vistas de documentos; «Nuevo cliente» y «Exportar reporte» de documentos son maqueta; probar firmas en pantalla.
+- Repo `SantosGomez/project-merge`, rama `unificacion/fase-0`. Fases 0 a 4 hechas; falta la 5: probar con copia de datos reales por rol y módulo, y publicar en Docker. `main` = status-conta sin la unión.
+- Un login (correo o `alias`), rol general + rol por módulo (`usuario_modulos`), selector `/modulos`. Backend de documentos en `/doc`, frontend en `src/modulos/documentos/`.
+- Base de prueba: contenedor `merge-prueba-db` (3308, `delgrow_merge`) con los respaldos de la fase 0 cargados. Respaldos fuera del proyecto: `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`.
+- Últimas cifras: backend 1172 pruebas (fallan solo 2 de antes: zona horaria y `usuarios_respaldo_5c`, cosas de la base de prueba); frontend 2097 de 2097.
+- 2026-11-24: `AGENTS.md` y esta memoria se reescribieron para el proyecto unido (antes eran los de status-conta).
 
-## Estado actual de status-conta (2026-11-23)
+## Pendientes de la unión
 
-- `main` = `experimento` en `origin` (2026-11-23): rebanada 41 + rediseño visual mezclado a `main`:
-  - Fondo general: degradado radial azul («bg 2», `degradado-1`/`degradado-2` en la paleta; en la esquina `texto-tenue` baja a 3.7:1).
-  - Menú: dock flotante en escritorio (`MenuDock.vue`, «menu 2»; con el aspecto del dock del otro proyecto: panel con borde celeste `dock-borde`, azulejos con degradado `dock-azulejo`→`primary`, logo en azulejo, activa rellena de celeste; `test/menuDock.test.js`); en celular el menú lateral con píldoras, relleno celeste y punto activo («menu 1»; cambió la prueba que prohibía hover propio).
-  - Pendiente: actualizar en `AGENTS.md` las reglas del menú (altura completa con nombre de empresa y app; ítems sin tooltip), que el dock ya no cumple. Las opciones del menú están duplicadas (plantilla del menú lateral y `opcionesDock`).
-  - Descartados: degradado naranja (contraste), fondo WebGL animado (consumo y distracción) y efectos de luz de Magic Bento en las cifras.
-- `main` = `experimento` = 9b082e2 en `origin` (2026-11-23), que incluye: número tipo odómetro (`ContadorRodante.vue`, idea del Counter de Vue Bits) en cifras de dashboards y cronómetro, y rebanada 42 («Tu próxima junta» con cuenta regresiva + línea de la hora actual en «Mi Calendario»). Copiar una cifra del odómetro copia los dígitos ocultos: por decidir.
-- «aparecer 1» a «aparecer 4»: entrada animada `vAparecer` (`utils/aparecer.js`, idea de Animated Content, sin GSAP). Login: tarjeta con desenfoque 12 px y cortina. Dashboards: bloques escalonados (0.5 s); en «Mi resumen» y en las pestañas «Casos | Auditorías» del administrador cada pestaña entra por bloques cada vez que se abre (`reproducirAparicion` al cambiar de pestaña, porque las pestañas son `keep-alive`; ignora la pestaña que sale durante el fundido); igual las sub-pestañas del tablero (`TableroAuditorias.vue`, también en la pestaña «Auditorías» del administrador). Resto de páginas: entran completas desde el `router-view` de `MaquetaLayout.vue` (`RUTAS_CON_ENTRADA_PROPIA` excluye los dashboards). Mientras entra la página, los elementos `fixed` (botón del chat en la ficha, celular) no se ven.
-- En `main` (dcd5043, `experimento` igual): «Tu sesión se cerró» (`AvisoSesionCaducada.vue`) con el estilo de la tarjeta del login (`q-card` 16 px, sombra, ícono `lock_clock` en ámbar, botón a lo ancho y entrada con cortina); con la sesión cerrada `MaquetaLayout.vue` ya no muestra el menú lateral anterior ni el botón de menú del celular.
-- Docker corre `main` 7e584f7 (despliegue 2026-11-18): tiene «Mis actividades» restringido (`USUARIOS_CON_ACTIVIDADES=7917`); le faltan el calendario y las rebanadas 20 a 40 (21 commits).
-- Antes del próximo despliegue: respaldo; el seed crea las tablas nuevas; confirmar que el 7947 es administrador en la base de Docker; validar la regla fiscal con los contadores; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`). Última etiqueta de imagen: `antes-editar-usuarios-2026-11-17`; respaldo previo e imágenes `:anterior` del 2026-11-18.
-- Pendiente de producción: restablecer desde la app las contraseñas de las cuentas reales (≥12) y corregir las auditorías migradas con «Periodo por confirmar». El hook de secretos ya está activo en el clon Proyecto-Merge (2026-11-24).
-- Las 12 cuentas `zz_test_` del 2026-11-10 no se tocan (el 2026-11-23 ya no había ninguna `zz_test_` en la base de XAMPP).
+- Documentos: el aviso «Acceso denegado» habla del rol general («tu perfil es auxiliar»), debería usar el rol en el módulo; probar en navegador las firmas dibujadas en el lienzo.
+- Límite de intentos del login cuenta por separado correo y alias de una misma persona (menor).
+- Por decidir: ¿`casos` se liga a `clientes.id` o sigue con el cliente como texto? Llave `clientes → usuarios` en cascada: pasar a `SET NULL`.
+- `.claude/launch.json` depende de un script en una carpeta temporal: rehacerlo con rutas del proyecto.
+- `PRODUCT.md` y `docs/constitution.md` describen solo status-conta.
 
-## Funcionalidades recientes
+## Producción (Docker de status-conta)
 
-- «Mis actividades» (10–17): pestaña de «Mi trabajo»; clientes y tipos propios; vencimiento en `utils/vencimientoActividad.js` (festivos LFT); cronómetro con la hora del servidor y `FOR UPDATE`.
-- Calendario del administrador (18–19): franja «Requiere atención», `?dia=`/`?rango=`, `GET /contadores/casos-importantes` y `GET /auditorias/calendario`.
-- Editar cuentas: `PATCH /usuarios/:id` (`NewUserDialog.vue`, prop `cuenta`); nunca cambia la contraseña; si cambia el rol, revoca las sesiones. Sin cubrir: auditorías de un contador que cambia de rol.
-- «Mi Calendario» (20–36): juntas, invitaciones, privadas, agenda de otros, vista Año, vencimientos en el calendario, recepcionista como secretaria y «Agendar junta» desde el directorio (`utils/juntas.js`).
-- Contador reparte casos a su equipo (37–38), hoy pintado en Semana y Día (39) y notificaciones del navegador (40, `utils/notificacionesNavegador.js`; probado en Chrome, en Opera GX no llegó).
-- Revisión UI 2 cerrada (41): recargas en silencio sin loader, `?chat=1` se quita, «¿Descartar los cambios?» en los diálogos de auxiliares, chips con tooltip por teclado.
+- Corre `main` 7e584f7 (despliegue 2026-11-18), con «Mis actividades» restringido (`USUARIOS_CON_ACTIVIDADES=7917`); le faltan el calendario, las rebanadas 20 a 42 y toda la unión.
+- Antes de publicar: respaldo de `db_datos` y del volumen `adjuntos`, etiquetar imágenes; confirmar que el 7947 es administrador; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`); validar la regla fiscal con los contadores.
+- Pendiente en producción: restablecer desde la app las contraseñas de las cuentas reales (≥12) y corregir las auditorías migradas con «Periodo por confirmar».
 
-## Pendientes / para decidir
+## Pendientes de seguimiento (status-conta)
 
-- Avisos por correo (24): esperan nodemailer y una cuenta SMTP del despacho.
-- Web Push con la app cerrada: requiere aprobación (`web-push`, VAPID, tabla de suscripciones).
+- Avisos por correo (24): esperan nodemailer y una cuenta SMTP. Web Push con la app cerrada: requiere aprobación (`web-push`, VAPID, tabla).
 - «Mis actividades»: los «para decidir» de `17-revision-ui-actividades.md` y la regla fiscal.
-- Opcionales sin aplicar en cada `docs/rebanadas/NN-*.md` (en especial 29 a 33); probar en navegador la agenda de la recepcionista con los bloques nuevos.
+- Opcionales sin aplicar en `docs/rebanadas/NN-*.md` (en especial 29 a 33); tras un fallo inicial, las recargas en silencio no limpian el error (`cases.refrescarEnSilencio`, auditorías, «Mi perfil»).
 - «Mi perfil»: revocar sesiones al cambiar la contraseña, límite de intentos, recortar espacios en el servidor.
-- Opcional de la 41: tras un fallo inicial, las recargas en silencio no sacan del error a la cartera (`cases.refrescarEnSilencio` no limpia `error`), a la lista de auditorías ni a la cuenta de «Mi perfil».
-- `prettier --check` falla en ~180 archivos del frontend (formato, no solo CRLF): decidir si se formatea todo en un commit aparte.
-- Requieren aprobación (estructura): índice único en `contador_auxiliar(auxiliar_id)`; campos del boceto de auditorías (Importancia, RFC/Unidad/Socio/Multa).
-- Dudoso sin cambiar: `usuarios_de_sistema` puede crear/promover administradores y restablecer su contraseña; `GET /eventos` no revisa la sesión al canjear el pase.
-- Preguntas abiertas: nombre de la PWA, logo más liviano, qué hacer con `.playwright-mcp/`, si la recepcionista ve el «Último acceso».
+- Copiar una cifra del odómetro (`ContadorRodante.vue`) copia los dígitos ocultos: por decidir.
+- `prettier --check` falla en ~180 archivos del frontend: decidir si se formatea todo en un commit aparte.
+- Requieren aprobación (estructura): índice único en `contador_auxiliar(auxiliar_id)`; campos del boceto de auditorías.
+- Dudoso: `usuarios_de_sistema` puede crear/promover administradores; `GET /eventos` no revisa la sesión al canjear el pase.
+
+## Pendientes de documentos (traídos de Proyecto-documentos)
+
+- En espera de definición: relación muchos a muchos contador-cliente; tabla real de «tipos de recepción» con plantilla por cliente (el autollenado es maqueta); matriz y pantalla de documentos requeridos por cliente.
+- Deuda: el color por prioridad está duplicado en `IndexPage` y `DireccionamientoPage`.
+
+## Errores a evitar
+
+- Revisar las cifras, los diffs y la codificación del trabajo de otro agente (un `.vue` en Windows-1252 compila con el texto roto; cargar SQL con `--default-character-set=utf8mb4`).
+- Un oráculo sobre la plantilla no prueba que el permiso exista: comprobar en el navegador con cada rol.
+- Guardia de rutas: `useQuasar()` no funciona ahí; cada redirección lleva `return`; el permiso va en cada ruta hija.
 
 ---
+
 Nada sensible en esta memoria.
