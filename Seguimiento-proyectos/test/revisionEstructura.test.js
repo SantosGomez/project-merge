@@ -190,6 +190,8 @@ describe('Títulos de estados y nombres accesibles', () => {
       .slice(1)
       .map((bloque) => bloque.slice(0, bloque.indexOf('</q-item>')))
       .filter((bloque) => bloque.includes('class="q-item--nav"'))
+      // Las opciones generadas con v-for (menú de documentos) se revisan en sus datos: «Ir a {nombre}».
+      .filter((bloque) => !bloque.includes('v-for='))
       .map((bloque) => [bloque, bloque.match(/aria-label="([^"]+)"/)?.[1] ?? '', bloque.match(/<q-item-label>([^<]+)<\/q-item-label>/)?.[1] ?? ''])
     assert.ok(opciones.length >= 7, 'opciones revisadas')
     for (const [, nombre, visible] of opciones) {

@@ -106,12 +106,24 @@ El esquema lo agrega `migrarUnificacion()` en `Backend/src/utils/seed.js`. Corre
 - El rol Cliente (portal) sigue apagado: las rutas pasan `clienteId = null`.
 - La llave de `clientes` → `usuarios` sigue con borrado en cascada. Ahora, si alguien intenta borrar un contador cuyos clientes tienen documentos, la base lo impide. La app no borra usuarios, así que no afecta.
 
-## Fase 4: Pasar el frontend y armar el portal
-- [ ] Crear la pantalla para elegir módulo y el botón para cambiarlo.
-- [ ] Pasar las pantallas de documentos a `Seguimiento-proyectos/src/pages/documentos/`: Dashboard, Clientes, Recepción (`IndexPage`) y Direccionamiento.
-- [ ] Juntar `UsersPage` con el directorio de usuarios que ya existe.
-- [ ] Juntar los estilos (colores y tipografía) para que se vean como una sola app.
-- [ ] Pasar `SeguimientoPage` (el portal del cliente), pero dejarla apagada.
+## Fase 4: Pasar el frontend y armar el portal ✅ 2026-11-24
+- [x] **Sesión con módulos:** el login y el perfil guardan `modulos` (`delgrow_modulos`, en JSON) y el store de sesión expone `tieneModulo()`, `variosModulos` y `rolDocumentos`. Las reglas viven en `src/utils/modulos.js`.
+- [x] **Selector de módulos:** `src/pages/ModulosPage.vue` en `/modulos`. Quien tiene los dos módulos llega ahí al entrar; quien solo tiene documentos entra directo a documentos; los demás, como siempre. En el menú (dock y menú lateral) aparece "Cambiar de módulo" para quien tiene varios, y el menú muestra las opciones del módulo en el que estás.
+- [x] **Pantallas de documentos:** se copiaron casi igual a `src/modulos/documentos/` (pages, components, composables, servicios), con sus pruebas. Las rutas son `/documentos/recepcion`, `/direccionamiento`, `/dashboard`, `/clientes` y `/seguimiento`; `/documentos` lleva a la primera vista que el rol puede usar. Cada ruta pide el mismo permiso que en documentos; sin permiso aparece "Acceso denegado".
+  - Su cliente HTTP ahora llama a `${API_URL}/doc/...`, manda la cabecera anti-CSRF (sin ella el backend rechaza las escrituras con cookie) y avisa a la app la actividad y la sesión caducada.
+  - Lo que usaban de su login (`useSesion`, `hayAcceso`) ahora sale de la sesión de status-conta (`composables/sesion.js` y `permisos.js`).
+  - Dos archivos que importaban directo del Backend (`estadosDocumento`, `normalizar`) quedaron como copia en `src/modulos/documentos/logica/`, porque en Docker el frontend se construye sin el Backend. Una prueba revisa que la copia sea idéntica.
+- [x] **`UsersPage`:** se reemplazó por "Acceso al módulo" (`/documentos/accesos`), donde el administrador o Sistemas elige el rol de cada cuenta en documentos. Las cuentas se siguen creando en el Directorio.
+- [x] **Estilos:** los colores de marca eran los mismos. Las clases globales de documentos van en `src/modulos/documentos/css/documentos.scss`, con alcance propio para no cambiar el `.selector-moderno` de seguimiento. Su fondo degradado se quitó para que se vea el de la app.
+- [x] **`SeguimientoPage`:** se pasó. La usan Contador, Practicante, Administrador y Sistemas para buscar por folio o RFC. La parte del rol Cliente sigue apagada.
+- [x] **Dependencias nuevas del frontend:** `html2pdf.js`, `jspdf` y `gsap`, con las mismas versiones que documentos.
+- [x] **Pruebas:** frontend 2097 de 2097, incluidas las 211 de documentos y `test/modulosUnion.test.js` (nuevo). `quasar build` y eslint pasan sin errores.
+- [x] **Revisado en el navegador**, con la base de prueba y dos cuentas de prueba: el login lleva al selector; Recepción, Clientes (153 del catálogo unido), Dashboard y Acceso cargan sin errores en consola; el practicante solo ve sus opciones y la recepción le responde "Acceso denegado"; el menú lateral del celular cambia con el módulo.
+
+**Pendientes que vi:**
+- El aviso "Acceso denegado" dice "tu perfil es auxiliar", porque usa el rol general. En documentos debería hablar del rol en el módulo.
+- En Clientes, los botones "Nuevo cliente" y "Exportar reporte" ya eran de maqueta en documentos (solo muestran un aviso).
+- No probé el flujo completo con firmas en la pantalla (dibujar en el lienzo); el backend de ese flujo sí está probado de punta a punta.
 
 ## Fase 5: Probar y publicar
 - [ ] Probar con una copia de los datos reales, con cada rol y en los dos módulos.

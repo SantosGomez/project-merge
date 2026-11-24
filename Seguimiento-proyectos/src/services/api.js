@@ -51,6 +51,8 @@ export const CLAVES_SESION = Object.freeze({
   persistente: 'delgrow_sesion_persistente',
   /** '1' si la cuenta tiene el módulo «Mis actividades» (solo ordena la pantalla; el backend decide). */
   actividades: 'delgrow_actividades',
+  /** Módulos de la cuenta en JSON: [{ modulo, rol }] (unión con documentos; el backend decide). */
+  modulos: 'delgrow_modulos',
 })
 
 /** Clasificación de los errores que entregan los servicios a las pantallas. */
@@ -337,6 +339,14 @@ export const crearApi = (opciones = {}) => {
     registrarOnSesionExpirada: (callback) => {
       alSesionExpirada = typeof callback === 'function' ? callback : null
     },
+    /** Para clientes HTTP que no usan axios (módulo de documentos): cuenta como actividad. */
+    avisarActividad: () => {
+      if (typeof alActividad === 'function') alActividad()
+    },
+    /** Para clientes HTTP que no usan axios (módulo de documentos): un 401 caduca la sesión. */
+    avisarSesionExpirada: (error) => {
+      if (typeof alSesionExpirada === 'function') alSesionExpirada(error)
+    },
   }
 }
 
@@ -350,3 +360,7 @@ export const registrarOnActividad = servicioPorDefecto.registrarOnActividad
 
 /** Gancho global de sesión expirada; el store de sesión lo conecta en T4 (RF-42/43). */
 export const registrarOnSesionExpirada = servicioPorDefecto.registrarOnSesionExpirada
+
+/** Avisos para el cliente fetch del módulo de documentos (mismos ganchos que axios). */
+export const avisarActividad = servicioPorDefecto.avisarActividad
+export const avisarSesionExpirada = servicioPorDefecto.avisarSesionExpirada

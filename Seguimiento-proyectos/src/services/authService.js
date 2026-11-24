@@ -27,6 +27,18 @@ import {
  * @param {Object} [opciones.almacen] - almacén con getItem/setItem/removeItem.
  * @returns {Object} funciones del servicio de autenticación.
  */
+/**
+ * Deja solo los módulos bien formados: { modulo: texto, rol: texto|null }.
+ * @param {unknown} valor - lo que llegó del backend o del almacén.
+ * @returns {Array<{ modulo: string, rol: string|null }>}
+ */
+export const normalizarModulos = (valor) =>
+  Array.isArray(valor)
+    ? valor
+        .filter((m) => m && typeof m.modulo === 'string' && m.modulo !== '')
+        .map((m) => ({ modulo: m.modulo, rol: typeof m.rol === 'string' ? m.rol : null }))
+    : []
+
 export const crearAuthService = (opciones = {}) => {
   const api = opciones.api ?? apiPorDefecto
   const almacen = opciones.almacen ?? obtenerAlmacenPredeterminado()
@@ -54,6 +66,15 @@ export const crearAuthService = (opciones = {}) => {
   const getPersistente = () => leer(CLAVES_SESION.persistente) === '1'
   /** true si la cuenta tiene habilitado el módulo «Mis actividades». */
   const getActividades = () => leer(CLAVES_SESION.actividades) === '1'
+  // Módulos (unión con documentos): JSON con [{ modulo, rol }]; un valor roto cuenta como ninguno.
+  const getModulos = () => normalizarModulos(leerJson(CLAVES_SESION.modulos))
+  const leerJson = (clave) => {
+    try {
+      return JSON.parse(leer(clave) ?? 'null')
+    } catch {
+      return null
+    }
+  }
 
   const setRol = (rol) => escribir(CLAVES_SESION.rol, rol)
   const setNombre = (nombre) => escribir(CLAVES_SESION.nombre, nombre)
@@ -61,6 +82,10 @@ export const crearAuthService = (opciones = {}) => {
   const setCambioPendiente = (pendiente) =>
     escribir(CLAVES_SESION.cambioPendiente, pendiente ? '1' : null)
   const setActividades = (habilitado) => escribir(CLAVES_SESION.actividades, habilitado ? '1' : null)
+  const setModulos = (modulos) => {
+    const lista = normalizarModulos(modulos)
+    escribir(CLAVES_SESION.modulos, lista.length > 0 ? JSON.stringify(lista) : null)
+  }
 
   /**
    * Guarda la sesión completa (RF-02, RF-42). Primero borra la anterior y fija la marca de
@@ -76,6 +101,7 @@ export const crearAuthService = (opciones = {}) => {
     setId(sesion.id)
     setCambioPendiente(sesion.debeCambiarContrasena)
     setActividades(sesion.actividades)
+    setModulos(sesion.modulos)
   }
 
   /**
@@ -111,6 +137,7 @@ export const crearAuthService = (opciones = {}) => {
       debeCambiarContrasena: data.debe_cambiar_contrasena === true,
       persistente: data.sesion_persistente === true,
       actividades: data.actividades_habilitadas === true,
+      modulos: normalizarModulos(data.modulos),
     }
     setSesion(sesion)
     // Solo la recepcionista la recibe; vive en memoria (store), no en el almacén.
@@ -186,6 +213,8 @@ export const crearAuthService = (opciones = {}) => {
     getPersistente,
     getActividades,
     setActividades,
+    getModulos,
+    setModulos,
     setSesion,
     setRol,
     setNombre,
@@ -206,6 +235,8 @@ export const getCambioPendiente = servicioPorDefecto.getCambioPendiente
 export const getPersistente = servicioPorDefecto.getPersistente
 export const getActividades = servicioPorDefecto.getActividades
 export const setActividades = servicioPorDefecto.setActividades
+export const getModulos = servicioPorDefecto.getModulos
+export const setModulos = servicioPorDefecto.setModulos
 export const getRol = servicioPorDefecto.getRol
 export const getNombre = servicioPorDefecto.getNombre
 export const getId = servicioPorDefecto.getId

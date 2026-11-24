@@ -89,6 +89,8 @@ test('login hace POST /auth/login y guarda rol, id y nombre en el almacén, sin 
       debeCambiarContrasena: false,
       persistente: false,
       actividades: false,
+      // Unión con documentos: el login también trae los módulos (aquí el backend falso no manda ninguno).
+      modulos: [],
       administradoresAtendidos: [],
     },
     'login devuelve los datos de la sesión',

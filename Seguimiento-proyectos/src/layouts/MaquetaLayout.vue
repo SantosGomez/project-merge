@@ -100,7 +100,7 @@
         </q-btn>
         <div class="drawer-marca__textos">
           <p class="drawer-marca__empresa">Grupo DelGrow S.C.</p>
-          <p class="drawer-marca__app">Seguimiento de Proyectos</p>
+          <p class="drawer-marca__app">{{ enDocumentos ? 'Recepción de documentos' : 'Seguimiento de Proyectos' }}</p>
         </div>
       </div>
 
@@ -115,6 +115,8 @@
             :style="{ transform: `translateY(${indicador.y}px)` }"
             aria-hidden="true"
           />
+          <!-- Menú de Seguimiento de Proyectos (fuera del módulo de documentos). -->
+          <template v-if="!enDocumentos">
           <template v-if="session.esAdministrador">
             <q-item-label header>Administración</q-item-label>
 
@@ -334,6 +336,53 @@
               </q-item-section>
             </q-item>
           </template>
+          </template>
+
+          <!-- Unión con documentos: menú del módulo de documentos (según el rol dentro del módulo). -->
+          <template v-if="enDocumentos">
+            <q-item-label header>Recepción de documentos</q-item-label>
+            <q-item
+              v-for="opcion in opcionesDocumentos"
+              :key="opcion.clave"
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="opcion.to"
+              :aria-current="opcion.activa ? 'page' : undefined"
+              :aria-label="opcion.ariaLabel"
+            >
+              <q-item-section avatar>
+                <q-icon :name="opcion.icono" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ opcion.nombre }}</q-item-label>
+                <q-item-label caption>{{ opcion.descripcion }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+
+          <!-- Con más de un módulo se puede cambiar sin volver a iniciar sesión. -->
+          <template v-if="session.variosModulos">
+            <q-item-label header>Módulos</q-item-label>
+            <q-item
+              clickable
+              v-ripple
+              class="q-item--nav"
+              active-class="q-item--nav-activo"
+              :to="{ name: 'modulos' }"
+              :aria-current="paginaActual('modulos')"
+              aria-label="Cambiar de módulo"
+            >
+              <q-item-section avatar>
+                <q-icon name="swap_horiz" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Cambiar de módulo</q-item-label>
+                <q-item-label caption>Ir a {{ nombreOtroModulo }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
         </q-list>
         </nav>
       </q-scroll-area>
@@ -484,6 +533,7 @@ import { useSessionStore } from '../stores/session.js'
 import { auditoriaConChatAbierto, avisoDeMensaje } from '../utils/avisosChat.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
 import { guardarMenuFijado, leerMenuFijado } from '../utils/preferenciaMenu.js'
+import { DATOS_MODULO, MODULOS, hayAccesoDocumentos } from '../utils/modulos.js'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -651,7 +701,48 @@ const rolLegible = computed(() => formatearRol(session.rol))
  */
 const usarDock = computed(() => esEscritorio.value && session.autenticado)
 
+/*
+ * Unión con documentos: módulo en el que está la pantalla y opciones de su menú.
+ */
+const enDocumentos = computed(() => route.meta?.modulo === MODULOS.documentos)
+const nombreOtroModulo = computed(() =>
+  enDocumentos.value ? DATOS_MODULO[MODULOS.seguimiento].nombre : DATOS_MODULO[MODULOS.documentos].nombre,
+)
+const opcionCambioModulo = computed(() => ({
+  clave: 'modulos',
+  nombre: 'Cambiar de módulo',
+  descripcion: `Ir a ${nombreOtroModulo.value}`,
+  icono: 'swap_horiz',
+  to: { name: 'modulos' },
+  ariaLabel: 'Cambiar de módulo',
+  activa: false,
+}))
+const opcionesDocumentos = computed(() => {
+  const rol = session.rolDocumentos
+  const opcion = (clave, nombre, descripcion, icono, accion) => ({
+    clave,
+    nombre,
+    descripcion,
+    icono,
+    to: { name: clave },
+    ariaLabel: `Ir a ${nombre}`,
+    activa: route.name === clave,
+    permitida: hayAccesoDocumentos(rol, accion),
+  })
+  return [
+    opcion('doc-recepcion', 'Nueva recepción', 'Registrar documentos con firma', 'move_to_inbox', 'registrar_recepcion'),
+    opcion('doc-direccionamiento', 'Direccionamiento', 'Entregar al contador', 'forward_to_inbox', 'registrar_recepcion'),
+    opcion('doc-dashboard', 'Documentos', 'Recibidos del periodo', 'dashboard', 'ver_directorio'),
+    opcion('doc-clientes', 'Clientes', 'Semáforo por cliente', 'business', 'ver_directorio'),
+    opcion('doc-seguimiento', 'Seguimiento', 'Buscar por folio o RFC', 'manage_search', 'ver_seguimiento'),
+    opcion('doc-accesos', 'Acceso al módulo', 'Quién entra y con qué rol', 'admin_panel_settings', 'administrar_usuarios'),
+  ].filter((o) => o.permitida)
+})
+
 const opcionesDock = computed(() => {
+  if (enDocumentos.value) {
+    return session.variosModulos ? [...opcionesDocumentos.value, opcionCambioModulo.value] : opcionesDocumentos.value
+  }
   const opcion = (clave, nombre, descripcion, icono, ruta, ariaLabel, activa) => ({
     clave,
     nombre,
@@ -699,6 +790,7 @@ const opcionesDock = computed(() => {
       opcion('admin-directorio', 'Directorio', 'Consultar cuentas del equipo', 'group', 'admin-directorio', 'Ir al directorio de usuarios'),
     )
   }
+  if (session.variosModulos) lista.push(opcionCambioModulo.value)
   return lista
 })
 

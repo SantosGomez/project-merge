@@ -25,6 +25,8 @@ import {
   getPersistente as getPersistentePorDefecto,
   getActividades as getActividadesPorDefecto,
   setActividades as setActividadesPorDefecto,
+  getModulos as getModulosPorDefecto,
+  setModulos as setModulosPorDefecto,
   getNombre as getNombrePorDefecto,
   getId as getIdPorDefecto,
   getRol as getRolPorDefecto,
@@ -37,6 +39,7 @@ import {
 import { estaInactivo } from '../utils/inactividad.js'
 import { construirError } from '../utils/mensajes.js'
 import { RUTA_PRINCIPAL_POR_ROL } from '../utils/constants.js'
+import { destinoTrasEntrar, rolDocumentosDe } from '../utils/modulos.js'
 
 /** Minutos sin interacción tras los que la sesión caduca (RF-07). */
 export const LIMITE_INACTIVIDAD_MINUTOS = 30
@@ -87,6 +90,8 @@ const authServicePorDefecto = {
   getPersistente: getPersistentePorDefecto,
   getActividades: getActividadesPorDefecto,
   setActividades: setActividadesPorDefecto,
+  getModulos: getModulosPorDefecto,
+  setModulos: setModulosPorDefecto,
   setSesion: setSesionPorDefecto,
   limpiarSesion: limpiarSesionPorDefecto,
 }
@@ -123,6 +128,8 @@ export const crearSessionStore = (dependencias = {}) => {
         persistente: authService.getPersistente(),
         /** La cuenta tiene el módulo «Mis actividades» (pestaña de «Mis casos»). */
         actividadesHabilitadas: authService.getActividades(),
+        /** Módulos de la cuenta ([{ modulo, rol }]) para el selector y el menú (unión con documentos). */
+        modulos: authService.getModulos?.() ?? [],
         /** Administradores cuya agenda administra la recepcionista (`[{ id, nombre }]`); solo en memoria. */
         administradoresAtendidos: [],
         /** Bandera de sesión caducada por inactividad, `exp` o 401 (RF-07/43). */
@@ -154,6 +161,11 @@ export const crearSessionStore = (dependencias = {}) => {
       esRecepcionista: (state) => state.rol === 'recepcionista',
       /** Nombre que se muestra en el menú; null si la sesión guardada no lo trae. */
       nombreVisible: (state) => state.nombre,
+      /** Módulos de la unión con documentos. */
+      tieneModulo: (state) => (modulo) => (state.modulos ?? []).some((m) => m.modulo === modulo),
+      variosModulos: (state) => (state.modulos ?? []).length > 1,
+      /** Rol dentro del módulo de documentos con el nombre que usan sus permisos ('Contador'…), o null. */
+      rolDocumentos: (state) => rolDocumentosDe(state.modulos),
     },
 
     actions: {
@@ -165,6 +177,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.debeCambiarContrasena = authService.getCambioPendiente()
         this.persistente = authService.getPersistente()
         this.actividadesHabilitadas = authService.getActividades()
+        this.modulos = authService.getModulos?.() ?? []
       },
 
       /** Limpia solo el estado reactivo; no toca el almacén ni el temporizador. */
@@ -175,6 +188,7 @@ export const crearSessionStore = (dependencias = {}) => {
         this.debeCambiarContrasena = false
         this.persistente = false
         this.actividadesHabilitadas = false
+        this.modulos = []
         this.administradoresAtendidos = []
         this.ultimaActividad = null
       },
@@ -313,6 +327,11 @@ export const crearSessionStore = (dependencias = {}) => {
           const habilitado = perfil?.actividades_habilitadas === true
           authService.setActividades(habilitado)
           this.actividadesHabilitadas = habilitado
+          // También decide los módulos (seguimiento, documentos…) y el rol en cada uno.
+          if (Array.isArray(perfil?.modulos)) {
+            authService.setModulos?.(perfil.modulos)
+            this.modulos = authService.getModulos?.() ?? []
+          }
           this.administradoresAtendidos = Array.isArray(perfil?.administradores_atendidos)
             ? perfil.administradores_atendidos
             : []
@@ -332,7 +351,7 @@ export const crearSessionStore = (dependencias = {}) => {
         return {
           estado: 'valida',
           rol: this.rol,
-          pantallaPrincipal: PANTALLA_PRINCIPAL[this.rol],
+          pantallaPrincipal: destinoTrasEntrar(this.modulos, PANTALLA_PRINCIPAL[this.rol]),
         }
       },
 
@@ -367,6 +386,8 @@ export const crearSessionStore = (dependencias = {}) => {
         this.marcarActividad()
 
         const pantalla = PANTALLA_PRINCIPAL[this.rol] ?? null
+        // Con varios módulos se elige primero cuál usar; con solo documentos se entra ahí.
+        const destino = pantalla === null ? null : destinoTrasEntrar(this.modulos, pantalla)
 
         if (pantalla !== null) {
           this.iniciarTemporizador()
@@ -378,7 +399,7 @@ export const crearSessionStore = (dependencias = {}) => {
           id: this.id,
           // Con la contraseña asignada, primero se crea la propia.
           pantallaPrincipal:
-            pantalla !== null && this.debeCambiarContrasena ? RUTA_CAMBIO_CONTRASENA : pantalla,
+            pantalla !== null && this.debeCambiarContrasena ? RUTA_CAMBIO_CONTRASENA : destino,
           accesoDenegado: pantalla === null,
         }
       },

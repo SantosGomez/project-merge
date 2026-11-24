@@ -535,3 +535,6 @@ $curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
     animation: none;
   }
 }
+
+// Unión con documentos: estilos de las pantallas del módulo de documentos (con alcance propio).
+@import '../modulos/documentos/css/documentos.scss';

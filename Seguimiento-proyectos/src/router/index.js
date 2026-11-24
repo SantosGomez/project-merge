@@ -24,6 +24,19 @@ import { useSessionStore } from '../stores/session.js'
 import { decidirAcceso } from '../utils/accessRules.js'
 import { PROFILES } from '../utils/constants.js'
 import { accessDenied, arranqueFallido } from './accessState.js'
+import ModulosPage from '../pages/ModulosPage.vue'
+import { MODULOS, hayAccesoDocumentos, vistaInicialDocumentos } from '../utils/modulos.js'
+
+/*
+ * Unión con documentos: vistas del módulo «Recepción de documentos». Cada una pide el mismo
+ * permiso que en Proyecto-documentos (meta.accion) según el rol de la cuenta dentro del módulo.
+ */
+const rutaDocumentos = (path, name, componente, accion, titulo) => ({
+  path: `documentos/${path}`,
+  name,
+  component: componente,
+  meta: { requiereSesion: true, modulo: MODULOS.documentos, accion, titulo },
+})
 
 /*
  * Rutas de la aplicación (plan 003, sección 2).
@@ -41,6 +54,18 @@ const routes = [
         name: 'login',
         component: LoginPage,
         meta: { titulo: 'Inicio de sesión' },
+      },
+    ],
+  },
+  {
+    path: '/modulos',
+    component: LoginLayout,
+    children: [
+      {
+        path: '',
+        name: 'modulos',
+        component: ModulosPage,
+        meta: { requiereSesion: true, titulo: 'Elige un módulo', comun: true },
       },
     ],
   },
@@ -159,6 +184,21 @@ const routes = [
         },
       },
       // El alta y el restablecimiento de cuentas se hacen en diálogos del directorio.
+      // Entrada del módulo de documentos: la vista depende del rol dentro del módulo.
+      {
+        path: 'documentos',
+        name: 'documentos',
+        redirect: () => {
+          const vista = vistaInicialDocumentos(useSessionStore().rolDocumentos)
+          return vista ? { name: vista } : { name: 'modulos' }
+        },
+      },
+      rutaDocumentos('recepcion', 'doc-recepcion', () => import('../modulos/documentos/pages/IndexPage.vue'), 'registrar_recepcion', 'Nueva recepción'),
+      rutaDocumentos('direccionamiento', 'doc-direccionamiento', () => import('../modulos/documentos/pages/DireccionamientoPage.vue'), 'registrar_recepcion', 'Direccionamiento'),
+      rutaDocumentos('dashboard', 'doc-dashboard', () => import('../modulos/documentos/pages/DashboardPage.vue'), 'ver_directorio', 'Documentos'),
+      rutaDocumentos('clientes', 'doc-clientes', () => import('../modulos/documentos/pages/ClientesPage.vue'), 'ver_directorio', 'Clientes'),
+      rutaDocumentos('seguimiento', 'doc-seguimiento', () => import('../modulos/documentos/pages/SeguimientoPage.vue'), 'ver_seguimiento', 'Seguimiento de documentos'),
+      rutaDocumentos('accesos', 'doc-accesos', () => import('../modulos/documentos/pages/AccesoDocumentosPage.vue'), 'administrar_usuarios', 'Acceso al módulo'),
       { path: 'usuarios/alta', redirect: { name: 'admin-directorio' } },
       { path: 'usuarios/restablecer-contrasena', redirect: { name: 'admin-directorio' } },
     ],
@@ -288,6 +328,17 @@ export default defineRouter((/* { store, ssrContext } */) => {
       accessDenied.value = true
     }
 
+    // Unión con documentos: el módulo y el permiso de cada vista los decide el rol dentro del módulo;
+    // las vistas de seguimiento piden ese módulo (si la sesión ya trae la lista de módulos).
+    if (sesion.autenticado && to.meta.requiereSesion === true && !to.meta.comun) {
+      if (to.meta.modulo === MODULOS.documentos) {
+        if (!hayAccesoDocumentos(sesion.rolDocumentos, to.meta.accion)) {
+          accessDenied.value = true
+        }
+      } else if (sesion.modulos.length > 0 && !sesion.tieneModulo(MODULOS.seguimiento)) {
+        return { name: 'documentos', replace: true }
+      }
+    }
     return true
   })
 
