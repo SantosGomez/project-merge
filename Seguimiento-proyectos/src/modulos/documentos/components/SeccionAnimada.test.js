@@ -45,7 +45,10 @@ describe('animación de entrada de las secciones', () => {
   for (const vista of VISTAS) {
     test(`${vista} envuelve sus secciones en SeccionAnimada`, () => {
       const fuente = leer(`../pages/${vista}`)
-      assert.match(fuente, /import SeccionAnimada from '@\/modulos\/documentos\/components\/SeccionAnimada\.vue'/)
+      assert.match(
+        fuente,
+        /import SeccionAnimada from '@\/modulos\/documentos\/components\/SeccionAnimada\.vue'/,
+      )
       // `(?=[\s>])` y no `\b`: con `\b` también coincide `<q-page-container>`
       // (el guion es límite de palabra) y la prueba pasaba con el envoltorio mal puesto.
       assert.match(fuente, /<q-page(?=[\s>])[^>]*>\s*<SeccionAnimada\b/)

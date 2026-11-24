@@ -47,7 +47,6 @@ describe('SeguimientoPage: portal de seguimiento', () => {
     assert.ok(CODIGO.includes('resumirSeguimiento('), 'no hay resumen por estado')
     assert.ok(CODIGO.includes('ordenarPorAtencion('), 'la lista no prioriza lo pendiente')
   })
-
 })
 
 describe('Codificación de las vistas', () => {

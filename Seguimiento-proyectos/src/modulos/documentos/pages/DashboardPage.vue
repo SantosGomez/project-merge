@@ -73,7 +73,13 @@
           >
             <q-tooltip>Actualizar indicadores y lista de documentos</q-tooltip>
           </q-btn>
-          <q-btn v-if="puedeRecepcionar" icon="add" color="primary" label="Nueva Recepción" :to="{ name: 'doc-recepcion' }">
+          <q-btn
+            v-if="puedeRecepcionar"
+            icon="add"
+            color="primary"
+            label="Nueva Recepción"
+            :to="{ name: 'doc-recepcion' }"
+          >
             <q-tooltip>Ir al formulario de recepción de documentos</q-tooltip>
           </q-btn>
         </div>
@@ -630,7 +636,12 @@
 import SeccionAnimada from '@/modulos/documentos/components/SeccionAnimada.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { formatearFecha, formatearPeriodo, periodoDe, ultimosPeriodos } from '@/modulos/documentos/composables/fechas'
+import {
+  formatearFecha,
+  formatearPeriodo,
+  periodoDe,
+  ultimosPeriodos,
+} from '@/modulos/documentos/composables/fechas'
 import { obtenerDocumentos, cambiarEstadoDocumento } from '@/modulos/documentos/servicios/api.js'
 import { mensajeParaUsuario } from '@/modulos/documentos/servicios/cliente.js'
 import { useSesion } from '@/modulos/documentos/composables/sesion.js'

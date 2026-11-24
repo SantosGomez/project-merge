@@ -44,7 +44,6 @@ describe('DireccionamientoPage ya no es maqueta', () => {
     assert.notEqual(idxEnviar, -1, 'no se envía la entrega')
     assert.ok(idxToData < idxEnviar, 'se envía antes de leer las firmas')
   })
-
 })
 
 // Revisión de la Fase 2 de tooltips (2026-11-23): a tres botones con texto

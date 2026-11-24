@@ -28,7 +28,10 @@ describe('Recepción — autollenado con cliente frecuente', () => {
   })
 
   test('la vista importa el modal y la lógica del autollenado', () => {
-    assert.match(CODIGO, /import AutollenadoDialogo from '@\/modulos\/documentos\/components\/AutollenadoDialogo\.vue'/)
+    assert.match(
+      CODIGO,
+      /import AutollenadoDialogo from '@\/modulos\/documentos\/components\/AutollenadoDialogo\.vue'/,
+    )
     assert.match(CODIGO, /from '@\/modulos\/documentos\/composables\/autollenado\.js'/)
     assert.match(CODIGO, /aplicarPlantilla/)
     assert.match(CODIGO, /TIPOS_RECEPCION/)

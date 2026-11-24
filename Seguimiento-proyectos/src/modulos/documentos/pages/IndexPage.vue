@@ -925,7 +925,10 @@ import {
 import { periodoDe, formatearFecha } from '@/modulos/documentos/composables/fechas.js'
 import { plazoDeEntrega } from '@/modulos/documentos/composables/plazoEntrega.js'
 import { opcionesDeClientes } from '@/modulos/documentos/composables/clientesVista.js'
-import { subirEnOrden, textoArchivosPendientes } from '@/modulos/documentos/composables/subidaArchivos.js'
+import {
+  subirEnOrden,
+  textoArchivosPendientes,
+} from '@/modulos/documentos/composables/subidaArchivos.js'
 import { aplicarPlantilla, TIPOS_RECEPCION } from '@/modulos/documentos/composables/autollenado.js'
 import { esErrorHTTP, detallesDeError } from '@/modulos/documentos/servicios/cliente.js'
 import AcuseImprimir from '@/modulos/documentos/components/AcuseImprimir.vue'

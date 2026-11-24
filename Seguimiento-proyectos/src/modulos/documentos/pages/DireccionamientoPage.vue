@@ -639,7 +639,11 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { formatearFecha } from '@/modulos/documentos/composables/fechas'
 import html2pdf from 'html2pdf.js'
-import { obtenerCatalogos, obtenerDireccionamiento, entregarDocumento } from '@/modulos/documentos/servicios/api.js'
+import {
+  obtenerCatalogos,
+  obtenerDireccionamiento,
+  entregarDocumento,
+} from '@/modulos/documentos/servicios/api.js'
 import { mensajeParaUsuario } from '@/modulos/documentos/servicios/cliente.js'
 import { resumirPendientes } from '@/modulos/documentos/composables/resumenDireccionamiento.js'
 import { textoRfc } from '@/modulos/documentos/composables/clientesVista.js'

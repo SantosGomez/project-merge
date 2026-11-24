@@ -10,8 +10,8 @@
       />
       <h1 class="modulos-page__titulo">¿Qué quieres usar?</h1>
       <p class="modulos-page__lead">
-        Hola{{ session.nombreVisible ? `, ${session.nombreVisible}` : '' }}. Puedes cambiar de módulo cuando
-        quieras desde el menú.
+        Hola{{ session.nombreVisible ? `, ${session.nombreVisible}` : '' }}. Puedes cambiar de
+        módulo cuando quieras desde el menú.
       </p>
     </div>
 
@@ -62,10 +62,18 @@ const cerrando = ref(false)
 const modulos = computed(() => {
   const lista = []
   if (session.tieneModulo(MODULOS.seguimiento) && RUTA_PRINCIPAL_POR_ROL[session.rol]) {
-    lista.push({ clave: MODULOS.seguimiento, ...DATOS_MODULO[MODULOS.seguimiento], destino: RUTA_PRINCIPAL_POR_ROL[session.rol] })
+    lista.push({
+      clave: MODULOS.seguimiento,
+      ...DATOS_MODULO[MODULOS.seguimiento],
+      destino: RUTA_PRINCIPAL_POR_ROL[session.rol],
+    })
   }
   if (session.rolDocumentos) {
-    lista.push({ clave: MODULOS.documentos, ...DATOS_MODULO[MODULOS.documentos], destino: RUTA_DOCUMENTOS })
+    lista.push({
+      clave: MODULOS.documentos,
+      ...DATOS_MODULO[MODULOS.documentos],
+      destino: RUTA_DOCUMENTOS,
+    })
   }
   return lista
 })

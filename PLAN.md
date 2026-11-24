@@ -22,9 +22,9 @@
 ---
 
 ## Fase 0: Preparación (no toca producción) ✅ 2026-11-24
-- [x] Respaldar completas las dos bases de datos (en Docker y en desarrollo). Están en `respaldos/` junto con los archivos subidos de documentos (`storage`). Esa carpeta no entra a git.
+- [x] Respaldar completas las dos bases de datos (en Docker y en desarrollo). Están fuera del proyecto, en `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`, junto con los archivos subidos de documentos (`storage`), como pide `docs/seguridad-despliegue.md`.
 - [x] Copiar status-conta a esta carpeta (Proyecto-Merge) con todo su historial de git. El remoto se llama `status-conta` y apunta a la carpeta local. El trabajo va en la rama `unificacion/fase-0`.
-- [x] Sacar las listas de usuarios y de clientes de los dos sistemas y compararlas. El detalle con nombres está en `respaldos/fase0/comparacion.md`.
+- [x] Sacar las listas de usuarios y de clientes de los dos sistemas y compararlas. El detalle con nombres está en `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/fase0/comparacion.md`.
 
 ### Lo que encontramos en la fase 0
 

@@ -2,7 +2,17 @@
 
 Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.md`; el detalle, en los commits y en `docs/rebanadas/`.
 
-## Estado actual (2026-11-23)
+## Unión con Proyecto-documentos (2026-11-24, este repo: Proyecto-Merge)
+
+- Repo `SantosGomez/project-merge`, rama `unificacion/fase-0` (fases 0 a 4 hechas; falta la 5: probar todo en Docker y publicar). `main` = status-conta sin cambios. Detalle y decisiones en `PLAN.md`.
+- Un login (correo o `alias`; los hash `scrypt$` de documentos se pasan a argon2 al entrar). Módulos en `usuario_modulos` (rol por módulo); el administrador tiene documentos por su rol (`UsuarioModuloModel.modulosDeUsuario`). Selector `/modulos` en el frontend.
+- Backend de documentos copiado como `.mjs` en `Backend/src/modulos/documentos/` y montado en `/doc` (`documentoRoutes.js`, antes del `express.json` de 100 kb). Clientes: un catálogo (`nombre`=razón social, `usuario_id`=contador, `activo`). Volumen `adjuntos` en `/app/storage`.
+- Frontend de documentos en `Seguimiento-proyectos/src/modulos/documentos/`; su cliente fetch manda `X-Requested-With` (sin ella el backend rechaza escrituras con cookie). `logica/normalizar.js` y `estadosDocumento.js` son copias del backend (una prueba compara `normalizar`): no formatearlas.
+- Importación de datos: `node Backend/src/utils/importarDocumentos.js` (`--deshacer`), con `DOCS_DB_*`. No trae documentos (los 24 de desarrollo eran de prueba) ni cuentas/clientes de prueba.
+- Base de prueba de la unión: contenedor `merge-prueba-db` (puerto 3308), no XAMPP. Respaldos de la fase 0 fuera del proyecto: `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`.
+- Pendientes: el aviso «Acceso denegado» habla del rol general en las vistas de documentos; «Nuevo cliente» y «Exportar reporte» de documentos son maqueta; probar firmas en pantalla.
+
+## Estado actual de status-conta (2026-11-23)
 
 - `main` = `experimento` en `origin` (2026-11-23): rebanada 41 + rediseño visual mezclado a `main`:
   - Fondo general: degradado radial azul («bg 2», `degradado-1`/`degradado-2` en la paleta; en la esquina `texto-tenue` baja a 3.7:1).
@@ -14,7 +24,7 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 - En `main` (dcd5043, `experimento` igual): «Tu sesión se cerró» (`AvisoSesionCaducada.vue`) con el estilo de la tarjeta del login (`q-card` 16 px, sombra, ícono `lock_clock` en ámbar, botón a lo ancho y entrada con cortina); con la sesión cerrada `MaquetaLayout.vue` ya no muestra el menú lateral anterior ni el botón de menú del celular.
 - Docker corre `main` 7e584f7 (despliegue 2026-11-18): tiene «Mis actividades» restringido (`USUARIOS_CON_ACTIVIDADES=7917`); le faltan el calendario y las rebanadas 20 a 40 (21 commits).
 - Antes del próximo despliegue: respaldo; el seed crea las tablas nuevas; confirmar que el 7947 es administrador en la base de Docker; validar la regla fiscal con los contadores; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`). Última etiqueta de imagen: `antes-editar-usuarios-2026-11-17`; respaldo previo e imágenes `:anterior` del 2026-11-18.
-- Pendiente de producción: restablecer desde la app las contraseñas de las cuentas reales (≥12), activar el hook (`git config core.hooksPath .githooks`) y corregir las auditorías migradas con «Periodo por confirmar».
+- Pendiente de producción: restablecer desde la app las contraseñas de las cuentas reales (≥12) y corregir las auditorías migradas con «Periodo por confirmar». El hook de secretos ya está activo en el clon Proyecto-Merge (2026-11-24).
 - Las 12 cuentas `zz_test_` del 2026-11-10 no se tocan (el 2026-11-23 ya no había ninguna `zz_test_` en la base de XAMPP).
 
 ## Funcionalidades recientes

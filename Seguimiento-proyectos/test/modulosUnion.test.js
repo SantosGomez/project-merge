@@ -40,10 +40,17 @@ function crearAlmacenFalso() {
 
 describe('a dónde se entra según los módulos', () => {
   it('con los dos módulos se elige primero; con solo documentos se entra ahí; si no, como siempre', () => {
-    assert.equal(destinoTrasEntrar([SEGUIMIENTO, doc('contador')], '/contador/casos'), RUTA_SELECTOR_MODULOS)
+    assert.equal(
+      destinoTrasEntrar([SEGUIMIENTO, doc('contador')], '/contador/casos'),
+      RUTA_SELECTOR_MODULOS,
+    )
     assert.equal(destinoTrasEntrar([doc('practicante')], '/contador/casos'), RUTA_DOCUMENTOS)
     assert.equal(destinoTrasEntrar([SEGUIMIENTO], '/contador/casos'), '/contador/casos')
-    assert.equal(destinoTrasEntrar([], '/admin/dashboard'), '/admin/dashboard', 'una sesión vieja sin módulos sigue igual')
+    assert.equal(
+      destinoTrasEntrar([], '/admin/dashboard'),
+      '/admin/dashboard',
+      'una sesión vieja sin módulos sigue igual',
+    )
   })
 
   it('un rol de documentos desconocido no cuenta como módulo', () => {
@@ -68,7 +75,12 @@ describe('rol y permisos dentro de documentos', () => {
       administrar_usuarios: ['Administrador', 'Sistemas'],
       ver_seguimiento: ['Cliente', 'Contador', 'Administrador', 'Practicante', 'Sistemas'],
     })) {
-      assert.ok(backend.includes(`${accion}: Object.freeze(${JSON.stringify(roles).replace(/"/g, "'").replace(/,/g, ', ')})`), accion)
+      assert.ok(
+        backend.includes(
+          `${accion}: Object.freeze(${JSON.stringify(roles).replace(/"/g, "'").replace(/,/g, ', ')})`,
+        ),
+        accion,
+      )
       for (const rol of roles) assert.ok(hayAccesoDocumentos(rol, accion), `${rol} puede ${accion}`)
     }
     assert.equal(hayAccesoDocumentos('Practicante', 'cambiar_estado'), false)
@@ -87,18 +99,26 @@ describe('rol y permisos dentro de documentos', () => {
 
 describe('los módulos viajan con la sesión', () => {
   it('normalizarModulos deja solo lo bien formado', () => {
-    assert.deepEqual(normalizarModulos([SEGUIMIENTO, doc('contador'), { modulo: '' }, null, { rol: 'x' }, { modulo: 'otro', rol: 5 }]), [
-      SEGUIMIENTO,
-      doc('contador'),
-      { modulo: 'otro', rol: null },
-    ])
+    assert.deepEqual(
+      normalizarModulos([
+        SEGUIMIENTO,
+        doc('contador'),
+        { modulo: '' },
+        null,
+        { rol: 'x' },
+        { modulo: 'otro', rol: 5 },
+      ]),
+      [SEGUIMIENTO, doc('contador'), { modulo: 'otro', rol: null }],
+    )
     assert.deepEqual(normalizarModulos('no es lista'), [])
   })
 
   it('el login guarda los módulos y una sesión sin ellos no deja clave', async () => {
     const almacen = crearAlmacenFalso()
     const api = {
-      post: async () => ({ data: { rol: 'contador', id: 3, nombre: 'Ana', modulos: [SEGUIMIENTO, doc('contador')] } }),
+      post: async () => ({
+        data: { rol: 'contador', id: 3, nombre: 'Ana', modulos: [SEGUIMIENTO, doc('contador')] },
+      }),
     }
     const servicio = crearAuthService({ api, almacen })
     const sesion = await servicio.login('ana@delgrow.mx', 'x')
@@ -119,7 +139,12 @@ describe('los módulos viajan con la sesión', () => {
     setActivePinia(createPinia())
     const almacen = crearAlmacenFalso()
     const authService = crearAuthService({ api: {}, almacen })
-    authService.setSesion({ rol: 'auxiliar', id: 8, nombre: 'Pedro', modulos: [SEGUIMIENTO, doc('practicante')] })
+    authService.setSesion({
+      rol: 'auxiliar',
+      id: 8,
+      nombre: 'Pedro',
+      modulos: [SEGUIMIENTO, doc('practicante')],
+    })
     const store = crearSessionStore({
       authService,
       registrarOnActividad: () => {},
@@ -148,27 +173,54 @@ describe('router y menú de la app unida', () => {
       ['doc-seguimiento', 'ver_seguimiento'],
       ['doc-accesos', 'administrar_usuarios'],
     ]) {
-      assert.match(router, new RegExp(`rutaDocumentos\\('[\\w-]+', '${nombre}', [^\\n]*'${accion}'`), nombre)
+      assert.match(
+        router,
+        new RegExp(`rutaDocumentos\\('[\\w-]+', '${nombre}', [^\\n]*'${accion}'`),
+        nombre,
+      )
     }
   })
 
   it('la guardia niega la vista de documentos sin permiso y manda a documentos a quien no tiene seguimiento', () => {
-    assert.match(router, /if \(!hayAccesoDocumentos\(sesion\.rolDocumentos, to\.meta\.accion\)\) \{\s*accessDenied\.value = true/)
-    assert.match(router, /!sesion\.tieneModulo\(MODULOS\.seguimiento\)\) \{\s*return \{ name: 'documentos', replace: true \}/)
+    assert.match(
+      router,
+      /if \(!hayAccesoDocumentos\(sesion\.rolDocumentos, to\.meta\.accion\)\) \{\s*accessDenied\.value = true/,
+    )
+    assert.match(
+      router,
+      /!sesion\.tieneModulo\(MODULOS\.seguimiento\)\) \{\s*return \{ name: 'documentos', replace: true \}/,
+    )
   })
 
   it('el menú cambia con el módulo y ofrece cambiar de módulo a quien tiene varios', () => {
     assert.match(layout, /<template v-if="!enDocumentos">/)
     assert.match(layout, /<template v-if="enDocumentos">/)
-    assert.match(layout, /<template v-if="session\.variosModulos">[\s\S]*?:to="\{ name: 'modulos' \}"/)
-    assert.match(layout, /const enDocumentos = computed\(\(\) => route\.meta\?\.modulo === MODULOS\.documentos\)/)
-    assert.match(layout, /\.filter\(\(o\) => o\.permitida\)/, 'solo las vistas que su rol puede usar')
+    assert.match(
+      layout,
+      /<template v-if="session\.variosModulos">[\s\S]*?:to="\{ name: 'modulos' \}"/,
+    )
+    assert.match(
+      layout,
+      /const enDocumentos = computed\(\(\) => route\.meta\?\.modulo === MODULOS\.documentos\)/,
+    )
+    assert.match(
+      layout,
+      /\.filter\(\(o\) => o\.permitida\)/,
+      'solo las vistas que su rol puede usar',
+    )
   })
 
   it('el cliente HTTP de documentos manda la cabecera anti-CSRF y avisa la sesión caducada', () => {
     const cliente = leer('../src/modulos/documentos/servicios/cliente.js')
-    assert.match(cliente, /const CABECERAS_APP = Object\.freeze\(\{ \[CABECERA_CSRF\.nombre\]: CABECERA_CSRF\.valor \}\)/)
-    assert.equal(cliente.split('...CABECERAS_APP').length - 1, 2, 'en peticiones JSON y en la subida de archivos')
+    assert.match(
+      cliente,
+      /const CABECERAS_APP = Object\.freeze\(\{ \[CABECERA_CSRF\.nombre\]: CABECERA_CSRF\.valor \}\)/,
+    )
+    assert.equal(
+      cliente.split('...CABECERAS_APP').length - 1,
+      2,
+      'en peticiones JSON y en la subida de archivos',
+    )
     assert.match(cliente, /avisarSesionExpirada\(\{ estado: ESTADOS_ERROR\.SIN_SESION/)
     const api = leer('../src/modulos/documentos/servicios/api.js')
     assert.doesNotMatch(api, /\/api\//, 'todas las rutas van a /doc del backend unido')

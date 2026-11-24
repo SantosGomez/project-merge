@@ -3,8 +3,8 @@
     <header class="acceso-page__encabezado">
       <h1 class="acceso-page__titulo">Acceso al módulo</h1>
       <p class="acceso-page__lead">
-        Elige quién entra a Recepción de documentos y con qué rol. Las cuentas se crean y se editan en el
-        Directorio de Seguimiento de Proyectos.
+        Elige quién entra a Recepción de documentos y con qué rol. Las cuentas se crean y se editan
+        en el Directorio de Seguimiento de Proyectos.
       </p>
     </header>
 
@@ -65,7 +65,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
-import { cambiarAccesoDocumentos, obtenerAccesosDocumentos } from '@/modulos/documentos/servicios/api.js'
+import {
+  cambiarAccesoDocumentos,
+  obtenerAccesosDocumentos,
+} from '@/modulos/documentos/servicios/api.js'
 
 /*
  * Reemplaza la pantalla de usuarios de Proyecto-documentos: en la app unida las cuentas son las de
@@ -125,7 +128,10 @@ async function cargar() {
 
 async function cambiar(fila, rol) {
   if (fila.porRol && rol === null) {
-    $q.notify({ type: 'warning', message: 'El administrador entra por su rol: no se le puede quitar el acceso.' })
+    $q.notify({
+      type: 'warning',
+      message: 'El administrador entra por su rol: no se le puede quitar el acceso.',
+    })
     return
   }
   guardando.value = fila.id
@@ -135,7 +141,9 @@ async function cambiar(fila, rol) {
     fila.porRol = false
     $q.notify({
       type: 'positive',
-      message: rol ? `${fila.nombre}: ${NOMBRES_ROL[rol] ?? rol} en documentos.` : `${fila.nombre} ya no entra a documentos.`,
+      message: rol
+        ? `${fila.nombre}: ${NOMBRES_ROL[rol] ?? rol} en documentos.`
+        : `${fila.nombre} ya no entra a documentos.`,
     })
   } catch (e) {
     $q.notify({ type: 'negative', message: e?.message || 'No se pudo guardar el cambio.' })

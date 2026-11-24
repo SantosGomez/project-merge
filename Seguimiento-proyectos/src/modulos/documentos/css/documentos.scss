@@ -100,7 +100,7 @@
     background: #ffffff;
     border-radius: 10px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  
+
     .q-field__control {
       border-radius: 10px;
       background: #ffffff;
@@ -109,7 +109,7 @@
       box-shadow: 0 1px 2px 0 rgba(17, 30, 48, 0.04);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-  
+
     .q-field__control:before {
       border: 1.5px solid #dcdfe4;
       border-radius: 10px;
@@ -117,17 +117,17 @@
         border-color 0.2s ease,
         box-shadow 0.2s ease;
     }
-  
+
     .q-field__control:hover:before {
       border-color: #94a3b8;
     }
-  
+
     &:hover {
       .q-field__control {
         box-shadow: 0 3px 8px -1px rgba(17, 30, 48, 0.08);
       }
     }
-  
+
     &.q-field--focused {
       .q-field__control {
         box-shadow: 0 0 0 3px rgba(17, 30, 48, 0.12);
@@ -141,34 +141,34 @@
         transform: rotate(180deg);
       }
     }
-  
+
     .q-field__marginal {
       height: 40px;
     }
-  
+
     .q-field__native,
     .q-field__input {
       font-size: 0.875rem;
       font-weight: 500;
       color: $primary;
     }
-  
+
     .q-field__label {
       font-size: 0.875rem;
       color: #616161;
     }
-  
+
     &.q-field--float .q-field__label {
       color: $primary;
       font-weight: 600;
     }
-  
+
     .q-select__dropdown-icon {
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       color: #616161;
     }
   }
-  
+
   /* Fila de opciones del desplegable un poco más alta para el toque en móvil. */
 }
 

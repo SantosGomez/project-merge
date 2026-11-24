@@ -266,7 +266,10 @@ import { useQuasar } from 'quasar'
 import { useSesion } from '@/modulos/documentos/composables/sesion.js'
 import { formatearPeriodo } from '@/modulos/documentos/composables/fechas'
 import { estiloDeEstadoDocumento } from '@/modulos/documentos/composables/estadoDocumentoVista.js'
-import { resumirSeguimiento, ordenarPorAtencion } from '@/modulos/documentos/composables/resumenSeguimiento.js'
+import {
+  resumirSeguimiento,
+  ordenarPorAtencion,
+} from '@/modulos/documentos/composables/resumenSeguimiento.js'
 import { obtenerSeguimiento } from '@/modulos/documentos/servicios/api.js'
 import { textoRfc } from '@/modulos/documentos/composables/clientesVista.js'
 import { mensajeParaUsuario } from '@/modulos/documentos/servicios/cliente.js'

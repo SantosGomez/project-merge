@@ -134,9 +134,17 @@ describe('normalización de la búsqueda', () => {
   })
 
   test('la copia del frontend es idéntica a la del Backend', () => {
-    const copia = readFileSync(fileURLToPath(new URL('../logica/normalizar.js', import.meta.url)), 'utf8')
+    const copia = readFileSync(
+      fileURLToPath(new URL('../logica/normalizar.js', import.meta.url)),
+      'utf8',
+    )
     const servidor = readFileSync(
-      fileURLToPath(new URL('../../../../../Backend/src/modulos/documentos/logica/normalizar.mjs', import.meta.url)),
+      fileURLToPath(
+        new URL(
+          '../../../../../Backend/src/modulos/documentos/logica/normalizar.mjs',
+          import.meta.url,
+        ),
+      ),
       'utf8',
     )
     assert.strictEqual(copia.replace(/\r\n/g, '\n'), servidor.replace(/\r\n/g, '\n'))

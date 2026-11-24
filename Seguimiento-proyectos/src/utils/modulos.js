@@ -44,7 +44,13 @@ export const PERMISOS_DOCUMENTOS = Object.freeze({
   cambiar_estado: Object.freeze(['Contador', 'Administrador', 'Sistemas']),
   ver_usuarios: Object.freeze(['Administrador', 'Sistemas']),
   administrar_usuarios: Object.freeze(['Administrador', 'Sistemas']),
-  ver_seguimiento: Object.freeze(['Cliente', 'Contador', 'Administrador', 'Practicante', 'Sistemas']),
+  ver_seguimiento: Object.freeze([
+    'Cliente',
+    'Contador',
+    'Administrador',
+    'Practicante',
+    'Sistemas',
+  ]),
 })
 
 /**
