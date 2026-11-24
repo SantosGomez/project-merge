@@ -46,6 +46,7 @@
 
         <q-btn-toggle
           v-if="!compacto"
+          v-segmento-elastico
           :model-value="vista"
           :options="opcionesDeVista"
           no-caps
@@ -77,6 +78,7 @@
     <!-- Celular: selector de vistas y opciones plegables -->
     <div v-if="compacto" class="barra-periodo__fila barra-periodo__fila--vista">
       <q-btn-toggle
+        v-segmento-elastico
         :model-value="vista"
         :options="opcionesDeVista"
         no-caps
@@ -114,6 +116,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useQuasar } from 'quasar'
+
+import { vSegmentoElastico } from '../utils/segmentoElastico.js'
 
 /*
  * Cabecera de «Mi Calendario». Fila 1: el periodo en grande, ‹ Hoy › y las acciones (slot `acciones`).
@@ -213,6 +217,39 @@ const compacto = computed(() => $q.screen.lt.sm)
 .barra-periodo__vistas :deep(.q-btn) {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* Píldora elástica (`vSegmentoElastico`): va detrás de los botones y hace de fondo de la opción activa. */
+.barra-periodo__vistas {
+  position: relative;
+  isolation: isolate;
+}
+
+.barra-periodo__vistas :deep(.segmento-elastico__pildora) {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  z-index: 0;
+  width: 0;
+  border-radius: 4px;
+  background: var(--q-primary);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.barra-periodo__vistas :deep(.q-btn) {
+  z-index: 1;
+  transition: color 180ms var(--dg-curva-salida);
+}
+
+.barra-periodo__vistas.segmento-elastico--listo :deep(.segmento-elastico__pildora) {
+  opacity: 1;
+}
+
+/* Con la píldora colocada, ningún botón pinta su propio fondo (antes lo pintaba el activo). */
+.barra-periodo__vistas.segmento-elastico--listo :deep(.q-btn) {
+  background: transparent !important;
 }
 
 .barra-periodo__proxima {
