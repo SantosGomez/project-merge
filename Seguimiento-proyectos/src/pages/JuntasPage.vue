@@ -31,8 +31,6 @@
       </template>
     </q-banner>
 
-    <ProximaJunta ref="proximaJunta" @ver="abrirDetalle" />
-
     <BarraPeriodo
       :periodo="periodo"
       :vista="vista"
@@ -44,6 +42,10 @@
       @hoy="irAHoy"
       @siguiente="moverA(1)"
     >
+      <template #proxima>
+        <ProximaJunta ref="proximaJunta" @ver="abrirDetalle" />
+      </template>
+
       <template #acciones>
         <q-btn
           class="juntas-page__nueva control-touch boton-presionable"
@@ -62,57 +64,60 @@
       </template>
 
       <template #opciones>
-        <q-select
-          :model-value="agendaId"
-          :options="opcionesDeAgenda"
-          emit-value
-          map-options
-          outlined
-          dense
-          options-dense
-          label="Ver agenda de"
-          dropdown-icon="expand_more"
-          popup-content-class="menu-seleccion-custom"
-          transition-show="jump-down"
-          transition-hide="jump-up"
-          :transition-duration="180"
-          class="selector-moderno juntas-page__selector"
-          :loading="cargandoPersonas"
-          @update:model-value="cambiarAgenda"
-        >
-          <template #prepend>
-            <q-icon name="event_note" />
-          </template>
-          <template #selected-item="{ opt }">
-            <span class="juntas-page__seleccionado">{{ opt.label }}</span>
-          </template>
-          <template #option="{ itemProps, opt }">
-            <q-item v-bind="itemProps" class="item-opcion-custom">
-              <q-item-section>
-                <q-item-label>{{ opt.label }}</q-item-label>
-                <q-item-label v-if="opt.detalle" caption>{{ opt.detalle }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </template>
-          <q-tooltip max-width="320px">
-            Elige a otra persona para ver cuándo está ocupada y agendar una junta con ella.
-          </q-tooltip>
-        </q-select>
+        <div class="juntas-page__opciones-grupo">
+          <q-select
+            :model-value="agendaId"
+            :options="opcionesDeAgenda"
+            emit-value
+            map-options
+            outlined
+            dense
+            options-dense
+            label="Ver agenda de"
+            dropdown-icon="expand_more"
+            popup-content-class="menu-seleccion-custom"
+            transition-show="jump-down"
+            transition-hide="jump-up"
+            :transition-duration="180"
+            class="selector-moderno juntas-page__selector"
+            :loading="cargandoPersonas"
+            @update:model-value="cambiarAgenda"
+          >
+            <template #prepend>
+              <q-icon name="event_note" />
+            </template>
+            <template #selected-item="{ opt }">
+              <span class="juntas-page__seleccionado">{{ opt.label }}</span>
+            </template>
+            <template #option="{ itemProps, opt }">
+              <q-item v-bind="itemProps" class="item-opcion-custom">
+                <q-item-section>
+                  <q-item-label>{{ opt.label }}</q-item-label>
+                  <q-item-label v-if="opt.detalle" caption>{{ opt.detalle }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+            <q-tooltip max-width="320px">
+              Elige a otra persona para ver cuándo está ocupada y agendar una junta con ella.
+            </q-tooltip>
+          </q-select>
 
-        <q-toggle
-          v-if="vencimientosDisponibles"
-          :model-value="mostrarVencimientos"
-          label="Mostrar vencimientos"
-          color="primary"
-          class="juntas-page__vencimientos control-touch"
-          @update:model-value="cambiarMostrarVencimientos"
-        >
-          <q-tooltip max-width="320px">
-            Marca en el calendario el día en que vence cada caso que no está finalizado y, si eres
-            contador, cada auditoría que no está completada. Se recuerda para tu cuenta en este
-            equipo.
-          </q-tooltip>
-        </q-toggle>
+          <q-toggle
+            v-if="vencimientosDisponibles"
+            :model-value="mostrarVencimientos"
+            dense
+            label="Mostrar vencimientos"
+            color="primary"
+            class="juntas-page__vencimientos control-touch"
+            @update:model-value="cambiarMostrarVencimientos"
+          >
+            <q-tooltip max-width="320px">
+              Marca en el calendario el día en que vence cada caso que no está finalizado y, si eres
+              contador, cada auditoría que no está completada. Se recuerda para tu cuenta en este
+              equipo.
+            </q-tooltip>
+          </q-toggle>
+        </div>
       </template>
     </BarraPeriodo>
 
@@ -745,11 +750,21 @@ watch(
 .juntas-page__nueva {
   min-width: 44px;
   min-height: 44px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.juntas-page__opciones-grupo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .juntas-page__selector {
-  flex: 0 1 340px;
-  min-width: min(100%, 240px);
+  flex: 0 1 200px;
+  min-width: 150px;
 }
 
 /* El nombre elegido va completo y en una línea; el rol solo sale en la lista de opciones. */
@@ -761,6 +776,21 @@ watch(
 
 .juntas-page__vencimientos {
   margin: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 599px) {
+  .juntas-page__opciones-grupo {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .juntas-page__selector {
+    min-width: 100%;
+  }
 }
 
 .juntas-page__aviso-vencimientos {
