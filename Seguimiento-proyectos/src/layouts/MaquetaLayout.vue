@@ -49,6 +49,7 @@
       :nombre-usuario="session.nombreVisible"
       :rol="rolLegible"
       :perfil-to="session.trabajaCasos ? { name: 'mi-perfil' } : null"
+      :logo-to="session.variosModulos ? { name: 'modulos' } : null"
       :perfil-activo="route.name === 'mi-perfil'"
       :cerrando-sesion="cerrandoSesion"
       :inert="fondoBloqueado"
@@ -85,8 +86,8 @@
           class="drawer-marca__logo-boton"
           aria-label="Fijar menú abierto"
           :aria-pressed="menuFijado"
-          :aria-disabled="!esEscritorio"
-          :tabindex="esEscritorio ? 0 : -1"
+          :aria-disabled="!esEscritorio && !session.variosModulos"
+          :tabindex="esEscritorio || session.variosModulos ? 0 : -1"
           @click="alternarMenuFijado"
         >
           <img
@@ -362,27 +363,6 @@
             </q-item>
           </template>
 
-          <!-- Con más de un módulo se puede cambiar sin volver a iniciar sesión. -->
-          <template v-if="session.variosModulos">
-            <q-item-label header>Módulos</q-item-label>
-            <q-item
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
-              :to="{ name: 'modulos' }"
-              :aria-current="paginaActual('modulos')"
-              aria-label="Cambiar de módulo"
-            >
-              <q-item-section avatar>
-                <q-icon name="swap_horiz" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Cambiar de módulo</q-item-label>
-                <q-item-label caption>Ir a {{ nombreOtroModulo }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </template>
         </q-list>
         </nav>
       </q-scroll-area>
@@ -533,7 +513,7 @@ import { useSessionStore } from '../stores/session.js'
 import { auditoriaConChatAbierto, avisoDeMensaje } from '../utils/avisosChat.js'
 import { formatearIniciales, formatearRol } from '../utils/formateadores.js'
 import { guardarMenuFijado, leerMenuFijado } from '../utils/preferenciaMenu.js'
-import { DATOS_MODULO, MODULOS, hayAccesoDocumentos } from '../utils/modulos.js'
+import { MODULOS, hayAccesoDocumentos } from '../utils/modulos.js'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -590,7 +570,13 @@ const acompanarMenu = ref(false)
 let esperaAcompanar = null
 
 const alternarMenuFijado = () => {
-  if (!esEscritorio.value) return
+  if (!esEscritorio.value) {
+    if (session.variosModulos) {
+      drawerOpen.value = false
+      void router.push({ name: 'modulos' })
+    }
+    return
+  }
   clearTimeout(esperaAcompanar)
   acompanarMenu.value = true
   esperaAcompanar = setTimeout(() => {
@@ -707,18 +693,6 @@ const usarDock = computed(() => esEscritorio.value && session.autenticado)
  * Unión con documentos: módulo en el que está la pantalla y opciones de su menú.
  */
 const enDocumentos = computed(() => route.meta?.modulo === MODULOS.documentos)
-const nombreOtroModulo = computed(() =>
-  enDocumentos.value ? DATOS_MODULO[MODULOS.seguimiento].nombre : DATOS_MODULO[MODULOS.documentos].nombre,
-)
-const opcionCambioModulo = computed(() => ({
-  clave: 'modulos',
-  nombre: 'Cambiar de módulo',
-  descripcion: `Ir a ${nombreOtroModulo.value}`,
-  icono: 'swap_horiz',
-  to: { name: 'modulos' },
-  ariaLabel: 'Cambiar de módulo',
-  activa: false,
-}))
 const opcionesDocumentos = computed(() => {
   const rol = session.rolDocumentos
   const opcion = (clave, nombre, descripcion, icono, accion) => ({
@@ -743,7 +717,7 @@ const opcionesDocumentos = computed(() => {
 
 const opcionesDock = computed(() => {
   if (enDocumentos.value) {
-    return session.variosModulos ? [...opcionesDocumentos.value, opcionCambioModulo.value] : opcionesDocumentos.value
+    return opcionesDocumentos.value
   }
   const opcion = (clave, nombre, descripcion, icono, ruta, ariaLabel, activa) => ({
     clave,
@@ -792,7 +766,6 @@ const opcionesDock = computed(() => {
       opcion('admin-directorio', 'Directorio', 'Consultar cuentas del equipo', 'group', 'admin-directorio', 'Ir al directorio de usuarios'),
     )
   }
-  if (session.variosModulos) lista.push(opcionCambioModulo.value)
   return lista
 })
 

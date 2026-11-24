@@ -6,7 +6,28 @@
     @pointermove="alMoverPuntero"
     @pointerleave="alSalirPuntero"
   >
-    <span class="menu-dock__azulejo menu-dock__azulejo--logo" aria-hidden="true">
+    <router-link v-if="logoTo" #default="{ href, navigate }" :to="logoTo" custom>
+      <a
+        :href="href"
+        class="menu-dock__azulejo menu-dock__azulejo--logo"
+        aria-label="Inicio · Cambiar de módulo"
+        @click="navigate"
+      >
+        <img
+          class="menu-dock__logo"
+          src="logos/PNG/DELGROW_ISOTIPO-OF_T.png"
+          alt=""
+          width="30"
+          height="30"
+        />
+        <q-tooltip anchor="center right" self="center left" :offset="[14, 0]">
+          <strong>Inicio</strong>
+          <br />
+          Cambiar de módulo
+        </q-tooltip>
+      </a>
+    </router-link>
+    <span v-else class="menu-dock__azulejo menu-dock__azulejo--logo" aria-hidden="true">
       <img
         class="menu-dock__logo"
         src="logos/PNG/DELGROW_ISOTIPO-OF_T.png"
@@ -109,6 +130,8 @@ const props = defineProps({
   iniciales: { type: String, default: '' },
   nombreUsuario: { type: String, default: '' },
   rol: { type: String, default: '' },
+  /** Ruta de «Inicio» al pulsar el logo, o null si no hay selector de módulos. */
+  logoTo: { type: Object, default: null },
   /** Ruta de «Mi perfil», o null si el rol no la tiene. */
   perfilTo: { type: Object, default: null },
   perfilActivo: { type: Boolean, default: false },

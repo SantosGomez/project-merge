@@ -39,7 +39,7 @@ describe('Aspecto del dock', () => {
   it('el logo va dentro de su propio azulejo y hay un separador antes y otro después de las opciones', () => {
     assert.match(
       plantilla,
-      /<span class="menu-dock__azulejo menu-dock__azulejo--logo"[^>]*>\s*<img/,
+      /<span[^>]*class="menu-dock__azulejo menu-dock__azulejo--logo"[^>]*>\s*<img/,
     )
     assert.equal(plantilla.match(/class="menu-dock__separador"/g)?.length, 2)
   })

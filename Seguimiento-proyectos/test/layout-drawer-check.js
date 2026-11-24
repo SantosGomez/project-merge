@@ -631,24 +631,24 @@ describe('Drawer compacto — verificación estática', () => {
     assert.match(alternar, /guardarMenuFijado\(menuFijado\.value\)/, 'guarda la preferencia')
   })
 
-  it('el logo es siempre el mismo botón; por debajo de 1024 px queda sin acción', () => {
+  it('el logo es siempre el mismo botón; en móvil solo actúa si hay selector de módulos', () => {
     // Crear o destruir el botón al cruzar 1024 px hacía perder el foco del teclado.
     const boton = src.match(/<q-btn[^>]*drawer-marca__logo-boton[\s\S]*?<\/q-btn>/)?.[0] ?? ''
     const apertura = boton.match(/<q-btn[^>]*>/)?.[0] ?? ''
     assert.doesNotMatch(apertura, /v-if=/, 'el botón no se crea ni se destruye por ancho')
     assert.equal((src.match(/class="drawer-marca__logo"/g) ?? []).length, 1, 'un solo logo')
 
-    assert.match(apertura, /:aria-disabled="!esEscritorio"/, 'en móvil se anuncia no disponible')
+    assert.match(apertura, /:aria-disabled="!esEscritorio && !session\.variosModulos"/, 'en móvil sin módulos se anuncia no disponible')
     assert.match(boton, /<q-tooltip v-if="esEscritorio">/, 'en móvil no muestra tooltip')
     assert.match(
       cssRule(".drawer-marca__logo-boton[aria-disabled='true']"),
       /cursor:\s*default/,
-      'en móvil no muestra la mano',
+      'en móvil sin módulos no muestra la mano',
     )
 
     const inicio = src.indexOf('const alternarMenuFijado')
     const alternar = src.slice(inicio, src.indexOf('\nconst ', inicio + 1))
-    assert.match(alternar, /if \(!esEscritorio\.value\) return/, 'en móvil el clic no hace nada')
+    assert.match(alternar, /if \(!esEscritorio\.value\)[\s\S]*?name: 'modulos'/, 'en móvil con módulos lleva al selector')
   })
 })
 

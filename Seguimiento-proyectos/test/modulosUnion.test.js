@@ -192,13 +192,13 @@ describe('router y menú de la app unida', () => {
     )
   })
 
-  it('el menú cambia con el módulo y ofrece cambiar de módulo a quien tiene varios', () => {
+  it('el menú cambia con el módulo y el logo lleva a inicio cuando hay varios módulos', () => {
+    const dock = leer('../src/components/MenuDock.vue')
     assert.match(layout, /<template v-if="!enDocumentos">/)
     assert.match(layout, /<template v-if="enDocumentos">/)
-    assert.match(
-      layout,
-      /<template v-if="session\.variosModulos">[\s\S]*?:to="\{ name: 'modulos' \}"/,
-    )
+    assert.match(layout, /:logo-to="session\.variosModulos \? \{ name: 'modulos' \} : null"/)
+    assert.match(dock, /<router-link v-if="logoTo"[\s\S]*?aria-label="Inicio · Cambiar de módulo"/)
+    assert.doesNotMatch(layout, /Cambiar de módulo/)
     assert.match(
       layout,
       /const enDocumentos = computed\(\(\) => route\.meta\?\.modulo === MODULOS\.documentos\)/,
