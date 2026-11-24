@@ -81,6 +81,8 @@
             :transition-duration="180"
             class="selector-moderno juntas-page__selector"
             :loading="cargandoPersonas"
+            @popup-show="selectorAbierto = true"
+            @popup-hide="selectorAbierto = false"
             @update:model-value="cambiarAgenda"
           >
             <template #prepend>
@@ -97,7 +99,7 @@
                 </q-item-section>
               </q-item>
             </template>
-            <q-tooltip max-width="320px">
+            <q-tooltip v-if="!selectorAbierto" max-width="320px">
               Elige a otra persona para ver cuándo está ocupada y agendar una junta con ella.
             </q-tooltip>
           </q-select>
@@ -360,6 +362,9 @@ const anio = computed(() => Number(fecha.value.slice(0, 4)))
 
 // Persona de `?agenda=` (id como texto) o null si se ve la propia agenda.
 const agendaId = computed(() => leerAgendaDeUrl(route.query, session.id))
+
+// Con la lista de «Ver agenda de» abierta no se muestra su tooltip: en celular tapaba las opciones.
+const selectorAbierto = ref(false)
 
 const irA = (nuevaVista, nuevaFecha) =>
   router.replace({ query: { ...route.query, vista: nuevaVista, fecha: nuevaFecha } })

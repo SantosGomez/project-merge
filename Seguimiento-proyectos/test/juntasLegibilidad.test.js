@@ -230,17 +230,14 @@ describe('componentes nuevos MarcaJunta y BloqueJunta', () => {
     assert.doesNotMatch(plantillaDe(marca), /q-tooltip/)
   })
 
-  it('los tooltips de la cabecera tienen max-width de 320px y los de Anterior, Hoy y Siguiente un retraso de 500 ms', () => {
+  it('los tooltips de la cabecera tienen max-width de 320px y los de Anterior y Siguiente un retraso de 500 ms', () => {
     // Desde la rebanada 33 la navegación vive en BarraPeriodo; la pantalla conserva el resto de la cabecera.
+    // «Hoy» lleva su texto visible, así que no necesita tooltip.
     const barra = leer('../src/components/BarraPeriodo.vue')
     const tooltips = [...plantillaDe(pagina + barra).matchAll(/<q-tooltip[^>]*>/g)].map(([t]) => t)
     assert.ok(tooltips.length >= 7)
     for (const tooltip of tooltips) assert.match(tooltip, /max-width="320px"/, tooltip)
-    for (const texto of [
-      'Va al periodo anterior.',
-      'Vuelve al día de hoy.',
-      'Va al periodo siguiente.',
-    ]) {
+    for (const texto of ['Va al periodo anterior.', 'Va al periodo siguiente.']) {
       const posicion = barra.indexOf(texto)
       const apertura = barra.lastIndexOf('<q-tooltip', posicion)
       assert.match(barra.slice(apertura, posicion), /:delay="500"/, texto)

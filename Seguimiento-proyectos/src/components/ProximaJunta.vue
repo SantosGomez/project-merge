@@ -29,7 +29,6 @@
         </p>
         <p class="proxima-junta__titulo">
           {{ actual.junta.titulo }}
-          <q-tooltip max-width="320px">{{ actual.junta.titulo }}</q-tooltip>
         </p>
         <p class="proxima-junta__hora">
           {{

@@ -29,9 +29,7 @@
             padding="4px 12px"
             class="control-touch boton-presionable"
             @click="emit('hoy')"
-          >
-            <q-tooltip :delay="500" max-width="320px">Vuelve al día de hoy.</q-tooltip>
-          </q-btn>
+          />
           <q-btn
             outline
             no-caps
