@@ -51,7 +51,7 @@ El esquema lo agrega `migrarUnificacion()` en `Backend/src/utils/seed.js`. Corre
 - [x] **Permisos:** la tabla `usuario_modulos` (usuario, módulo, rol dentro del módulo). Toda cuenta que no tenga ningún módulo recibe `seguimiento`.
 - [x] **Clientes:** un solo catálogo. `usuario_id` (el contador) ahora es opcional, y se agregaron `clave`, `email` y `telefono`. Las pantallas actuales de status-conta siguen viendo solo los clientes de cada contador, así que no cambian.
 - [x] **Importar y deshacer:** con `node src/utils/importarDocumentos.js` se importa y con `--deshacer` se revierte. Cada fila queda en `unificacion_mapa`, así que correrlo dos veces no duplica nada.
-- [x] **Probado en una copia:** la base de prueba es el contenedor `merge-prueba-db` en el puerto 3308, con los respaldos de la fase 0 cargados. Resultados:
+- [x] **Probado en una copia:** la base de prueba era el contenedor `merge-prueba-db` (puerto 3308), con los respaldos de la fase 0 cargados. Desde el 2026-11-24 es `delgrow_merge` en XAMPP (3306), para trabajar sin Docker. Resultados:
   - **Usuarios:** 33 se ligaron, 1 se insertó (el practicante que solo estaba en documentos) y 8 de prueba se omitieron.
   - **Clientes:** 5 se ligaron, 145 se insertaron y 1 de prueba se omitió.
   - Deshacer deja la base como estaba. Al volver a importar sale lo mismo.

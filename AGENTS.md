@@ -102,7 +102,7 @@ npm run build
 Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas puertas en cada carpeta que toca la rebanada. Ninguna rebanada se da por hecha con una puerta en rojo.
 
 - Frontend (`Seguimiento-proyectos/`): `npm run lint:check`, `npm run build`, `node --test` y comprobación en navegador real si toca interfaz (incluida la vista móvil).
-- Backend (`Backend/`): `node --test` y `node soporte-pruebas/verificarPruebas.js`. Las pruebas de documentos son `src/modulos/documentos/**/*.test.mjs` (más `test/documentosModulo.test.js`). Requiere en marcha la base de prueba de la unión: el contenedor Docker `merge-prueba-db` (puerto 3308, base `delgrow_merge`, la que usa `Backend/.env`), no XAMPP. Si no responde, parar y avisar.
+- Backend (`Backend/`): `node --test` y `node soporte-pruebas/verificarPruebas.js`. Las pruebas de documentos son `src/modulos/documentos/**/*.test.mjs` (más `test/documentosModulo.test.js`). Requiere en marcha MariaDB de XAMPP (puerto 3306) con la base de prueba de la unión `delgrow_merge` (la que usa `Backend/.env`). Si no responde, parar y avisar.
 - Datos de prueba: las cuentas y registros de prueba usan el prefijo `zz_test_` (en documentos, correos `@ejemplo.com`); al terminar deben quedar 0 filas `zz_test_%`. Nunca datos reales en pruebas ni en el repo.
 - Navegador: `merge-backend` (3100) + `merge-frontend` (9100) de `.claude/launch.json`; cerrar los servidores que se abran. Si toca documentos, probar con cada rol del módulo (el menú y los permisos cambian por rol).
 - El reviewer solo corre las puertas de pruebas y lectura; nunca modifica archivos.
@@ -183,7 +183,7 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 
 ## Despliegue (solo cuando se pida)
 
-- Bases: producción en Docker (puerto 3307), solo en una publicación pedida; pruebas de la unión en el contenedor `merge-prueba-db` (3308). XAMPP (3306) tiene las bases de `status-conta` y de documentos (`dca_documentos`): solo se leen para importar. Guía completa en `docs/seguridad-despliegue.md`.
+- Bases: producción en Docker (puerto 3307), solo en una publicación pedida; pruebas de la unión en XAMPP (3306), base `delgrow_merge`. En el mismo XAMPP están las bases de `status-conta` (`delgrow_contadores`) y de documentos (`dca_documentos`): no se tocan; `dca_documentos` solo se lee para importar. Guía completa en `docs/seguridad-despliegue.md`.
 - Unión en producción (fase 5 de `PLAN.md`): respaldar `db_datos` **y** el volumen `adjuntos`; arrancar el backend nuevo (el seed migra) y correr una sola vez `node src/utils/importarDocumentos.js` con `DOCS_DB_*` apuntando a `dca_documentos` (`--deshacer` revierte; `unificacion_mapa` evita duplicados).
 - Respaldo dentro del contenedor (`mariadb-dump --single-transaction --routines --triggers --events > /tmp/...` + `docker compose cp`); la tubería de PowerShell daña acentos; los `.sql` nunca se versionan. Etiquetar las imágenes anteriores antes de reconstruir.
 - `docker compose build` desde PowerShell (en Git Bash `API_URL=/api` se rompe) y `up -d --no-deps backend frontend` para que el túnel conserve su URL.
