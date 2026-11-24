@@ -82,10 +82,29 @@ El esquema lo agrega `migrarUnificacion()` en `Backend/src/utils/seed.js`. Corre
 - La pantalla de login cambió de texto, pero no la revisé en el navegador.
 - `npm run lint:check` del frontend no detecta problemas de formato, porque le falta `--check` a prettier (el mismo error que ya se corrigió en documentos). Hay archivos con formato pendiente desde antes de la unión.
 
-## Fase 3: Pasar el backend de documentos a status-conta
-- [ ] Las rutas de `Proyecto-documentos/Backend/src/rutas` pasan a Express con la misma estructura de status-conta: `documentoRoutes`, `documentoController` y `documentoModel`.
-- [ ] La lógica que no depende del servidor se copia casi igual: `semaforo`, `folio`, `estadosDocumento`, `cumplimiento`, `validacion`, etc. Sus pruebas también se pasan.
-- [ ] **Archivos subidos:** el contenedor del backend es de solo lectura, así que se necesita un volumen de Docker para guardar las firmas y los PDF. ⚠️ Si no se hace, se pierden los archivos.
+## Fase 3: Pasar el backend de documentos a status-conta ✅ 2026-11-24
+- [x] **Cómo se pasó:** el código de documentos se copió casi igual a `Backend/src/modulos/documentos/` (`logica/` y `rutas/`) como módulos ESM `.mjs`, con sus pruebas al lado (`*.test.mjs`). Node los carga con `require()` desde el código CommonJS de status-conta; lo comprobé con la imagen de Docker (Node 22.23). Así no hubo que reescribir la lógica, solo las consultas que tocan tablas unidas.
+- [x] **Consultas adaptadas:**
+  - `razon_social` → `clientes.nombre`.
+  - `contador_id` del cliente → `clientes.usuario_id`.
+  - `estado` del cliente → `clientes.activo`.
+  - Para saber quién es "Contador" ya no se usa la tabla `roles`: se usa `usuario_modulos` (módulo documentos, rol contador).
+- [x] **Router de Express:** `Backend/src/routes/documentoRoutes.js`, montado en `/doc`. Usa la sesión de status-conta. Entra quien tiene el módulo (o es administrador); los demás reciben 403. Cada ruta pide el mismo permiso que en documentos (`hayAcceso`), con el rol de la cuenta dentro del módulo. Las respuestas conservan el formato de documentos (`{ error, mensaje }`).
+  - **Rutas:** `GET /doc/catalogos`, `POST|GET /doc/documentos`, `GET /doc/documentos/direccionamiento`, `POST /doc/documentos/:id/estado`, `POST /doc/documentos/:id/entrega`, `POST /doc/documentos/:id/archivos` (en crudo, hasta 25 MB), `GET /doc/documentos/:id/archivos/:archivoId`, `GET /doc/clientes`, `GET /doc/clientes/frecuentes`, `GET|POST /doc/clientes/:id/requeridos` y `GET /doc/seguimiento`.
+  - **Rutas nuevas:** `GET /doc/usuarios` y `PUT /doc/usuarios/:id/rol` (`{ rol }` o `{ rol: null }`) dicen quién entra al módulo y con qué rol. Reemplazan la administración de usuarios de documentos; las cuentas se crean en el directorio de status-conta.
+  - El router va antes del `express.json` de 100 kb de la app, porque las firmas en base64 pesan hasta 2 MiB.
+- [x] **Lo que no se pasó:** las rutas de sesión (`/sesion`, cookie `dca_sesion`, scrypt) y de usuarios, porque las reemplazan el login y el directorio de status-conta. Tampoco `contrasenas`, `sesion` ni `importacionUsuarios`.
+- [x] **Archivos subidos:** se agregó el volumen `adjuntos` en `/app/storage` (`CARPETA_ADJUNTOS`). La imagen crea la carpeta del usuario `node`, así que el backend escribe ahí aunque el resto del contenedor sea de solo lectura; lo probé con un contenedor real. nginx acepta hasta 26 MB en `/api/doc/` (en el resto del sitio sigue siendo 1 MB). ⚠️ Hay que respaldar el volumen `adjuntos` junto con `db_datos`.
+- [x] **Pruebas:**
+  - Las 270 de documentos pasan; las 6 que necesitan base ahora usan la base de prueba de status-conta.
+  - `test/documentosModulo.test.js` (14) prueba de punta a punta: permisos, recepción con firmas grandes, entrega, cambio de estado, subida y descarga, seguimiento, clientes, requeridos y la administración de acceso.
+  - La matriz de permisos incluye las 15 rutas de `/doc`.
+  - Backend: 1172 pruebas, y fallan solo las 2 de siempre por la base de prueba.
+
+**Notas:**
+- A un administrador no se le puede quitar el módulo de documentos con `rol: null`, porque lo tiene por su rol (así lo decidimos). Sí se le puede dar otro rol dentro del módulo.
+- El rol Cliente (portal) sigue apagado: las rutas pasan `clienteId = null`.
+- La llave de `clientes` → `usuarios` sigue con borrado en cascada. Ahora, si alguien intenta borrar un contador cuyos clientes tienen documentos, la base lo impide. La app no borra usuarios, así que no afecta.
 
 ## Fase 4: Pasar el frontend y armar el portal
 - [ ] Crear la pantalla para elegir módulo y el botón para cambiarlo.

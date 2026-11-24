@@ -119,6 +119,23 @@ const MATRIZ = [
   ['PATCH', '/juntas/:x', CALENDARIO, {}],
   ['PATCH', '/juntas/:x/respuesta', CALENDARIO, {}],
   ['DELETE', '/juntas/:x', CALENDARIO],
+  // módulo de documentos (unión, fase 3): entra quien tiene el módulo; aquí solo el administrador
+  // lo tiene por su rol. Los permisos por rol dentro del módulo están en documentosModulo.test.js.
+  ['GET', '/doc/catalogos', [ADMIN]],
+  ['POST', '/doc/documentos', [ADMIN], {}],
+  ['GET', '/doc/documentos', [ADMIN]],
+  ['GET', '/doc/documentos/direccionamiento', [ADMIN]],
+  ['POST', '/doc/documentos/:x/estado', [ADMIN], {}],
+  ['POST', '/doc/documentos/:x/entrega', [ADMIN], {}],
+  ['POST', '/doc/documentos/:x/archivos', [ADMIN], {}],
+  ['GET', '/doc/documentos/:x/archivos/:x', [ADMIN]],
+  ['GET', '/doc/clientes/frecuentes', [ADMIN]],
+  ['GET', '/doc/clientes', [ADMIN]],
+  ['GET', '/doc/clientes/:x/requeridos', [ADMIN]],
+  ['POST', '/doc/clientes/:x/requeridos', [ADMIN], {}],
+  ['GET', '/doc/seguimiento', [ADMIN]],
+  ['GET', '/doc/usuarios', [ADMIN]],
+  ['PUT', '/doc/usuarios/:x/rol', [ADMIN], {}],
 ];
 
 // Endpoints sin token de acceso: el inicio de sesión y la conexión de tiempo real (con pase).

@@ -52,6 +52,8 @@ services:
       USUARIOS_CON_ACTIVIDADES: ${USUARIOS_CON_ACTIVIDADES-}
       # Ids de los administradores que atiende la recepcionista (vacío = ninguno)
       ADMINISTRADORES_DE_RECEPCION: ${ADMINISTRADORES_DE_RECEPCION-}
+      # Módulo de documentos: carpeta de los archivos subidos (volumen `adjuntos`)
+      CARPETA_ADJUNTOS: /app/storage
       TRUST_PROXY: "1"
       TZ: ${TZ}
     # Endurecimiento: sin capacidades de Linux, sistema de archivos de solo lectura
@@ -61,6 +63,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
+    # Única carpeta persistente y escribible: los archivos del módulo de documentos
+    volumes:
+      - adjuntos:/app/storage
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 200
@@ -109,6 +114,8 @@ services:
 
 volumes:
   db_datos:
+  # Archivos subidos al módulo de documentos. Sobrevive a reconstruir la imagen; respáldalo junto con db_datos.
+  adjuntos:
 
 networks:
   interna:

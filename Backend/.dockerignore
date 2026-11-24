@@ -6,3 +6,5 @@ soporte-pruebas
 cuentas.local.json
 *.xlsx
 *.log
+**/*.test.mjs
+storage

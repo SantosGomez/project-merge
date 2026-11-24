@@ -50,6 +50,7 @@ const MINIMOS = {
   'contadoresDeAuxiliar.test.js': 10,
   'counterRoutes.test.js': 6,
   'dateUtils.test.js': 4,
+  'documentosModulo.test.js': 14,
   'dbParametros.test.js': 20,
   'detectorSecretos.test.js': 4,
   'errorHandlerGlobal.test.js': 12,

@@ -19,6 +19,7 @@ const tiempoRoutes = require('./routes/tiempoRoutes');
 const jornadaRoutes = require('./routes/jornadaRoutes');
 const informeRoutes = require('./routes/informeRoutes');
 const juntaRoutes = require('./routes/juntaRoutes');
+const documentoRoutes = require('./routes/documentoRoutes');
 const { buildError } = require('./utils/errorUtils');
 const bitacora = require('./utils/bitacoraSeguridad');
 
@@ -87,6 +88,10 @@ function crearApp(opciones) {
       })
     );
   }
+
+  // Módulo de documentos: va antes del parser de 100 kb porque lleva su propio parser (firmas de
+  // hasta 2 MiB) y recibe archivos en crudo.
+  app.use('/doc', documentoRoutes);
 
   // Parsear cuerpos JSON de las peticiones entrantes (tope explícito de 100 kb)
   app.use(express.json({ limit: '100kb' }));

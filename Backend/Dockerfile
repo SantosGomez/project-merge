@@ -11,6 +11,10 @@ WORKDIR /app
 COPY --from=dependencias /app/node_modules ./node_modules
 COPY package.json ./
 COPY src ./src
+# Archivos del módulo de documentos: aquí se monta el volumen `adjuntos` (docker-compose). La carpeta
+# se crea del usuario node para que el volumen nuevo herede ese dueño y el backend pueda escribir,
+# aunque el resto del sistema de archivos sea de solo lectura.
+RUN mkdir -p /app/storage && chown node:node /app/storage
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
