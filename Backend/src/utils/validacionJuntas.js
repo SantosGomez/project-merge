@@ -9,6 +9,9 @@ const { parseCounterId } = require('./validationUtils');
 
 const LONGITUD_MAX_TITULO = 150;
 const LONGITUD_MAX_DESCRIPCION = 1000;
+const LONGITUD_MAX_CLIENTE = 150;
+const LONGITUD_MAX_LUGAR = 255;
+const MODALIDADES = ['presencial', 'virtual'];
 const MAX_PARTICIPANTES = 50;
 const MAX_DIAS_RANGO = 400;
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
@@ -50,6 +53,8 @@ function errorDeCampo(queOcurrio, campo, queHacer) {
 const GENERO_CAMPO = {
   'título': { el: 'El', elMin: 'el', un: 'un', corto: 'corto' },
   'descripción': { el: 'La', elMin: 'la', un: 'una', corto: 'corta' },
+  cliente: { el: 'El', elMin: 'el', un: 'un', corto: 'corto' },
+  lugar: { el: 'El', elMin: 'el', un: 'un', corto: 'corto' },
 };
 
 function validarTexto(valor, campo, maximo, obligatorio) {
@@ -98,9 +103,9 @@ function validarParticipantes(valor, creadorId) {
 
 /**
  * Valida el cuerpo para crear o reemplazar una junta.
- * @param {*} cuerpo - Cuerpo recibido: `{ titulo, descripcion?, inicio, fin, participantes, privada? }`.
+ * @param {*} cuerpo - Cuerpo recibido: `{ titulo, descripcion?, inicio, fin, participantes, privada?, cliente?, modalidad?, lugar? }`.
  * @param {number} creadorId - Cuenta que organiza la junta (no puede invitarse).
- * @returns {{ valor?: { titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[], privada: boolean }, error?: { mensaje: string } }}
+ * @returns {{ valor?: { titulo: string, descripcion: string|null, inicio: string, fin: string, participantes: number[], privada: boolean, cliente: string|null, modalidad: 'presencial'|'virtual'|null, lugar: string|null }, error?: { mensaje: string } }}
  */
 function validarJunta(cuerpo, creadorId) {
   const datos = cuerpo !== null && typeof cuerpo === 'object' ? cuerpo : {};
@@ -125,6 +130,15 @@ function validarJunta(cuerpo, creadorId) {
     return errorDeCampo('La marca de junta privada no es válida', 'privada', 'Envía privada como true o false');
   }
 
+  const cliente = validarTexto(datos.cliente, 'cliente', LONGITUD_MAX_CLIENTE, false);
+  if (cliente.error) return cliente;
+  const lugar = validarTexto(datos.lugar, 'lugar', LONGITUD_MAX_LUGAR, false);
+  if (lugar.error) return lugar;
+  const modalidadVacia = [undefined, null, ''].includes(typeof datos.modalidad === 'string' ? datos.modalidad.trim() : datos.modalidad);
+  if (!modalidadVacia && !MODALIDADES.includes(datos.modalidad)) {
+    return errorDeCampo('La modalidad de la junta no es válida', 'modalidad', 'Elige presencial o virtual, o déjala vacía');
+  }
+
   return {
     valor: {
       titulo: titulo.valor,
@@ -133,6 +147,9 @@ function validarJunta(cuerpo, creadorId) {
       fin: aDatetime(fin),
       participantes: participantes.valor,
       privada: datos.privada === true,
+      cliente: cliente.valor,
+      modalidad: modalidadVacia ? null : datos.modalidad,
+      lugar: lugar.valor,
     },
   };
 }

@@ -4,6 +4,8 @@
 
 import { api as apiPorDefecto, crearErrorInesperado } from './api.js'
 
+const MODALIDADES = ['presencial', 'virtual']
+
 /**
  * Crea el servicio de juntas con api inyectable.
  * @param {Object} [opciones] - inyección para pruebas.
@@ -26,6 +28,9 @@ export const crearJuntaService = (opciones = {}) => {
     fin: datos.fin,
     participantes: datos.participantes,
     privada: datos.privada === true,
+    cliente: String(datos.cliente ?? '').trim(),
+    modalidad: MODALIDADES.includes(datos.modalidad) ? datos.modalidad : null,
+    lugar: String(datos.lugar ?? '').trim(),
   })
 
   /**
@@ -67,7 +72,7 @@ export const crearJuntaService = (opciones = {}) => {
   /**
    * POST /juntas: crea una junta; los invitados quedan en «pendiente». Con `organizadorId` (solo la
    * recepcionista) la junta se agenda a nombre de ese administrador.
-   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean, organizadorId?: number }} datos
+   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean, cliente?: string, modalidad?: 'presencial'|'virtual'|null, lugar?: string, organizadorId?: number }} datos
    * @returns {Promise<Object>} la junta creada.
    */
   const crear = async (datos) => {
@@ -82,7 +87,7 @@ export const crearJuntaService = (opciones = {}) => {
   /**
    * PATCH /juntas/:id: reemplaza los datos de la junta (la API pide el cuerpo completo).
    * @param {number} id
-   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean }} datos
+   * @param {{ titulo: string, descripcion?: string, inicio: string, fin: string, participantes: number[], privada?: boolean, cliente?: string, modalidad?: 'presencial'|'virtual'|null, lugar?: string }} datos
    * @returns {Promise<Object>} la junta actualizada.
    */
   const actualizar = async (id, datos) => {

@@ -161,6 +161,149 @@
           </div>
 
           <div class="form-group junta-form__ancho-completo">
+            <label for="junta-cliente" class="form-label">Cliente a tratar</label>
+            <div class="junta-form__cliente">
+              <q-input
+                v-model="cliente"
+                for="junta-cliente"
+                type="text"
+                placeholder="Por ejemplo: Comercializadora Aurora"
+                :maxlength="MAX_CLIENTE"
+                outlined
+                dense
+                counter
+                class="input-moderno junta-form__cliente-campo"
+                :error="!!errorDeCampo('cliente')"
+                :error-message="errorDeCampo('cliente')"
+                @update:model-value="clearError('cliente')"
+              >
+                <template #prepend>
+                  <q-icon name="business" />
+                </template>
+              </q-input>
+              <q-btn
+                v-if="puedeElegirClientes"
+                flat
+                no-caps
+                icon="list_alt"
+                label="Elegir de mis clientes"
+                color="primary"
+                class="control-touch boton-presionable junta-form__elegir-cliente"
+                aria-haspopup="listbox"
+              >
+                <q-tooltip
+                  >Elige uno de tus clientes activos; después puedes cambiar el nombre.</q-tooltip
+                >
+                <q-menu
+                  transition-show="jump-down"
+                  transition-hide="jump-up"
+                  :transition-duration="180"
+                  class="junta-form__menu-clientes"
+                  @before-show="abrirMenuClientes"
+                >
+                  <div class="junta-form__menu-clientes-cuerpo">
+                    <q-input
+                      v-model="busquedaCliente"
+                      type="text"
+                      placeholder="Busca por nombre"
+                      aria-label="Buscar entre tus clientes"
+                      outlined
+                      dense
+                      clearable
+                      class="input-moderno"
+                    >
+                      <template #prepend>
+                        <q-icon name="search" />
+                      </template>
+                    </q-input>
+                    <p v-if="cargandoClientes" class="junta-form__menu-aviso" role="status">
+                      Cargando tus clientes…
+                    </p>
+                    <div v-else-if="errorClientes" class="junta-form__menu-aviso" role="alert">
+                      <p>No se pudo cargar la lista de tus clientes.</p>
+                      <q-btn
+                        flat
+                        no-caps
+                        icon="refresh"
+                        label="Reintentar"
+                        class="control-touch boton-presionable"
+                        @click="cargarClientes"
+                      >
+                        <q-tooltip>Vuelve a pedir la lista de tus clientes.</q-tooltip>
+                      </q-btn>
+                    </div>
+                    <p v-else-if="clientesActivos.length === 0" class="junta-form__menu-aviso">
+                      Aún no tienes clientes activos en tu cartera.
+                    </p>
+                    <p v-else-if="clientesFiltrados.length === 0" class="junta-form__menu-aviso">
+                      Ningún cliente coincide con tu búsqueda.
+                    </p>
+                    <q-list v-else separator class="junta-form__menu-lista">
+                      <q-item
+                        v-for="opcion in clientesFiltrados"
+                        :key="opcion.id"
+                        v-close-popup
+                        clickable
+                        @click="elegirCliente(opcion)"
+                      >
+                        <q-item-section>
+                          <q-item-label>{{ opcion.nombre }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </q-list>
+                  </div>
+                </q-menu>
+              </q-btn>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <span id="junta-modalidad-etiqueta" class="form-label">Modalidad</span>
+            <q-btn-toggle
+              v-model="modalidad"
+              id="junta-modalidad"
+              clearable
+              no-caps
+              unelevated
+              spread
+              toggle-color="primary"
+              color="dg-superficie"
+              text-color="primary"
+              :options="OPCIONES_MODALIDAD"
+              class="junta-form__modalidad"
+              aria-labelledby="junta-modalidad-etiqueta"
+              @update:model-value="clearError('modalidad')"
+            >
+              <q-tooltip>Indica si la junta será en persona o a distancia. Es opcional.</q-tooltip>
+            </q-btn-toggle>
+            <p v-if="errorDeCampo('modalidad')" class="form-help" role="alert">
+              {{ errorDeCampo('modalidad') }}
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label for="junta-lugar" class="form-label">Lugar</label>
+            <q-input
+              v-model="lugar"
+              for="junta-lugar"
+              type="text"
+              :placeholder="placeholderLugar"
+              :maxlength="MAX_LUGAR"
+              outlined
+              dense
+              counter
+              class="input-moderno"
+              :error="!!errorDeCampo('lugar')"
+              :error-message="errorDeCampo('lugar')"
+              @update:model-value="clearError('lugar')"
+            >
+              <template #prepend>
+                <q-icon name="place" />
+              </template>
+            </q-input>
+          </div>
+
+          <div class="form-group junta-form__ancho-completo">
             <label for="junta-invitados" class="form-label">Invitados</label>
             <q-select
               v-model="invitados"
@@ -357,12 +500,16 @@
 import { computed, nextTick, ref, watch } from 'vue'
 
 import ErrorState from './ErrorState.vue'
+import { listarClientes } from '../services/clienteService.js'
 import { actualizar, crear, participantesDisponibles } from '../services/juntaService.js'
+import { useSessionStore } from '../stores/session.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { formatearRol } from '../utils/formateadores.js'
 import {
+  MAX_CLIENTE,
   MAX_DESCRIPCION,
   MAX_INVITADOS,
+  MAX_LUGAR,
   MAX_TITULO,
   armarFechaHora,
   campoDeErrorJunta,
@@ -450,7 +597,15 @@ const CAMPO_DE_FORMULARIO = {
   inicio: 'horaInicio',
   fin: 'horaFin',
   participantes: 'participantes',
+  cliente: 'cliente',
+  modalidad: 'modalidad',
+  lugar: 'lugar',
 }
+
+const OPCIONES_MODALIDAD = [
+  { label: 'Presencial', value: 'presencial' },
+  { label: 'Virtual', value: 'virtual' },
+]
 
 const guardando = ref(false)
 
@@ -459,6 +614,9 @@ const fecha = ref('')
 const horas = ref({ horaInicio: '', horaFin: '' })
 const descripcion = ref('')
 const privada = ref(false)
+const cliente = ref('')
+const modalidad = ref(null)
+const lugar = ref('')
 // Invitados elegidos, como opciones del selector ({ valor, nombre, rol, etiqueta }).
 const invitados = ref([])
 
@@ -514,6 +672,9 @@ const fotoDelFormulario = () =>
     horas.value,
     descripcion.value,
     privada.value,
+    cliente.value,
+    modalidad.value,
+    lugar.value,
     idsDeInvitados().sort((a, b) => a - b),
   ])
 
@@ -566,6 +727,58 @@ const cargarPersonas = async () => {
   }
 }
 
+// --- clientes de mi cartera ---------------------------------------------------------------------
+
+const session = useSessionStore()
+
+// Solo quien trabaja casos y tiene «Mis actividades» tiene cartera de clientes.
+const puedeElegirClientes = computed(
+  () => session.trabajaCasos && Boolean(session.actividadesHabilitadas),
+)
+
+const placeholderLugar = computed(
+  () =>
+    ({
+      presencial: 'Por ejemplo: Sala de juntas o dirección',
+      virtual: 'Por ejemplo: enlace de Teams o Meet',
+    })[modalidad.value] ?? 'Dónde será la junta',
+)
+
+const clientesActivos = ref([])
+const clientesCargados = ref(false)
+const cargandoClientes = ref(false)
+const errorClientes = ref(false)
+const busquedaCliente = ref('')
+
+const clientesFiltrados = computed(() => {
+  const buscado = sinTildes((busquedaCliente.value ?? '').trim())
+  return clientesActivos.value.filter((c) => sinTildes(c.nombre).includes(buscado))
+})
+
+const cargarClientes = async () => {
+  cargandoClientes.value = true
+  errorClientes.value = false
+  try {
+    clientesActivos.value = (await listarClientes()).filter((c) => c.activo)
+    clientesCargados.value = true
+  } catch {
+    errorClientes.value = true
+  } finally {
+    cargandoClientes.value = false
+  }
+}
+
+// La lista se pide al abrir el menú por primera vez (o si la carga anterior falló).
+const abrirMenuClientes = () => {
+  busquedaCliente.value = ''
+  if (!clientesCargados.value && !cargandoClientes.value) cargarClientes()
+}
+
+const elegirCliente = (opcion) => {
+  cliente.value = opcion.nombre.slice(0, MAX_CLIENTE)
+  clearError('cliente')
+}
+
 // --- apertura y cierre ----------------------------------------------------------------------------
 
 const sumarMinutos = (hora, minutos) => {
@@ -580,6 +793,10 @@ const reiniciarFormulario = () => {
   titulo.value = j?.titulo ?? ''
   descripcion.value = j?.descripcion ?? ''
   privada.value = j?.privada === true
+  cliente.value = j?.cliente ?? ''
+  modalidad.value = j?.modalidad ?? null
+  lugar.value = j?.lugar ?? ''
+  busquedaCliente.value = ''
   invitados.value = j
     ? j.participantes.map(opcionDePersona)
     : props.invitadoInicial
@@ -637,6 +854,8 @@ const submit = async () => {
     horaFin: horas.value.horaFin,
     descripcion: descripcion.value,
     participantes: idsDeInvitados(),
+    cliente: cliente.value,
+    lugar: lugar.value,
   })
   if (Object.keys(erroresCampo.value).length > 0) {
     enfocarPrimerError()
@@ -652,6 +871,9 @@ const submit = async () => {
       fin: armarFechaHora(fecha.value, horas.value.horaFin),
       participantes: idsDeInvitados(),
       privada: privada.value,
+      cliente: cliente.value,
+      modalidad: modalidad.value,
+      lugar: lugar.value,
     }
     const guardada = modoEdicion.value
       ? await actualizar(props.junta.id, datos)
@@ -764,6 +986,46 @@ const submit = async () => {
 
 .junta-form__reintentar {
   align-self: flex-start;
+}
+
+.junta-form__cliente {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.junta-form__cliente-campo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.junta-form__elegir-cliente {
+  flex: none;
+}
+
+/* En celular el botón baja debajo del campo para no apretarlo. */
+@media (max-width: 599px) {
+  .junta-form__cliente {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.junta-form__menu-clientes-cuerpo {
+  width: min(320px, calc(100vw - 32px));
+  padding: 8px;
+}
+
+.junta-form__menu-lista {
+  max-height: 240px;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+
+.junta-form__menu-aviso {
+  margin: 12px 4px 4px;
+  color: var(--dg-texto-secundario);
+  font-size: 0.9rem;
 }
 
 /* Pie fijo: «Cancelar» y «Guardar» se ven siempre; solo el cuerpo se desplaza. */

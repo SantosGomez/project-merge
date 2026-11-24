@@ -70,6 +70,41 @@
               {{ junta.soy_organizador ? 'Tú' : junta.creado_por.nombre }}
             </div>
           </div>
+          <div class="detalle-campo">
+            <div class="detalle-label">
+              <q-icon name="business" size="16px" aria-hidden="true" />
+              <span>Cliente</span>
+            </div>
+            <div class="detalle-value" :class="{ 'detalle-vacio': !junta.cliente }">
+              {{ junta.cliente || 'Sin cliente' }}
+            </div>
+          </div>
+          <div class="detalle-campo">
+            <div class="detalle-label">
+              <q-icon name="groups" size="16px" aria-hidden="true" />
+              <span>Modalidad</span>
+            </div>
+            <div class="detalle-value" :class="{ 'detalle-vacio': !junta.modalidad }">
+              {{ etiquetaModalidad(junta.modalidad) || 'Sin indicar' }}
+            </div>
+          </div>
+          <div class="detalle-campo">
+            <div class="detalle-label">
+              <q-icon name="place" size="16px" aria-hidden="true" />
+              <span>Lugar</span>
+            </div>
+            <div class="detalle-value detalle-texto" :class="{ 'detalle-vacio': !junta.lugar }">
+              <a
+                v-if="enlaceDeLugar(junta)"
+                :href="enlaceDeLugar(junta)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="junta-detalle__enlace"
+                >{{ junta.lugar }}</a
+              >
+              <template v-else>{{ junta.lugar || 'Sin lugar' }}</template>
+            </div>
+          </div>
         </section>
 
         <section class="detalle-seccion">
@@ -317,7 +352,9 @@ import { useSessionStore } from '../stores/session.js'
 import { fechaParaFormulario } from '../utils/fechasCaso.js'
 import { formatearRol } from '../utils/formateadores.js'
 import {
+  enlaceDeLugar,
   etiquetaEstadoJunta,
+  etiquetaModalidad,
   etiquetaRespuesta,
   horarioDeJunta,
   miRespuestaEnJunta,
@@ -652,6 +689,12 @@ const borrarJunta = async () => {
 .detalle-vacio {
   color: var(--dg-texto-tenue);
   font-style: italic;
+}
+
+.junta-detalle__enlace {
+  color: var(--dg-acento);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
 }
 
 .junta-detalle__invitados {
