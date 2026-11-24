@@ -134,11 +134,11 @@ describe('Rebanada 42: conexión en las vistas', () => {
     assert.ok((pagina.match(/proximaJunta\.value\?\.recargar\(\)/g) ?? []).length >= 3)
   })
 
-  it('en escritorio la tarjeta se ajusta a su contenido (máx. 520 px), no a todo el ancho', () => {
+  it('en escritorio la tarjeta se ajusta a su contenido (máx. 820 px), no a todo el ancho', () => {
     const tarjeta = leer('../src/components/ProximaJunta.vue')
     assert.match(
       tarjeta,
-      /@media \(min-width: 600px\)\s*\{\s*\.proxima-junta\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*520px;/,
+      /@media \(min-width: 600px\)\s*\{\s*\.proxima-junta\s*\{[^}]*width:\s*fit-content;[^}]*min-width:\s*430px;[^}]*max-width:\s*820px;/,
     )
   })
 
