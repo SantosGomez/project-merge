@@ -58,6 +58,8 @@ const NOMBRES = [
   'importante-fondo-suave',
   // Calendario del administrador: «Vence pronto» en amarillo
   'vence-pronto', 'vence-pronto-fondo',
+  // Dock de escritorio: azulejo con degradado
+  'dock-azulejo',
 ]
 
 test('la paleta $dg-colores define cada color por su papel en formato #rrggbb', () => {
@@ -94,6 +96,8 @@ const PARES_DE_TEXTO = [
   ['error-aviso-texto', 'error-aviso-fondo'],
   // Revisión de UI, rebanada 1: tooltips (texto claro sobre la tinta) y avisos de Quasar
   ['texto-claro', 'texto'], ['texto-claro', 'error'], ['texto-claro', 'exito'],
+  // Dock: iniciales en blanco sobre el tono claro del azulejo
+  ['texto-claro', 'dock-azulejo'],
   // Revisión de UI, rebanada 3: fila de caso importante y etiqueta «Vencido»
   ['texto', 'importante-fondo-suave'], ['texto-secundario', 'importante-fondo-suave'],
   ['texto-tenue', 'importante-fondo-suave'], ['importante-texto', 'importante-fondo-suave'],

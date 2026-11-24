@@ -6,7 +6,17 @@
     @pointermove="alMoverPuntero"
     @pointerleave="alSalirPuntero"
   >
-    <img class="menu-dock__logo" src="logos/PNG/DELGROW_ISOTIPO-OF_T.png" alt="" width="40" height="40" />
+    <span class="menu-dock__azulejo menu-dock__azulejo--logo" aria-hidden="true">
+      <img
+        class="menu-dock__logo"
+        src="logos/PNG/DELGROW_ISOTIPO-OF_T.png"
+        alt=""
+        width="30"
+        height="30"
+      />
+    </span>
+
+    <span class="menu-dock__separador" aria-hidden="true" />
 
     <div class="menu-dock__grupo">
       <router-link
@@ -42,12 +52,7 @@
     <span class="menu-dock__separador" aria-hidden="true" />
 
     <div class="menu-dock__grupo">
-      <router-link
-        v-if="perfilTo"
-        #default="{ href, navigate }"
-        :to="perfilTo"
-        custom
-      >
+      <router-link v-if="perfilTo" #default="{ href, navigate }" :to="perfilTo" custom>
         <a
           :href="href"
           class="menu-dock__azulejo menu-dock__azulejo--avatar"
@@ -82,7 +87,9 @@
         @click="emit('cerrar-sesion')"
       >
         <q-icon name="logout" class="menu-dock__icono" />
-        <q-tooltip anchor="center right" self="center left" :offset="[14, 0]">Cerrar sesión</q-tooltip>
+        <q-tooltip anchor="center right" self="center left" :offset="[14, 0]"
+          >Cerrar sesión</q-tooltip
+        >
       </button>
     </div>
   </nav>
@@ -166,36 +173,39 @@ onBeforeUnmount(() => clearTimeout(temporizadorSalto))
   z-index: 2000;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  width: 72px;
-  padding: 14px 12px;
-  border-radius: 24px;
+  width: 74px;
+  padding: 12px;
+  border: 1px solid var(--dg-dock-borde);
+  border-radius: 22px;
   background: var(--q-primary);
   box-shadow: var(--dg-sombra-tarjeta);
   transform: translateY(-50%);
 }
 
+/* El logo vive en un azulejo como los demás, pero no es un control. */
+.menu-dock__azulejo--logo {
+  cursor: default;
+}
+
 .menu-dock__logo {
-  align-self: center;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
 }
 
 .menu-dock__grupo {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  gap: 10px;
 }
 
 .menu-dock__separador {
-  align-self: center;
-  width: 32px;
+  width: 100%;
   height: 1px;
-  background: var(--dg-texto-claro-tenue);
-  opacity: 0.4;
+  background: var(--dg-borde-menu);
 }
 
 /*
@@ -213,8 +223,9 @@ onBeforeUnmount(() => clearTimeout(temporizadorSalto))
   padding: 0;
   border: 0;
   border-radius: 14px;
-  background: var(--dg-fondo-menu-activo);
-  color: var(--q-secondary);
+  background: linear-gradient(180deg, var(--dg-dock-azulejo), var(--q-primary));
+  box-shadow: inset 0 0 0 1px var(--dg-borde-menu);
+  color: var(--dg-texto-claro);
   text-decoration: none;
   cursor: pointer;
   transform: scale(var(--escala, 1));
@@ -234,9 +245,9 @@ onBeforeUnmount(() => clearTimeout(temporizadorSalto))
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .menu-dock__azulejo:hover {
-    background: var(--q-secondary);
-    color: var(--q-primary);
+  /* Al pasar el puntero solo se marca el contorno: el relleno celeste es de la activa. */
+  .menu-dock__azulejo:not(.menu-dock__azulejo--logo):hover {
+    box-shadow: inset 0 0 0 1px var(--q-secondary);
   }
 }
 
@@ -245,16 +256,17 @@ onBeforeUnmount(() => clearTimeout(temporizadorSalto))
   outline-offset: 3px;
 }
 
-/* Activa: contorno celeste y un punto pegado al borde del dock. */
+/* Activa: azulejo celeste con el icono oscuro y un punto sobre el borde del dock. */
 .menu-dock__azulejo--activo {
-  box-shadow: inset 0 0 0 1px var(--q-secondary);
+  background: var(--q-secondary);
+  color: var(--q-primary);
 }
 
 .menu-dock__azulejo--activo::before {
   content: '';
   position: absolute;
   top: 50%;
-  left: -9px;
+  left: -16px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -262,10 +274,8 @@ onBeforeUnmount(() => clearTimeout(temporizadorSalto))
   transform: translateY(-50%);
 }
 
+/* Mismo azulejo que las opciones, con las iniciales; se rellena de celeste en «Mi perfil». */
 .menu-dock__azulejo--avatar {
-  border-radius: 50%;
-  background: var(--q-secondary);
-  color: var(--q-primary);
   font-size: 15px;
   font-weight: 700;
 }

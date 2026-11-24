@@ -120,5 +120,8 @@ $dg-colores: (
   texto-claro-tenue: #c9cfd8,
   borde-menu: rgba(255, 255, 255, 0.16),
   fondo-menu-activo: rgba(255, 255, 255, 0.1),
+  // Dock de escritorio: tono claro del degradado de cada azulejo (baja a $primary) y borde celeste
+  dock-azulejo: #23344d,
+  dock-borde: rgba(90, 187, 241, 0.25),
 );
 
