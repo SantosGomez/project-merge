@@ -10,6 +10,7 @@ const { seedDatabase } = require('../src/utils/seed');
 const { importarDocumentos, deshacerImportacion, esCuentaDePrueba, esClienteDePrueba, normalizarRazonSocial } =
   require('../src/utils/importarDocumentos');
 const { query } = require('../src/config/db');
+const { modulosDeUsuario } = require('../src/models/UsuarioModuloModel');
 
 /**
  * Fase 1 de la unión con Proyecto-documentos: una sola base de datos.
@@ -98,6 +99,33 @@ describe('unificación: esquema del seed', () => {
       'SELECT COUNT(*) AS sinModulo FROM usuarios u WHERE NOT EXISTS (SELECT 1 FROM usuario_modulos m WHERE m.usuario_id = u.id)'
     );
     assert.strictEqual(Number(sinModulo), 0);
+  });
+});
+
+describe('unificación: módulos de cada cuenta', () => {
+  test('el administrador tiene documentos aunque no esté en la tabla', async () => {
+    const admin = await crearUsuarioDePrueba('administrador');
+    await seedDatabase({ cuentasDemo: false });
+    assert.deepStrictEqual(await modulosDeUsuario({ id: admin.id, rol: 'administrador' }), [
+      { modulo: 'documentos', rol: 'administrador' },
+      { modulo: 'seguimiento', rol: null },
+    ]);
+  });
+
+  test('un rol de documentos puesto a mano gana sobre el automático del administrador', async () => {
+    const admin = await crearUsuarioDePrueba('administrador');
+    await query("INSERT INTO usuario_modulos (usuario_id, modulo, rol) VALUES (?, 'documentos', 'sistemas')", [admin.id]);
+    assert.deepStrictEqual(await modulosDeUsuario({ id: admin.id, rol: 'administrador' }), [
+      { modulo: 'documentos', rol: 'sistemas' },
+    ]);
+  });
+
+  test('las demás cuentas solo tienen lo que dice la tabla', async () => {
+    const contador = await crearUsuarioDePrueba('contador');
+    await seedDatabase({ cuentasDemo: false });
+    assert.deepStrictEqual(await modulosDeUsuario({ id: contador.id, rol: 'contador' }), [
+      { modulo: 'seguimiento', rol: null },
+    ]);
   });
 });
 

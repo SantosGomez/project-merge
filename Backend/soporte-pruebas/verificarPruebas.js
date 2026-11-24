@@ -93,7 +93,7 @@ const MINIMOS = {
   'sesionesContrasena.test.js': 4,
   'tiposActividad.test.js': 13,
   'tokenUtils.test.js': 9,
-  'unificacion.test.js': 15,
+  'unificacion.test.js': 18,
   'userModel.test.js': 5,
   'userRoutes.test.js': 10,
   'recepcionAdministradores.test.js': 11,

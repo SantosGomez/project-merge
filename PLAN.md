@@ -64,7 +64,7 @@ El esquema lo agrega `migrarUnificacion()` en `Backend/src/utils/seed.js`. Corre
 - **Llave de `clientes` → `usuarios`:** sigue con borrado en cascada. La app nunca borra usuarios, así que no afecta. Si algún día se borra un contador, sus clientes se irían con él; conviene cambiarla a `SET NULL` en la fase 3.
 
 **Pendientes para decidir:**
-- [ ] ⚠️ **Administradores en documentos:** en documentos solo las cuentas de prueba eran administradoras, así que hoy **ningún administrador de status-conta tiene el módulo de documentos**. Hay que decidir en la fase 2 si los administradores lo reciben automáticamente.
+- [x] **Administradores en documentos (decidido el 2026-11-24): sí, automáticamente.** `modulosDeUsuario()` en `Backend/src/models/UsuarioModuloModel.js` le da a todo administrador el módulo de documentos con rol administrador, aunque no esté en `usuario_modulos`. Es una regla por rol, no una fila en la tabla: un administrador nuevo lo tiene desde el primer momento y, si deja de ser administrador, lo pierde. Si la tabla le da otro rol en documentos, gana la tabla. El login de la fase 2 usará esta función.
 - [ ] **Casos:** ¿se ligan a `clientes.id` o siguen guardando el cliente como texto? Se puede decidir más adelante, no detiene nada.
 - [ ] **Importación en producción (fase 5):** hay que apuntar `DOCS_DB_*` a la base de XAMPP (`dca_documentos`) y correr el import una sola vez, después de arrancar el backend nuevo.
 
