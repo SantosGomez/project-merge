@@ -68,11 +68,19 @@ El esquema lo agrega `migrarUnificacion()` en `Backend/src/utils/seed.js`. Corre
 - [ ] **Casos:** ¿se ligan a `clientes.id` o siguen guardando el cliente como texto? Se puede decidir más adelante, no detiene nada.
 - [ ] **Importación en producción (fase 5):** hay que apuntar `DOCS_DB_*` a la base de XAMPP (`dca_documentos`) y correr el import una sola vez, después de arrancar el backend nuevo.
 
-## Fase 2: Un solo login
-- [ ] Se queda el login de status-conta (Express, JWT y argon2).
-- [ ] **Contraseñas:** al iniciar sesión, si la contraseña viene del sistema de documentos (guardada con scrypt), se revisa así y se vuelve a guardar en argon2. Nadie tiene que cambiar su contraseña.
-- [ ] Se pueden usar el correo o el alias para entrar.
-- [ ] Al iniciar sesión se devuelven los módulos que la persona tiene permitidos.
+## Fase 2: Un solo login ✅ 2026-11-24
+- [x] Se queda el login de status-conta (Express, JWT y argon2), en el mismo `POST /auth/login`.
+- [x] **Contraseñas:** `verifyPassword` (`Backend/src/utils/passwordUtils.js`) acepta argon2 y también el formato de documentos (`scrypt$N$sal$hash`). Al entrar con una contraseña scrypt, se vuelve a guardar en argon2. Nadie tiene que cambiar su contraseña. Lo comprobé con contraseñas generadas por el código real de Proyecto-documentos. Un hash roto da 401 en vez de error del servidor.
+- [x] **Correo o alias:** el campo `correo` del login acepta las dos cosas. Si lleva @ se busca por correo; si no, por alias, sin importar mayúsculas ni espacios. La pantalla de login ahora dice "Correo o usuario".
+- [x] **Módulos:** el login y `GET /auth/perfil` devuelven `modulos: [{ modulo, rol }]`.
+- [x] **Cuentas nuevas:** toda cuenta que se crea nace con el módulo de seguimiento (`UserModel.create`).
+- [x] **Pruebas:** `Backend/test/loginUnico.test.js` (8). Backend: 886 pruebas, y fallan solo las 2 de siempre por la base de prueba. Frontend: 1873 de 1873.
+
+**Notas:**
+- El frontend todavía no guarda `modulos` en la sesión. Lo hará la fase 4, cuando exista el selector de módulos.
+- El límite de intentos fallidos cuenta por separado el correo y el alias de una misma persona. Es un detalle menor.
+- La pantalla de login cambió de texto, pero no la revisé en el navegador.
+- `npm run lint:check` del frontend no detecta problemas de formato, porque le falta `--check` a prettier (el mismo error que ya se corrigió en documentos). Hay archivos con formato pendiente desde antes de la unión.
 
 ## Fase 3: Pasar el backend de documentos a status-conta
 - [ ] Las rutas de `Proyecto-documentos/Backend/src/rutas` pasan a Express con la misma estructura de status-conta: `documentoRoutes`, `documentoController` y `documentoModel`.

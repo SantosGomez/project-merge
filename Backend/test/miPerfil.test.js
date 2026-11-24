@@ -28,7 +28,7 @@ async function testDevuelveLosDatosDeLaCuentaDeLaSesion() {
   assert.strictEqual(respuesta.statusCode, 200);
   assert.deepStrictEqual(
     Object.keys(respuesta.body).sort(),
-    ['actividades_habilitadas', 'correo', 'creado_en', 'id', 'nombre', 'rol', 'ultimo_acceso_en'],
+    ['actividades_habilitadas', 'correo', 'creado_en', 'id', 'modulos', 'nombre', 'rol', 'ultimo_acceso_en'],
     'solo trae los datos de la cuenta, sin password_hash'
   );
   assert.strictEqual(String(respuesta.body.id), String(contador.id));

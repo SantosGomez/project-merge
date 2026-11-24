@@ -34,7 +34,36 @@ async function create({ nombre, correo, passwordHash, rol, debeCambiarContrasena
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [nombre, correo, passwordHash, rol, ahora, ahora, debeCambiarContrasena ? 1 : 0]
   );
+  // Toda cuenta nueva entra al módulo de seguimiento (unión con documentos, fase 2)
+  await query("INSERT IGNORE INTO usuario_modulos (usuario_id, modulo, rol) VALUES (?, 'seguimiento', NULL)", [
+    result.insertId,
+  ]);
   return result.insertId;
+}
+
+/**
+ * Busca la cuenta con la que se inicia sesión: por correo si lleva @, si no por el alias
+ * que se usaba en documentos. Sin distinguir mayúsculas ni espacios al inicio y al final.
+ * @param {string} identificador - Correo o alias.
+ * @returns {Promise<Object|null>} La cuenta o null.
+ */
+async function findByCorreoOAlias(identificador) {
+  const valor = identificador.trim().toLowerCase();
+  if (valor.includes('@')) {
+    return findByCorreo(valor);
+  }
+  const rows = await query('SELECT * FROM usuarios WHERE LOWER(alias) = ? LIMIT 1', [valor]);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Reemplaza solo el hash (p. ej. al pasar una contraseña de documentos a Argon2id al entrar).
+ * No toca la marca de cambio pendiente ni la fecha de actualización: la contraseña es la misma.
+ * @param {number} id - Id de la cuenta.
+ * @param {string} hash - Hash nuevo.
+ */
+async function reemplazarHash(id, hash) {
+  await query('UPDATE usuarios SET password_hash = ? WHERE id = ?', [hash, id]);
 }
 
 /**
@@ -154,6 +183,8 @@ module.exports = {
   update,
   contarCasosYAuxiliares,
   findByCorreo,
+  findByCorreoOAlias,
+  reemplazarHash,
   registrarUltimoAcceso,
   updatePassword,
   create,

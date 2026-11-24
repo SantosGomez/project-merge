@@ -128,7 +128,7 @@ describe('Rebanada 5: formularios', () => {
   it('el login muestra la falta de correo y de contraseña con error-message de cada campo', () => {
     const plantilla = leer('pages/LoginPage.vue').split('<script')[0]
     assert.doesNotMatch(plantilla, /login-form__error/)
-    assert.match(plantilla, /:error="missing\.username"[\s\S]*?error-message="Falta el correo\. Escríbelo para iniciar sesión\."/)
+    assert.match(plantilla, /:error="missing\.username"[\s\S]*?error-message="Falta el correo o usuario\. Escríbelo para iniciar sesión\."/)
     assert.match(plantilla, /:error="missing\.password"[\s\S]*?error-message="Falta la contraseña\. Escríbela para iniciar sesión\."/)
   })
 

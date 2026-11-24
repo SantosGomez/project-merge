@@ -293,16 +293,16 @@ describe('T9 — flujo de P-3 hacia P-2 (RF-16, RF-17)', () => {
   })
 })
 
-describe('Login por correo — verificación estática de P-1', () => {
+describe('Login por correo o usuario — verificación estática de P-1 (unión con documentos, fase 2)', () => {
   const login = read('../src/pages/LoginPage.vue')
   const campo = login.slice(login.indexOf('ref="usernameInput"'), login.indexOf('</q-input>', login.indexOf('ref="usernameInput"')))
 
-  it('el primer campo pide el correo, con teclado y autocompletado de correo', () => {
-    assert.match(campo, /label="Correo"/, 'la etiqueta dice Correo')
-    assert.match(campo, /type="email"/, 'abre el teclado de correo en celular')
-    assert.match(campo, /autocomplete="email"/, 'el navegador sugiere el correo')
-    assert.match(campo, /aria-label="Ayuda sobre el campo correo"/, 'ayuda accesible del campo')
-    assert.doesNotMatch(campo, /label="Usuario"/, 'ya no pide el usuario')
+  it('el primer campo acepta el correo o el usuario de documentos', () => {
+    assert.match(campo, /label="Correo o usuario"/, 'la etiqueta dice Correo o usuario')
+    assert.match(campo, /type="text"/, 'acepta texto sin @ (el usuario de documentos)')
+    assert.match(campo, /autocomplete="username"/, 'el navegador sugiere la cuenta guardada')
+    assert.match(campo, /autocapitalize="none"/, 'el celular no pone mayúscula al inicio')
+    assert.match(campo, /aria-label="Ayuda sobre el campo correo o usuario"/, 'ayuda accesible del campo')
   })
 
   it('es un login sencillo: logo de DelGrow, sin cuadro de ayuda ni textos bajo los campos', () => {
@@ -335,10 +335,10 @@ describe('Login por correo — verificación estática de P-1', () => {
     assert.match(login, /sesion\.iniciarSesion\(form\.username\.trim\(\), form\.password\.trim\(\), mantenerSesion\.value\)/)
   })
 
-  it('los avisos hablan de correo, no de usuario', () => {
-    assert.ok(login.includes('Falta el correo. Escríbelo para iniciar sesión.'), 'aviso de campo vacío')
+  it('los avisos hablan de correo o usuario', () => {
+    assert.ok(login.includes('Falta el correo o usuario. Escríbelo para iniciar sesión.'), 'aviso de campo vacío')
     assert.ok(
-      login.includes('El correo o la contraseña no son correctos. Revísalos y vuelve a intentarlo.'),
+      login.includes('El usuario o la contraseña no son correctos. Revísalos y vuelve a intentarlo.'),
       'aviso genérico de credenciales (sin decir cuál falló)',
     )
   })

@@ -117,6 +117,7 @@ describe('unificación: módulos de cada cuenta', () => {
     await query("INSERT INTO usuario_modulos (usuario_id, modulo, rol) VALUES (?, 'documentos', 'sistemas')", [admin.id]);
     assert.deepStrictEqual(await modulosDeUsuario({ id: admin.id, rol: 'administrador' }), [
       { modulo: 'documentos', rol: 'sistemas' },
+      { modulo: 'seguimiento', rol: null },
     ]);
   });
 
@@ -212,7 +213,10 @@ describe('unificación: importación desde la base de documentos', () => {
     const modulos = await modulosDe(contador.id);
     assert.deepStrictEqual(
       modulos.map((m) => [m.modulo, m.rol]),
-      [['documentos', 'practicante']]
+      [
+        ['documentos', 'practicante'],
+        ['seguimiento', null],
+      ]
     );
   });
 
@@ -261,7 +265,11 @@ describe('unificación: importación desde la base de documentos', () => {
     assert.strictEqual(await usuarioNuevo(), undefined);
     const [fila] = await query('SELECT alias FROM usuarios WHERE id = ?', [contador.id]);
     assert.strictEqual(fila.alias, null);
-    assert.deepStrictEqual(await modulosDe(contador.id), []);
+    assert.deepStrictEqual(
+      (await modulosDe(contador.id)).map((m) => [m.modulo, m.rol]),
+      [['seguimiento', null]],
+      'solo se quita documentos; seguimiento se queda'
+    );
     const [existente] = await query('SELECT email, telefono FROM clientes WHERE id = ?', [clienteExistenteId]);
     assert.strictEqual(existente.email, null);
     assert.strictEqual(existente.telefono, null);

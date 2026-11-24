@@ -73,6 +73,7 @@ const MINIMOS = {
   'moduloActividades.test.js': 13,
   'misCasosEnEquipo.test.js': 7,
   'originMiddleware.test.js': 3,
+  'loginUnico.test.js': 8,
   'limiteIntentosCuenta.test.js': 4,
   'limitesEntrada.test.js': 10,
   'originUtils.test.js': 7,

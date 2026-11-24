@@ -77,7 +77,7 @@ describe('Revisión de UI (2026-11-12): accesibilidad, textos y paleta', () => {
   })
 
   it('los iconos con nombre accesible del acceso no quedan ocultos al lector de pantalla', () => {
-    assert.match(pagina('LoginPage'), /aria-hidden="false"\s+aria-label="Ayuda sobre el campo correo"/)
+    assert.match(pagina('LoginPage'), /aria-hidden="false"\s+aria-label="Ayuda sobre el campo correo o usuario"/)
     assert.equal(pagina('CambiarContrasenaPage').match(/aria-hidden="false"\s+aria-label="Las contraseñas coinciden"/g)?.length, 2)
   })
 

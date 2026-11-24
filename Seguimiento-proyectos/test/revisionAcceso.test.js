@@ -143,7 +143,7 @@ describe('Tooltips y colores de aviso en toda la app', () => {
 describe('Textos de acceso en trato de tú y sin jerga', () => {
   it('el login no usa «usted» ni la palabra «Credenciales»', () => {
     assert.doesNotMatch(login, /Debe iniciar sesión|Verifique|Credenciales no válidas/)
-    assert.match(login, /'El correo o la contraseña no son correctos\. Revísalos y vuelve a intentarlo\.'/)
+    assert.match(login, /'El usuario o la contraseña no son correctos\. Revísalos y vuelve a intentarlo\.'/)
     assert.match(plantillaLogin, /Inicia sesión para abrir esta pantalla\./)
     assert.match(plantillaLogin, /Tu sesión se cerró\. Vuelve a iniciar sesión para continuar\./)
   })

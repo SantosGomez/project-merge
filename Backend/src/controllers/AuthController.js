@@ -11,7 +11,8 @@ const {
 const UserModel = require('../models/UserModel');
 const SessionModel = require('../models/SessionModel');
 const { buildError } = require('../utils/errorUtils');
-const { hashPassword, verifyPassword, verificarContraHashFicticio } = require('../utils/passwordUtils');
+const { hashPassword, verifyPassword, verificarContraHashFicticio, necesitaRehash } = require('../utils/passwordUtils');
+const { modulosDeUsuario } = require('../models/UsuarioModuloModel');
 const { nowLocal, formatLocalDate } = require('../utils/dateUtils');
 const { eventos } = require('../utils/eventos');
 const bitacora = require('../utils/bitacoraSeguridad');
@@ -70,7 +71,8 @@ async function login(req, res) {
 
   // 2. Buscar la cuenta por correo y verificar contraseña (RF-03, mensaje genérico).
   //    Sin cuenta se verifica contra un hash ficticio: el tiempo no revela qué correos existen.
-  const cuenta = await UserModel.findByCorreo(correo);
+  //    El campo `correo` también acepta el alias con el que se entraba a documentos (unión, fase 2).
+  const cuenta = await UserModel.findByCorreoOAlias(correo);
   const contrasenaValida = cuenta
     ? await verifyPassword(password, cuenta.password_hash)
     : await verificarContraHashFicticio(password);
@@ -79,6 +81,16 @@ async function login(req, res) {
     return res.status(401).json(
       buildError('Credenciales no válidas', 'correo o contraseña', 'Revisa tus datos y vuelve a intentarlo')
     );
+  }
+
+  // Las contraseñas que vinieron de documentos (scrypt) se guardan en Argon2id la primera vez que
+  // se entra con ellas. Es de mejor esfuerzo: si falla, se vuelve a intentar en el siguiente login.
+  if (necesitaRehash(cuenta.password_hash)) {
+    try {
+      await UserModel.reemplazarHash(cuenta.id, await hashPassword(password));
+    } catch (err) {
+      // La contraseña ya se verificó: se entra igual.
+    }
   }
 
   // 3. Generar token JWT (RF-01)
@@ -137,6 +149,8 @@ async function login(req, res) {
     sesion_persistente: persistente,
     // El frontend muestra «Mis actividades» solo si el módulo está habilitado para esta cuenta
     actividades_habilitadas: usuarioTieneActividades(cuenta.id),
+    // Módulos que ve la cuenta (seguimiento, documentos…) con su rol dentro de cada uno
+    modulos: await modulosDeUsuario(cuenta),
     ...(await llaveAdministradoresAtendidos(cuenta)),
   });
 }
@@ -280,6 +294,7 @@ async function obtenerPerfil(req, res) {
     correo: cuenta.correo,
     rol: cuenta.rol,
     actividades_habilitadas: usuarioTieneActividades(cuenta.id),
+    modulos: await modulosDeUsuario(cuenta),
     ...(await llaveAdministradoresAtendidos(cuenta)),
     creado_en: cuenta.creado_en ? formatLocalDate(cuenta.creado_en) : null,
     ultimo_acceso_en: cuenta.ultimo_acceso_en ? formatLocalDate(cuenta.ultimo_acceso_en) : null,

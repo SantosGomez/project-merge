@@ -99,18 +99,20 @@
               ref="usernameInput"
               v-model="form.username"
               class="login-form__control input-moderno"
-              label="Correo"
-              type="email"
-              autocomplete="email"
+              label="Correo o usuario"
+              type="text"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
               autofocus
               outlined
               :error="missing.username"
-              error-message="Falta el correo. Escríbelo para iniciar sesión."
+              error-message="Falta el correo o usuario. Escríbelo para iniciar sesión."
               :aria-invalid="missing.username"
               @update:model-value="alEscribir('username')"
             >
               <template #prepend>
-                <q-icon name="mail" aria-hidden="true" />
+                <q-icon name="person" aria-hidden="true" />
               </template>
               <template #append>
                 <q-icon
@@ -119,10 +121,10 @@
                   tabindex="0"
                   role="img"
                   aria-hidden="false"
-                  aria-label="Ayuda sobre el campo correo"
+                  aria-label="Ayuda sobre el campo correo o usuario"
                 >
                   <q-tooltip>
-                    Escribe el correo de tu cuenta. No importan las mayúsculas ni los espacios al inicio y al final.
+                    Escribe el correo de tu cuenta o el usuario con el que entrabas a Recepción de documentos. No importan las mayúsculas ni los espacios al inicio y al final.
                   </q-tooltip>
                 </q-icon>
               </template>
@@ -372,7 +374,7 @@ const submit = async () => {
   if (!resultado.ok) {
     if (resultado.error?.estado === ESTADOS_ERROR.CREDENCIALES_INVALIDAS) {
       // Mensaje genérico: no se indica cuál de los dos datos falló (RF-04).
-      errorCredenciales.value = 'El correo o la contraseña no son correctos. Revísalos y vuelve a intentarlo.'
+      errorCredenciales.value = 'El usuario o la contraseña no son correctos. Revísalos y vuelve a intentarlo.'
     } else if (resultado.error?.estado === ESTADOS_ERROR.DEMASIADOS_INTENTOS) {
       // Mientras dura el bloqueo no se ofrece «Reintentar».
       errorBloqueo.value = MENSAJE_BLOQUEO_LOGIN
