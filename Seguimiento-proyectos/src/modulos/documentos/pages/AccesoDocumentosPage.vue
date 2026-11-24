@@ -38,6 +38,7 @@
       :loading="cargando"
       :pagination="{ rowsPerPage: 25 }"
       no-data-label="No hay cuentas que coincidan."
+      no-results-label="No hay cuentas que coincidan."
     >
       <template #body-cell-rol="props">
         <q-td :props="props">

@@ -693,7 +693,9 @@ const saltarAlContenido = () => {
 
 
 const iniciales = computed(() => formatearIniciales(session.nombreVisible))
-const rolLegible = computed(() => formatearRol(session.rol))
+const rolLegible = computed(() =>
+  enDocumentos.value && session.rolDocumentos ? session.rolDocumentos : formatearRol(session.rol),
+)
 
 /*
  * Dock de escritorio (prueba en «experimento»): las mismas opciones del menú lateral por rol,

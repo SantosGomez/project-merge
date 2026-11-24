@@ -12,7 +12,7 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 
 ## Pendientes de la unión
 
-- Documentos: el aviso «Acceso denegado» habla del rol general («tu perfil es auxiliar»), debería usar el rol en el módulo; probar en navegador las firmas dibujadas en el lienzo.
+- Documentos: probar en navegador las firmas dibujadas en el lienzo (aviso «Acceso denegado», rol en dock/menú y `no-results-label` en accesos ya resueltos el 2026-11-24).
 - Límite de intentos del login cuenta por separado correo y alias de una misma persona (menor).
 - Por decidir: ¿`casos` se liga a `clientes.id` o sigue con el cliente como texto? Llave `clientes → usuarios` en cascada: pasar a `SET NULL`.
 - `.claude/launch.json` depende de un script en una carpeta temporal: rehacerlo con rutas del proyecto.

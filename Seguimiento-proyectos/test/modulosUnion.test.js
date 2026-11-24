@@ -225,4 +225,14 @@ describe('router y menú de la app unida', () => {
     const api = leer('../src/modulos/documentos/servicios/api.js')
     assert.doesNotMatch(api, /\/api\//, 'todas las rutas van a /doc del backend unido')
   })
+
+  it('el aviso de Acceso denegado muestra el rol de documentos y vuelve al inicio del módulo', () => {
+    const aviso = leer('../src/components/AccessDenied.vue')
+    assert.match(
+      aviso,
+      /const enDocumentos = computed\(\(\) => route\.meta\?\.modulo === MODULOS\.documentos\)/,
+    )
+    assert.match(aviso, /Tu rol en Recepción de documentos es/)
+    assert.match(aviso, /vistaInicialDocumentos\(sesion\.rolDocumentos\)/)
+  })
 })

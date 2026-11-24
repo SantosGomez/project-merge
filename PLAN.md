@@ -121,9 +121,9 @@ El esquema lo agrega `migrarUnificacion()` en `Backend/src/utils/seed.js`. Corre
 - [x] **Revisado en el navegador**, con la base de prueba y dos cuentas de prueba: el login lleva al selector; Recepción, Clientes (153 del catálogo unido), Dashboard y Acceso cargan sin errores en consola; el practicante solo ve sus opciones y la recepción le responde "Acceso denegado"; el menú lateral del celular cambia con el módulo.
 
 **Pendientes que vi:**
-- El aviso "Acceso denegado" dice "tu perfil es auxiliar", porque usa el rol general. En documentos debería hablar del rol en el módulo.
+- [x] **Resuelto (2026-11-24):** el aviso "Acceso denegado" (`AccessDenied.vue`) ahora muestra el rol dentro de documentos (o avisa si no tiene acceso al módulo) y vuelve a la vista inicial del módulo; además `MaquetaLayout.vue` muestra el rol del módulo en dock/menú y `AccesoDocumentosPage.vue` incluye `no-results-label`.
 - En Clientes, los botones "Nuevo cliente" y "Exportar reporte" ya eran de maqueta en documentos (solo muestran un aviso).
-- No probé el flujo completo con firmas en la pantalla (dibujar en el lienzo); el backend de ese flujo sí está probado de punta a punta.
+- No probé en navegador el flujo completo con firmas en la pantalla (dibujar en el lienzo); el backend de ese flujo sí está probado de punta a punta.
 
 ## Fase 5: Probar y publicar
 > En pausa (2026-11-24): la unión es una alpha y no se publica. Todo se trabaja y prueba en local (XAMPP), sin Docker; producción sigue con status-conta.
