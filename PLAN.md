@@ -126,6 +126,8 @@ El esquema lo agrega `migrarUnificacion()` en `Backend/src/utils/seed.js`. Corre
 - No probé el flujo completo con firmas en la pantalla (dibujar en el lienzo); el backend de ese flujo sí está probado de punta a punta.
 
 ## Fase 5: Probar y publicar
+> En pausa (2026-11-24): la unión es una alpha y no se publica. Todo se trabaja y prueba en local (XAMPP), sin Docker; producción sigue con status-conta.
+
 - [ ] Probar con una copia de los datos reales, con cada rol y en los dos módulos.
 - [ ] Publicar en una ventana de mantenimiento: respaldo, migración, nuevo build en Docker y revisión.
 - [ ] Dejar Proyecto-documentos solo de consulta un tiempo y después archivarlo.

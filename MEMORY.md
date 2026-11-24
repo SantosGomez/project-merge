@@ -4,7 +4,7 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 
 ## Estado de la unión (2026-11-24)
 
-- Repo `SantosGomez/project-merge`, rama `unificacion/fase-0`. Fases 0 a 4 hechas; falta la 5: probar con copia de datos reales por rol y módulo, y publicar en Docker. `main` = status-conta sin la unión.
+- Repo `SantosGomez/project-merge`, rama `unificacion/fase-0`. Fases 0 a 4 hechas. La unión es una alpha: no se publica ni se usa Docker; todo en local (XAMPP). La fase 5 (publicar) queda en pausa. `main` = status-conta sin la unión.
 - Un login (correo o `alias`), rol general + rol por módulo (`usuario_modulos`), selector `/modulos`. Backend de documentos en `/doc`, frontend en `src/modulos/documentos/`.
 - Base de prueba: `delgrow_merge` en XAMPP (3306), copiada el 2026-11-24 del contenedor `merge-prueba-db` (ya borrado) para trabajar sin Docker; con MariaDB 10.4 pasa todo salvo `usuarios_respaldo_5c` (de siempre). Respaldos fuera del proyecto: `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`.
 - Últimas cifras: backend 1171 de 1172 en XAMPP (falla solo `usuarios_respaldo_5c`, cosa de la base de prueba); frontend 2097 de 2097.
