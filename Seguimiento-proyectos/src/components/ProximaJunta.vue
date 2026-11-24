@@ -201,6 +201,15 @@ defineExpose({ recargar })
   font-size: 0.8rem;
 }
 
+/* En escritorio la tarjeta se ajusta a su contenido para leerla de un vistazo, sin cruzar toda la pantalla. */
+@media (min-width: 600px) {
+  .proxima-junta {
+    width: fit-content;
+    min-width: 360px;
+    max-width: 520px;
+  }
+}
+
 @media (max-width: 599px) {
   .proxima-junta__cuenta {
     align-items: flex-start;
