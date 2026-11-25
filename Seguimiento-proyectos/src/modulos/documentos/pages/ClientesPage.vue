@@ -240,6 +240,11 @@
       </q-card>
 
       <NuevoClienteDialog v-model="dialogoNuevoCliente" @guardado="alGuardarCliente" />
+      <ExpedienteClienteDialog
+        v-model="dialogoExpediente"
+        :cliente-id="clienteDelExpediente"
+        @actualizado="cargarClientes"
+      />
     </SeccionAnimada>
   </q-page>
 </template>
@@ -247,6 +252,7 @@
 <script setup>
 import SeccionAnimada from '@/modulos/documentos/components/SeccionAnimada.vue'
 import NuevoClienteDialog from '@/modulos/documentos/components/NuevoClienteDialog.vue'
+import ExpedienteClienteDialog from '@/modulos/documentos/components/ExpedienteClienteDialog.vue'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { obtenerDirectorio } from '@/modulos/documentos/servicios/api.js'
@@ -261,6 +267,8 @@ const $q = useQuasar()
 const sesion = useSesion()
 const puedeCrearCliente = computed(() => hayAcceso(sesion.usuario.value?.rol, 'crear_cliente'))
 const dialogoNuevoCliente = ref(false)
+const dialogoExpediente = ref(false)
+const clienteDelExpediente = ref(null)
 
 // Formato de mes para etiquetas y tooltips
 const formatoMesAnio = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' })
@@ -413,11 +421,8 @@ const exportarReporte = () => {
 }
 
 const verExpediente = (cliente) => {
-  $q.notify({
-    type: 'info',
-    message: `Abriendo expediente contable de ${cliente.razonSocial}`,
-    position: 'top-right',
-  })
+  clienteDelExpediente.value = cliente.id
+  dialogoExpediente.value = true
 }
 
 const recordatorio = (cliente) => {

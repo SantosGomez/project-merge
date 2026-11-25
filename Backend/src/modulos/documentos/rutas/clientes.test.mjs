@@ -1,6 +1,196 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { rutaClientes, rutaCrearCliente } from './clientes.mjs';
+import { rutaClientes, rutaCrearCliente, rutaConsultarCliente, rutaEditarCliente } from './clientes.mjs';
+
+const FILA_CLIENTE = {
+  id: 5,
+  clave: 'A12',
+  rfc: 'ACM010101AB1',
+  nombre: 'Acme S.A.',
+  email: 'contacto@ejemplo.com',
+  telefono: '5512345678',
+  activo: 1,
+  creado_en: new Date(2026, 0, 5, 9, 30, 15),
+  usuario_id: 7,
+  contador: 'CP Ana'
+};
+
+describe('rutaConsultarCliente', () => {
+  const poolExpediente = ({ cliente = FILA_CLIENTE, total = 0, recepciones = [] } = {}) => {
+    const llamadas = [];
+    return {
+      llamadas,
+      query: async (sql, params = []) => {
+        llamadas.push({ sql, params });
+        if (sql.includes('FROM clientes')) return [cliente ? [cliente] : []];
+        if (sql.includes('COUNT(*)')) return [[{ total }]];
+        if (sql.includes('FROM documentos')) return [recepciones];
+        return [[]];
+      }
+    };
+  };
+
+  test('id no entero o menor que 1 da 400', async () => {
+    const pool = poolExpediente();
+    for (const malo of [NaN, 0, -3, 1.5]) {
+      const r = await rutaConsultarCliente(pool, malo);
+      assert.strictEqual(r.status, 400);
+      assert.strictEqual(r.body.error, 'DATOS_INVALIDOS');
+    }
+  });
+
+  test('cliente inexistente da 404', async () => {
+    const r = await rutaConsultarCliente(poolExpediente({ cliente: null }), 99);
+    assert.strictEqual(r.status, 404);
+    assert.strictEqual(r.body.error, 'CLIENTE_NO_ENCONTRADO');
+    assert.ok(r.body.mensaje);
+  });
+
+  test('devuelve datos del cliente, recepciones y total, con fechas en texto local', async () => {
+    const recepciones = [
+      { id: 2, folio: 'F-2', tipo: 'Factura', periodo: '2026-10', fechaRecepcion: new Date(2026, 9, 8, 10, 0, 0), estado: 'EN_PROCESO' },
+      { id: 1, folio: 'F-1', tipo: 'Nómina', periodo: '2026-09', fechaRecepcion: new Date(2026, 8, 2, 8, 5, 0), estado: 'RECEPCIONADO' }
+    ];
+    const pool = poolExpediente({ total: 25, recepciones });
+    const r = await rutaConsultarCliente(pool, 5);
+
+    assert.strictEqual(r.status, 200);
+    assert.deepStrictEqual(r.body.cliente, {
+      id: 5,
+      clave: 'A12',
+      rfc: 'ACM010101AB1',
+      razonSocial: 'Acme S.A.',
+      email: 'contacto@ejemplo.com',
+      telefono: '5512345678',
+      contadorId: 7,
+      contador: 'CP Ana',
+      activo: true,
+      estado: 'ACTIVO',
+      creadoEn: '2026-01-05 09:30:15'
+    });
+    assert.strictEqual(r.body.totalRecepciones, 25);
+    assert.strictEqual(r.body.recepciones.length, 2);
+    assert.deepStrictEqual(r.body.recepciones[0], {
+      id: 2,
+      folio: 'F-2',
+      tipo: 'Factura',
+      periodo: '2026-10',
+      fechaRecepcion: '2026-10-08 10:00:00',
+      estado: 'EN_PROCESO'
+    });
+  });
+
+  test('pide las recepciones más recientes primero y como máximo 20', async () => {
+    const pool = poolExpediente();
+    await rutaConsultarCliente(pool, 5);
+    const consulta = pool.llamadas.find((l) => l.sql.includes('FROM documentos') && !l.sql.includes('COUNT(*)'));
+    assert.match(consulta.sql, /ORDER BY d\.fecha_recepcion DESC, d\.id DESC/);
+    assert.match(consulta.sql, /LIMIT 20/);
+    assert.deepStrictEqual(consulta.params, [5]);
+  });
+
+  test('fechas NULL se devuelven como null, no como 1969-12-31', async () => {
+    const pool = poolExpediente({
+      cliente: { ...FILA_CLIENTE, creado_en: null },
+      total: 1,
+      recepciones: [{ id: 1, folio: 'F-1', tipo: 'Nómina', periodo: '2026-09', fechaRecepcion: null, estado: 'RECEPCIONADO' }]
+    });
+    const r = await rutaConsultarCliente(pool, 5);
+    assert.strictEqual(r.body.cliente.creadoEn, null);
+    assert.strictEqual(r.body.recepciones[0].fechaRecepcion, null);
+  });
+
+  test('cliente sin datos opcionales y dado de baja', async () => {
+    const pool = poolExpediente({
+      cliente: { ...FILA_CLIENTE, clave: null, rfc: null, email: null, telefono: null, usuario_id: null, contador: null, activo: 0 }
+    });
+    const r = await rutaConsultarCliente(pool, 5);
+    assert.strictEqual(r.body.cliente.activo, false);
+    assert.strictEqual(r.body.cliente.estado, 'INACTIVO');
+    assert.strictEqual(r.body.cliente.contadorId, null);
+    assert.strictEqual(r.body.cliente.contador, null);
+    assert.strictEqual(r.body.cliente.rfc, null);
+    assert.deepStrictEqual(r.body.recepciones, []);
+    assert.strictEqual(r.body.totalRecepciones, 0);
+  });
+});
+
+describe('rutaEditarCliente', () => {
+  const poolEdicion = ({ existe = true, contadorValido = true, errorUpdate = null } = {}) => {
+    const estado = { update: null };
+    return {
+      estado,
+      query: async (sql, params = []) => {
+        if (sql.includes('UPDATE clientes')) {
+          if (errorUpdate) throw errorUpdate;
+          estado.update = params;
+          return [{ affectedRows: 1 }];
+        }
+        if (sql.includes('FROM usuarios u') && sql.includes('usuario_modulos')) {
+          return [contadorValido ? [{ id: 7, nombre: 'CP Ana' }] : []];
+        }
+        if (sql.includes('FROM clientes')) return [existe ? [FILA_CLIENTE] : []];
+        return [[]];
+      }
+    };
+  };
+
+  const datos = { razonSocial: ' Acme Nueva ', clave: 'b1', rfc: 'acm-010101-ab1', email: 'x@ejemplo.com', telefono: '55', contadorId: 7, activo: false };
+
+  test('id inválido y datos inválidos dan 400', async () => {
+    const pool = poolEdicion();
+    assert.strictEqual((await rutaEditarCliente(pool, 0, datos)).status, 400);
+    assert.strictEqual((await rutaEditarCliente(pool, 5, { ...datos, razonSocial: '  ' })).status, 400);
+    assert.strictEqual((await rutaEditarCliente(pool, 5, { ...datos, clave: '12345' })).status, 400);
+    assert.strictEqual(pool.estado.update, null);
+  });
+
+  test('activo debe ser booleano', async () => {
+    const pool = poolEdicion();
+    for (const malo of ['si', 1, 'false', null]) {
+      const r = await rutaEditarCliente(pool, 5, { ...datos, activo: malo });
+      assert.strictEqual(r.status, 400);
+      assert.strictEqual(r.body.error, 'DATOS_INVALIDOS');
+    }
+    assert.strictEqual(pool.estado.update, null);
+  });
+
+  test('cliente inexistente da 404', async () => {
+    const r = await rutaEditarCliente(poolEdicion({ existe: false }), 5, datos);
+    assert.strictEqual(r.status, 404);
+  });
+
+  test('contador sin rol de Contador da 400', async () => {
+    const pool = poolEdicion({ contadorValido: false });
+    const r = await rutaEditarCliente(pool, 5, datos);
+    assert.strictEqual(r.status, 400);
+    assert.strictEqual(pool.estado.update, null);
+  });
+
+  test('actualiza los campos normalizados y devuelve el cliente', async () => {
+    const pool = poolEdicion();
+    const r = await rutaEditarCliente(pool, 5, datos);
+    assert.strictEqual(r.status, 200);
+    assert.ok(r.body.cliente);
+    assert.deepStrictEqual(pool.estado.update, ['B1', 7, 'Acme Nueva', 'ACM010101AB1', 'x@ejemplo.com', '55', 0, 5]);
+  });
+
+  test('sin activo en el cuerpo conserva el estado actual', async () => {
+    const pool = poolEdicion();
+    const { activo, ...sinActivo } = datos;
+    const r = await rutaEditarCliente(pool, 5, sinActivo);
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(pool.estado.update[6], 1);
+  });
+
+  test('clave o razón social repetida da 409', async () => {
+    const err = new Error("Duplicate entry 'B1' for key 'uq_clientes_clave'");
+    err.code = 'ER_DUP_ENTRY';
+    const r = await rutaEditarCliente(poolEdicion({ errorUpdate: err }), 5, datos);
+    assert.strictEqual(r.status, 409);
+    assert.strictEqual(r.body.error, 'CLIENTE_DUPLICADO');
+  });
+});
 
 describe('rutaClientes (T30, RF-7, RF-8)', () => {
   const poolMock = (clientes = [], docs = []) => ({

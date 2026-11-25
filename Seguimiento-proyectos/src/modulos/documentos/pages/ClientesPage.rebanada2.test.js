@@ -71,4 +71,12 @@ describe('Clientes — rebanada 2: selector moderno, buscador y acciones legible
     assert.match(PLANTILLA, /ocultar-en-xs/)
     assert.match(PLANTILLA, /mensajeTablaVacia/)
   })
+
+  test('«Ver expediente» abre el diálogo del expediente y la tabla se recarga al editar', () => {
+    assert.match(PLANTILLA, /<ExpedienteClienteDialog[^>]*v-model="dialogoExpediente"/)
+    assert.match(PLANTILLA, /:cliente-id="clienteDelExpediente"/)
+    assert.match(PLANTILLA, /@actualizado="cargarClientes"/)
+    assert.match(PLANTILLA, /clienteDelExpediente\.value = cliente\.id/)
+    assert.ok(!/Abriendo expediente contable/.test(PLANTILLA))
+  })
 })

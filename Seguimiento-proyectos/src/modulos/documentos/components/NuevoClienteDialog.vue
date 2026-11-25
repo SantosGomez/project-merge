@@ -10,13 +10,21 @@
     @shake="pedirDescartar"
   >
     <q-card class="nuevo-cliente-dialog">
-      <q-form novalidate aria-label="Formulario de nuevo cliente" @submit.prevent="guardar">
+      <q-form
+        novalidate
+        :aria-label="esEdicion ? 'Formulario de edición de cliente' : 'Formulario de nuevo cliente'"
+        @submit.prevent="guardar"
+      >
         <q-card-section class="q-pb-sm">
           <div id="doc-nuevo-cliente-titulo" class="text-h6 text-weight-bold text-primary">
-            Nuevo cliente
+            {{ esEdicion ? 'Editar cliente' : 'Nuevo cliente' }}
           </div>
           <div class="text-caption text-grey-8">
-            Registra un cliente en el catálogo del despacho. Los campos con * son obligatorios.
+            {{
+              esEdicion
+                ? 'Corrige los datos del cliente. Los campos con * son obligatorios.'
+                : 'Registra un cliente en el catálogo del despacho. Los campos con * son obligatorios.'
+            }}
           </div>
         </q-card-section>
 
@@ -193,6 +201,20 @@
             </div>
           </div>
 
+          <div v-if="esEdicion">
+            <q-toggle
+              v-model="form.activo"
+              label="Cliente activo"
+              aria-label="Cliente activo"
+              color="primary"
+            >
+              <q-tooltip>
+                Si lo apagas, el cliente deja de aparecer en la lista de Clientes y en el
+                autollenado.
+              </q-tooltip>
+            </q-toggle>
+          </div>
+
           <q-banner v-if="errorGeneral" class="bg-negative text-white rounded-borders" role="alert">
             {{ errorGeneral }}
           </q-banner>
@@ -213,15 +235,19 @@
           <q-btn
             type="submit"
             color="primary"
-            icon="person_add"
-            label="Guardar cliente"
+            :icon="esEdicion ? 'save' : 'person_add'"
+            :label="esEdicion ? 'Guardar cambios' : 'Guardar cliente'"
             no-caps
             unelevated
             class="control-touch boton-presionable"
             :loading="guardando"
             :disable="guardando"
           >
-            <q-tooltip>Registra el nuevo cliente en el directorio</q-tooltip>
+            <q-tooltip>{{
+              esEdicion
+                ? 'Guarda los cambios del cliente'
+                : 'Registra el nuevo cliente en el directorio'
+            }}</q-tooltip>
           </q-btn>
         </q-card-actions>
       </q-form>
@@ -232,13 +258,21 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue'
 import { useQuasar } from 'quasar'
-import { crearClienteDocumento, obtenerCatalogos } from '@/modulos/documentos/servicios/api.js'
+import {
+  crearClienteDocumento,
+  editarClienteDocumento,
+  obtenerCatalogos,
+} from '@/modulos/documentos/servicios/api.js'
 import { mensajeParaUsuario } from '@/modulos/documentos/servicios/cliente.js'
 import { normalizarRfc } from '@/modulos/documentos/logica/normalizar.js'
 
 const REGEX_RFC = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const props = defineProps({
+  // Cliente a editar: con él el formulario funciona en modo edición; sin él, como alta.
+  cliente: { type: Object, default: null },
+})
 const dialogoAbierto = defineModel({ type: Boolean, default: false })
 const emit = defineEmits(['guardado'])
 
@@ -256,7 +290,13 @@ const form = reactive({
   contadorId: null,
   email: '',
   telefono: '',
+  activo: true,
 })
+
+const esEdicion = computed(() => props.cliente !== null)
+
+// Datos con los que se abrió el formulario: en edición se comparan para saber si hay cambios.
+const datosIniciales = ref(null)
 
 const errores = reactive({
   razonSocial: null,
@@ -266,23 +306,39 @@ const errores = reactive({
   telefono: null,
 })
 
-const hayDatosSinGuardar = computed(
-  () =>
+const datosActuales = () => ({
+  razonSocial: form.razonSocial.trim(),
+  clave: form.clave.trim().toUpperCase(),
+  rfc: normalizarRfc(form.rfc),
+  contadorId: form.contadorId || null,
+  email: form.email.trim(),
+  telefono: form.telefono.trim(),
+  activo: form.activo,
+})
+
+const hayDatosSinGuardar = computed(() => {
+  if (esEdicion.value) {
+    return JSON.stringify(datosActuales()) !== JSON.stringify(datosIniciales.value)
+  }
+  return (
     form.razonSocial.trim() !== '' ||
     form.clave.trim() !== '' ||
     form.rfc.trim() !== '' ||
     form.contadorId !== null ||
     form.email.trim() !== '' ||
-    form.telefono.trim() !== '',
-)
+    form.telefono.trim() !== ''
+  )
+})
 
 function limpiarFormulario() {
-  form.razonSocial = ''
-  form.clave = ''
-  form.rfc = ''
-  form.contadorId = null
-  form.email = ''
-  form.telefono = ''
+  form.razonSocial = esEdicion.value ? props.cliente.razonSocial : ''
+  form.clave = esEdicion.value ? (props.cliente.clave ?? '') : ''
+  form.rfc = esEdicion.value ? (props.cliente.rfc ?? '') : ''
+  form.contadorId = esEdicion.value ? (props.cliente.contadorId ?? null) : null
+  form.email = esEdicion.value ? (props.cliente.email ?? '') : ''
+  form.telefono = esEdicion.value ? (props.cliente.telefono ?? '') : ''
+  form.activo = esEdicion.value ? props.cliente.activo : true
+  datosIniciales.value = esEdicion.value ? datosActuales() : null
   errores.razonSocial = null
   errores.clave = null
   errores.rfc = null
@@ -381,8 +437,31 @@ function validarFormulario() {
   return valido
 }
 
+// Lleva el foco al primer campo con error, en el orden en que aparecen en el formulario.
+async function enfocarPrimerError() {
+  const primero = ['razonSocial', 'clave', 'rfc', 'email', 'telefono'].find((c) => errores[c])
+  if (!primero) return
+  const ids = {
+    razonSocial: 'razon-social',
+    clave: 'clave',
+    rfc: 'rfc',
+    email: 'email',
+    telefono: 'telefono',
+  }
+  await nextTick()
+  document.getElementById(`doc-cliente-${ids[primero]}`)?.focus()
+}
+
 async function guardar() {
-  if (guardando.value || !validarFormulario()) return
+  if (guardando.value) return
+  if (!validarFormulario()) {
+    enfocarPrimerError()
+    return
+  }
+  if (esEdicion.value && !hayDatosSinGuardar.value) {
+    dialogoAbierto.value = false
+    return
+  }
   guardando.value = true
   errorGeneral.value = ''
   try {
@@ -394,12 +473,17 @@ async function guardar() {
       email: form.email.trim() || null,
       telefono: form.telefono.trim() || null,
     }
-    const respuesta = await crearClienteDocumento(payload)
+    const respuesta = esEdicion.value
+      ? await editarClienteDocumento(props.cliente.id, { ...payload, activo: form.activo })
+      : await crearClienteDocumento(payload)
     limpiarFormulario()
     dialogoAbierto.value = false
     emit('guardado', respuesta.cliente)
   } catch (err) {
-    errorGeneral.value = mensajeParaUsuario(err, 'No se pudo registrar el cliente.')
+    errorGeneral.value = mensajeParaUsuario(
+      err,
+      esEdicion.value ? 'No se pudieron guardar los cambios.' : 'No se pudo registrar el cliente.',
+    )
   } finally {
     guardando.value = false
   }

@@ -5,7 +5,7 @@
  * Ninguna escribe `fetch` a mano.
  */
 
-import { get, post, put, subirArchivoCrudo } from './cliente.js'
+import { get, peticion, post, put, subirArchivoCrudo } from './cliente.js'
 import { URL_BASE_API } from '../../../services/api.js'
 
 /** Rutas del módulo de documentos en el backend unido (unión con status-conta, fase 4). */
@@ -59,6 +59,25 @@ export async function obtenerDirectorio(filtros = {}) {
  */
 export async function crearClienteDocumento(datos) {
   return post(`${BASE_DOC}/clientes`, datos)
+}
+
+/**
+ * Obtiene el expediente de un cliente: sus datos y sus últimas recepciones (GET /doc/clientes/:id).
+ * @param {number} id - ID del cliente
+ * @returns {Promise<Object>} Respuesta: { cliente, recepciones, totalRecepciones }
+ */
+export async function obtenerExpedienteCliente(id) {
+  return get(`${BASE_DOC}/clientes/${id}`)
+}
+
+/**
+ * Edita los datos de un cliente (PATCH /doc/clientes/:id).
+ * @param {number} id - ID del cliente
+ * @param {Object} datos - { razonSocial, clave?, rfc?, email?, telefono?, contadorId?, activo }
+ * @returns {Promise<Object>} Respuesta: { cliente }
+ */
+export async function editarClienteDocumento(id, datos) {
+  return peticion(`${BASE_DOC}/clientes/${id}`, { method: 'PATCH', body: datos })
 }
 
 /**
