@@ -286,11 +286,7 @@
                         {{ props.row.folio }}
                       </div>
                       <q-chip
-                        :class="[
-                          'text-weight-bold',
-                          estiloDeEstadoDocumento(props.row.estado).fondo,
-                          estiloDeEstadoDocumento(props.row.estado).texto,
-                        ]"
+                        :class="estiloDeEstadoDocumento(props.row.estado).chip"
                         size="sm"
                         :icon="estiloDeEstadoDocumento(props.row.estado).icono"
                       >
@@ -402,11 +398,7 @@
             <template #body-cell-estado="props">
               <q-td :props="props">
                 <q-chip
-                  :class="[
-                    'text-weight-bold',
-                    estiloDeEstadoDocumento(props.value).fondo,
-                    estiloDeEstadoDocumento(props.value).texto,
-                  ]"
+                  :class="estiloDeEstadoDocumento(props.value).chip"
                   size="sm"
                   :icon="estiloDeEstadoDocumento(props.value).icono"
                 >
@@ -491,13 +483,7 @@
             <div><strong>Prioridad:</strong> {{ textoPrioridad(docSeleccionado.prioridad) }}</div>
             <div>
               <strong>Estado Actual:</strong>
-              <q-chip
-                :class="[
-                  estiloDeEstadoDocumento(docSeleccionado.estado).fondo,
-                  estiloDeEstadoDocumento(docSeleccionado.estado).texto,
-                ]"
-                size="xs"
-              >
+              <q-chip :class="estiloDeEstadoDocumento(docSeleccionado.estado).chip" size="sm">
                 {{ estiloDeEstadoDocumento(docSeleccionado.estado).etiqueta }}
               </q-chip>
             </div>

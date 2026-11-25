@@ -125,10 +125,7 @@
                     </q-item-label>
                   </q-item-section>
                   <q-item-section side>
-                    <q-chip
-                      :class="['chip-estado', exp.estilo.fondo, exp.estilo.texto]"
-                      :icon="exp.estilo.icono"
-                    >
+                    <q-chip :class="exp.estilo.chip" :icon="exp.estilo.icono">
                       {{ exp.estilo.etiqueta }}
                     </q-chip>
                   </q-item-section>
@@ -406,11 +403,6 @@ onMounted(() => {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   margin-right: 6px;
-}
-
-/* Chip del estado del expediente */
-.chip-estado {
-  font-weight: 700;
 }
 
 /* Quasar aplica `text-transform: uppercase` a los subtítulos del timeline */

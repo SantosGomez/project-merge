@@ -67,13 +67,11 @@ describe('Direccionamiento — rebanada 5: filtros modernos, encabezado y métri
     assert.match(bloque, /max-width:\s*100%/)
   })
 
-  test('la prioridad conserva su escalón semántico (color + texto)', () => {
-    assert.match(PLANTILLA, /getPrioridadFondo/)
-    assert.match(PLANTILLA, /getPrioridadTexto/)
-    assert.match(PLANTILLA, /'bg-negative'/)
-    assert.match(PLANTILLA, /'bg-warning'/)
-    assert.match(PLANTILLA, /'bg-info'/)
-    assert.match(PLANTILLA, /'fondo-prioridad-baja'/)
-    assert.match(PLANTILLA, /prioridad === 'URGENTE' \? 'white' : 'primary'/)
+  test('la prioridad y la situación usan las píldoras claras compartidas (el texto sigue visible)', () => {
+    assert.match(PLANTILLA, /estiloDePrioridadDocumento\(props\.value\)\.chip/)
+    assert.doesNotMatch(PLANTILLA, /getPrioridadFondo|getPrioridadTexto|fondo-prioridad-baja/)
+    assert.doesNotMatch(PLANTILLA, /class="bg-(positive|info) text-primary/)
+    assert.match(PLANTILLA, /chip-doc chip-doc--completado/)
+    assert.match(PLANTILLA, /chip-doc chip-doc--en-proceso/)
   })
 })

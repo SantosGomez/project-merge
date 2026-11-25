@@ -297,16 +297,11 @@
                   v-if="props.row.situacion === 'entregado'"
                   size="sm"
                   icon="task_alt"
-                  class="bg-positive text-primary text-weight-bold"
+                  class="chip-doc chip-doc--completado"
                 >
                   Entregado el {{ formatearFechaHora(props.row.fechaEntrega) }}
                 </q-chip>
-                <q-chip
-                  v-else
-                  size="sm"
-                  icon="inventory_2"
-                  class="bg-info text-primary text-weight-bold"
-                >
+                <q-chip v-else size="sm" icon="inventory_2" class="chip-doc chip-doc--en-proceso">
                   Por entregar
                 </q-chip>
               </q-td>
@@ -333,12 +328,9 @@
 
             <template #body-cell-prioridad="props">
               <q-td :props="props">
-                <q-badge
-                  :class="['badge-prioridad', getPrioridadFondo(props.value)]"
-                  :text-color="getPrioridadTexto(props.value)"
-                >
+                <q-chip :class="estiloDePrioridadDocumento(props.value).chip" size="sm">
                   {{ props.value }}
-                </q-badge>
+                </q-chip>
               </q-td>
             </template>
 
@@ -784,6 +776,7 @@ import { mensajeParaUsuario } from '@/modulos/documentos/servicios/cliente.js'
 import { resumirPendientes } from '@/modulos/documentos/composables/resumenDireccionamiento.js'
 import { textoRfc } from '@/modulos/documentos/composables/clientesVista.js'
 import { estiloDeEstadoDocumento } from '@/modulos/documentos/composables/estadoDocumentoVista.js'
+import { estiloDePrioridadDocumento } from '@/modulos/documentos/composables/prioridadVista.js'
 import { combinarFilas, filtrarFilas } from '@/modulos/documentos/composables/entregadosVista.js'
 
 const $q = useQuasar()
@@ -835,15 +828,6 @@ const hoyDia = computed(() => {
   const h = new Date()
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`
 })
-
-const getPrioridadFondo = (prioridad) => {
-  if (prioridad === 'URGENTE') return 'bg-negative'
-  if (prioridad === 'ALTA') return 'bg-warning'
-  if (prioridad === 'MEDIA') return 'bg-info'
-  return 'fondo-prioridad-baja'
-}
-
-const getPrioridadTexto = (prioridad) => (prioridad === 'URGENTE' ? 'white' : 'primary')
 
 const fechaEmision = computed(() => {
   const h = new Date()
@@ -1291,18 +1275,6 @@ onMounted(() => {
 /* Marca de firma obligatoria faltante (antes era un hex literal `#c10015`) */
 .borde-error {
   border: 2px solid $negative;
-}
-
-/* Badges del semáforo */
-.badge-prioridad,
-.badge-estado {
-  padding: 4px 8px;
-  font-weight: 700;
-}
-
-/* Prioridad BAJA: neutro institucional, porque no requiere atención */
-.fondo-prioridad-baja {
-  background-color: $secondary-white-alternative;
 }
 
 /* Columnas que se ocultan según el ancho para que la tabla no desborde; lo que se oculta

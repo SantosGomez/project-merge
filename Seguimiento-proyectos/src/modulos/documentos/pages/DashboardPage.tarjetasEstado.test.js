@@ -86,3 +86,16 @@ describe('Dashboard — tarjetas por estado y selector «Estado» como un solo f
     assert.match(FUENTE, /\.border-left-info \{\s*border-left: 5px solid \$info;/)
   })
 })
+
+describe('Dashboard — píldoras de estado legibles (rebanada 48)', () => {
+  test('todos los chips de estado usan la clase chip de estiloDeEstadoDocumento', () => {
+    const usos = FUENTE.match(/estiloDeEstadoDocumento\([^)]*\)\.chip/g) ?? []
+    assert.equal(usos.length, 3, 'tarjeta móvil, tabla y detalle')
+    assert.doesNotMatch(FUENTE, /estiloDeEstadoDocumento\([^)]*\)\.texto/)
+  })
+
+  test('los puntos de color de los selectores siguen con el fondo del estado', () => {
+    const puntos = FUENTE.match(/estiloDeEstadoDocumento\([^)]*\)\.fondo/g) ?? []
+    assert.equal(puntos.length, 4)
+  })
+})

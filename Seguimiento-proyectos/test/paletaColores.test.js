@@ -92,6 +92,8 @@ const PARES_DE_TEXTO = [
   ['texto-secundario', 'neutro-fondo'], ['aviso-texto', 'aviso-fondo'], ['info-texto', 'info-fondo'],
   ['exito-oscuro', 'exito-fondo'], ['error-oscuro', 'error-fondo'], ['error-campo', 'superficie'],
   ['error-texto', 'error-fondo'],
+  // Rebanada 48: píldoras de estado y prioridad de documentos
+  ['error-campo', 'error-fondo'],
   ['error', 'error-fondo-suave'], ['texto-secundario', 'error-fondo-suave'],
   ['error-aviso-texto', 'error-aviso-fondo'],
   // Revisión de UI, rebanada 1: tooltips (texto claro sobre la tinta) y avisos de Quasar

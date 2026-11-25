@@ -56,6 +56,91 @@
   }
 }
 
+// Píldoras de estado y prioridad de los documentos (`estiloDeEstadoDocumento`,
+// `estiloDePrioridadDocumento`): fondo claro, texto y borde del color; URGENTE va sólida.
+// Alcance propio `.chip-doc` (también sobre `.q-chip`, que trae margen, alto y radio propios).
+// El icono toma el color del texto. Contraste de cada par en `test/paletaColores.test.js`.
+.chip-doc.q-chip {
+  margin: 0;
+  height: auto;
+  min-height: 24px;
+  padding: 2px 10px;
+  border: 1px solid var(--chip-borde);
+  border-radius: 999px;
+  background: var(--chip-fondo);
+  color: var(--chip-texto);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+
+  .q-icon {
+    color: inherit;
+  }
+}
+
+$chips-doc: (
+  recepcionado: (
+    neutro-fondo,
+    texto-secundario,
+    neutro-borde,
+  ),
+  en-proceso: (
+    info-fondo,
+    info-texto,
+    info-borde,
+  ),
+  pendiente: (
+    aviso-fondo,
+    aviso-texto,
+    aviso-borde,
+  ),
+  completado: (
+    exito-fondo,
+    exito-oscuro,
+    exito-borde,
+  ),
+  cancelado: (
+    error-fondo,
+    error-campo,
+    error,
+  ),
+  neutro: (
+    neutro-fondo,
+    texto-secundario,
+    neutro-borde,
+  ),
+  alta: (
+    prioridad-alta-fondo,
+    prioridad-alta,
+    prioridad-alta-borde,
+  ),
+  media: (
+    prioridad-media-fondo,
+    prioridad-media,
+    prioridad-media-borde,
+  ),
+  baja: (
+    prioridad-baja-fondo,
+    prioridad-baja,
+    prioridad-baja-borde,
+  ),
+);
+
+@each $nombre, $colores in $chips-doc {
+  .chip-doc--#{$nombre} {
+    --chip-fondo: var(--dg-#{nth($colores, 1)});
+    --chip-texto: var(--dg-#{nth($colores, 2)});
+    --chip-borde: var(--dg-#{nth($colores, 3)});
+  }
+}
+
+// URGENTE: sólido, con texto blanco (7.46:1 sobre $negative).
+.chip-doc--urgente {
+  --chip-fondo: #{$negative};
+  --chip-texto: var(--dg-texto-claro);
+  --chip-borde: #{$negative};
+}
+
 // Indicadores de estado tipo punto (semáforo visual en selectores)
 .punto-estado {
   display: inline-block;

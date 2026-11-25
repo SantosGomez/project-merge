@@ -35,6 +35,11 @@ describe('SeguimientoPage: portal de seguimiento', () => {
     assert.ok(CODIGO.includes('estiloDeEstadoDocumento'), 'pinta el ENUM crudo del servidor')
   })
 
+  test('el estado del expediente usa la píldora clara, sin color de texto de Quasar', () => {
+    assert.match(CODIGO, /exp\.estilo\.chip/)
+    assert.ok(!CODIGO.includes('exp.estilo.texto'), 'sigue poniendo texto primary sobre el fondo')
+  })
+
   test('los errores enseñan el motivo del servidor', () => {
     assert.ok(CODIGO.includes('mensajeParaUsuario('), 'oculta el motivo con un texto genérico')
   })
