@@ -41,7 +41,7 @@ export default defineConfig((/* ctx */) => {
 
       vueRouterMode: 'hash', // available values: 'hash', 'history'
 
-      // URL de la API; sin valor, api.js usa http://localhost:3000 (desarrollo y Electron)
+      // URL de la API; sin valor, api.js usa http://localhost:3001 (desarrollo y Electron; 3000 es el backend de status-conta)
       defineEnv: { API_URL: process.env.API_URL || '' },
       // vueRouterBase,
 

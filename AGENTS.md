@@ -104,7 +104,7 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - Frontend (`Seguimiento-proyectos/`): `npm run lint:check`, `npm run build`, `node --test` y comprobación en navegador real si toca interfaz (incluida la vista móvil).
 - Backend (`Backend/`): `node --test` y `node soporte-pruebas/verificarPruebas.js`. Las pruebas de documentos son `src/modulos/documentos/**/*.test.mjs` (más `test/documentosModulo.test.js`). Requiere en marcha MariaDB de XAMPP (puerto 3306) con la base de prueba de la unión `delgrow_merge` (la que usa `Backend/.env`). Si no responde, parar y avisar.
 - Datos de prueba: las cuentas y registros de prueba usan el prefijo `zz_test_` (en documentos, correos `@ejemplo.com`); al terminar deben quedar 0 filas `zz_test_%`. Nunca datos reales en pruebas ni en el repo.
-- Navegador: `merge-backend` (3100) + `merge-frontend` (9100) de `.claude/launch.json`; cerrar los servidores que se abran. Si toca documentos, probar con cada rol del módulo (el menú y los permisos cambian por rol).
+- Navegador: `merge-backend` (3001) + `merge-frontend` (9001) de `.claude/launch.json`; cerrar los servidores que se abran. Si toca documentos, probar con cada rol del módulo (el menú y los permisos cambian por rol).
 - El reviewer solo corre las puertas de pruebas y lectura; nunca modifica archivos.
 - Backend: correr `node --test --test-concurrency=1` y por archivo (todo junto se cuelga; en paralelo falla al azar por la BD compartida). Cada archivo de `Backend/test` va en `MINIMOS`. Una ruta nueva va en la tabla de `autorizacionMatriz.test.js` (si no, la prueba falla).
 - `lint:check` no revisa formato: correr también `npx prettier --check`.
@@ -178,7 +178,7 @@ Los agentes (implementer y reviewer, en Claude Code y en opencode) corren estas 
 - Quasar: el fondo de `q-dialog` responde a `mousedown`; `scoped` no alcanza los menús montados en `body`; con la prop `padding` de `q-btn`, el `min-height` necesita `!important` (igual el foco de los `q-btn` del calendario frente a `app.scss`); `sticky` no sirve dentro de `q-tab-panels`; `q-avatar` se ajusta con `size`; `tabular-nums` solo va en cifras.
 - Si `npm install` da EBUSY, cerrar el servidor de desarrollo. Si una tabla de XAMPP da «doesn't exist in engine», no borrar tablas sueltas.
 - `session.id` es texto: comparar con `Number(...)`.
-- `.claude/launch.json` (`merge-backend`, `merge-frontend`) arranca con un `lanzar.mjs` de una carpeta temporal de otra sesión: si no arranca, avisar en lugar de inventar otra configuración.
+- `.claude/launch.json` (`merge-backend`, `merge-frontend`) arranca con `cmd /c` desde las carpetas del proyecto, en los puertos del `Backend/.env` (3001 y 9001); el frontend recibe `API_URL=http://localhost:3001`. Si no arranca, avisar en lugar de inventar otra configuración.
 - Este repo es un clon de `status-conta` (remoto `status-conta` = carpeta local; GitHub `SantosGomez/project-merge`). `status-conta` y `Proyecto-documentos` siguen en `htdocs` solo de consulta: no editarlos desde aquí.
 
 ## Despliegue (solo cuando se pida)

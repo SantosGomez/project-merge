@@ -64,9 +64,9 @@ const MENSAJE_BACKEND = 'Sesión caducada sobre token de acceso: Inicie sesión 
 test('la instancia usa la URL del backend y el límite de 15 s del plan', () => {
   const { api } = crearApi({ almacen: crearAlmacenFalso() })
 
-  assert.equal(URL_BASE_API, 'http://localhost:3000')
+  assert.equal(URL_BASE_API, 'http://localhost:3001')
   assert.equal(TIEMPO_LIMITE_MS, 15000)
-  assert.equal(api.defaults.baseURL, 'http://localhost:3000')
+  assert.equal(api.defaults.baseURL, 'http://localhost:3001')
   assert.equal(api.defaults.timeout, 15000)
 })
 

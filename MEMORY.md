@@ -7,6 +7,7 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 - Repo `SantosGomez/project-merge`, rama `unificacion/fase-0`. Fases 0 a 4 hechas. La unión es una alpha: no se publica ni se usa Docker; todo en local (XAMPP). La fase 5 (publicar) queda en pausa. `main` = status-conta sin la unión.
 - Un login (correo o `alias`), rol general + rol por módulo (`usuario_modulos`), selector `/modulos`. Backend de documentos en `/doc`, frontend en `src/modulos/documentos/`.
 - Base de prueba: `delgrow_merge` en XAMPP (3306), rehecha el 2026-11-24 desde la base de prueba de status-conta (`delgrow_contadores`) + importación de `dca_documentos`; ya no tiene datos de producción (esa copia quedó en los respaldos, fuera del proyecto: `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`).
+- Cuentas de prueba en `delgrow_merge`: `admin_seed@prueba.local` (documentos por su rol) y `contador_seed@prueba.local` (documentos como contador, dado a mano el 2026-11-24; se pierde si se rehace la base). El import omite las cuentas de prueba de documentos.
 - Últimas cifras (tras traer status-conta): backend 906 de 906 en `verificarPruebas`; frontend 2118 de 2118, lint y build bien. `test/proximaJunta.test.js` viene sin formato desde status-conta.
 - 2026-11-24: se trajeron los 8 commits de `status-conta/main` hasta 7b36df8 (rebanada 43 de juntas, cabecera y píldora elástica de «Mi Calendario»).
 - 2026-11-24: `AGENTS.md` y esta memoria se reescribieron para el proyecto unido (antes eran los de status-conta).
@@ -16,7 +17,7 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 - Documentos: probar en navegador las firmas dibujadas en el lienzo (aviso «Acceso denegado», rol en dock/menú y `no-results-label` en accesos ya resueltos el 2026-11-24).
 - Límite de intentos del login cuenta por separado correo y alias de una misma persona (menor).
 - Por decidir: ¿`casos` se liga a `clientes.id` o sigue con el cliente como texto? Llave `clientes → usuarios` en cascada: pasar a `SET NULL`.
-- `.claude/launch.json` depende de un script en una carpeta temporal: rehacerlo con rutas del proyecto.
+- `.claude/launch.json` ya no usa el script temporal (2026-11-24): `merge-backend` en 3001 y `merge-frontend` en 9001 (los puertos del `Backend/.env`), con `cmd /c`; AGENTS.md ya lo dice. Sin `API_URL`, el frontend llama a `http://localhost:3001` (`api.js`, 2026-11-25): con 3000 chocaba con el backend de status-conta y daba error de CORS.
 - `PRODUCT.md` y `docs/constitution.md` describen solo status-conta.
 
 ## Producción (Docker de status-conta)
