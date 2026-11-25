@@ -85,31 +85,32 @@
         </div>
       </div>
 
-      <!-- Tarjetas: resumen de los documentos (resumenDocumentos.js), sin el filtro de la tabla.
-         Cada tarjeta es un botón: al pulsarla la tabla muestra solo lo que cuenta, y otra vez lo quita. -->
+      <!-- Tarjetas: una por estado, con cuántos documentos cargados hay en él (resumenDocumentos.js),
+         sin el filtro de la tabla. Cada tarjeta es un botón: al pulsarla el selector «Estado» se
+         pone en ese estado, y otra vez vuelve a «Todos». -->
       <div class="row q-col-gutter-md q-mb-lg">
-        <div v-for="tarjeta in tarjetas" :key="tarjeta.clave" class="col-12 col-sm-6 col-md-3">
+        <div v-for="tarjeta in tarjetas" :key="tarjeta.estado" class="col-12 col-sm-6 col-md-3">
           <q-card
             :class="[
               'shadow-1 rounded-borders bg-white tarjeta-filtro cursor-pointer',
               tarjeta.borde,
-              { 'tarjeta-activa': tarjetaActiva === tarjeta.clave },
+              { 'tarjeta-activa': filtroEstado === tarjeta.estado },
             ]"
             role="button"
             tabindex="0"
-            :aria-pressed="tarjetaActiva === tarjeta.clave"
-            :aria-label="`${tarjeta.titulo}: ${resumen[tarjeta.cifra]}. ${tarjeta.ayuda}`"
-            @click="alternarTarjeta(tarjeta.clave)"
-            @keydown.enter.prevent="alternarTarjeta(tarjeta.clave)"
-            @keydown.space.prevent="alternarTarjeta(tarjeta.clave)"
+            :aria-pressed="filtroEstado === tarjeta.estado"
+            :aria-label="`${tarjeta.titulo}: ${resumen[tarjeta.estado]}. ${tarjeta.ayuda}`"
+            @click="alternarTarjeta(tarjeta.estado)"
+            @keydown.enter.prevent="alternarTarjeta(tarjeta.estado)"
+            @keydown.space.prevent="alternarTarjeta(tarjeta.estado)"
           >
             <q-card-section class="row items-center justify-between no-wrap">
               <div>
                 <div class="text-caption text-weight-bold text-grey-8">{{ tarjeta.titulo }}</div>
-                <div :class="['text-h4 text-weight-bolder', tarjeta.colorCifra]">
-                  {{ resumen[tarjeta.cifra] }}
+                <div class="text-h4 text-weight-bolder text-primary">
+                  {{ resumen[tarjeta.estado] }}
                 </div>
-                <div :class="['text-caption', tarjeta.colorPie]">{{ tarjeta.pie }}</div>
+                <div class="text-caption text-grey-8">{{ tarjeta.pie }}</div>
               </div>
               <q-avatar
                 :icon="tarjeta.icono"
@@ -128,16 +129,6 @@
         <q-card-section class="row items-center justify-between q-pb-none">
           <div class="row items-center q-gutter-sm">
             <div class="text-h6 text-weight-bold text-grey-8">Documentos</div>
-            <q-chip
-              v-if="tarjetaActiva"
-              removable
-              outline
-              color="primary"
-              :remove-aria-label="`Quitar el filtro «${tituloTarjetaActiva}»`"
-              @remove="tarjetaActiva = null"
-            >
-              Solo: {{ tituloTarjetaActiva }}
-            </q-chip>
           </div>
 
           <!-- Búsqueda y Filtros -->
@@ -649,8 +640,8 @@ import { hayAcceso } from '@/modulos/documentos/permisos.js'
 import { estadosPermitidos } from '../logica/estadosDocumento.js'
 import { estiloDeEstadoDocumento } from '@/modulos/documentos/composables/estadoDocumentoVista.js'
 import {
-  resumirDocumentos,
-  coincideConTarjeta,
+  contarPorEstado,
+  esVencido as esDocumentoVencido,
   textoDelPlazo,
 } from '@/modulos/documentos/composables/resumenDocumentos.js'
 
@@ -671,6 +662,7 @@ const usuarioSesion = computed(() => sesion.usuario.value)
 const puedeCambiarDocumento = (row) =>
   puedeCambiarEstado.value && estadosPermitidos(row, usuarioSesion.value).length > 0
 const filter = ref('')
+// Un solo filtro de estado: lo comparten el selector «Estado» y las tarjetas.
 const filtroEstado = ref('Todos')
 const filtroTipo = ref(null)
 const mostrarDetalle = ref(false)
@@ -781,76 +773,57 @@ const hoy = ref(new Date())
 const esMesActual = (val) => val === periodoDe(hoy.value)
 
 // Las tarjetas cuentan todos los documentos cargados, no solo los filtrados
-const resumen = computed(() => resumirDocumentos(rows.value, hoy.value, periodo.value))
+const resumen = computed(() => contarPorEstado(rows.value))
 
-// Tarjeta pulsada: la tabla muestra solo lo que esa tarjeta cuenta (misma regla)
-const tarjetaActiva = ref(null)
-const alternarTarjeta = (clave) => {
-  tarjetaActiva.value = tarjetaActiva.value === clave ? null : clave
+// Tarjeta resaltada: la del estado elegido en el selector («Todos» y «Cancelado» no tienen)
+const alternarTarjeta = (estado) => {
+  filtroEstado.value = filtroEstado.value === estado ? 'Todos' : estado
 }
 
 const tarjetas = computed(() => {
   const mes = formatearMesAnio(periodo.value)
   return [
     {
-      clave: 'recibidos',
-      cifra: 'total',
-      titulo: 'Recibidos',
-      pie: `Recibidos en ${mes}`,
-      ayuda: `Mostrar solo los documentos recibidos en ${mes}`,
-      borde: 'border-left-primary',
-      colorCifra: 'text-primary',
-      colorPie: 'text-grey-8',
-      icono: 'inventory_2',
-      colorIcono: 'secondary',
-      textoIcono: 'primary',
+      estado: 'RECEPCIONADO',
+      pie: `Recibidos en ${mes} y pendientes anteriores`,
+      borde: 'border-left-info',
+      icono: 'move_to_inbox',
+      colorIcono: 'info',
     },
     {
-      clave: 'enTramite',
-      cifra: 'enTramite',
-      titulo: 'En trámite',
-      pie: 'Dentro de su fecha límite',
-      ayuda: 'Mostrar solo lo que sigue en trámite y en plazo, sea del mes que sea',
+      estado: 'EN_PROCESO',
+      pie: 'Ya los atiende el contador',
+      borde: 'border-left-info',
+      icono: 'find_in_page',
+      colorIcono: 'info',
+    },
+    {
+      estado: 'PENDIENTE_CLIENTE',
+      pie: 'Esperan algo del cliente',
       borde: 'border-left-warning',
-      colorCifra: 'text-primary',
-      colorPie: 'text-grey-8',
-      icono: 'pending_actions',
+      icono: 'schedule',
       colorIcono: 'warning',
+      // El amarillo es claro: el icono va en azul marino para que contraste
       textoIcono: 'primary',
     },
     {
-      clave: 'vencidos',
-      cifra: 'vencidos',
-      titulo: 'Vencidos',
-      pie: 'Fecha límite pasada',
-      ayuda: 'Mostrar solo lo que ya pasó su fecha límite, sea del mes que sea',
-      borde: 'border-left-negative',
-      colorCifra: 'text-negative',
-      colorPie: 'text-negative text-weight-bold',
-      icono: 'warning',
-      colorIcono: 'negative',
-      textoIcono: 'white',
-    },
-    {
-      clave: 'completados',
-      cifra: 'completados',
-      titulo: 'Completados',
+      estado: 'COMPLETADO',
       pie: `Recibidos en ${mes} y terminados`,
-      ayuda: `Mostrar solo los documentos recibidos en ${mes} ya terminados`,
       borde: 'border-left-positive',
-      colorCifra: 'text-primary',
-      colorPie: 'text-grey-8',
       icono: 'check_circle',
       colorIcono: 'positive',
-      textoIcono: 'primary',
     },
-  ]
+  ].map((t) => {
+    const titulo = estiloDeEstadoDocumento(t.estado).etiqueta
+    return {
+      textoIcono: 'white',
+      ...t,
+      titulo,
+      ayuda: `Mostrar solo los documentos en estado «${titulo}»`,
+    }
+  })
 })
-const tituloTarjetaActiva = computed(
-  () => tarjetas.value.find((t) => t.clave === tarjetaActiva.value)?.titulo ?? '',
-)
-
-const esVencido = (row) => coincideConTarjeta(row, 'vencidos', hoy.value)
+const esVencido = (row) => esDocumentoVencido(row, hoy.value)
 
 // «URGENTE» → «Urgente»: solo el texto; el color por prioridad no se repite aquí
 const textoPrioridad = (prioridad) =>
@@ -859,12 +832,11 @@ const textoPrioridad = (prioridad) =>
 const filteredRows = computed(() => {
   const q = filter.value.toLowerCase().trim()
   return rows.value.filter((r) => {
-    const coincideEstado = filtroEstado.value === 'Todos' || r.estado === filtroEstado.value
     const coincideTipo = !filtroTipo.value || r.tipo === filtroTipo.value
     const coincideTexto =
       !q || r.folio.toLowerCase().includes(q) || r.cliente.toLowerCase().includes(q)
-    const coincideTarjeta = coincideConTarjeta(r, tarjetaActiva.value, hoy.value, periodo.value)
-    return coincideEstado && coincideTipo && coincideTexto && coincideTarjeta
+    const coincideEstado = filtroEstado.value === 'Todos' || r.estado === filtroEstado.value
+    return coincideEstado && coincideTipo && coincideTexto
   })
 })
 
@@ -931,12 +903,7 @@ const etiquetaPaginacion = (inicio, fin, total) => `${inicio}–${fin} de ${tota
 // el mensaje de tabla vacía se calcula aquí (ver AGENTS.md).
 const mensajeTablaVacia = computed(() => {
   if (error.value) return error.value
-  if (
-    filter.value.trim() ||
-    filtroEstado.value !== 'Todos' ||
-    filtroTipo.value ||
-    tarjetaActiva.value
-  ) {
+  if (filter.value.trim() || filtroEstado.value !== 'Todos' || filtroTipo.value) {
     return 'No hay documentos que coincidan con la búsqueda o el filtro'
   }
   return `No hay documentos recibidos en ${formatearMesAnio(periodo.value)} ni pendientes de meses anteriores`
@@ -982,6 +949,9 @@ watch([periodo, soloMisDocumentos], cargarDocumentos)
 }
 .border-left-negative {
   border-left: 5px solid $negative;
+}
+.border-left-info {
+  border-left: 5px solid $info;
 }
 .border-left-positive {
   border-left: 5px solid $positive;

@@ -17,14 +17,11 @@ describe('Dashboard — textos del mes de recepción', () => {
     assert.match(FUENTE, /Documentos recibidos en el mes elegido y todo lo que sigue pendiente/)
   })
 
-  test('los pies y las ayudas de «Recibidos» y «Completados» dicen «recibidos en»', () => {
-    assert.match(FUENTE, /pie: `Recibidos en \$\{mes\}`/)
+  // Vuelta 2 de la rebanada 46: «Recibidos» y «Completados» dejaron de ser tarjetas
+  // del mes; ahora son «Recibido» y «Completado» (por estado) y sus pies dicen el mes.
+  test('los pies de «Recibido» y «Completado» dicen «recibidos en» el mes', () => {
+    assert.match(FUENTE, /pie: `Recibidos en \$\{mes\} y pendientes anteriores`/)
     assert.match(FUENTE, /pie: `Recibidos en \$\{mes\} y terminados`/)
-    assert.match(FUENTE, /ayuda: `Mostrar solo los documentos recibidos en \$\{mes\}`/)
-    assert.match(
-      FUENTE,
-      /ayuda: `Mostrar solo los documentos recibidos en \$\{mes\} ya terminados`/,
-    )
   })
 
   test('la tabla vacía dice «recibidos en» el mes', () => {

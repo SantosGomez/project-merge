@@ -1,18 +1,20 @@
 /**
- * Resumen de los documentos para las cuatro tarjetas del Dashboard, el filtro
- * que aplica cada tarjeta y el texto del plazo de cada documento.
+ * Conteo por estado para las cuatro tarjetas del Dashboard, la marca de
+ * «vencido» de la tabla y el texto del plazo de cada documento.
  *
  * Función pura: sin imports de Vue ni de Quasar, para que `node --test` la
- * cargue sin dependencias. Los cancelados solo cuentan en el total.
+ * cargue sin dependencias.
  *
  * GET /documentos trae lo recibido en el mes elegido MÁS lo que sigue en trámite
  * de meses anteriores. El mes se decide por la fecha de recepción, no por el
- * periodo contable (2026-11-25). Por eso «Recibidos» y «Completados» se cuentan
- * solo del mes de recepción, y «En trámite» y «Vencidos» de todo lo vivo.
+ * periodo contable (2026-11-25).
  */
 
 /** Estados de un documento que sigue vivo (los mismos que dan ÁMBAR en el semáforo). */
 const ESTADOS_EN_TRAMITE = ['RECEPCIONADO', 'EN_PROCESO', 'PENDIENTE_CLIENTE']
+
+/** Los cinco valores del ENUM `documentos.estado`. */
+const ESTADOS = [...ESTADOS_EN_TRAMITE, 'COMPLETADO', 'CANCELADO']
 
 /** Un día en milisegundos, para contar días entre dos fechas. */
 const UN_DIA = 24 * 60 * 60 * 1000
@@ -30,55 +32,30 @@ const numeroDeDia = (dia) => {
 // `fechaLimite` llega en hora local sin Z (`AAAA-MM-DDTHH:mm:ss`): sus diez
 // primeros caracteres ya son el día, sin conversión de zona horaria.
 const enTramite = (d) => ESTADOS_EN_TRAMITE.includes(d.estado)
-const vencido = (d, hoyDia) =>
-  enTramite(d) && d.fechaLimite != null && d.fechaLimite.slice(0, 10) < hoyDia
 
 /**
- * Dice si un documento entra en lo que cuenta una tarjeta. Es la misma regla
- * para la cifra de la tarjeta y para el filtro de la tabla al pulsarla.
+ * Dice si un documento sigue en trámite y ya pasó su fecha límite.
  *
- * @param {{fechaRecepcion?: string, estado: string, fechaLimite: string | null}} documento
- * @param {'recibidos' | 'enTramite' | 'vencidos' | 'completados' | null} tarjeta
- *   La tarjeta elegida; sin tarjeta, todo coincide.
+ * @param {{estado: string, fechaLimite: string | null}} documento
  * @param {Date} hoy Fecha de referencia.
- * @param {string} [periodo] El mes elegido (`AAAA-MM`); sin él, todo cuenta como del mes.
  * @returns {boolean}
  */
-export const coincideConTarjeta = (documento, tarjeta, hoy, periodo) => {
-  const hoyDia = diaLocal(hoy)
-  // `fechaRecepcion` llega local sin Z (`AAAA-MM-DDTHH:mm:ss`): sus siete
-  // primeros caracteres ya son el mes, sin conversión de zona horaria.
-  const delPeriodo = !periodo || documento.fechaRecepcion?.slice(0, 7) === periodo
-  switch (tarjeta) {
-    case 'recibidos':
-      return delPeriodo
-    case 'enTramite':
-      return enTramite(documento) && !vencido(documento, hoyDia)
-    case 'vencidos':
-      return vencido(documento, hoyDia)
-    case 'completados':
-      return delPeriodo && documento.estado === 'COMPLETADO'
-    default:
-      return true
-  }
-}
+export const esVencido = (documento, hoy) =>
+  enTramite(documento) &&
+  documento.fechaLimite != null &&
+  documento.fechaLimite.slice(0, 10) < diaLocal(hoy)
 
 /**
- * @param {Array<{fechaRecepcion?: string, estado: string, fechaLimite: string | null}>} documentos
- *   Lista de GET /documentos.
- * @param {Date} hoy Fecha de referencia, por parámetro para poder probarla.
- * @param {string} [periodo] El periodo elegido (`AAAA-MM`).
- * @returns {{ total: number, enTramite: number, vencidos: number, completados: number }}
+ * Cuántos documentos hay en cada estado: es la cifra de cada tarjeta y coincide
+ * con lo que muestra la tabla al elegir ese estado.
+ *
+ * @param {Array<{estado: string}>} documentos Lista de GET /documentos.
+ * @returns {Record<string, number>} Una cuenta por cada estado del ENUM.
  */
-export const resumirDocumentos = (documentos, hoy, periodo) => {
-  const cuantos = (tarjeta) =>
-    documentos.filter((d) => coincideConTarjeta(d, tarjeta, hoy, periodo)).length
-  return {
-    total: cuantos('recibidos'),
-    enTramite: cuantos('enTramite'),
-    vencidos: cuantos('vencidos'),
-    completados: cuantos('completados'),
-  }
+export const contarPorEstado = (documentos) => {
+  const cuentas = Object.fromEntries(ESTADOS.map((estado) => [estado, 0]))
+  for (const d of documentos) if (d.estado in cuentas) cuentas[d.estado] += 1
+  return cuentas
 }
 
 /**
