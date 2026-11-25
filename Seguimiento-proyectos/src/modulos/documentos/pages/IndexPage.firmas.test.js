@@ -111,4 +111,26 @@ describe('rebanada 49 · limpieza tras registrar', () => {
     assert.ok(observaciones < firmaCliente, 'Las firmas deben ir después de las observaciones')
     assert.ok(firmaRecepcion < registrar, 'Las firmas deben ir antes de los botones')
   })
+
+  test('Autollenar y las firmas tienen aire: margen bajo el encabezado de la sección 1 y bajo Observaciones', () => {
+    // Las filas `q-col-gutter-md` suben 16 px con margen negativo; sin margen propio,
+    // el botón Autollenar y la caja de Observaciones quedaban pegados a lo de abajo.
+    const boton = PLANTILLA.indexOf('label="Autollenar"')
+    const filaEncabezado = PLANTILLA.lastIndexOf('<div class="row items-center', boton)
+    const etiquetaFila = PLANTILLA.slice(filaEncabezado, PLANTILLA.indexOf('>', filaEncabezado))
+    assert.match(
+      etiquetaFila,
+      /q-mb-(sm|md)/,
+      'el encabezado con Autollenar necesita margen inferior',
+    )
+
+    const obs = PLANTILLA.indexOf('v-model="form.observaciones"')
+    const inicioObs = PLANTILLA.lastIndexOf('<q-input', obs)
+    const etiquetaObs = PLANTILLA.slice(inicioObs, PLANTILLA.indexOf('/>', obs))
+    assert.match(
+      etiquetaObs,
+      /class="[^"]*q-mb-md/,
+      'Observaciones necesita margen antes de las firmas',
+    )
+  })
 })

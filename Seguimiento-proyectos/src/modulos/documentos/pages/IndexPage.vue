@@ -73,7 +73,7 @@
                 <!-- Sección 1: Datos de la Entidad -->
                 <!-- Autollenar va junto al título de la sección 1: es lo primero que
                    se decide (cliente frecuente) y al pie del formulario no se veía. -->
-                <div class="row items-center q-col-gutter-sm">
+                <div class="row items-center q-col-gutter-sm q-mb-md">
                   <div class="col-12 col-sm text-h6 text-weight-bold text-grey-8 row items-center">
                     <q-icon name="business" class="q-mr-xs text-primary" size="20px" />
                     1. Selección de Cliente y Empresa Receptora
@@ -580,6 +580,7 @@
                   autocomplete="off"
                   outlined
                   dense
+                  class="q-mb-md"
                   :disable="formularioBloqueado"
                 />
 
