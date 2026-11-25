@@ -576,6 +576,7 @@
                           flat
                           dense
                           size="sm"
+                          class="control-touch"
                           color="negative"
                           icon="clear"
                           label="Limpiar"
@@ -590,13 +591,10 @@
                         class="bg-white rounded-borders style-signature-canvas"
                         role="img"
                         aria-label="Firma del cliente, zona para dibujar con el dedo o el ratón"
-                        @mousedown="startDrawingCliente"
-                        @mousemove="drawCliente"
-                        @mouseup="stopDrawingCliente"
-                        @mouseleave="stopDrawingCliente"
-                        @touchstart.prevent="startDrawingCliente"
-                        @touchmove.prevent="drawCliente"
-                        @touchend.prevent="stopDrawingCliente"
+                        @pointerdown="startDrawingCliente"
+                        @pointermove="drawCliente"
+                        @pointerup="stopDrawingCliente"
+                        @pointercancel="stopDrawingCliente"
                         :style="{
                           pointerEvents: formularioBloqueado ? 'none' : 'auto',
                           opacity: formularioBloqueado ? 0.5 : 1,
@@ -629,6 +627,7 @@
                           flat
                           dense
                           size="sm"
+                          class="control-touch"
                           color="negative"
                           icon="clear"
                           label="Limpiar"
@@ -643,13 +642,10 @@
                         class="bg-white rounded-borders style-signature-canvas"
                         role="img"
                         aria-label="Firma del usuario recepcionista, zona para dibujar con el dedo o el ratón"
-                        @mousedown="startDrawingRecepcion"
-                        @mousemove="drawRecepcion"
-                        @mouseup="stopDrawingRecepcion"
-                        @mouseleave="stopDrawingRecepcion"
-                        @touchstart.prevent="startDrawingRecepcion"
-                        @touchmove.prevent="drawRecepcion"
-                        @touchend.prevent="stopDrawingRecepcion"
+                        @pointerdown="startDrawingRecepcion"
+                        @pointermove="drawRecepcion"
+                        @pointerup="stopDrawingRecepcion"
+                        @pointercancel="stopDrawingRecepcion"
                         :style="{
                           pointerEvents: formularioBloqueado ? 'none' : 'auto',
                           opacity: formularioBloqueado ? 0.5 : 1,
@@ -905,7 +901,8 @@
 
 <script setup>
 import SeccionAnimada from '@/modulos/documentos/components/SeccionAnimada.vue'
-import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
+import { medidasDelLienzo, posicionEnLienzo } from '@/modulos/documentos/composables/lienzoFirma.js'
 import { useQuasar } from 'quasar'
 import {
   obtenerCatalogos,
@@ -1151,19 +1148,6 @@ onMounted(async () => {
     formularioBloqueado.value = true
     mensajeBloqueo.value = 'Error de conexión al cargar catálogos'
   }
-
-  // Inicializar canvas
-  const tinta = tintaInstitucional()
-  ;[canvasCliente.value, canvasRecepcion.value].forEach((c) => {
-    c.width = c.offsetWidth
-    c.height = c.offsetHeight
-    const ctx = c.getContext('2d')
-    ctx.lineWidth = 2
-    ctx.lineCap = 'round'
-    ctx.strokeStyle = tinta
-    if (c === canvasCliente.value) ctxCliente = ctx
-    else ctxRecepcion = ctx
-  })
 })
 
 const mostrarAcuse = ref(false)
@@ -1275,81 +1259,122 @@ const canvasCliente = ref(null)
 const canvasRecepcion = ref(null)
 const firmaClienteVacia = ref(true)
 const firmaRecepcionVacia = ref(true)
-let ctxCliente = null,
-  ctxRecepcion = null
-let isDrawingC = false,
-  isDrawingR = false
-
 // La tinta se toma de la variable CSS que Quasar publica con la paleta, en vez de
 // un hexadecimal fijo, para que siga a $primary si algún día cambia.
 const tintaInstitucional = () =>
   getComputedStyle(document.documentElement).getPropertyValue('--q-primary').trim() || '#111e30'
 
-onMounted(() => {
-  const tinta = tintaInstitucional()
-  ;[canvasCliente.value, canvasRecepcion.value].forEach((c) => {
-    c.width = c.offsetWidth
-    c.height = c.offsetHeight
-    const ctx = c.getContext('2d')
+// Un lienzo de firma: guarda los trazos en coordenadas CSS para poder repintarlos
+// cuando cambia el tamaño (giro de pantalla, ajuste de columnas) sin perder la firma.
+const crearLienzo = (canvasRef, vaciaRef) => {
+  let ctx = null
+  let trazos = []
+  let trazoActual = null
+
+  const pintarTrazo = (puntos) => {
+    if (puntos.length === 1) {
+      // Un toque sin movimiento: un punto del grosor de la línea
+      ctx.beginPath()
+      ctx.arc(puntos[0].x, puntos[0].y, ctx.lineWidth / 2, 0, Math.PI * 2)
+      ctx.fillStyle = ctx.strokeStyle
+      ctx.fill()
+      return
+    }
+    ctx.beginPath()
+    ctx.moveTo(puntos[0].x, puntos[0].y)
+    for (const p of puntos.slice(1)) ctx.lineTo(p.x, p.y)
+    ctx.stroke()
+  }
+
+  const repintar = () => {
+    ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height)
+    trazos.forEach(pintarTrazo)
+  }
+
+  // Ajustar el tamaño interno cambia el estado del contexto: se vuelve a configurar
+  const ajustar = () => {
+    const canvas = canvasRef.value
+    const medidas = medidasDelLienzo({
+      anchoCss: canvas.clientWidth,
+      altoCss: canvas.clientHeight,
+      dpr: window.devicePixelRatio,
+    })
+    if (medidas.ancho === 0 || medidas.alto === 0) return
+    canvas.width = medidas.ancho
+    canvas.height = medidas.alto
+    ctx.setTransform(medidas.escala, 0, 0, medidas.escala, 0, 0)
     ctx.lineWidth = 2
     ctx.lineCap = 'round'
-    ctx.strokeStyle = tinta
-    if (c === canvasCliente.value) ctxCliente = ctx
-    else ctxRecepcion = ctx
-  })
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = tintaInstitucional()
+    repintar()
+  }
+
+  const iniciar = () => {
+    ctx = canvasRef.value.getContext('2d')
+    ajustar()
+    const observador = new ResizeObserver(ajustar)
+    observador.observe(canvasRef.value)
+    return observador
+  }
+
+  const posicion = (e) => posicionEnLienzo(canvasRef.value.getBoundingClientRect(), e)
+
+  const empezar = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    canvasRef.value.setPointerCapture(e.pointerId)
+    trazoActual = [posicion(e)]
+    trazos.push(trazoActual)
+    vaciaRef.value = false
+    pintarTrazo(trazoActual)
+  }
+  const dibujar = (e) => {
+    if (!trazoActual) return
+    const anterior = trazoActual[trazoActual.length - 1]
+    const actual = posicion(e)
+    trazoActual.push(actual)
+    // El primer segmento reemplaza al punto inicial: se repinta el trazo entero
+    if (trazoActual.length === 2) {
+      repintar()
+    } else {
+      ctx.beginPath()
+      ctx.moveTo(anterior.x, anterior.y)
+      ctx.lineTo(actual.x, actual.y)
+      ctx.stroke()
+    }
+  }
+  const terminar = () => {
+    trazoActual = null
+  }
+  const limpiar = () => {
+    trazos = []
+    trazoActual = null
+    ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height)
+    vaciaRef.value = true
+  }
+
+  return { iniciar, empezar, dibujar, terminar, limpiar }
+}
+
+const lienzoCliente = crearLienzo(canvasCliente, firmaClienteVacia)
+const lienzoRecepcion = crearLienzo(canvasRecepcion, firmaRecepcionVacia)
+const startDrawingCliente = lienzoCliente.empezar
+const drawCliente = lienzoCliente.dibujar
+const stopDrawingCliente = lienzoCliente.terminar
+const limpiarFirmaCliente = lienzoCliente.limpiar
+const startDrawingRecepcion = lienzoRecepcion.empezar
+const drawRecepcion = lienzoRecepcion.dibujar
+const stopDrawingRecepcion = lienzoRecepcion.terminar
+const limpiarFirmaRecepcion = lienzoRecepcion.limpiar
+
+// Un solo punto de inicialización de los lienzos; los observadores se sueltan al salir
+let observadoresLienzo = []
+onMounted(() => {
+  observadoresLienzo = [lienzoCliente.iniciar(), lienzoRecepcion.iniciar()]
 })
-
-const getPos = (canvas, e) => {
-  const rect = canvas.getBoundingClientRect()
-  return {
-    x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
-    y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top,
-  }
-}
-
-const startDrawing = (e, canvas, ctx, isVacia) => {
-  const pos = getPos(canvas, e)
-  ctx.beginPath()
-  ctx.moveTo(pos.x, pos.y)
-  isVacia.value = false
-  return true
-}
-
-const startDrawingCliente = (e) => {
-  isDrawingC = startDrawing(e, canvasCliente.value, ctxCliente, firmaClienteVacia)
-}
-const drawCliente = (e) => {
-  if (isDrawingC) {
-    const pos = getPos(canvasCliente.value, e)
-    ctxCliente.lineTo(pos.x, pos.y)
-    ctxCliente.stroke()
-  }
-}
-const stopDrawingCliente = () => {
-  isDrawingC = false
-}
-const limpiarFirmaCliente = () => {
-  ctxCliente.clearRect(0, 0, canvasCliente.value.width, canvasCliente.value.height)
-  firmaClienteVacia.value = true
-}
-
-const startDrawingRecepcion = (e) => {
-  isDrawingR = startDrawing(e, canvasRecepcion.value, ctxRecepcion, firmaRecepcionVacia)
-}
-const drawRecepcion = (e) => {
-  if (isDrawingR) {
-    const pos = getPos(canvasRecepcion.value, e)
-    ctxRecepcion.lineTo(pos.x, pos.y)
-    ctxRecepcion.stroke()
-  }
-}
-const stopDrawingRecepcion = () => {
-  isDrawingR = false
-}
-const limpiarFirmaRecepcion = () => {
-  ctxRecepcion.clearRect(0, 0, canvasRecepcion.value.width, canvasRecepcion.value.height)
-  firmaRecepcionVacia.value = true
-}
+onBeforeUnmount(() => {
+  observadoresLienzo.forEach((o) => o.disconnect())
+})
 
 const onSubmit = async () => {
   // Guarda de reentrada: `:disable` apaga el botón, pero no cubre el envío en
@@ -1470,10 +1495,9 @@ const onSubmit = async () => {
     // Mostrar modal de acuse
     mostrarAcuse.value = true
 
-    // 6. Limpiar formulario SOLO si no hubo rechazados de adjuntos
-    if (archivosRechazados.length === 0) {
-      resetForm()
-    }
+    // 6. Limpiar formulario siempre tras el registro: los adjuntos descartados ya se
+    // avisaron arriba, y dejar el formulario lleno permitía registrar un duplicado.
+    resetForm()
 
     $q.notify({ type: 'positive', message: 'Documento registrado con folio ' + cuerpo.folio })
   } catch (error) {
@@ -1504,6 +1528,7 @@ const resetForm = () => {
   form.asunto = ''
   form.departamento = null
   form.contadorAsignado = null
+  form.observaciones = ''
   form.archivos = null
   limpiarFirmaCliente()
   limpiarFirmaRecepcion()
