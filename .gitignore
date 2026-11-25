@@ -45,3 +45,6 @@ graphify-out/
 
 # Salidas del plugin Playwright MCP (capturas, snapshots y logs de consola de las pruebas en navegador)
 .playwright-mcp/
+
+# Carpetas de los clientes con los archivos y acuses de recepción de documentos (CARPETA_ADJUNTOS)
+/##RECEPCION DE PAPELERIA_CLIENTES/
