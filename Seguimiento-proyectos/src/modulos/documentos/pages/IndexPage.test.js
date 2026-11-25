@@ -233,8 +233,8 @@ describe('D4 · el chip "Folio actual" mostraba un folio inventado', () => {
     assert.equal(CODIGO.includes('form.folio'), false, 'el formulario ya no lleva un folio propio')
   })
 
-  test('el chip dice que el folio se asigna al guardar', () => {
-    assert.match(FUENTE, /Se asigna al guardar/)
+  test('una línea discreta dice que el folio se asigna al registrar', () => {
+    assert.match(FUENTE, /El folio se asigna al registrar\./)
   })
 })
 

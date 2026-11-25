@@ -50,7 +50,7 @@ describe('Recepción — rebanada 4: selectores modernos y formulario responsivo
   })
 
   test('la fila de prioridad, SLA y contador pasa a 2 por fila en tablet', () => {
-    const bloque = entre(PAGINA, '3. Prioridad y Vía de Entrega', '<!-- Archivos y firmas')
+    const bloque = entre(PAGINA, '3. Prioridad y entrega', '<!-- Archivos y firmas')
     const columnas = bloque.match(/col-12 col-sm-6 col-md-4/g) || []
     assert.equal(columnas.length, 3, 'Las tres columnas deben usar col-12 col-sm-6 col-md-4')
   })

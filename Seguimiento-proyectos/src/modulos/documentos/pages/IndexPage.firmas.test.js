@@ -98,7 +98,7 @@ describe('rebanada 49 · limpieza tras registrar', () => {
     const observaciones = PLANTILLA.indexOf('label="Observaciones"')
     const firmaCliente = PLANTILLA.indexOf('ref="canvasCliente"')
     const firmaRecepcion = PLANTILLA.indexOf('ref="canvasRecepcion"')
-    const registrar = PLANTILLA.indexOf('label="Registrar y Acuse"')
+    const registrar = PLANTILLA.indexOf('label="Registrar y generar acuse"')
     for (const [nombre, pos] of Object.entries({
       archivos,
       observaciones,

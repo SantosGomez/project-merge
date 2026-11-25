@@ -47,10 +47,10 @@ describe('Recepción — autollenado con cliente frecuente', () => {
   })
 
   test('el botón de autollenar va arriba, en la sección 1, y no al pie del formulario', () => {
-    const seccion1 = PLANTILLA.indexOf('1. Selección de Cliente')
+    const seccion1 = PLANTILLA.indexOf('1. Cliente y empresa que recibe')
     const boton = PLANTILLA.indexOf('label="Autollenar"')
     const cliente = PLANTILLA.indexOf('label="Cliente *"')
-    const registrar = PLANTILLA.indexOf('label="Registrar y Acuse"')
+    const registrar = PLANTILLA.indexOf('label="Registrar y generar acuse"')
     assert.notEqual(seccion1, -1, 'falta el título de la sección 1')
     assert.ok(
       boton > seccion1 && boton < cliente,

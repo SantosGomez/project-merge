@@ -6,24 +6,17 @@
           <!-- Encabezado de la Vista -->
           <q-card class="q-mb-md bg-white shadow-1 rounded-borders">
             <q-card-section class="row items-center q-col-gutter-sm q-pb-none">
-              <!-- `col-12 col-sm` en ambos: en móvil se apilan, porque con `col` a secas
-                 el bloque de texto se encoge (flex-grow) para dejarle sitio al chip
-                 y el título se partía en dos líneas al lado del folio. -->
               <div class="col-12 col-sm">
-                <div class="text-h5 text-weight-bold text-primary">Recepción de Documentos</div>
+                <div class="text-h5 text-weight-bold text-primary">Recepción de documentos</div>
                 <div class="text-subtitle2 text-grey-8">
-                  Módulo de registro e ingesta de comprobantes contables y fiscales
+                  Registra lo que entrega el cliente y genera su acuse firmado.
                 </div>
-              </div>
-              <div class="col-12 col-sm-auto">
                 <!-- El folio lo asigna el servidor al guardar (T26). Antes esta vista
                    inventaba uno con números aleatorios y mostraba un folio que
                    nunca existió: `DCA-2026-9817` con el folio real `DCA-2026-10003`.
                    El texto del comentario no repite el nombre de la función que
                    sortea, para que el `git grep` de ese nombre siga dando vacío. -->
-                <q-chip color="secondary" text-color="primary" icon="history">
-                  Folio: <strong class="q-ml-xs">Se asigna al guardar</strong>
-                </q-chip>
+                <div class="text-caption text-grey-8">El folio se asigna al registrar.</div>
               </div>
             </q-card-section>
             <q-separator class="q-mt-md" />
@@ -53,6 +46,7 @@
             <template #action>
               <q-btn
                 flat
+                no-caps
                 icon="refresh"
                 label="Reintentar"
                 :loading="reintentando"
@@ -76,7 +70,7 @@
                 <div class="row items-center q-col-gutter-sm q-mb-md">
                   <div class="col-12 col-sm text-h6 text-weight-bold text-grey-8 row items-center">
                     <q-icon name="business" class="q-mr-xs text-primary" size="20px" />
-                    1. Selección de Cliente y Empresa Receptora
+                    1. Cliente y empresa que recibe
                   </div>
                   <div class="col-12 col-sm-auto">
                     <q-btn
@@ -99,7 +93,7 @@
                     <q-select
                       v-model="form.empresaDca"
                       :options="opcionesEmpresasDca"
-                      label="Empresa del Grupo DCA Receptora *"
+                      label="Empresa del grupo que recibe *"
                       name="empresaDca"
                       autocomplete="off"
                       outlined
@@ -111,7 +105,7 @@
                       transition-hide="jump-up"
                       class="selector-moderno"
                       :disable="formularioBloqueado"
-                      :rules="[(val) => !!val || 'Seleccione la empresa receptora']"
+                      :rules="[(val) => !!val || 'Elige la empresa que recibe']"
                     >
                       <template #prepend>
                         <q-icon name="account_balance" color="primary" />
@@ -205,20 +199,20 @@
                 <!-- Sección 2: Clasificación Contable -->
                 <div class="text-h6 text-weight-bold text-grey-8 row items-center q-pt-sm">
                   <q-icon name="folder" class="q-mr-xs text-primary" size="20px" />
-                  2. Clasificación Contable y Periodo
+                  2. Clasificación y periodo
                 </div>
 
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-sm-6">
                     <q-input
                       v-model="form.asunto"
-                      label="Asunto del Documento *"
+                      label="Asunto del documento *"
                       name="asunto"
                       autocomplete="off"
                       outlined
                       dense
                       :disable="formularioBloqueado"
-                      :rules="[(val) => !!val || 'El asunto es requerido']"
+                      :rules="[(val) => !!val || 'Escribe el asunto']"
                     />
                   </div>
                   <div class="col-12 col-sm-6">
@@ -237,7 +231,7 @@
                       transition-hide="jump-up"
                       class="selector-moderno"
                       :disable="formularioBloqueado"
-                      :rules="[(val) => !!val || 'Seleccione el departamento']"
+                      :rules="[(val) => !!val || 'Elige el departamento']"
                     >
                       <template #prepend>
                         <q-icon name="account_tree" color="primary" size="18px" />
@@ -279,7 +273,7 @@
                     <q-select
                       v-model="form.tipoDocumento"
                       :options="opcionesTiposDocumento"
-                      label="Tipo de Documento *"
+                      label="Tipo de documento *"
                       name="tipoDocumento"
                       autocomplete="off"
                       outlined
@@ -291,7 +285,7 @@
                       transition-hide="jump-up"
                       class="selector-moderno"
                       :disable="formularioBloqueado"
-                      :rules="[(val) => !!val || 'Seleccione el tipo de documento']"
+                      :rules="[(val) => !!val || 'Elige el tipo de documento']"
                     >
                       <template #prepend>
                         <q-icon name="article" color="primary" />
@@ -337,9 +331,10 @@
                       dense
                       :disable="formularioBloqueado"
                       :rules="[
-                        (val) => !!val || 'El periodo es requerido',
+                        (val) => !!val || 'Escribe el periodo',
                         (val) =>
-                          /^\d{4}-(0[1-9]|1[0-2])$/.test(val) || 'Periodo inválido (AAAA-MM)',
+                          /^\d{4}-(0[1-9]|1[0-2])$/.test(val) ||
+                          'El periodo va como AAAA-MM, por ejemplo 2026-11',
                       ]"
                     >
                       <template #prepend>
@@ -352,7 +347,7 @@
                 <!-- Sección 3: Vía de Entrega y Prioridad -->
                 <div class="text-h6 text-weight-bold text-grey-8 row items-center q-pt-sm">
                   <q-icon name="assignment_late" class="q-mr-xs text-primary" size="20px" />
-                  3. Prioridad y Vía de Entrega
+                  3. Prioridad y entrega
                 </div>
 
                 <div class="row q-col-gutter-md">
@@ -360,6 +355,8 @@
                     <q-select
                       v-model="form.prioridad"
                       :options="opcionesPrioridades"
+                      emit-value
+                      map-options
                       label="Prioridad *"
                       name="prioridad"
                       autocomplete="off"
@@ -417,13 +414,13 @@
                   <div class="col-12 col-sm-6 col-md-4">
                     <q-input
                       :model-value="formatearFecha(form.fechaLimiteSla)"
-                      label="Fecha Límite SLA"
+                      label="Fecha límite de atención"
                       name="fechaLimiteSla"
                       autocomplete="off"
                       outlined
                       dense
                       readonly
-                      hint="Calculada según la prioridad"
+                      hint="Se calcula con la prioridad"
                     />
                   </div>
                   <div class="col-12 col-sm-6 col-md-4">
@@ -486,7 +483,7 @@
                     <q-select
                       v-model="form.viaEntrega"
                       :options="['Digital', 'Físico', 'Correo Electrónico']"
-                      label="Vía de Entrega *"
+                      label="Vía de entrega *"
                       name="viaEntrega"
                       autocomplete="off"
                       outlined
@@ -545,13 +542,13 @@
                 <!-- Archivos y firmas... -->
                 <div class="text-h6 text-weight-bold text-grey-8 row items-center q-pt-sm">
                   <q-icon name="draw" class="q-mr-xs text-primary" size="20px" />
-                  4. Archivos Adjuntos y Firmas
+                  4. Archivos, observaciones y firmas
                 </div>
 
                 <div class="q-my-sm">
                   <q-file
                     v-model="form.archivos"
-                    label="Seleccionar o arrastrar archivos (PDF, XML, ZIP, JPG)"
+                    label="Elige o arrastra los archivos"
                     name="archivos"
                     autocomplete="off"
                     outlined
@@ -565,9 +562,7 @@
                     <template #prepend>
                       <q-icon name="attach_file" color="primary" />
                     </template>
-                    <template #hint>
-                      Formatos aceptados: .pdf, .xml, .zip, .jpg. Tamaño máximo: 25MB por archivo.
-                    </template>
+                    <template #hint> PDF, XML, ZIP o JPG. Máximo 25 MB por archivo. </template>
                   </q-file>
                 </div>
 
@@ -603,7 +598,7 @@
                             firmaClienteVacia && submitted ? 'text-negative' : 'text-grey-8',
                           ]"
                         >
-                          Firma de Entregado (Cliente) *
+                          Firma de quien entrega (cliente) *
                         </div>
                         <q-btn
                           flat
@@ -612,11 +607,12 @@
                           class="control-touch"
                           color="negative"
                           icon="clear"
-                          label="Limpiar"
+                          label="Borrar firma"
+                          no-caps
                           @click="limpiarFirmaCliente"
                           :disable="formularioBloqueado"
                         >
-                          <q-tooltip>Limpiar trazo de la firma del cliente</q-tooltip>
+                          <q-tooltip>Borrar la firma del cliente</q-tooltip>
                         </q-btn>
                       </div>
                       <canvas
@@ -634,7 +630,7 @@
                         }"
                       ></canvas>
                       <div class="text-caption text-grey-8 text-center q-mt-xs">
-                        <q-icon name="gesture" /> Dibuje la firma con el dedo o ratón
+                        <q-icon name="gesture" /> Dibuja la firma con el dedo o el ratón
                       </div>
                     </q-card>
                   </div>
@@ -654,7 +650,7 @@
                             firmaRecepcionVacia && submitted ? 'text-negative' : 'text-grey-8',
                           ]"
                         >
-                          Firma de Recibido (DCA) *
+                          Firma de quien recibe (DCA) *
                         </div>
                         <q-btn
                           flat
@@ -663,11 +659,12 @@
                           class="control-touch"
                           color="negative"
                           icon="clear"
-                          label="Limpiar"
+                          label="Borrar firma"
+                          no-caps
                           @click="limpiarFirmaRecepcion"
                           :disable="formularioBloqueado"
                         >
-                          <q-tooltip>Limpiar trazo de la firma del recepcionista</q-tooltip>
+                          <q-tooltip>Borrar la firma de quien recibe</q-tooltip>
                         </q-btn>
                       </div>
                       <canvas
@@ -685,7 +682,7 @@
                         }"
                       ></canvas>
                       <div class="text-caption text-grey-8 text-center q-mt-xs">
-                        <q-icon name="edit" /> Firma del usuario recepcionista
+                        <q-icon name="gesture" /> Dibuja la firma con el dedo o el ratón
                       </div>
                     </q-card>
                   </div>
@@ -694,6 +691,7 @@
                 <div class="row justify-end q-gutter-sm">
                   <q-btn
                     label="Limpiar"
+                    no-caps
                     color="grey-8"
                     flat
                     @click="resetForm"
@@ -701,13 +699,14 @@
                   />
                   <q-btn
                     type="submit"
-                    label="Registrar y Acuse"
+                    label="Registrar y generar acuse"
+                    no-caps
                     color="primary"
                     icon-right="receipt_long"
                     class="q-px-md"
                     :disable="formularioBloqueado || guardando"
                   >
-                    <q-tooltip>Registrar la entrega e imprimir acuse de recepción</q-tooltip>
+                    <q-tooltip>Registrar la entrega y generar el acuse de recepción</q-tooltip>
                   </q-btn>
                 </div>
               </q-form>
@@ -724,7 +723,7 @@
               <q-card-section class="row items-center bg-primary text-white rounded-borders">
                 <q-icon name="verified" size="32px" class="q-mr-sm" />
                 <div>
-                  <div class="text-h6 text-weight-bold">Acuse Digital de Recepción</div>
+                  <div class="text-h6 text-weight-bold">Acuse de recepción</div>
                   <div class="text-caption">Grupo DCA — Recepción de Documentación</div>
                 </div>
                 <q-space />
@@ -745,13 +744,13 @@
                   class="row justify-between items-center q-mb-md banda-acuse q-pa-sm rounded-borders"
                 >
                   <div>
-                    <span class="text-caption text-black">Folio de Acuse:</span><br />
+                    <span class="text-caption text-black">Folio</span><br />
                     <strong class="text-subtitle1 text-secondary-black">{{
                       acuseData.folio
                     }}</strong>
                   </div>
                   <div class="text-right">
-                    <span class="text-caption text-black">Fecha y Hora:</span><br />
+                    <span class="text-caption text-black">Fecha y hora</span><br />
                     <strong class="text-caption">{{
                       formatearFechaHora(acuseData.fechaRecepcion)
                     }}</strong>
@@ -760,55 +759,55 @@
 
                 <q-list separator dense>
                   <q-item
-                    ><q-item-section class="text-grey-8">Empresa:</q-item-section
+                    ><q-item-section class="text-grey-8">Empresa</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       acuseData.empresa
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">Cliente:</q-item-section
+                    ><q-item-section class="text-grey-8">Cliente</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       acuseData.cliente
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">Asunto:</q-item-section
+                    ><q-item-section class="text-grey-8">Asunto</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       acuseData.asunto
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">Departamento:</q-item-section
+                    ><q-item-section class="text-grey-8">Departamento</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       acuseData.departamento
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">Prioridad:</q-item-section
+                    ><q-item-section class="text-grey-8">Prioridad</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
-                      acuseData.prioridad
+                      etiquetaDePrioridad(acuseData.prioridad)
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">Vía de Entrega:</q-item-section
+                    ><q-item-section class="text-grey-8">Vía de entrega</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       acuseData.viaEntrega
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">SLA (Fecha Límite):</q-item-section
+                    ><q-item-section class="text-grey-8">Fecha límite de atención</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       formatearFecha(acuseData.fechaLimite)
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">Periodo:</q-item-section
+                    ><q-item-section class="text-grey-8">Periodo</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       acuseData.periodo
                     }}</q-item-section></q-item
                   >
                   <q-item
-                    ><q-item-section class="text-grey-8">Archivos:</q-item-section
+                    ><q-item-section class="text-grey-8">Archivos</q-item-section
                     ><q-item-section class="text-right text-weight-bold">{{
                       acuseData.archivos + ' archivo(s)'
                     }}</q-item-section></q-item
@@ -817,7 +816,7 @@
 
                 <!-- Sección de Firmas Estampadas en el Acuse -->
                 <div class="q-mt-md text-h6 text-weight-bold text-grey-8">
-                  Firmas Registradas de Conformidad:
+                  Firmas de conformidad
                 </div>
                 <div class="row q-col-gutter-sm q-mt-xs">
                   <div class="col-6 text-center">
@@ -832,9 +831,7 @@
                       />
                       <div v-else class="sin-firma">Sin firma dibujada</div>
                     </div>
-                    <div class="text-caption text-weight-bold q-mt-xs text-grey-8">
-                      Firma de Entregado
-                    </div>
+                    <div class="text-caption text-weight-bold q-mt-xs text-grey-8">Entregó</div>
                     <div class="pie-firma text-grey-8">{{ acuseData.cliente || 'Cliente' }}</div>
                   </div>
 
@@ -850,9 +847,7 @@
                       />
                       <div v-else class="sin-firma">Sin firma dibujada</div>
                     </div>
-                    <div class="text-caption text-weight-bold q-mt-xs text-grey-8">
-                      Firma de Recibido
-                    </div>
+                    <div class="text-caption text-weight-bold q-mt-xs text-grey-8">Recibió</div>
                     <div class="pie-firma text-grey-8">
                       {{ acuseData.empresa || 'Recepción DCA' }}
                     </div>
@@ -860,8 +855,8 @@
                 </div>
 
                 <div class="q-mt-md nota-acuse q-pa-sm rounded-borders">
-                  <strong>Nota:</strong> Este comprobante digital valida la ingesta preliminar de la
-                  documentación en el sistema del Grupo DCA para su posterior revisión contable.
+                  Este acuse confirma que el Grupo DCA recibió la documentación para su revisión
+                  contable.
                 </div>
 
                 <!-- Estado del guardado en la carpeta del cliente -->
@@ -883,6 +878,7 @@
                     <template #action>
                       <q-btn
                         flat
+                        no-caps
                         icon="refresh"
                         label="Reintentar"
                         :loading="reintentando"
@@ -899,7 +895,7 @@
               </q-card-section>
 
               <q-card-actions align="right" class="q-pr-md q-pb-md">
-                <q-btn flat label="Cerrar" color="grey-8" v-close-popup />
+                <q-btn flat no-caps label="Cerrar" color="grey-8" v-close-popup />
                 <AcuseImprimir ref="acuseComp" :acuse-data="acuseData" />
               </q-card-actions>
             </q-card>
@@ -924,6 +920,7 @@ import {
 } from '@/modulos/documentos/servicios/api.js'
 import { periodoDe, formatearFecha } from '@/modulos/documentos/composables/fechas.js'
 import { plazoDeEntrega } from '@/modulos/documentos/composables/plazoEntrega.js'
+import { etiquetaDePrioridad } from '@/modulos/documentos/composables/etiquetaPrioridad.js'
 import { opcionesDeClientes } from '@/modulos/documentos/composables/clientesVista.js'
 import {
   subirEnOrden,
@@ -996,7 +993,12 @@ const opcionesContadores = computed(() =>
 )
 
 // Prioridad se queda hardcoded (no viene de catálogo)
-const opcionesPrioridades = ['BAJA', 'MEDIA', 'ALTA', 'URGENTE']
+const opcionesPrioridades = [
+  { value: 'BAJA', label: 'Baja' },
+  { value: 'MEDIA', label: 'Media' },
+  { value: 'ALTA', label: 'Alta' },
+  { value: 'URGENTE', label: 'Urgente' },
+]
 
 // Periodo: un único valor AAAA-MM, inicializado al mes en curso (ver onMounted)
 
@@ -1092,7 +1094,10 @@ const validarTamañoArchivos = (files) => {
   if (!files) return
   for (const file of files) {
     if (file.size > 25 * 1024 * 1024) {
-      $q.notify({ type: 'warning', message: 'Archivo ' + file.name + ' excede 25MB' })
+      $q.notify({
+        type: 'warning',
+        message: `El archivo ${file.name} pasa de 25 MB y no se adjuntó.`,
+      })
       form.archivos = form.archivos.filter((f) => f !== file)
     }
   }
@@ -1394,7 +1399,10 @@ const onSubmit = async () => {
 
   submitted.value = true
   if (firmaClienteVacia.value || firmaRecepcionVacia.value) {
-    $q.notify({ type: 'warning', message: 'Ambas firmas son obligatorias para el registro' })
+    $q.notify({
+      type: 'warning',
+      message: 'Faltan firmas: el cliente y quien recibe deben firmar antes de registrar.',
+    })
     return
   }
 
@@ -1418,12 +1426,13 @@ const onSubmit = async () => {
 
   // Avisar de rechazados pero NO abortar
   if (archivosRechazados.length > 0) {
-    const lista = archivosRechazados.map((a) => `${a.nombre} (${a.tamanoMB} MB)`).join(', ')
-    $q.notify({
-      type: 'warning',
-      message: `Los siguientes archivos superan 25 MB y no se adjuntaron: ${lista}`,
-      timeout: 8000,
-    })
+    for (const a of archivosRechazados) {
+      $q.notify({
+        type: 'warning',
+        message: `El archivo ${a.nombre} pasa de 25 MB y no se adjuntó.`,
+        timeout: 8000,
+      })
+    }
   }
 
   // 2. Leer los lienzos ANTES de armar el payload. Antes se leían 29 líneas más
