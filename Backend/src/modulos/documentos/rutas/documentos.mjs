@@ -423,6 +423,89 @@ export async function rutaListaDireccionamiento(pool) {
   }
 }
 
+/**
+ * GET /documentos/entregados
+ *
+ * Lista los documentos que se entregaron al contador en un mes (`mes`,
+ * `AAAA-MM`; sin mes válido, el mes en curso). La entrega es la fila de
+ * `documento_historial` que pasó de `RECEPCIONADO` a `EN_PROCESO`; si hubiera
+ * más de una por documento, cuenta la más reciente. El estado que se devuelve
+ * es el actual, que pudo cambiar después de la entrega. Solo consulta.
+ *
+ * @param {Pool} pool - Conexiones de base de datos.
+ * @param {object} query - searchParams parseados (`mes`: 'AAAA-MM').
+ * @returns {Promise<{ status: number, body: object }>}
+ */
+export async function rutaListaEntregados(pool, query = {}) {
+  let mes = query.mes;
+  if (typeof mes !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) {
+    const hoy = new Date();
+    mes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  try {
+    // Rango del mes en texto local (sin DATE_FORMAT sobre la columna)
+    const [anio, numeroMes] = mes.split("-").map(Number);
+    const dos = (n) => String(n).padStart(2, "0");
+    const inicioMes = `${anio}-${dos(numeroMes)}-01 00:00:00`;
+    const inicioSiguiente =
+      numeroMes === 12
+        ? `${anio + 1}-01-01 00:00:00`
+        : `${anio}-${dos(numeroMes + 1)}-01 00:00:00`;
+
+    const [filas] = await pool.query(
+      `SELECT d.id, d.folio, c.nombre AS cliente, c.rfc,
+              t.nombre AS tipo, d.periodo, d.prioridad, d.estado,
+              d.fecha_recepcion AS fechaRecepcion,
+              h.created_at AS fechaEntrega,
+              d.contador_id AS contadorId,
+              uc.nombre AS contador,
+              ue.nombre AS entregadoPor,
+              h.comentarios
+       FROM documento_historial h
+       JOIN (SELECT documento_id, MAX(id) AS ultimoId
+               FROM documento_historial
+              WHERE estado_anterior = 'RECEPCIONADO' AND estado_nuevo = 'EN_PROCESO'
+              GROUP BY documento_id) u ON u.ultimoId = h.id
+       JOIN documentos d ON d.id = h.documento_id
+       JOIN clientes c ON c.id = d.cliente_id
+       JOIN tipos_documento t ON t.id = d.tipo_doc_id
+       LEFT JOIN usuarios uc ON uc.id = d.contador_id
+       LEFT JOIN usuarios ue ON ue.id = h.usuario_id
+       WHERE h.created_at >= ? AND h.created_at < ?
+       ORDER BY h.created_at DESC, h.id DESC`,
+      [inicioMes, inicioSiguiente],
+    );
+
+    return {
+      status: 200,
+      body: {
+        documentos: filas.map((fila) => ({
+          ...fila,
+          fechaRecepcion: aTextoLocal(fila.fechaRecepcion),
+          fechaEntrega: aTextoLocal(fila.fechaEntrega),
+          contadorId: fila.contadorId ?? null,
+          contador: fila.contador ?? null,
+          entregadoPor: fila.entregadoPor ?? null,
+          comentarios: fila.comentarios ?? null,
+        })),
+      },
+    };
+  } catch (error) {
+    const motivo = clasificarFallo(error);
+    if (motivo === "SIN_CONEXION" || motivo === "ESQUEMA_NO_APLICADO") {
+      return {
+        status: 503,
+        body: { error: motivo, mensaje: mensajeDeFallo(motivo) },
+      };
+    }
+    return {
+      status: 500,
+      body: { error: "INTERNO", mensaje: mensajeDeFallo("OTRO") },
+    };
+  }
+}
+
 /** Tope de cada firma en caracteres: dos caben de sobra en el cuerpo de 2 MiB. */
 const LIMITE_FIRMA = 700_000;
 

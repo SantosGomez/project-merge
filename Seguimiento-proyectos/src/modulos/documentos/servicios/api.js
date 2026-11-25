@@ -75,6 +75,15 @@ export async function obtenerDireccionamiento() {
 }
 
 /**
+ * Obtiene los documentos entregados al contador en un mes (pestaña «Entregados»).
+ * @param {string} mes - Mes de entrega, 'YYYY-MM'
+ * @returns {Promise<Object>} Respuesta del endpoint: { documentos }
+ */
+export async function obtenerEntregados(mes) {
+  return get(`${BASE_DOC}/documentos/entregados?mes=${encodeURIComponent(mes)}`)
+}
+
+/**
  * Formaliza la entrega de un documento al contador: guarda las dos firmas y lo
  * pasa a En proceso.
  * @param {number} id - ID del documento

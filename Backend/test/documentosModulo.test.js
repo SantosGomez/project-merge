@@ -182,6 +182,8 @@ describe('módulo de documentos: acceso', () => {
     assert.strictEqual((await pedir('contador', 'GET', `/doc/documentos?periodo=${PERIODO}`)).statusCode, 200);
     assert.strictEqual((await pedir('practicante', 'GET', `/doc/documentos?periodo=${PERIODO}`)).statusCode, 200);
     assert.strictEqual((await pedir('contador', 'GET', '/doc/documentos/direccionamiento')).statusCode, 403);
+    assert.strictEqual((await pedir('contador', 'GET', '/doc/documentos/entregados')).statusCode, 403);
+    assert.strictEqual((await pedir('practicante', 'GET', '/doc/documentos/entregados')).statusCode, 403);
     assert.strictEqual((await pedir('practicante', 'POST', '/doc/documentos/1/estado', { estado: 'EN_PROCESO' })).statusCode, 403);
     assert.strictEqual((await pedir('recepcion', 'GET', `/doc/documentos?periodo=${PERIODO}`)).statusCode, 403);
     assert.strictEqual((await pedir('recepcion', 'GET', '/doc/usuarios')).statusCode, 403);
@@ -245,6 +247,22 @@ describe('módulo de documentos: recepción de punta a punta', () => {
     const [fila] = await query('SELECT estado, contador_id FROM documentos WHERE id = ?', [documento.id]);
     assert.strictEqual(fila.estado, 'EN_PROCESO');
     assert.strictEqual(fila.contador_id, cuentas.contador.id);
+  });
+
+  test('lo entregado aparece en «Entregados» del mes en curso, con contador, quien entregó y estado actual', async () => {
+    const r = await pedir('recepcion', 'GET', '/doc/documentos/entregados');
+    assert.strictEqual(r.statusCode, 200, JSON.stringify(r.body));
+    const fila = r.body.documentos.find((d) => d.id === documento.id);
+    assert.ok(fila, 'el documento entregado sale en el mes actual');
+    assert.strictEqual(fila.estado, 'EN_PROCESO');
+    assert.strictEqual(fila.contadorId, cuentas.contador.id);
+    assert.strictEqual(fila.contador, cuentas.contador.nombre);
+    assert.strictEqual(fila.entregadoPor, cuentas.recepcion.nombre);
+    assert.match(fila.fechaEntrega, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+    const otroMes = await pedir('recepcion', 'GET', '/doc/documentos/entregados?mes=2000-01');
+    assert.ok(!otroMes.body.documentos.some((d) => d.id === documento.id));
+    const dir = await pedir('recepcion', 'GET', '/doc/documentos/direccionamiento');
+    assert.ok(!dir.body.documentos.some((d) => d.id === documento.id), 'ya no está por entregar');
   });
 
   test('solo el contador asignado (o el administrador) cambia el estado', async () => {

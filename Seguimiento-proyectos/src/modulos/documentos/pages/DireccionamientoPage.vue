@@ -42,7 +42,9 @@
               />
               <div>
                 <div class="text-subtitle2 text-grey-8">Pendientes de entrega</div>
-                <div class="text-h6 text-weight-bold text-primary">{{ resumen.porEntregar }}</div>
+                <div class="text-h6 text-weight-bold text-primary">
+                  {{ resumen.porEntregar }}
+                </div>
               </div>
             </q-card-section>
           </q-card>
@@ -90,6 +92,69 @@
             Documentos por Entregar
           </div>
           <div class="col-12 col-sm-auto row q-col-gutter-sm items-center">
+            <q-toggle
+              v-model="mostrarEntregados"
+              label="Mostrar entregados"
+              color="primary"
+              class="toggle-entregados"
+            >
+              <q-tooltip>
+                Agrega a la tabla los documentos que ya se entregaron al contador en el mes elegido
+              </q-tooltip>
+            </q-toggle>
+            <q-select
+              v-if="mostrarEntregados"
+              v-model="mesEntrega"
+              :options="opcionesMesEntrega"
+              emit-value
+              map-options
+              dense
+              outlined
+              options-dense
+              dropdown-icon="expand_more"
+              label="Mes de entrega"
+              aria-label="Seleccionar el mes en que se entregaron los documentos"
+              name="mesEntrega"
+              class="selector-mes-entrega selector-moderno"
+              popup-content-class="menu-seleccion-custom"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+            >
+              <template #prepend>
+                <q-icon name="calendar_month" size="18px" class="text-primary" />
+              </template>
+              <template #selected-item="scope">
+                <span class="text-weight-medium text-primary text-capitalize ellipsis">
+                  {{ scope.opt?.label ?? scope.opt }}
+                </span>
+              </template>
+              <template #option="{ itemProps, opt, selected }">
+                <q-item
+                  v-bind="itemProps"
+                  :class="['item-opcion-custom', { 'opcion-seleccionada': selected }]"
+                >
+                  <q-item-section avatar class="item-seccion-icono">
+                    <q-icon
+                      :name="opt.value === mesActual ? 'today' : 'event'"
+                      size="18px"
+                      :class="selected ? 'text-primary' : 'text-grey-8'"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-capitalize text-weight-medium">
+                      {{ opt.label }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="opt.value === mesActual" side>
+                    <q-badge color="primary" label="Actual" rounded />
+                  </q-item-section>
+                  <q-item-section v-else-if="selected" side>
+                    <q-icon name="check" size="16px" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </template>
+              <q-tooltip>Mes en que se firmó la entrega al contador</q-tooltip>
+            </q-select>
             <q-select
               v-model="filtroCliente"
               :options="opcionesClientes"
@@ -199,7 +264,7 @@
 
         <q-card-section>
           <q-table
-            :rows="rowsFiltrados"
+            :rows="filasTabla"
             :columns="columns"
             row-key="id"
             flat
@@ -210,13 +275,40 @@
             :pagination="{ rowsPerPage: 6 }"
             rows-per-page-label="Documentos por página:"
             :pagination-label="etiquetaPaginacion"
-            :loading="cargando"
+            :loading="cargando || cargandoEntregados"
           >
             <template #body-cell-cliente="props">
               <q-td :props="props" class="celda-texto">
                 <q-tooltip>{{ props.row.cliente }}</q-tooltip>
                 <div class="text-weight-bold text-grey-8">{{ props.row.cliente }}</div>
                 <div class="text-caption text-primary">RFC: {{ textoRfc(props.row.rfc) }}</div>
+                <!-- En móvil se ocultan Folio y Situación: aquí se muestran bajo el cliente -->
+                <div class="text-caption text-grey-8 solo-en-xs">
+                  {{ props.row.folio }} · {{ textoSituacion(props.row) }}
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Situación con texto, no solo con color: «Por entregar» o «Entregado el …» -->
+            <template #body-cell-situacion="props">
+              <q-td :props="props" class="celda-texto celda-situacion">
+                <q-tooltip>{{ textoSituacion(props.row) }}</q-tooltip>
+                <q-chip
+                  v-if="props.row.situacion === 'entregado'"
+                  size="sm"
+                  icon="task_alt"
+                  class="bg-positive text-primary text-weight-bold"
+                >
+                  Entregado el {{ formatearFechaHora(props.row.fechaEntrega) }}
+                </q-chip>
+                <q-chip
+                  v-else
+                  size="sm"
+                  icon="inventory_2"
+                  class="bg-info text-primary text-weight-bold"
+                >
+                  Por entregar
+                </q-chip>
               </q-td>
             </template>
 
@@ -229,7 +321,7 @@
 
             <template #body-cell-contador="props">
               <q-td :props="props" class="celda-texto celda-contador">
-                <q-tooltip>{{ props.value }}</q-tooltip>
+                <q-tooltip v-if="props.value">{{ props.value }}</q-tooltip>
                 {{ props.value }}
               </q-td>
             </template>
@@ -267,6 +359,7 @@
             <template #body-cell-acciones="props">
               <q-td :props="props" class="text-center">
                 <q-btn
+                  v-if="props.row.situacion === 'por-entregar'"
                   flat
                   round
                   dense
@@ -286,14 +379,13 @@
                   :aria-label="`Ver detalle del documento ${props.row.folio}`"
                   @click="verDetalle(props.row)"
                 >
-                  <q-tooltip>Ver detalle del documento recibido</q-tooltip>
+                  <q-tooltip>Ver detalle del documento</q-tooltip>
                 </q-btn>
               </q-td>
             </template>
           </q-table>
         </q-card-section>
       </q-card>
-
       <!-- Diálogo de Firma de Entrega al Contador -->
       <q-dialog
         v-model="mostrarDialogoEntrega"
@@ -562,7 +654,37 @@
                   documentoSeleccionado.prioridad
                 }}</q-item-section>
               </q-item>
-              <q-item>
+              <q-item v-if="documentoSeleccionado.fechaEntrega">
+                <q-item-section class="text-grey-8">Estado actual:</q-item-section>
+                <q-item-section side class="text-weight-bold">{{
+                  estiloDeEstadoDocumento(documentoSeleccionado.estado).etiqueta
+                }}</q-item-section>
+              </q-item>
+              <q-item v-if="documentoSeleccionado.fechaEntrega">
+                <q-item-section class="text-grey-8">Contador que recibió:</q-item-section>
+                <q-item-section side class="text-weight-bold">{{
+                  documentoSeleccionado.contador || 'Sin contador'
+                }}</q-item-section>
+              </q-item>
+              <q-item v-if="documentoSeleccionado.fechaEntrega">
+                <q-item-section class="text-grey-8">Entregado el:</q-item-section>
+                <q-item-section side class="text-weight-bold">{{
+                  formatearFechaHora(documentoSeleccionado.fechaEntrega)
+                }}</q-item-section>
+              </q-item>
+              <q-item v-if="documentoSeleccionado.fechaEntrega">
+                <q-item-section class="text-grey-8">Entregado por:</q-item-section>
+                <q-item-section side class="text-weight-bold">{{
+                  documentoSeleccionado.entregadoPor || '—'
+                }}</q-item-section>
+              </q-item>
+              <q-item v-if="documentoSeleccionado.comentarios">
+                <q-item-section class="text-grey-8">Observación de la entrega:</q-item-section>
+                <q-item-section side class="text-weight-bold texto-observacion">{{
+                  documentoSeleccionado.comentarios
+                }}</q-item-section>
+              </q-item>
+              <q-item v-if="!documentoSeleccionado.fechaEntrega">
                 <q-item-section class="text-grey-8">Recibido por:</q-item-section>
                 <q-item-section side class="text-weight-bold">{{
                   documentoSeleccionado.recibidoPor
@@ -574,7 +696,7 @@
                   formatearFechaHora(documentoSeleccionado.fechaRecepcion)
                 }}</q-item-section>
               </q-item>
-              <q-item>
+              <q-item v-if="!documentoSeleccionado.fechaEntrega">
                 <q-item-section class="text-grey-8">Fecha límite:</q-item-section>
                 <q-item-section side class="text-weight-bold">{{
                   formatearDia(documentoSeleccionado.fechaLimite)
@@ -643,18 +765,26 @@
 
 <script setup>
 import SeccionAnimada from '@/modulos/documentos/components/SeccionAnimada.vue'
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { formatearFecha } from '@/modulos/documentos/composables/fechas'
+import {
+  formatearFecha,
+  formatearPeriodo,
+  periodoDe,
+  ultimosPeriodos,
+} from '@/modulos/documentos/composables/fechas'
 import html2pdf from 'html2pdf.js'
 import {
   obtenerCatalogos,
   obtenerDireccionamiento,
+  obtenerEntregados,
   entregarDocumento,
 } from '@/modulos/documentos/servicios/api.js'
 import { mensajeParaUsuario } from '@/modulos/documentos/servicios/cliente.js'
 import { resumirPendientes } from '@/modulos/documentos/composables/resumenDireccionamiento.js'
 import { textoRfc } from '@/modulos/documentos/composables/clientesVista.js'
+import { estiloDeEstadoDocumento } from '@/modulos/documentos/composables/estadoDocumentoVista.js'
+import { combinarFilas, filtrarFilas } from '@/modulos/documentos/composables/entregadosVista.js'
 
 const $q = useQuasar()
 
@@ -676,27 +806,30 @@ const busqueda = ref('')
 const filtroCliente = ref(null)
 const filtroContador = ref(null)
 
-const opcionesClientes = computed(() => [...new Set(rows.value.map((r) => r.cliente))])
+const filasConsultables = computed(() =>
+  mostrarEntregados.value ? [...rows.value, ...entregados.value] : rows.value,
+)
+const opcionesClientes = computed(() => [...new Set(filasConsultables.value.map((r) => r.cliente))])
 const opcionesContadores = computed(() => [
-  ...new Set(rows.value.map((r) => r.contador).filter(Boolean)),
+  ...new Set(filasConsultables.value.map((r) => r.contador).filter(Boolean)),
 ])
 
-const rowsFiltrados = computed(() => {
-  let resultado = rows.value
-  if (filtroCliente.value) {
-    resultado = resultado.filter((r) => r.cliente === filtroCliente.value)
-  }
-  if (filtroContador.value) {
-    resultado = resultado.filter((r) => r.contador === filtroContador.value)
-  }
-  if (busqueda.value.trim()) {
-    const q = busqueda.value.toLowerCase()
-    resultado = resultado.filter(
-      (r) => r.folio.toLowerCase().includes(q) || r.cliente.toLowerCase().includes(q),
-    )
-  }
-  return resultado
+const criterios = () => ({
+  texto: busqueda.value,
+  cliente: filtroCliente.value,
+  contador: filtroContador.value,
 })
+
+// Solo lo pendiente: de aquí salen la relación imprimible y el aviso de lectura
+const rowsFiltrados = computed(() => filtrarFilas(rows.value, criterios()))
+
+// Lo entregado del mes elegido, con los mismos filtros (solo con el toggle encendido)
+const entregadosFiltrados = computed(() => filtrarFilas(entregados.value, criterios()))
+
+// Filas de la tabla: primero lo por entregar y, con el toggle, lo entregado del mes
+const filasTabla = computed(() =>
+  combinarFilas(rowsFiltrados.value, mostrarEntregados.value ? entregadosFiltrados.value : []),
+)
 
 const hoyDia = computed(() => {
   const h = new Date()
@@ -739,7 +872,15 @@ const fmtFechaHora = new Intl.DateTimeFormat(LOCALE, {
 const formatearFechaHora = (valor) => (valor ? fmtFechaHora.format(new Date(valor)) : '—')
 
 const columns = [
-  { name: 'folio', label: 'Folio', field: 'folio', align: 'left', sortable: true },
+  {
+    name: 'folio',
+    label: 'Folio',
+    field: 'folio',
+    align: 'left',
+    sortable: true,
+    classes: 'ocultar-en-xs',
+    headerClasses: 'ocultar-en-xs',
+  },
   {
     name: 'cliente',
     label: 'Cliente / RFC',
@@ -749,12 +890,20 @@ const columns = [
     classes: 'celda-cliente',
   },
   {
+    name: 'situacion',
+    label: 'Situación',
+    field: 'situacion',
+    align: 'left',
+    classes: 'celda-texto celda-situacion ocultar-en-xs',
+    headerClasses: 'ocultar-en-xs',
+  },
+  {
     name: 'tipo',
     label: 'Tipo de Documento',
     field: 'tipo',
     align: 'left',
-    classes: 'celda-texto celda-tipo ocultar-en-xs',
-    headerClasses: 'ocultar-en-xs',
+    classes: 'celda-texto celda-tipo ocultar-bajo-xl',
+    headerClasses: 'ocultar-bajo-xl',
   },
   {
     name: 'fechaRecepcion',
@@ -762,6 +911,8 @@ const columns = [
     field: 'fechaRecepcion',
     align: 'left',
     sortable: true,
+    classes: 'ocultar-bajo-lg',
+    headerClasses: 'ocultar-bajo-lg',
   },
   {
     name: 'prioridad',
@@ -769,16 +920,16 @@ const columns = [
     field: 'prioridad',
     align: 'center',
     sortable: true,
-    classes: 'ocultar-en-xs',
-    headerClasses: 'ocultar-en-xs',
+    classes: 'ocultar-bajo-lg',
+    headerClasses: 'ocultar-bajo-lg',
   },
   {
     name: 'contador',
     label: 'Contador asignado',
     field: 'contador',
     align: 'left',
-    classes: 'celda-texto celda-contador ocultar-en-xs',
-    headerClasses: 'ocultar-en-xs',
+    classes: 'celda-texto celda-contador ocultar-bajo-md',
+    headerClasses: 'ocultar-bajo-md',
   },
   {
     name: 'fechaLimite',
@@ -786,16 +937,25 @@ const columns = [
     field: 'fechaLimite',
     align: 'left',
     sortable: true,
-    classes: 'ocultar-en-xs',
-    headerClasses: 'ocultar-en-xs',
+    classes: 'ocultar-bajo-xl',
+    headerClasses: 'ocultar-bajo-xl',
   },
   { name: 'acciones', label: 'Acciones', field: 'acciones', align: 'center' },
 ]
+
+// Texto de la situación de una fila (para el subtítulo en móvil y el tooltip)
+const textoSituacion = (fila) =>
+  fila.situacion === 'entregado'
+    ? `Entregado el ${formatearFechaHora(fila.fechaEntrega)}`
+    : 'Por entregar'
 
 const mensajeTablaVacia = computed(() => {
   if (error.value) return error.value
   if (busqueda.value.trim() || filtroCliente.value || filtroContador.value) {
     return 'No hay documentos que coincidan con el filtro'
+  }
+  if (mostrarEntregados.value) {
+    return `No hay documentos pendientes de entrega ni entregados en ${formatearPeriodo(mesEntrega.value)}`
   }
   return 'No hay documentos pendientes de entrega'
 })
@@ -820,7 +980,36 @@ const cargarPendientes = async () => {
 
 const actualizarTabla = () => {
   cargarPendientes()
+  cargarEntregados()
 }
+
+// Toggle «Mostrar entregados»: agrega a la tabla lo entregado en el mes elegido (por omisión, el actual)
+const mesActual = periodoDe(new Date())
+const mostrarEntregados = ref(false)
+const mesEntrega = ref(mesActual)
+const opcionesMesEntrega = ultimosPeriodos(new Date(), 12)
+const entregados = ref([])
+const cargandoEntregados = ref(false)
+
+const cargarEntregados = async () => {
+  if (!mostrarEntregados.value) return
+  cargandoEntregados.value = true
+  try {
+    const respuesta = await obtenerEntregados(mesEntrega.value)
+    entregados.value = respuesta.documentos || []
+  } catch (err) {
+    entregados.value = []
+    $q.notify({
+      type: 'negative',
+      message: mensajeParaUsuario(err, 'No se pudieron cargar los documentos entregados'),
+      position: 'top-right',
+    })
+  } finally {
+    cargandoEntregados.value = false
+  }
+}
+
+watch([mostrarEntregados, mesEntrega], cargarEntregados)
 
 const verDetalle = (row) => {
   documentoSeleccionado.value = row
@@ -1028,7 +1217,7 @@ const confirmarEntrega = async () => {
       message: `Documento ${documentoSeleccionado.value.folio} entregado a ${nombreContador}. Estado: En Proceso.`,
       position: 'top-right',
     })
-    await cargarPendientes()
+    await Promise.all([cargarPendientes(), cargarEntregados()])
   } catch (err) {
     $q.notify({
       type: 'negative',
@@ -1116,6 +1305,48 @@ onMounted(() => {
   background-color: $secondary-white-alternative;
 }
 
+/* Columnas que se ocultan según el ancho para que la tabla no desborde; lo que se oculta
+   se ve en «Ver detalle». En móvil, folio y situación pasan a un subtítulo bajo el cliente. */
+.solo-en-xs {
+  display: none;
+}
+
+@media (max-width: 1599.98px) {
+  :deep(.ocultar-bajo-xl) {
+    display: none;
+  }
+}
+
+@media (max-width: 1199.98px) {
+  :deep(.ocultar-bajo-lg) {
+    display: none;
+  }
+}
+
+@media (max-width: 899.98px) {
+  :deep(.ocultar-bajo-md) {
+    display: none;
+  }
+}
+
+@media (max-width: 599.98px) {
+  .solo-en-xs {
+    display: block;
+  }
+}
+
+/* Selector del mes de entrega (aparece con el toggle «Mostrar entregados») */
+.selector-mes-entrega {
+  width: 224px;
+}
+
+/* Observación de la entrega: puede ser larga, se acomoda en varias líneas */
+.texto-observacion {
+  white-space: normal;
+  text-align: right;
+  max-width: 60%;
+}
+
 /* Anchos de los filtros, para que no se compriman en pantallas medianas */
 .filtro-cliente,
 .filtro-busqueda {
@@ -1161,6 +1392,10 @@ onMounted(() => {
   max-width: 125px;
 }
 
+.celda-situacion {
+  max-width: 200px;
+}
+
 /* En móvil se ocultan Tipo, Prioridad y Contador: con 8 columnas la tabla medía
    1318px dentro de un contenedor de 419px. Se usa `:deep` porque las celdas las
    renderiza QTable, fuera del ámbito del template del componente.
@@ -1180,7 +1415,8 @@ onMounted(() => {
   /* Los filtros ocupan el ancho completo en vez de apiñar tres controles */
   .filtro-cliente,
   .filtro-contador,
-  .filtro-busqueda {
+  .filtro-busqueda,
+  .selector-mes-entrega {
     min-width: 0;
     width: 100%;
   }

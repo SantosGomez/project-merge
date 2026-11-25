@@ -15,6 +15,7 @@ const {
   rutaDocumentos,
   rutaListaDocumentos,
   rutaListaDireccionamiento,
+  rutaListaEntregados,
   rutaCambiarEstado,
   rutaEntregarDocumento,
   rutaSubirArchivo,
@@ -120,6 +121,11 @@ router.get(
   '/documentos/direccionamiento',
   permiso(['registrar_recepcion'], 'Tu cuenta no tiene permisos para ver los documentos por entregar.'),
   manejar(() => rutaListaDireccionamiento(pool))
+);
+router.get(
+  '/documentos/entregados',
+  permiso(['registrar_recepcion'], 'Tu cuenta no tiene permisos para ver los documentos entregados.'),
+  manejar((req) => rutaListaEntregados(pool, req.query))
 );
 router.post(
   '/documentos/:id/estado',

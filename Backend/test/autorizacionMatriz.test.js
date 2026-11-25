@@ -125,6 +125,7 @@ const MATRIZ = [
   ['POST', '/doc/documentos', [ADMIN], {}],
   ['GET', '/doc/documentos', [ADMIN]],
   ['GET', '/doc/documentos/direccionamiento', [ADMIN]],
+  ['GET', '/doc/documentos/entregados', [ADMIN]],
   ['POST', '/doc/documentos/:x/estado', [ADMIN], {}],
   ['POST', '/doc/documentos/:x/entrega', [ADMIN], {}],
   ['POST', '/doc/documentos/:x/archivos', [ADMIN], {}],

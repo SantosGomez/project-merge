@@ -8,6 +8,7 @@ import {
   rutaCambiarEstado,
   rutaListaDireccionamiento,
   rutaEntregarDocumento,
+  rutaListaEntregados,
 } from "./documentos.mjs";
 
 describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
@@ -1034,6 +1035,139 @@ describe("rutaEntregarDocumento (entrega formal al contador)", () => {
   });
 });
 
+describe("rutaListaEntregados contra MariaDB", () => {
+  const require = createRequire(import.meta.url);
+  const { seedDatabase } = require("../../../utils/seed.js");
+  const { pool: poolApp } = require("../../../config/db.js");
+  // created_at es TIMESTAMP (tope 2038): por eso 2036-2037 y no 2090
+  const MARCA = `ZZT${Date.now().toString(36)}-`;
+
+  let pool = null;
+  let motivo = null;
+  let clienteId = null;
+  let recepId = null;
+  let contadorId = null;
+
+  before(async () => {
+    try {
+      await seedDatabase({ cuentasDemo: false });
+      pool = poolApp;
+      const nuevoUsuario = async (nombre, rol) => {
+        const [r] = await pool.query(
+          "INSERT INTO usuarios (nombre, correo, password_hash, rol, creado_en, actualizado_en) VALUES (?, ?, 'x', ?, NOW(), NOW())",
+          [`zz_test_${nombre}`, `zz_test_${MARCA}${nombre}@ejemplo.com`, rol],
+        );
+        return r.insertId;
+      };
+      recepId = await nuevoUsuario("recepcion", "recepcionista");
+      contadorId = await nuevoUsuario("contador", "contador");
+      const [cliente] = await pool.query(
+        "INSERT INTO clientes (usuario_id, nombre, rfc, activo, creado_en) VALUES (NULL, ?, 'XAXX010101000', 1, NOW())",
+        [`${MARCA}Cliente de prueba`],
+      );
+      clienteId = cliente.insertId;
+      const [[empresa]] = await pool.query("SELECT MIN(id) AS id FROM empresas");
+      const [[tipo]] = await pool.query("SELECT MIN(id) AS id FROM tipos_documento");
+      const [[departamento]] = await pool.query("SELECT MIN(id) AS id FROM departamentos");
+      const documento = async (clave, estado) => {
+        const [r] = await pool.query(
+          `INSERT INTO documentos (folio, cliente_id, empresa_id, tipo_doc_id, departamento_id,
+                                   usuario_recep_id, contador_id, via_entrega, fecha_recepcion, periodo, asunto, estado, prioridad)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'PRESENCIAL', '2036-11-02 09:00:00', '2036-11', 'Prueba', ?, 'MEDIA')`,
+          [MARCA + clave, clienteId, empresa.id, tipo.id, departamento.id, recepId, contadorId, estado],
+        );
+        return r.insertId;
+      };
+      const historial = (docId, anterior, nuevo, fecha, comentarios = null) =>
+        pool.query(
+          `INSERT INTO documento_historial (documento_id, usuario_id, estado_anterior, estado_nuevo, comentarios, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [docId, recepId, anterior, nuevo, comentarios, fecha],
+        );
+      const entrega = async (clave, fecha, comentarios) =>
+        historial(await documento(clave, "EN_PROCESO"), "RECEPCIONADO", "EN_PROCESO", fecha, comentarios);
+
+      await entrega("NOV-INICIO", "2036-11-01 00:00:00", "Entregado a X. Con originales.");
+      await entrega("NOV-FIN", "2036-11-30 23:59:59");
+      await entrega("DIC-INICIO", "2036-12-01 00:00:00");
+      await entrega("DIC-FIN", "2036-12-31 23:59:59");
+      await entrega("ENE-INICIO", "2037-01-01 00:00:00");
+      await entrega("OCT", "2036-10-31 23:59:59");
+      // El estado actual cambió después de la entrega
+      const cambiado = await documento("NOV-COMPLETADO", "COMPLETADO");
+      await historial(cambiado, "RECEPCIONADO", "EN_PROCESO", "2036-11-10 10:00:00");
+      await historial(cambiado, "EN_PROCESO", "COMPLETADO", "2036-11-20 10:00:00");
+      // Solo un cambio de estado que no es entrega
+      const noEntrega = await documento("NOV-SIN-ENTREGA", "COMPLETADO");
+      await historial(noEntrega, "EN_PROCESO", "COMPLETADO", "2036-11-15 10:00:00");
+      // Dos entregas: cuenta la más reciente
+      const doble = await documento("DOBLE", "EN_PROCESO");
+      await historial(doble, "RECEPCIONADO", "EN_PROCESO", "2036-11-05 10:00:00");
+      await historial(doble, "RECEPCIONADO", "EN_PROCESO", "2036-12-05 10:00:00");
+    } catch (error) {
+      motivo = `no hay base de pruebas de status-conta — ${error.message}`;
+    }
+  });
+
+  after(async () => {
+    if (!pool) return;
+    await pool.query("DELETE FROM documentos WHERE folio LIKE ?", [`${MARCA}%`]);
+    if (clienteId) await pool.query("DELETE FROM clientes WHERE id = ?", [clienteId]);
+    for (const id of [recepId, contadorId]) {
+      if (id) await pool.query("DELETE FROM usuarios WHERE id = ?", [id]);
+    }
+    // El pool compartido lo cierra el bloque «contra MariaDB» siguiente
+  });
+
+  const foliosDe = async (mes) => {
+    const res = await rutaListaEntregados(pool, { mes });
+    assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+    return res.body.documentos
+      .filter((d) => d.folio.startsWith(MARCA))
+      .map((d) => d.folio.replace(MARCA, ""));
+  };
+
+  test("noviembre trae solo lo entregado en noviembre, con sus bordes, y lo más reciente primero", async (t) => {
+    if (motivo) return t.skip(motivo);
+    assert.deepStrictEqual(await foliosDe("2036-11"), [
+      "NOV-FIN",
+      "NOV-COMPLETADO",
+      "NOV-INICIO",
+    ]);
+  });
+
+  test("diciembre incluye el 31 a las 23:59:59 y no el 1 de enero; la doble entrega cuenta en su fecha más reciente", async (t) => {
+    if (motivo) return t.skip(motivo);
+    assert.deepStrictEqual(await foliosDe("2036-12"), ["DIC-FIN", "DOBLE", "DIC-INICIO"]);
+    assert.deepStrictEqual(await foliosDe("2037-01"), ["ENE-INICIO"]);
+  });
+
+  test("no sale en un mes lo que se entregó en otro ni lo que no es entrega", async (t) => {
+    if (motivo) return t.skip(motivo);
+    const nov = await foliosDe("2036-11");
+    assert.ok(!nov.includes("OCT"));
+    assert.ok(!nov.includes("DOBLE"));
+    assert.ok(!nov.includes("NOV-SIN-ENTREGA"));
+    assert.deepStrictEqual(await foliosDe("2036-10"), ["OCT"]);
+  });
+
+  test("trae el estado actual, el contador, quien entregó, la observación y las fechas locales", async (t) => {
+    if (motivo) return t.skip(motivo);
+    const res = await rutaListaEntregados(pool, { mes: "2036-11" });
+    const completado = res.body.documentos.find((d) => d.folio === MARCA + "NOV-COMPLETADO");
+    assert.strictEqual(completado.estado, "COMPLETADO");
+    assert.strictEqual(completado.fechaEntrega, "2036-11-10T10:00:00");
+    assert.strictEqual(completado.fechaRecepcion, "2036-11-02T09:00:00");
+    assert.strictEqual(completado.contadorId, contadorId);
+    assert.strictEqual(completado.contador, "zz_test_contador");
+    assert.strictEqual(completado.entregadoPor, "zz_test_recepcion");
+    assert.strictEqual(completado.rfc, "XAXX010101000");
+    const inicio = res.body.documentos.find((d) => d.folio === MARCA + "NOV-INICIO");
+    assert.strictEqual(inicio.comentarios, "Entregado a X. Con originales.");
+    assert.strictEqual(inicio.fechaEntrega, "2036-11-01T00:00:00");
+  });
+});
+
 describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores no se pierde", () => {
   // El doble de arriba imita el WHERE en JavaScript y no puede probar el SQL:
   // aquí la consulta corre de verdad sobre la base de pruebas de status-conta
@@ -1340,5 +1474,108 @@ describe("rutaDocumentos (vinculación automática con cliente_doc_requeridos)",
       false,
     );
     assert.strictEqual(fueDeshecha(), true);
+  });
+});
+
+describe("rutaListaEntregados (documentos ya entregados al contador, por mes de entrega)", () => {
+  const poolConConsulta = (filas = []) => {
+    const consultas = [];
+    return {
+      consultas,
+      query: async (sql, params = []) => {
+        consultas.push({ sql, params });
+        return [filas];
+      },
+    };
+  };
+
+  test("devuelve los campos pedidos con fechas locales y la entrega más reciente primero", async () => {
+    const filas = [
+      {
+        id: 7,
+        folio: "DCA-2026-0007",
+        cliente: "Cliente Test",
+        rfc: "XAXX010101000",
+        tipo: "Facturas",
+        periodo: "2026-10",
+        prioridad: "ALTA",
+        estado: "COMPLETADO",
+        fechaRecepcion: new Date(2026, 10, 3, 9, 0, 0),
+        fechaEntrega: new Date(2026, 10, 5, 16, 30, 15),
+        contadorId: 13,
+        contador: "Contador Test",
+        entregadoPor: "Recepcionista Test",
+        comentarios: "Entregado a Contador Test. Con originales.",
+      },
+    ];
+    const pool = poolConConsulta(filas);
+
+    const res = await rutaListaEntregados(pool, { mes: "2026-11" });
+
+    assert.strictEqual(res.status, 200);
+    assert.deepStrictEqual(res.body, {
+      documentos: [
+        {
+          id: 7,
+          folio: "DCA-2026-0007",
+          cliente: "Cliente Test",
+          rfc: "XAXX010101000",
+          tipo: "Facturas",
+          periodo: "2026-10",
+          prioridad: "ALTA",
+          estado: "COMPLETADO",
+          fechaRecepcion: "2026-11-03T09:00:00",
+          fechaEntrega: "2026-11-05T16:30:15",
+          contadorId: 13,
+          contador: "Contador Test",
+          entregadoPor: "Recepcionista Test",
+          comentarios: "Entregado a Contador Test. Con originales.",
+        },
+      ],
+    });
+    assert.match(pool.consultas[0].sql, /ORDER BY h\.created_at DESC/);
+  });
+
+  test("filtra por rango de texto local del mes, sin DATE_FORMAT sobre la columna", async () => {
+    const pool = poolConConsulta();
+    await rutaListaEntregados(pool, { mes: "2026-11" });
+    assert.deepStrictEqual(pool.consultas[0].params, [
+      "2026-11-01 00:00:00",
+      "2026-12-01 00:00:00",
+    ]);
+    assert.ok(!/DATE_FORMAT/i.test(pool.consultas[0].sql));
+    assert.match(pool.consultas[0].sql, /estado_anterior = 'RECEPCIONADO'/);
+    assert.match(pool.consultas[0].sql, /estado_nuevo = 'EN_PROCESO'/);
+  });
+
+  test("diciembre termina en el 1 de enero del año siguiente", async () => {
+    const pool = poolConConsulta();
+    await rutaListaEntregados(pool, { mes: "2026-12" });
+    assert.deepStrictEqual(pool.consultas[0].params, [
+      "2026-12-01 00:00:00",
+      "2027-01-01 00:00:00",
+    ]);
+  });
+
+  test("sin mes válido (o con mes 00 o 13) usa el mes en curso", async () => {
+    const hoy = new Date();
+    const dos = (n) => String(n).padStart(2, "0");
+    const esperado = `${hoy.getFullYear()}-${dos(hoy.getMonth() + 1)}-01 00:00:00`;
+    for (const mes of [undefined, "abc", "2026-13", "2026-00", "2026-1"]) {
+      const pool = poolConConsulta();
+      await rutaListaEntregados(pool, mes === undefined ? {} : { mes });
+      assert.strictEqual(pool.consultas[0].params[0], esperado, String(mes));
+    }
+  });
+
+  test("con la base caída responde 503", async () => {
+    const poolCaido = {
+      query: async () => {
+        throw Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
+      },
+    };
+    const res = await rutaListaEntregados(poolCaido, { mes: "2026-11" });
+    assert.strictEqual(res.status, 503);
+    assert.strictEqual(res.body.error, "SIN_CONEXION");
   });
 });
