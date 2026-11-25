@@ -40,6 +40,31 @@ describe('validarJunta', () => {
     }
   });
 
+  test('cliente, modalidad y lugar: opcionales, recortados, vacío o ausente es null', () => {
+    const r = validarJunta({ ...BASE, cliente: '  Acme SA  ', modalidad: 'virtual', lugar: '  https://meet.example/x  ' }, CREADOR);
+    assert.strictEqual(r.valor.cliente, 'Acme SA');
+    assert.strictEqual(r.valor.modalidad, 'virtual');
+    assert.strictEqual(r.valor.lugar, 'https://meet.example/x');
+    assert.strictEqual(validarJunta({ ...BASE, modalidad: 'presencial' }, CREADOR).valor.modalidad, 'presencial');
+    for (const vacio of [undefined, null, '', '   ']) {
+      const v = validarJunta({ ...BASE, cliente: vacio, modalidad: vacio, lugar: vacio }, CREADOR).valor;
+      assert.deepStrictEqual([v.cliente, v.modalidad, v.lugar], [null, null, null], JSON.stringify(vacio));
+    }
+  });
+
+  test('cliente (150), lugar (255) y modalidad se rechazan sobre su propio campo', () => {
+    assert.ok(validarJunta({ ...BASE, cliente: 'c'.repeat(150), lugar: 'l'.repeat(255) }, CREADOR).valor);
+    assert.strictEqual(campoDelError(validarJunta({ ...BASE, cliente: 'c'.repeat(151) }, CREADOR)), 'cliente');
+    assert.strictEqual(campoDelError(validarJunta({ ...BASE, lugar: 'l'.repeat(256) }, CREADOR)), 'lugar');
+    for (const malo of [5, {}, []]) {
+      assert.strictEqual(campoDelError(validarJunta({ ...BASE, cliente: malo }, CREADOR)), 'cliente');
+      assert.strictEqual(campoDelError(validarJunta({ ...BASE, lugar: malo }, CREADOR)), 'lugar');
+    }
+    for (const malo of ['hibrida', 'Presencial', 1, true, {}, []]) {
+      assert.strictEqual(campoDelError(validarJunta({ ...BASE, modalidad: malo }, CREADOR)), 'modalidad', JSON.stringify(malo));
+    }
+  });
+
   test('devuelve los valores limpios: texto recortado, fechas con segundos en cero y descripción nula si falta', () => {
     const r = validarJunta({ ...BASE, titulo: '  Revisión mensual  ' }, CREADOR);
     assert.deepStrictEqual(r.valor, {
@@ -49,6 +74,9 @@ describe('validarJunta', () => {
       fin: '2026-12-01 10:30:00',
       participantes: [2, 3],
       privada: false,
+      cliente: null,
+      modalidad: null,
+      lugar: null,
     });
     assert.strictEqual(validarJunta({ ...BASE, descripcion: '  Agenda  ' }, CREADOR).valor.descripcion, 'Agenda');
     assert.strictEqual(validarJunta({ ...BASE, descripcion: '   ' }, CREADOR).valor.descripcion, null);

@@ -69,6 +69,9 @@ async function armarJuntas(filas, consultante) {
       creado_por: { id: fila.creado_por, nombre: fila.creador_nombre },
       participantes,
       privada: fila.privada === 1,
+      cliente: fila.cliente,
+      modalidad: fila.modalidad,
+      lugar: fila.lugar,
       estado: calcularEstado(participantes),
       soy_organizador: fila.creado_por === consultante.id,
       ...permisosDeJunta(consultante, { organizadorId: fila.creado_por, organizadorRol: fila.creador_rol, participantes }),
@@ -76,7 +79,7 @@ async function armarJuntas(filas, consultante) {
   });
 }
 
-const SELECT_JUNTA = `SELECT j.id, j.titulo, j.descripcion, j.inicio, j.fin, j.privada, j.creado_por, u.nombre AS creador_nombre, u.rol AS creador_rol
+const SELECT_JUNTA = `SELECT j.id, j.titulo, j.descripcion, j.inicio, j.fin, j.privada, j.cliente, j.modalidad, j.lugar, j.creado_por, u.nombre AS creador_nombre, u.rol AS creador_rol
                         FROM juntas j JOIN usuarios u ON u.id = j.creado_por`;
 
 /**
@@ -182,12 +185,12 @@ async function agendaDe(dueno, consultante, desde, hastaExclusivo) {
  * @param {Function} [avisos] - `async (ejecutar, juntaId)` que crea los avisos dentro de la misma transacción.
  * @returns {Promise<Object>} La junta creada.
  */
-async function crear(creadorId, consultante, { titulo, descripcion, inicio, fin, participantes, privada }, avisos) {
+async function crear(creadorId, consultante, { titulo, descripcion, inicio, fin, participantes, privada, cliente, modalidad, lugar }, avisos) {
   const ahora = formatLocalDate(nowLocal());
   const id = await conTransaccion(async (ejecutar) => {
     const resultado = await ejecutar(
-      'INSERT INTO juntas (titulo, descripcion, inicio, fin, privada, creado_por, creado_en, actualizado_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [titulo, descripcion, inicio, fin, privada ? 1 : 0, creadorId, ahora, ahora]
+      'INSERT INTO juntas (titulo, descripcion, inicio, fin, privada, cliente, modalidad, lugar, creado_por, creado_en, actualizado_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [titulo, descripcion, inicio, fin, privada ? 1 : 0, cliente, modalidad, lugar, creadorId, ahora, ahora]
     );
     if (participantes.length > 0) {
       const marcas = participantes.map(() => '(?, ?)').join(', ');
@@ -215,16 +218,19 @@ async function crear(creadorId, consultante, { titulo, descripcion, inicio, fin,
 async function actualizar(
   id,
   consultante,
-  { titulo, descripcion, inicio, fin, participantes, privada },
+  { titulo, descripcion, inicio, fin, participantes, privada, cliente, modalidad, lugar },
   { reiniciarRespuestas = false, avisos } = {}
 ) {
   await conTransaccion(async (ejecutar) => {
-    await ejecutar('UPDATE juntas SET titulo = ?, descripcion = ?, inicio = ?, fin = ?, privada = ?, actualizado_en = ? WHERE id = ?', [
+    await ejecutar('UPDATE juntas SET titulo = ?, descripcion = ?, inicio = ?, fin = ?, privada = ?, cliente = ?, modalidad = ?, lugar = ?, actualizado_en = ? WHERE id = ?', [
       titulo,
       descripcion,
       inicio,
       fin,
       privada ? 1 : 0,
+      cliente,
+      modalidad,
+      lugar,
       formatLocalDate(nowLocal()),
       id,
     ]);

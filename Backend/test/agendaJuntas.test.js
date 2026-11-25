@@ -17,12 +17,15 @@ const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas
 const ID_INEXISTENTE = 99999999;
 const RANGO = '?desde=2034-04-01&hasta=2034-04-30';
 const LLAVES_COMPLETA = [
+  'cliente',
   'creado_por',
   'descripcion',
   'estado',
   'fin',
   'id',
   'inicio',
+  'lugar',
+  'modalidad',
   'participantes',
   'privada',
   'puede_editar',
@@ -159,6 +162,23 @@ describe('GET /juntas/agenda/:usuarioId', () => {
     for (const secreto of ['Despido reservado', 'Detalle confidencial', cuentas.contador.nombre, cuentas.recepcion.nombre]) {
       assert.ok(!texto.includes(secreto), `no debe filtrar ${secreto}`);
     }
+  });
+
+  test('un tercero nunca recibe cliente, modalidad ni lugar de una junta ajena, pública o privada', async () => {
+    const datos = { cliente: 'Cliente reservado SA', modalidad: 'presencial', lugar: 'Sala secreta 7' };
+    await crear('contador', { titulo: 'Con datos pública', ...datos, inicio: '2034-04-25 09:00', fin: '2034-04-25 10:00' });
+    await crear('contador', { titulo: 'Con datos privada', ...datos, privada: true, inicio: '2034-04-26 09:00', fin: '2034-04-26 10:00' });
+    const r = await agendaDe('auxiliar', 'admin', '?desde=2034-04-25&hasta=2034-04-26');
+    assert.strictEqual(r.body.juntas.length, 2);
+    const texto = JSON.stringify(r.body);
+    for (const secreto of ['Cliente reservado SA', 'Sala secreta 7', 'presencial']) {
+      assert.ok(!texto.includes(secreto), `no debe filtrar ${secreto}`);
+    }
+    for (const junta of r.body.juntas) {
+      for (const llave of ['cliente', 'modalidad', 'lugar']) assert.ok(!(llave in junta), llave);
+    }
+    const propia = (await agendaDe('admin', 'admin', '?desde=2034-04-25&hasta=2034-04-26')).body.juntas;
+    assert.deepStrictEqual(propia.map((j) => j.cliente), ['Cliente reservado SA', 'Cliente reservado SA']);
   });
 
   test('quien participa (organiza o está invitado) recibe la junta completa, privada o no', async () => {

@@ -204,3 +204,80 @@ describe('calendario: resalta la junta guardada y permite devolverle el foco', (
     assert.doesNotMatch(plantillaDe(calendario), /q-tooltip/)
   })
 })
+
+describe('cliente, modalidad y lugar (rebanada 43)', () => {
+  const formulario = leer('../src/components/JuntaFormDialog.vue')
+  const plantillaForm = plantillaDe(formulario)
+  const ficha = leer('../src/components/JuntaDetalleDialog.vue')
+  const plantillaFicha = plantillaDe(ficha)
+
+  it('el formulario tiene los tres campos, sin asterisco, en el orden pedido', () => {
+    const orden = ['junta-titulo', 'junta-fecha', 'CAMPOS_HORA', 'junta-cliente']
+    const posiciones = [...orden, 'junta-modalidad', 'junta-lugar', 'junta-invitados'].map((id) =>
+      plantillaForm.indexOf(id),
+    )
+    assert.ok(
+      posiciones.every((p) => p >= 0),
+      'faltan campos',
+    )
+    assert.deepEqual(
+      [...posiciones].sort((a, b) => a - b),
+      posiciones,
+    )
+    assert.doesNotMatch(
+      plantillaForm,
+      /for="junta-(cliente|modalidad|lugar)"[^>]*>[^<]*<span[^>]*required-mark/,
+    )
+    assert.match(plantillaForm, /:maxlength="MAX_CLIENTE"/)
+    assert.match(plantillaForm, /:maxlength="MAX_LUGAR"/)
+  })
+
+  it('«Elegir de mis clientes» solo se ofrece con «Mis actividades» y la lista sale de listarClientes', () => {
+    assert.match(plantillaForm, /Elegir de mis clientes/)
+    assert.match(plantillaForm, /v-if="puedeElegirClientes"/)
+    assert.match(formulario, /session\.actividadesHabilitadas/)
+    assert.match(formulario, /listarClientes/)
+    assert.match(formulario, /Aún no tienes clientes activos en tu cartera\./)
+    assert.match(plantillaForm, /Reintentar/)
+  })
+
+  it('la modalidad es Presencial / Virtual y el lugar cambia de ejemplo según ella', () => {
+    assert.match(plantillaForm, /<q-btn-toggle/)
+    assert.match(plantillaForm, /clearable/)
+    assert.match(formulario, /Por ejemplo: Sala de juntas o dirección/)
+    assert.match(formulario, /Por ejemplo: enlace de Teams o Meet/)
+    assert.match(formulario, /Dónde será la junta/)
+  })
+
+  it('los tres campos entran en la foto del formulario, se precargan y se envían', () => {
+    const foto = formulario.slice(
+      formulario.indexOf('const fotoDelFormulario'),
+      formulario.indexOf('const hayDatosSinGuardar'),
+    )
+    for (const campo of ['cliente.value', 'modalidad.value', 'lugar.value']) {
+      assert.ok(foto.includes(campo), `${campo} no está en la foto`)
+    }
+    assert.match(formulario, /cliente\.value = j\?\.cliente \?\? ''/)
+    assert.match(formulario, /modalidad\.value = j\?\.modalidad \?\? null/)
+    assert.match(formulario, /lugar\.value = j\?\.lugar \?\? ''/)
+    assert.match(formulario, /cliente: 'cliente'/)
+    assert.match(formulario, /modalidad: 'modalidad'/)
+    assert.match(formulario, /lugar: 'lugar'/)
+  })
+
+  it('la ficha muestra Cliente, Modalidad y Lugar con sus textos vacíos y el enlace seguro', () => {
+    for (const texto of [
+      'Sin cliente',
+      'Sin indicar',
+      'Sin lugar',
+      '>Cliente<',
+      '>Modalidad<',
+      '>Lugar<',
+    ]) {
+      assert.ok(plantillaFicha.includes(texto), `falta ${texto}`)
+    }
+    assert.match(plantillaFicha, /target="_blank"/)
+    assert.match(plantillaFicha, /rel="noopener noreferrer"/)
+    assert.match(plantillaFicha, /enlaceDeLugar\(junta\)/)
+  })
+})

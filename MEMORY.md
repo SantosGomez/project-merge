@@ -6,8 +6,9 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 
 - Repo `SantosGomez/project-merge`, rama `unificacion/fase-0`. Fases 0 a 4 hechas. La unión es una alpha: no se publica ni se usa Docker; todo en local (XAMPP). La fase 5 (publicar) queda en pausa. `main` = status-conta sin la unión.
 - Un login (correo o `alias`), rol general + rol por módulo (`usuario_modulos`), selector `/modulos`. Backend de documentos en `/doc`, frontend en `src/modulos/documentos/`.
-- Base de prueba: `delgrow_merge` en XAMPP (3306), copiada el 2026-11-24 del contenedor `merge-prueba-db` (ya borrado) para trabajar sin Docker; con MariaDB 10.4 pasa todo salvo `usuarios_respaldo_5c` (de siempre). Respaldos fuera del proyecto: `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`.
-- Últimas cifras: backend 1171 de 1172 en XAMPP (falla solo `usuarios_respaldo_5c`, cosa de la base de prueba); frontend 2097 de 2097.
+- Base de prueba: `delgrow_merge` en XAMPP (3306), rehecha el 2026-11-24 desde la base de prueba de status-conta (`delgrow_contadores`) + importación de `dca_documentos`; ya no tiene datos de producción (esa copia quedó en los respaldos, fuera del proyecto: `~/respaldos-seguimiento-proyectos/union-documentos-2026-11-24/`).
+- Últimas cifras (tras traer status-conta): backend 906 de 906 en `verificarPruebas`; frontend 2118 de 2118, lint y build bien. `test/proximaJunta.test.js` viene sin formato desde status-conta.
+- 2026-11-24: se trajeron los 8 commits de `status-conta/main` hasta 7b36df8 (rebanada 43 de juntas, cabecera y píldora elástica de «Mi Calendario»).
 - 2026-11-24: `AGENTS.md` y esta memoria se reescribieron para el proyecto unido (antes eran los de status-conta).
 
 ## Pendientes de la unión
@@ -20,8 +21,8 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 
 ## Producción (Docker de status-conta)
 
-- Corre `main` 7e584f7 (despliegue 2026-11-18), con «Mis actividades» restringido (`USUARIOS_CON_ACTIVIDADES=7917`); le faltan el calendario, las rebanadas 20 a 42 y toda la unión.
-- Antes de publicar: respaldo de `db_datos` y del volumen `adjuntos`, etiquetar imágenes; confirmar que el 7947 es administrador; revisar auxiliares con varios contadores (`SELECT auxiliar_id, COUNT(*) FROM contador_auxiliar GROUP BY auxiliar_id HAVING COUNT(*) > 1`); validar la regla fiscal con los contadores.
+- Corre `main` c4e9377 de status-conta (despliegue 2026-11-24): calendario y rebanadas 20 a 43, sin la unión; «Mis actividades» restringido (`USUARIOS_CON_ACTIVIDADES=7917`). Para regresar: imágenes `:antes-calendario-2026-11-24` + respaldo cifrado del mismo día.
+- Ya revisado en Docker (2026-11-24): el 7947 es administrador y ningún auxiliar apoya a varios contadores. Falta validar la regla fiscal con los contadores.
 - Pendiente en producción: restablecer desde la app las contraseñas de las cuentas reales (≥12) y corregir las auditorías migradas con «Periodo por confirmar».
 
 ## Pendientes de seguimiento (status-conta)

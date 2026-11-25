@@ -3,54 +3,51 @@
     v-if="actual"
     flat
     bordered
-    class="proxima-junta"
+    role="button"
+    tabindex="0"
+    :aria-label="textoAccesible"
+    class="proxima-junta boton-presionable"
     :class="{ 'proxima-junta--en-curso': actual.enCurso }"
+    @click="emit('ver', actual.junta)"
+    @keydown.enter.prevent="emit('ver', actual.junta)"
+    @keydown.space.prevent="emit('ver', actual.junta)"
   >
+    <q-tooltip max-width="320px">
+      {{ actual.junta.titulo }} · Pulsa para ver los detalles de esta junta.
+    </q-tooltip>
     <q-card-section class="proxima-junta__cuerpo">
       <q-icon
         :name="actual.enCurso ? 'groups' : 'schedule'"
-        size="28px"
+        size="20px"
         class="proxima-junta__icono"
         aria-hidden="true"
       />
 
       <div class="proxima-junta__textos">
         <p class="proxima-junta__etiqueta">
-          {{ actual.enCurso ? 'Tu junta en curso' : 'Tu próxima junta' }}
+          {{ actual.enCurso ? 'En curso' : 'Próxima junta' }}
         </p>
         <p class="proxima-junta__titulo">
           {{ actual.junta.titulo }}
-          <q-tooltip max-width="320px">{{ actual.junta.titulo }}</q-tooltip>
         </p>
         <p class="proxima-junta__hora">
           {{
             actual.enCurso
-              ? `Termina a las ${horaDeFechaHora(actual.junta.fin)}`
-              : `Empieza a las ${horaDeFechaHora(actual.junta.inicio)}`
+              ? `Termina ${horaDeFechaHora(actual.junta.fin)}`
+              : `${horaDeFechaHora(actual.junta.inicio)}`
           }}
         </p>
       </div>
 
-      <div v-if="!actual.enCurso" class="proxima-junta__cuenta">
+      <div v-if="!actual.enCurso" class="proxima-junta__cuenta" aria-hidden="true">
         <span class="proxima-junta__cuenta-texto">Empieza en</span>
-        <span class="proxima-junta__reloj" role="timer" aria-label="Tiempo para que empiece">
+        <span class="proxima-junta__reloj">
           <ContadorRodante :valor="cuentaRegresiva(actual.segundos)" />
         </span>
       </div>
       <q-badge v-else class="proxima-junta__en-curso" label="En curso" />
 
-      <q-btn
-        flat
-        no-caps
-        color="primary"
-        icon="visibility"
-        label="Ver"
-        class="control-touch boton-presionable"
-        aria-haspopup="dialog"
-        @click="emit('ver', actual.junta)"
-      >
-        <q-tooltip>Abre la ficha de esta junta.</q-tooltip>
-      </q-btn>
+      <q-icon name="chevron_right" size="18px" class="proxima-junta__flecha" aria-hidden="true" />
     </q-card-section>
   </q-card>
 </template>
@@ -77,6 +74,15 @@ const juntas = ref([])
 const ahora = ref(new Date())
 
 const actual = computed(() => proximaJunta(juntas.value, ahora.value, session.id))
+
+const textoAccesible = computed(() => {
+  if (!actual.value) return ''
+  const j = actual.value.junta
+  const estado = actual.value.enCurso
+    ? `en curso, termina ${horaDeFechaHora(j.fin)}`
+    : `a las ${horaDeFechaHora(j.inicio)}, empieza en ${cuentaRegresiva(actual.value.segundos)}`
+  return `Tu próxima junta: ${j.titulo}, ${estado}. Pulsa para ver los detalles.`
+})
 
 let peticion = 0
 const recargar = async () => {
@@ -117,11 +123,27 @@ defineExpose({ recargar })
 
 <style scoped>
 .proxima-junta {
-  margin-bottom: 12px;
+  margin: 0;
   border-color: var(--dg-borde);
   border-left: 4px solid var(--dg-acento);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--dg-superficie);
+  cursor: pointer;
+  transition:
+    transform 120ms var(--dg-curva-salida),
+    box-shadow 120ms var(--dg-curva-salida),
+    border-color 120ms var(--dg-curva-salida);
+  user-select: none;
+}
+
+.proxima-junta:hover {
+  border-color: var(--dg-acento);
+  box-shadow: var(--dg-sombra-campo-hover);
+}
+
+.proxima-junta:focus-visible {
+  outline: 2px solid var(--dg-foco);
+  outline-offset: 2px;
 }
 
 .proxima-junta--en-curso {
@@ -133,20 +155,33 @@ defineExpose({ recargar })
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
-  padding: 12px 16px;
+  gap: 6px 10px;
+  padding: 4px 10px;
+  min-height: 44px;
 }
 
 .proxima-junta__icono {
   color: var(--dg-acento);
+  flex-shrink: 0;
 }
 
 .proxima-junta--en-curso .proxima-junta__icono {
   color: var(--dg-exito);
 }
 
+.proxima-junta__flecha {
+  color: var(--dg-texto-tenue);
+  flex-shrink: 0;
+  transition: transform 120ms var(--dg-curva-salida);
+}
+
+.proxima-junta:hover .proxima-junta__flecha {
+  color: var(--dg-acento);
+  transform: translateX(2px);
+}
+
 .proxima-junta__textos {
-  flex: 1 1 200px;
+  flex: 1 1 110px;
   min-width: 0;
 }
 
@@ -154,19 +189,21 @@ defineExpose({ recargar })
 .proxima-junta__titulo,
 .proxima-junta__hora {
   margin: 0;
-  line-height: 1.35;
+  line-height: 1.2;
 }
 
 .proxima-junta__etiqueta {
   color: var(--dg-texto-secundario);
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .proxima-junta__titulo {
   overflow: hidden;
   color: var(--dg-texto);
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -174,31 +211,49 @@ defineExpose({ recargar })
 
 .proxima-junta__hora {
   color: var(--dg-texto-secundario);
-  font-size: 0.85rem;
+  font-size: 0.72rem;
 }
 
 .proxima-junta__cuenta {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  flex-shrink: 0;
 }
 
 .proxima-junta__cuenta-texto {
   color: var(--dg-texto-secundario);
-  font-size: 0.75rem;
+  font-size: 0.62rem;
+  line-height: 1;
 }
 
 .proxima-junta__reloj {
   color: var(--dg-texto);
-  font-size: 1.5rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  line-height: 1.1;
 }
 
 .proxima-junta__en-curso {
-  padding: 4px 10px;
+  padding: 2px 8px;
   background: var(--dg-exito);
   color: var(--dg-texto-claro);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* En escritorio la tarjeta se ajusta a su contenido para leerla de un vistazo, sin cruzar toda la pantalla. */
+@media (min-width: 600px) {
+  .proxima-junta {
+    width: fit-content;
+    min-width: 430px;
+    max-width: 820px;
+  }
+
+  /* Una sola fila: si falta espacio, el título se recorta con «…» (el tooltip lo muestra completo). */
+  .proxima-junta__cuerpo {
+    flex-wrap: nowrap;
+  }
 }
 
 @media (max-width: 599px) {

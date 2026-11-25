@@ -42,6 +42,10 @@ import {
   textoPeriodo,
   validarFormularioJunta,
   vistaInicial,
+  MAX_CLIENTE,
+  MAX_LUGAR,
+  enlaceDeLugar,
+  etiquetaModalidad,
 } from '../src/utils/juntas.js'
 
 describe('fechas sin desplazamiento de zona horaria', () => {
@@ -425,6 +429,24 @@ describe('validarFormularioJunta', () => {
     })
     assert.deepEqual(Object.keys(errores), ['titulo', 'fecha', 'horaInicio', 'horaFin'])
     assert.equal(errores.titulo, 'Escribe el título de la junta.')
+  })
+
+  it('cliente, modalidad y lugar son opcionales y respetan sus máximos', () => {
+    assert.equal(MAX_CLIENTE, 150)
+    assert.equal(MAX_LUGAR, 255)
+    assert.deepEqual(validarFormularioJunta({ ...valido, cliente: '', lugar: '   ' }), {})
+    assert.deepEqual(
+      validarFormularioJunta({ ...valido, cliente: 'c'.repeat(150), lugar: 'l'.repeat(255) }),
+      {},
+    )
+    const errores = validarFormularioJunta({
+      ...valido,
+      cliente: 'c'.repeat(151),
+      lugar: 'l'.repeat(256),
+    })
+    assert.deepEqual(Object.keys(errores), ['cliente', 'lugar'])
+    assert.equal(errores.cliente, 'El cliente supera los 150 caracteres permitidos.')
+    assert.equal(errores.lugar, 'El lugar supera los 255 caracteres permitidos.')
   })
 
   it('una junta sin invitados (lista vacía o ausente) es válida; más de 50 sigue siendo un error', () => {
@@ -1053,5 +1075,34 @@ describe('agendar junta desde el directorio (rebanada 36)', () => {
         },
       ])
     })
+  })
+})
+
+describe('campoDeErrorJunta con cliente, modalidad y lugar', () => {
+  it('lleva cada error de la API a su campo', () => {
+    const mensaje = (campo) => `El valor no es válido sobre ${campo}: Corrígelo`
+    assert.equal(campoDeErrorJunta(mensaje('cliente')), 'cliente')
+    assert.equal(campoDeErrorJunta(mensaje('modalidad')), 'modalidad')
+    assert.equal(campoDeErrorJunta(mensaje('lugar')), 'lugar')
+  })
+})
+
+describe('modalidad y lugar de la ficha', () => {
+  it('etiquetaModalidad traduce el valor guardado y deja vacío lo demás', () => {
+    assert.equal(etiquetaModalidad('presencial'), 'Presencial')
+    assert.equal(etiquetaModalidad('virtual'), 'Virtual')
+    assert.equal(etiquetaModalidad(null), '')
+    assert.equal(etiquetaModalidad('otra'), '')
+  })
+
+  it('enlaceDeLugar solo devuelve el enlace si es virtual y empieza con http:// o https://', () => {
+    const virtual = (lugar) => ({ modalidad: 'virtual', lugar })
+    assert.equal(enlaceDeLugar(virtual('https://meet.example/x')), 'https://meet.example/x')
+    assert.equal(enlaceDeLugar(virtual('  http://meet.example/x  ')), 'http://meet.example/x')
+    assert.equal(enlaceDeLugar(virtual('javascript:alert(1)')), null)
+    assert.equal(enlaceDeLugar(virtual('Sala de Teams')), null)
+    assert.equal(enlaceDeLugar(virtual(null)), null)
+    assert.equal(enlaceDeLugar({ modalidad: 'presencial', lugar: 'https://x.example' }), null)
+    assert.equal(enlaceDeLugar({ modalidad: null, lugar: 'https://x.example' }), null)
   })
 })

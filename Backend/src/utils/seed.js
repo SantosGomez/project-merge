@@ -613,6 +613,10 @@ async function migrarJuntas() {
  */
 async function migrarJuntasPrivadas() {
   await query('ALTER TABLE juntas ADD COLUMN IF NOT EXISTS privada TINYINT(1) NOT NULL DEFAULT 0');
+  // Rebanada 43: cliente, modalidad y lugar opcionales; las juntas ya guardadas quedan en NULL.
+  await query(
+    "ALTER TABLE juntas ADD COLUMN IF NOT EXISTS cliente VARCHAR(150) NULL, ADD COLUMN IF NOT EXISTS modalidad ENUM('presencial','virtual') NULL, ADD COLUMN IF NOT EXISTS lugar VARCHAR(255) NULL"
+  );
 }
 
 /**

@@ -78,11 +78,16 @@ describe('/juntas', () => {
     const juntas = await query('SHOW COLUMNS FROM juntas');
     assert.deepStrictEqual(
       juntas.map((c) => c.Field),
-      ['id', 'titulo', 'descripcion', 'inicio', 'fin', 'creado_por', 'creado_en', 'actualizado_en', 'privada']
+      ['id', 'titulo', 'descripcion', 'inicio', 'fin', 'creado_por', 'creado_en', 'actualizado_en', 'privada', 'cliente', 'modalidad', 'lugar']
     );
     const privada = juntas.find((c) => c.Field === 'privada');
     assert.match(privada.Type, /^tinyint\(1\)/);
     assert.strictEqual(privada.Null, 'NO');
+    for (const [campo, tipo] of [['cliente', /^varchar\(150\)/], ['modalidad', /^enum\('presencial','virtual'\)/], ['lugar', /^varchar\(255\)/]]) {
+      const columna = juntas.find((c) => c.Field === campo);
+      assert.match(columna.Type, tipo, campo);
+      assert.strictEqual(columna.Null, 'YES', campo);
+    }
     assert.strictEqual(String(privada.Default), '0');
     const participantes = await query('SHOW COLUMNS FROM junta_participantes');
     assert.deepStrictEqual(
@@ -146,7 +151,7 @@ describe('/juntas', () => {
     const junta = r.body.junta;
     assert.deepStrictEqual(
       Object.keys(junta).sort(),
-      ['creado_por', 'descripcion', 'estado', 'fin', 'id', 'inicio', 'participantes', 'privada', 'puede_editar', 'responder_por', 'soy_organizador', 'titulo']
+      ['cliente', 'creado_por', 'descripcion', 'estado', 'fin', 'id', 'inicio', 'lugar', 'modalidad', 'participantes', 'privada', 'puede_editar', 'responder_por', 'soy_organizador', 'titulo']
     );
     assert.strictEqual(junta.privada, false);
     assert.strictEqual(junta.titulo, 'Cierre de mes');
@@ -180,6 +185,38 @@ describe('/juntas', () => {
     assert.strictEqual((await api('admin', 'GET', `/juntas/${conInvitado.id}`)).statusCode, 404);
     const avisos = await query("SELECT 1 FROM notificaciones WHERE mensaje LIKE '%zz_test_ bloqueo%'");
     assert.strictEqual(avisos.length, 0);
+  });
+
+  test('cliente, modalidad y lugar: se guardan al crear y al editar, quedan en null si faltan y los inválidos dan 400 sobre su campo', async () => {
+    const sin = await crear('contador1', { titulo: 'zz_test_ sin datos extra' });
+    assert.deepStrictEqual([sin.cliente, sin.modalidad, sin.lugar], [null, null, null]);
+    const con = await crear('contador1', {
+      titulo: 'zz_test_ con datos extra',
+      cliente: '  Acme SA  ',
+      modalidad: 'presencial',
+      lugar: 'Sala 2',
+    });
+    assert.deepStrictEqual([con.cliente, con.modalidad, con.lugar], ['Acme SA', 'presencial', 'Sala 2']);
+    const leida = await api('contador1', 'GET', `/juntas/${con.id}`);
+    assert.deepStrictEqual([leida.body.junta.cliente, leida.body.junta.modalidad, leida.body.junta.lugar], ['Acme SA', 'presencial', 'Sala 2']);
+    const editada = await api(
+      'contador1',
+      'PATCH',
+      `/juntas/${con.id}`,
+      cuerpoJunta({ titulo: 'zz_test_ con datos extra', cliente: 'Otro SA', modalidad: 'virtual', lugar: 'https://meet.example/x' })
+    );
+    assert.strictEqual(editada.statusCode, 200, JSON.stringify(editada.body));
+    assert.deepStrictEqual(
+      [editada.body.junta.cliente, editada.body.junta.modalidad, editada.body.junta.lugar],
+      ['Otro SA', 'virtual', 'https://meet.example/x']
+    );
+    const borrada = await api('contador1', 'PATCH', `/juntas/${con.id}`, cuerpoJunta({ titulo: 'zz_test_ con datos extra' }));
+    assert.deepStrictEqual([borrada.body.junta.cliente, borrada.body.junta.modalidad, borrada.body.junta.lugar], [null, null, null]);
+    for (const [extra, campo] of [[{ modalidad: 'hibrida' }, 'modalidad'], [{ cliente: 'x'.repeat(151) }, 'cliente'], [{ lugar: 'x'.repeat(256) }, 'lugar']]) {
+      const r = await api('contador1', 'POST', '/juntas', cuerpoJunta(extra));
+      assert.strictEqual(r.statusCode, 400, campo);
+      assert.match(r.body.mensaje, new RegExp(` sobre ${campo}: `));
+    }
   });
 
   test('la descripción es opcional y queda en null', async () => {

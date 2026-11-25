@@ -180,16 +180,13 @@ describe('BarraPeriodo.vue', () => {
     assert.match(estilos, /font-weight:\s*700/)
   })
 
-  it('la navegación es ‹ Hoy › con botones de 44 px y tooltips con retraso de 500 ms', () => {
+  it('la navegación es ‹ Hoy › con botones de 44 px y tooltips con retraso de 500 ms en las flechas', () => {
     assert.match(plantilla, /icon="chevron_left"/)
     assert.match(plantilla, /label="Hoy"/)
     assert.match(plantilla, /icon="chevron_right"/)
     assert.ok((plantilla.match(/class="[^"]*control-touch/g) ?? []).length >= 3)
-    for (const texto of [
-      'Va al periodo anterior.',
-      'Vuelve al día de hoy.',
-      'Va al periodo siguiente.',
-    ]) {
+    // «Hoy» lleva su texto visible, así que no necesita tooltip.
+    for (const texto of ['Va al periodo anterior.', 'Va al periodo siguiente.']) {
       const posicion = plantilla.indexOf(texto)
       assert.ok(posicion >= 0, texto)
       const apertura = plantilla.lastIndexOf('<q-tooltip', posicion)
@@ -241,6 +238,12 @@ describe('pantalla «Mi Calendario»', () => {
     assert.match(pagina, /Tú la administras/)
     assert.doesNotMatch(pagina, /\(lo administras\)/)
     assert.doesNotMatch(pagina, /\$\{p\.nombre\} \(\$\{formatearRol\(p\.rol\)\}\)/)
+  })
+
+  it('«Ver agenda de» esconde su tooltip mientras la lista está abierta (en celular tapaba las opciones)', () => {
+    assert.match(plantilla, /@popup-show="selectorAbierto = true"/)
+    assert.match(plantilla, /@popup-hide="selectorAbierto = false"/)
+    assert.match(plantilla, /<q-tooltip v-if="!selectorAbierto"[^>]*>[\s\S]*?Elige a otra persona/)
   })
 
   it('la franja de la recepcionista es un q-banner dense de una línea con acciones en línea', () => {

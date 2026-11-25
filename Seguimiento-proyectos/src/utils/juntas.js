@@ -15,6 +15,8 @@ export const HORA_FIN_VISTA = 19
 export const MAX_TITULO = 150
 export const MAX_DESCRIPCION = 1000
 export const MAX_INVITADOS = 50
+export const MAX_CLIENTE = 150
+export const MAX_LUGAR = 255
 
 /** Ancho (px) por debajo del cual la vista inicial es «Día». */
 const ANCHO_MOVIL = 600
@@ -398,6 +400,9 @@ const CAMPOS_POR_NOMBRE = {
   inicio: 'inicio',
   fin: 'fin',
   participantes: 'participantes',
+  cliente: 'cliente',
+  modalidad: 'modalidad',
+  lugar: 'lugar',
 }
 
 /**
@@ -545,7 +550,7 @@ export const distribuirSolapadas = (segmentos) => {
 
 /**
  * Todos los errores del formulario de junta a la vez, por campo ({} si todo está bien).
- * @param {{ titulo: string, fecha: string, horaInicio: string, horaFin: string, descripcion: string, participantes: Array }} datos
+ * @param {{ titulo: string, fecha: string, horaInicio: string, horaFin: string, descripcion: string, participantes: Array, cliente?: string, lugar?: string }} datos
  * @returns {Object<string, string>}
  */
 export const validarFormularioJunta = (datos) => {
@@ -579,11 +584,32 @@ export const validarFormularioJunta = (datos) => {
     errores.descripcion = `La descripción supera los ${MAX_DESCRIPCION} caracteres permitidos.`
   }
 
+  if ((datos.cliente ?? '').trim().length > MAX_CLIENTE) {
+    errores.cliente = `El cliente supera los ${MAX_CLIENTE} caracteres permitidos.`
+  }
+  if ((datos.lugar ?? '').trim().length > MAX_LUGAR) {
+    errores.lugar = `El lugar supera los ${MAX_LUGAR} caracteres permitidos.`
+  }
+
   const invitados = datos.participantes ?? []
   if (invitados.length > MAX_INVITADOS) {
     errores.participantes = `Puedes invitar a ${MAX_INVITADOS} personas como máximo.`
   }
   return errores
+}
+
+/** Texto visible de la modalidad guardada; vacío si no hay o no se reconoce. */
+export const etiquetaModalidad = (modalidad) =>
+  ({ presencial: 'Presencial', virtual: 'Virtual' })[modalidad] ?? ''
+
+/**
+ * Enlace del lugar de una junta virtual (solo http:// o https://); null si no lo es.
+ * @param {{ modalidad: string|null, lugar: string|null }} junta
+ * @returns {string|null}
+ */
+export const enlaceDeLugar = (junta) => {
+  const lugar = typeof junta?.lugar === 'string' ? junta.lugar.trim() : ''
+  return junta?.modalidad === 'virtual' && /^https?:\/\//i.test(lugar) ? lugar : null
 }
 
 // --- vista de año ---------------------------------------------------------------------------------

@@ -80,8 +80,26 @@ describe('juntaService', () => {
         fin: '2026-11-18 10:00',
         participantes: [4, 7],
         privada: false,
+        cliente: '',
+        modalidad: null,
+        lugar: '',
       },
     })
+  })
+
+  it('crear y actualizar envían cliente y lugar recortados y la modalidad solo si es válida', async () => {
+    const api = crearApiFalsa({ POST: { junta }, PATCH: { junta } })
+    const servicio = crearJuntaService({ api })
+    const base = { titulo: 'a', inicio: 'x', fin: 'y', participantes: [] }
+    await servicio.crear({ ...base, cliente: ' Acme SA ', modalidad: 'virtual', lugar: ' Teams ' })
+    await servicio.actualizar(5, { ...base, modalidad: 'hibrida' })
+    assert.deepEqual(
+      api.llamadas.map((l) => [l.segundo.cliente, l.segundo.modalidad, l.segundo.lugar]),
+      [
+        ['Acme SA', 'virtual', 'Teams'],
+        ['', null, ''],
+      ],
+    )
   })
 
   it('crear y actualizar envían privada como booleano (false si no se indica)', async () => {
@@ -169,6 +187,9 @@ describe('juntaService', () => {
       'fin',
       'participantes',
       'privada',
+      'cliente',
+      'modalidad',
+      'lugar',
     ])
   })
 
