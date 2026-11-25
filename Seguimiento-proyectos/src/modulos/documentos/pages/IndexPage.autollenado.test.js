@@ -46,6 +46,24 @@ describe('Recepción — autollenado con cliente frecuente', () => {
     assert.match(bloque, /:disable="!clientesFrecuentes\.length( \|\| formularioBloqueado)?"/)
   })
 
+  test('el botón de autollenar va arriba, en la sección 1, y no al pie del formulario', () => {
+    const seccion1 = PLANTILLA.indexOf('1. Selección de Cliente')
+    const boton = PLANTILLA.indexOf('label="Autollenar"')
+    const cliente = PLANTILLA.indexOf('label="Cliente *"')
+    const registrar = PLANTILLA.indexOf('label="Registrar y Acuse"')
+    assert.notEqual(seccion1, -1, 'falta el título de la sección 1')
+    assert.ok(
+      boton > seccion1 && boton < cliente,
+      'Autollenar debe ir entre el título y el campo Cliente',
+    )
+    assert.equal(
+      PLANTILLA.indexOf('label="Autollenar"', boton + 1),
+      -1,
+      'solo debe haber un botón Autollenar',
+    )
+    assert.ok(boton < registrar)
+  })
+
   test('el modal recibe los clientes frecuentes y los tipos, y avisa al confirmar', () => {
     const inicio = PLANTILLA.indexOf('<AutollenadoDialogo')
     assert.notEqual(inicio, -1, 'IndexPage no usa AutollenadoDialogo')

@@ -92,4 +92,23 @@ describe('rebanada 49 · limpieza tras registrar', () => {
       )
     }
   })
+
+  test('las firmas van al final: archivos, observaciones, firmas y luego los botones', () => {
+    const archivos = PLANTILLA.indexOf('<q-file')
+    const observaciones = PLANTILLA.indexOf('label="Observaciones"')
+    const firmaCliente = PLANTILLA.indexOf('ref="canvasCliente"')
+    const firmaRecepcion = PLANTILLA.indexOf('ref="canvasRecepcion"')
+    const registrar = PLANTILLA.indexOf('label="Registrar y Acuse"')
+    for (const [nombre, pos] of Object.entries({
+      archivos,
+      observaciones,
+      firmaCliente,
+      registrar,
+    })) {
+      assert.notEqual(pos, -1, `falta ${nombre} en la plantilla`)
+    }
+    assert.ok(archivos < observaciones, 'Observaciones debe ir después de los archivos')
+    assert.ok(observaciones < firmaCliente, 'Las firmas deben ir después de las observaciones')
+    assert.ok(firmaRecepcion < registrar, 'Las firmas deben ir antes de los botones')
+  })
 })

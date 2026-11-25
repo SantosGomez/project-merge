@@ -71,9 +71,27 @@
             <q-card-section>
               <q-form @submit="onSubmit" class="q-gutter-y-md">
                 <!-- Sección 1: Datos de la Entidad -->
-                <div class="text-h6 text-weight-bold text-grey-8 row items-center">
-                  <q-icon name="business" class="q-mr-xs text-primary" size="20px" />
-                  1. Selección de Cliente y Empresa Receptora
+                <!-- Autollenar va junto al título de la sección 1: es lo primero que
+                   se decide (cliente frecuente) y al pie del formulario no se veía. -->
+                <div class="row items-center q-col-gutter-sm">
+                  <div class="col-12 col-sm text-h6 text-weight-bold text-grey-8 row items-center">
+                    <q-icon name="business" class="q-mr-xs text-primary" size="20px" />
+                    1. Selección de Cliente y Empresa Receptora
+                  </div>
+                  <div class="col-12 col-sm-auto">
+                    <q-btn
+                      label="Autollenar"
+                      color="primary"
+                      outline
+                      no-caps
+                      icon="auto_awesome"
+                      class="control-touch full-width"
+                      :disable="!clientesFrecuentes.length || formularioBloqueado"
+                      @click="mostrarAutollenado = true"
+                    >
+                      <q-tooltip>Autollenar con los datos de un cliente frecuente</q-tooltip>
+                    </q-btn>
+                  </div>
                 </div>
 
                 <div class="row q-col-gutter-md">
@@ -553,6 +571,20 @@
                   </q-file>
                 </div>
 
+                <q-input
+                  v-model="form.observaciones"
+                  type="textarea"
+                  rows="2"
+                  label="Observaciones"
+                  name="observaciones"
+                  autocomplete="off"
+                  outlined
+                  dense
+                  :disable="formularioBloqueado"
+                />
+
+                <!-- Las firmas van al final: el cliente firma cuando la entrega ya está
+                   completa (archivos y observaciones incluidos). -->
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-sm-6">
                     <q-card
@@ -658,29 +690,7 @@
                   </div>
                 </div>
 
-                <q-input
-                  v-model="form.observaciones"
-                  type="textarea"
-                  rows="2"
-                  label="Observaciones"
-                  name="observaciones"
-                  autocomplete="off"
-                  outlined
-                  dense
-                  :disable="formularioBloqueado"
-                />
-
                 <div class="row justify-end q-gutter-sm">
-                  <q-btn
-                    label="Autollenar"
-                    color="primary"
-                    outline
-                    icon="auto_awesome"
-                    :disable="!clientesFrecuentes.length || formularioBloqueado"
-                    @click="mostrarAutollenado = true"
-                  >
-                    <q-tooltip>Autollenar con los datos de un cliente frecuente</q-tooltip>
-                  </q-btn>
                   <q-btn
                     label="Limpiar"
                     color="grey-8"
