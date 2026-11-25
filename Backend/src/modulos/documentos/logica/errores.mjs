@@ -100,6 +100,7 @@ const PERMISOS = Object.freeze({
   // Sistemas (soporte) puede lo mismo que el Administrador; Practicante solo consulta.
   registrar_recepcion: Object.freeze(['Recepcionista', 'Administrador', 'Sistemas']),
   ver_directorio: Object.freeze(['Contador', 'Administrador', 'Practicante', 'Sistemas']),
+  crear_cliente: Object.freeze(['Contador', 'Administrador', 'Sistemas']),
   cambiar_estado: Object.freeze(['Contador', 'Administrador', 'Sistemas']),
   ver_usuarios: Object.freeze(['Administrador', 'Sistemas']),
   administrar_usuarios: Object.freeze(['Administrador', 'Sistemas']),

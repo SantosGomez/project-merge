@@ -53,6 +53,15 @@ export async function obtenerDirectorio(filtros = {}) {
 }
 
 /**
+ * Registra un nuevo cliente en el catálogo único (POST /doc/clientes).
+ * @param {Object} datos - { razonSocial, clave?, rfc?, email?, telefono?, contadorId? }
+ * @returns {Promise<Object>} Respuesta: { cliente }
+ */
+export async function crearClienteDocumento(datos) {
+  return post(`${BASE_DOC}/clientes`, datos)
+}
+
+/**
  * Obtiene los documentos recibidos en un periodo, para la tabla del Dashboard.
  * @param {string} periodo - 'YYYY-MM'
  * @param {Object} [opciones={}] - { misDocumentos?: boolean }

@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { rutaClientes } from './clientes.mjs';
+import { rutaClientes, rutaCrearCliente } from './clientes.mjs';
 
 describe('rutaClientes (T30, RF-7, RF-8)', () => {
   const poolMock = (clientes = [], docs = []) => ({
@@ -132,5 +132,78 @@ describe('rutaClientes (T30, RF-7, RF-8)', () => {
     const res = await rutaClientes(pool, { periodo: '2026-10', busqueda: '0031' });
     assert.strictEqual(res.body.clientes.length, 1);
     assert.strictEqual(res.body.clientes[0].id, 1);
+  });
+});
+
+describe('rutaCrearCliente', () => {
+  test('rechaza razón social vacía o muy larga con 400', async () => {
+    const pool = { query: async () => [[]] };
+    const r1 = await rutaCrearCliente(pool, { razonSocial: '   ' });
+    assert.strictEqual(r1.status, 400);
+    assert.strictEqual(r1.body.error, 'DATOS_INVALIDOS');
+
+    const r2 = await rutaCrearCliente(pool, { razonSocial: 'A'.repeat(151) });
+    assert.strictEqual(r2.status, 400);
+  });
+
+  test('rechaza clave inválida, RFC inválido o correo inválido con 400', async () => {
+    const pool = { query: async () => [[]] };
+    assert.strictEqual((await rutaCrearCliente(pool, { razonSocial: 'Acme', clave: '12345' })).status, 400);
+    assert.strictEqual((await rutaCrearCliente(pool, { razonSocial: 'Acme', rfc: 'MALO' })).status, 400);
+    assert.strictEqual((await rutaCrearCliente(pool, { razonSocial: 'Acme', email: 'sin-arroba' })).status, 400);
+  });
+
+  test('crea un cliente válido normalizando clave y RFC', async () => {
+    let paramsInsert = null;
+    const pool = {
+      query: async (sql, params) => {
+        if (sql.includes('FROM usuarios')) {
+          return [[{ id: 7, nombre: 'CP Ana' }]];
+        }
+        if (sql.includes('INSERT INTO clientes')) {
+          paramsInsert = params;
+          return [{ insertId: 42 }];
+        }
+        return [[]];
+      }
+    };
+
+    const res = await rutaCrearCliente(pool, {
+      razonSocial: '  Acme S.A.  ',
+      clave: ' a12 ',
+      rfc: 'acm-010101-ab1',
+      email: 'contacto@acme.com',
+      telefono: '5512345678',
+      contadorId: 7
+    });
+
+    assert.strictEqual(res.status, 201);
+    assert.strictEqual(res.body.cliente.id, 42);
+    assert.strictEqual(res.body.cliente.clave, 'A12');
+    assert.strictEqual(res.body.cliente.rfc, 'ACM010101AB1');
+    assert.strictEqual(res.body.cliente.razonSocial, 'Acme S.A.');
+    assert.strictEqual(res.body.cliente.contador, 'CP Ana');
+    assert.deepStrictEqual(paramsInsert, [
+      'A12',
+      7,
+      'Acme S.A.',
+      'ACM010101AB1',
+      'contacto@acme.com',
+      '5512345678'
+    ]);
+  });
+
+  test('devuelve 409 si la clave ya está registrada', async () => {
+    const pool = {
+      query: async () => {
+        const err = new Error("Duplicate entry '0001' for key 'uq_clientes_clave'");
+        err.code = 'ER_DUP_ENTRY';
+        throw err;
+      }
+    };
+
+    const res = await rutaCrearCliente(pool, { razonSocial: 'Acme', clave: '0001' });
+    assert.strictEqual(res.status, 409);
+    assert.strictEqual(res.body.error, 'CLIENTE_DUPLICADO');
   });
 });

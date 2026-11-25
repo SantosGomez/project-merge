@@ -7,7 +7,7 @@ const { modulosDeUsuario } = require('../models/UsuarioModuloModel');
 // El código del módulo viene de Proyecto-documentos y es ESM (.mjs); Node lo carga con require().
 const { hayAcceso } = require('../modulos/documentos/logica/errores.mjs');
 const { rutaCatalogos } = require('../modulos/documentos/rutas/catalogos.mjs');
-const { rutaClientes } = require('../modulos/documentos/rutas/clientes.mjs');
+const { rutaClientes, rutaCrearCliente } = require('../modulos/documentos/rutas/clientes.mjs');
 const { rutaClientesFrecuentes } = require('../modulos/documentos/rutas/clientesFrecuentes.mjs');
 const { rutaConsultarRequeridos, rutaCrearRequerido } = require('../modulos/documentos/rutas/requeridos.mjs');
 const { rutaSeguimiento } = require('../modulos/documentos/rutas/seguimiento.mjs');
@@ -162,6 +162,11 @@ router.get(
   '/clientes',
   permiso(['ver_directorio'], 'Tu cuenta no tiene permisos para ver el directorio de clientes.'),
   manejar((req) => rutaClientes(pool, req.query))
+);
+router.post(
+  '/clientes',
+  permiso(['crear_cliente'], 'Tu cuenta no tiene permisos para registrar clientes.'),
+  manejar((req) => rutaCrearCliente(pool, req.body || {}))
 );
 router.get(
   '/clientes/:id/requeridos',

@@ -12,7 +12,13 @@
           </div>
         </div>
         <div class="col-12 col-sm-auto row q-gutter-sm">
-          <q-btn icon="person_add" color="primary" label="Nuevo Cliente" @click="nuevoCliente">
+          <q-btn
+            v-if="puedeCrearCliente"
+            icon="person_add"
+            color="primary"
+            label="Nuevo Cliente"
+            @click="nuevoCliente"
+          >
             <q-tooltip>Registrar un nuevo cliente en el sistema</q-tooltip>
           </q-btn>
           <q-btn
@@ -232,12 +238,15 @@
           </q-table>
         </q-card-section>
       </q-card>
+
+      <NuevoClienteDialog v-model="dialogoNuevoCliente" @guardado="alGuardarCliente" />
     </SeccionAnimada>
   </q-page>
 </template>
 
 <script setup>
 import SeccionAnimada from '@/modulos/documentos/components/SeccionAnimada.vue'
+import NuevoClienteDialog from '@/modulos/documentos/components/NuevoClienteDialog.vue'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { obtenerDirectorio } from '@/modulos/documentos/servicios/api.js'
@@ -245,8 +254,13 @@ import { mensajeParaUsuario } from '@/modulos/documentos/servicios/cliente.js'
 import { claseDeSemaforo } from '@/modulos/documentos/composables/semaforoVista.js'
 import { textoRfc } from '@/modulos/documentos/composables/clientesVista.js'
 import { periodoDe, ultimosPeriodos } from '@/modulos/documentos/composables/fechas.js'
+import { useSesion } from '@/modulos/documentos/composables/sesion.js'
+import { hayAcceso } from '@/modulos/documentos/permisos.js'
 
 const $q = useQuasar()
+const sesion = useSesion()
+const puedeCrearCliente = computed(() => hayAcceso(sesion.usuario.value?.rol, 'crear_cliente'))
+const dialogoNuevoCliente = ref(false)
 
 // Formato de mes para etiquetas y tooltips
 const formatoMesAnio = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' })
@@ -378,11 +392,16 @@ onMounted(() => {
 
 // Acciones
 const nuevoCliente = () => {
+  dialogoNuevoCliente.value = true
+}
+
+const alGuardarCliente = (cliente) => {
   $q.notify({
-    type: 'info',
-    message: 'Abrir diálogo de registro de nuevo cliente.',
+    type: 'positive',
+    message: `Cliente "${cliente.razonSocial}" registrado correctamente.`,
     position: 'top-right',
   })
+  cargarClientes()
 }
 
 const exportarReporte = () => {

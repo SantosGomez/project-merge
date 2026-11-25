@@ -41,6 +41,7 @@ const ROL_DOCUMENTOS = Object.freeze({
 export const PERMISOS_DOCUMENTOS = Object.freeze({
   registrar_recepcion: Object.freeze(['Recepcionista', 'Administrador', 'Sistemas']),
   ver_directorio: Object.freeze(['Contador', 'Administrador', 'Practicante', 'Sistemas']),
+  crear_cliente: Object.freeze(['Contador', 'Administrador', 'Sistemas']),
   cambiar_estado: Object.freeze(['Contador', 'Administrador', 'Sistemas']),
   ver_usuarios: Object.freeze(['Administrador', 'Sistemas']),
   administrar_usuarios: Object.freeze(['Administrador', 'Sistemas']),
