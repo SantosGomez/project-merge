@@ -26,6 +26,7 @@ import {
  *   "empresaId": 1,
  *   "tipoDocId": 1,
  *   "departamentoId": 1,
+ *   "contadorId": 13,
  *   "asunto": "string",
  *   "prioridad": "BAJA|MEDIA|ALTA|URGENTE",
  *   "periodo": "2026-10",
@@ -105,6 +106,26 @@ export async function rutaDocumentos(pool, datos, usuarioId) {
         };
       }
 
+      // El contador asignado se comprueba en el servidor: debe ser una cuenta con
+      // el módulo de documentos y rol Contador.
+      const [contadores] = await conexion.query(
+        `SELECT u.id FROM usuarios u
+         JOIN usuario_modulos m ON m.usuario_id = u.id AND m.modulo = 'documentos' AND m.rol = 'contador'
+         WHERE u.id = ?`,
+        [datos.contadorId],
+      );
+      if (contadores.length === 0) {
+        await conexion.rollback();
+        return {
+          status: 400,
+          body: {
+            error: "VALIDACION",
+            mensaje:
+              "El contador asignado no existe o no tiene el rol Contador en documentos. Elige otro contador de la lista y vuelve a guardar.",
+          },
+        };
+      }
+
       // Obtener y incrementar el consecutivo de forma ATÓMICA
       // INSERT ... ON DUPLICATE KEY UPDATE adquiere bloqueo exclusivo en la fila.
       // Insertamos con 1 para que el primer folio sea 0001; en duplicado se incrementa.
@@ -127,10 +148,10 @@ export async function rutaDocumentos(pool, datos, usuarioId) {
       const [resultado] = await conexion.query(
         `INSERT INTO documentos (
            folio, cliente_id, empresa_id, tipo_doc_id, departamento_id,
-           usuario_recep_id, via_entrega, periodo, observaciones, asunto,
+           usuario_recep_id, contador_id, via_entrega, periodo, observaciones, asunto,
            prioridad, fecha_limite_sla, notificar_correo,
            firma_cliente, firma_recep, estado
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEPCIONADO')`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEPCIONADO')`,
         [
           folio,
           datos.clienteId,
@@ -138,6 +159,7 @@ export async function rutaDocumentos(pool, datos, usuarioId) {
           datos.tipoDocId,
           datos.departamentoId,
           usuarioId,
+          datos.contadorId,
           datos.viaEntrega,
           datos.periodo,
           datos.observaciones ?? null,
@@ -258,9 +280,9 @@ const aTextoLocal = (valor) => {
 /**
  * GET /documentos
  *
- * Lista los documentos de un periodo para el Dashboard, más los de periodos
- * anteriores que siguen en trámite (recibidos, en proceso o pendientes del
- * cliente). Cada fila trae su prioridad y su fecha límite.
+ * Lista los documentos recibidos en un mes (`periodo`, `AAAA-MM`, comparado con
+ * la fecha de recepción) para el Dashboard, más los recibidos antes que siguen
+ * en trámite (recibidos, en proceso o pendientes del cliente). Cada fila trae su prioridad y su fecha límite.
  *
  * @param {Pool} pool - Conexiones de base de datos.
  * @param {object} query - Objeto con los searchParams parseados (`periodo`: 'YYYY-MM', `misDocumentos`: '1').
@@ -281,9 +303,17 @@ export async function rutaListaDocumentos(pool, query = {}, usuario = null) {
     Boolean(usuario?.id);
 
   try {
-    // El periodo completo, más lo que sigue vivo de meses anteriores: lo
-    // pendiente de octubre sigue pendiente en noviembre y no debe desaparecer
-    // del control al cambiar de mes (igual que en Direccionamiento).
+    // Lo recibido en el mes elegido (por fecha de recepción, no por periodo
+    // contable), más lo que sigue vivo de meses anteriores: lo pendiente de
+    // octubre sigue pendiente en noviembre y no debe desaparecer del control
+    // al cambiar de mes (igual que en Direccionamiento). Rango en hora local.
+    const [anio, mes] = periodo.split("-").map(Number);
+    const dos = (n) => String(n).padStart(2, "0");
+    const inicioMes = `${anio}-${dos(mes)}-01 00:00:00`;
+    const inicioSiguiente =
+      mes === 12
+        ? `${anio + 1}-01-01 00:00:00`
+        : `${anio}-${dos(mes + 1)}-01 00:00:00`;
     let sql = `SELECT d.id, d.folio, c.nombre AS cliente, t.nombre AS tipo,
               d.periodo, d.fecha_recepcion AS fechaRecepcion,
               d.fecha_limite_sla AS fechaLimite, d.estado, d.prioridad,
@@ -291,9 +321,9 @@ export async function rutaListaDocumentos(pool, query = {}, usuario = null) {
        FROM documentos d
        JOIN clientes c ON d.cliente_id = c.id
        JOIN tipos_documento t ON d.tipo_doc_id = t.id
-       WHERE (d.periodo = ?
-          OR (d.periodo < ? AND d.estado IN ('RECEPCIONADO', 'EN_PROCESO', 'PENDIENTE_CLIENTE')))`;
-    const params = [periodo, periodo];
+       WHERE ((d.fecha_recepcion >= ? AND d.fecha_recepcion < ?)
+          OR (d.fecha_recepcion < ? AND d.estado IN ('RECEPCIONADO', 'EN_PROCESO', 'PENDIENTE_CLIENTE')))`;
+    const params = [inicioMes, inicioSiguiente, inicioMes];
 
     if (filtrarMisDocumentos) {
       sql += ` AND (d.contador_id = ? OR c.usuario_id = ?)`;
@@ -451,7 +481,10 @@ export async function rutaEntregarDocumento(
 
     // Bloqueo de fila: dos entregas simultáneas no pueden pasar las dos
     const [filas] = await conexion.query(
-      "SELECT estado FROM documentos WHERE id = ? FOR UPDATE",
+      `SELECT d.estado, d.contador_id AS contadorId, c.usuario_id AS contadorCliente
+       FROM documentos d
+       LEFT JOIN clientes c ON c.id = d.cliente_id
+       WHERE d.id = ? FOR UPDATE`,
       [documentoId],
     );
     if (filas.length === 0) {
@@ -473,6 +506,21 @@ export async function rutaEntregarDocumento(
           error: "VALIDACION",
           mensaje:
             "El documento ya fue entregado al contador o ya no está pendiente de entrega.",
+        },
+      };
+    }
+
+    // Quien recibe es el contador asignado en la recepción o, en documentos
+    // anteriores, el habitual del cliente. Solo sin ninguno de los dos se elige.
+    const contadorAsignado = filas[0].contadorId ?? filas[0].contadorCliente;
+    if (contadorAsignado != null && contadorAsignado !== datos.contadorId) {
+      await conexion.rollback();
+      return {
+        status: 400,
+        body: {
+          error: "VALIDACION",
+          mensaje:
+            "No se puede entregar a otro contador. Este documento tiene un contador asignado y solo él puede recibirlo. Actualiza la pantalla y entrega al contador que aparece asignado.",
         },
       };
     }

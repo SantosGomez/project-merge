@@ -423,7 +423,9 @@
                     <q-select
                       v-model="form.contadorAsignado"
                       :options="opcionesContadores"
-                      label="Contador Asignado (opcional)"
+                      emit-value
+                      map-options
+                      label="Contador asignado *"
                       name="contadorAsignado"
                       autocomplete="off"
                       outlined
@@ -436,6 +438,7 @@
                       transition-hide="jump-up"
                       class="selector-moderno"
                       :disable="formularioBloqueado || opcionesContadores.length === 0"
+                      :rules="[(val) => !!val || 'Elige el contador asignado']"
                     >
                       <template #prepend>
                         <q-icon name="person_search" color="primary" size="18px" />
@@ -929,7 +932,11 @@ import {
   subirEnOrden,
   textoArchivosPendientes,
 } from '@/modulos/documentos/composables/subidaArchivos.js'
-import { aplicarPlantilla, TIPOS_RECEPCION } from '@/modulos/documentos/composables/autollenado.js'
+import {
+  aplicarPlantilla,
+  contadorPropuesto,
+  TIPOS_RECEPCION,
+} from '@/modulos/documentos/composables/autollenado.js'
 import { esErrorHTTP, detallesDeError } from '@/modulos/documentos/servicios/cliente.js'
 import AcuseImprimir from '@/modulos/documentos/components/AcuseImprimir.vue'
 import SelectorClienteDialogo from '@/modulos/documentos/components/SelectorClienteDialogo.vue'
@@ -987,7 +994,9 @@ const elegirCliente = async (id) => {
 }
 const opcionesTiposDocumento = computed(() => catalogos.tiposDocumento.map((t) => t.nombre))
 const opcionesDepartamentos = computed(() => catalogos.departamentos.map((d) => d.nombre))
-const opcionesContadores = computed(() => catalogos.contadores.map((c) => c.nombre))
+const opcionesContadores = computed(() =>
+  catalogos.contadores.map((c) => ({ value: c.id, label: c.nombre })),
+)
 
 // Prioridad se queda hardcoded (no viene de catálogo)
 const opcionesPrioridades = ['BAJA', 'MEDIA', 'ALTA', 'URGENTE']
@@ -1065,8 +1074,10 @@ const calcularSla = () => {
   }
 }
 
-const onClienteChange = (val) => {
-  if (val) form.contadorAsignado = 'CP. Carlos Ruiz'
+// Al elegir cliente se propone su contador habitual; se puede cambiar.
+const onClienteChange = (clienteId) => {
+  const cliente = catalogos.clientes.find((c) => c.id === clienteId)
+  form.contadorAsignado = contadorPropuesto(cliente, catalogos.contadores)
 }
 
 // Confirmación del modal de autollenado: vuelca la plantilla del tipo elegido y
@@ -1121,9 +1132,9 @@ onMounted(async () => {
       }
     }
 
-    // Contadores: si vacío, no bloquea, solo avisa en consola
+    // Contadores: si vacío, el campo queda apagado y solo se avisa en consola
     if (catalogos.contadores.length === 0) {
-      console.warn('Catálogo de contadores vacío (opcional)')
+      console.warn('Catálogo de contadores vacío')
     }
 
     // Periodo por defecto = mes actual
@@ -1409,6 +1420,7 @@ const onSubmit = async () => {
     empresaId: empresaSel?.id,
     tipoDocId: tipoSel?.id,
     departamentoId: deptoSel?.id,
+    contadorId: form.contadorAsignado,
     asunto: form.asunto,
     prioridad: form.prioridad,
     periodo: form.periodo,

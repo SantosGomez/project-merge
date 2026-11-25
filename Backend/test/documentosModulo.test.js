@@ -89,6 +89,7 @@ async function catalogo() {
 async function recepcionar(quien, extra = {}) {
   const respuesta = await pedir(quien, 'POST', '/doc/documentos', {
     clienteId,
+    contadorId: cuentas.contador.id,
     ...(await catalogo()),
     asunto: 'Estados de cuenta',
     prioridad: 'MEDIA',
@@ -170,6 +171,13 @@ describe('módulo de documentos: acceso', () => {
     assert.ok(!ids.includes(cuentas.sinModulo.id));
   });
 
+  test('cada cliente del catálogo trae su contador habitual como contadorId', async () => {
+    const r = await pedir('admin', 'GET', '/doc/catalogos');
+    const cliente = r.body.clientes.find((c) => c.id === clienteId);
+    assert.ok(cliente, 'el cliente de prueba sale en el catálogo');
+    assert.strictEqual(cliente.contadorId, cuentas.otroContador.id);
+  });
+
   test('cada rol del módulo conserva sus permisos de documentos', async () => {
     assert.strictEqual((await pedir('contador', 'GET', `/doc/documentos?periodo=${PERIODO}`)).statusCode, 200);
     assert.strictEqual((await pedir('practicante', 'GET', `/doc/documentos?periodo=${PERIODO}`)).statusCode, 200);
@@ -192,11 +200,20 @@ describe('módulo de documentos: recepción de punta a punta', () => {
     documento = r.body;
   });
 
-  test('aparece en direccionamiento y en la lista del periodo, con el contador del cliente', async () => {
+  test('la recepción sin contador, o con una cuenta que no es contador, se rechaza con 400', async () => {
+    const sin = await recepcionar('recepcion', { contadorId: undefined });
+    assert.strictEqual(sin.statusCode, 400);
+    assert.strictEqual(sin.body.error, 'VALIDACION');
+    const noContador = await recepcionar('recepcion', { contadorId: cuentas.sinModulo.id });
+    assert.strictEqual(noContador.statusCode, 400);
+    assert.strictEqual(noContador.body.error, 'VALIDACION');
+  });
+
+  test('aparece en direccionamiento y en la lista del periodo, con el contador asignado en la recepción', async () => {
     const dir = await pedir('recepcion', 'GET', '/doc/documentos/direccionamiento');
     const enDir = dir.body.documentos.find((d) => d.id === documento.id);
     assert.ok(enDir, 'está por entregar');
-    assert.strictEqual(enDir.contadorId, cuentas.otroContador.id, 'el contador sale de clientes.usuario_id');
+    assert.strictEqual(enDir.contadorId, cuentas.contador.id, 'el contador sale de documentos.contador_id, no del cliente');
 
     const lista = await pedir('contador', 'GET', `/doc/documentos?periodo=${PERIODO}`);
     assert.ok(lista.body.documentos.some((d) => d.id === documento.id));
@@ -209,6 +226,15 @@ describe('módulo de documentos: recepción de punta a punta', () => {
       firmaContador: FIRMA,
     });
     assert.strictEqual(sinContador.statusCode, 400, 'solo se entrega a quien es contador en el módulo');
+
+    const otro = await pedir('recepcion', 'POST', `/doc/documentos/${documento.id}/entrega`, {
+      contadorId: cuentas.otroContador.id,
+      firmaEntrega: FIRMA,
+      firmaContador: FIRMA,
+    });
+    assert.strictEqual(otro.statusCode, 400, 'no se entrega a otro contador distinto del asignado');
+    const [intacto] = await query('SELECT estado FROM documentos WHERE id = ?', [documento.id]);
+    assert.strictEqual(intacto.estado, 'RECEPCIONADO');
 
     const r = await pedir('recepcion', 'POST', `/doc/documentos/${documento.id}/entrega`, {
       contadorId: cuentas.contador.id,

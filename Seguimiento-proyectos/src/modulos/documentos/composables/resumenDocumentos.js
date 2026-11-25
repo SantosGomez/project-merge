@@ -5,9 +5,10 @@
  * Función pura: sin imports de Vue ni de Quasar, para que `node --test` la
  * cargue sin dependencias. Los cancelados solo cuentan en el total.
  *
- * GET /documentos trae el periodo elegido MÁS lo que sigue en trámite de meses
- * anteriores (2026-11-04). Por eso «Recibidos» y «Completados» se cuentan solo
- * del periodo, y «En trámite» y «Vencidos» de todo lo vivo, sea del mes que sea.
+ * GET /documentos trae lo recibido en el mes elegido MÁS lo que sigue en trámite
+ * de meses anteriores. El mes se decide por la fecha de recepción, no por el
+ * periodo contable (2026-11-25). Por eso «Recibidos» y «Completados» se cuentan
+ * solo del mes de recepción, y «En trámite» y «Vencidos» de todo lo vivo.
  */
 
 /** Estados de un documento que sigue vivo (los mismos que dan ÁMBAR en el semáforo). */
@@ -36,16 +37,18 @@ const vencido = (d, hoyDia) =>
  * Dice si un documento entra en lo que cuenta una tarjeta. Es la misma regla
  * para la cifra de la tarjeta y para el filtro de la tabla al pulsarla.
  *
- * @param {{periodo?: string, estado: string, fechaLimite: string | null}} documento
+ * @param {{fechaRecepcion?: string, estado: string, fechaLimite: string | null}} documento
  * @param {'recibidos' | 'enTramite' | 'vencidos' | 'completados' | null} tarjeta
  *   La tarjeta elegida; sin tarjeta, todo coincide.
  * @param {Date} hoy Fecha de referencia.
- * @param {string} [periodo] El periodo elegido; sin él, todo cuenta como del periodo.
+ * @param {string} [periodo] El mes elegido (`AAAA-MM`); sin él, todo cuenta como del mes.
  * @returns {boolean}
  */
 export const coincideConTarjeta = (documento, tarjeta, hoy, periodo) => {
   const hoyDia = diaLocal(hoy)
-  const delPeriodo = !periodo || documento.periodo === periodo
+  // `fechaRecepcion` llega local sin Z (`AAAA-MM-DDTHH:mm:ss`): sus siete
+  // primeros caracteres ya son el mes, sin conversión de zona horaria.
+  const delPeriodo = !periodo || documento.fechaRecepcion?.slice(0, 7) === periodo
   switch (tarjeta) {
     case 'recibidos':
       return delPeriodo
@@ -61,7 +64,7 @@ export const coincideConTarjeta = (documento, tarjeta, hoy, periodo) => {
 }
 
 /**
- * @param {Array<{periodo?: string, estado: string, fechaLimite: string | null}>} documentos
+ * @param {Array<{fechaRecepcion?: string, estado: string, fechaLimite: string | null}>} documentos
  *   Lista de GET /documentos.
  * @param {Date} hoy Fecha de referencia, por parámetro para poder probarla.
  * @param {string} [periodo] El periodo elegido (`AAAA-MM`).

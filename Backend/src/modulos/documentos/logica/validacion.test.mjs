@@ -25,8 +25,9 @@ const COMPLETO = {
   viaEntrega: 'CORREO',
   firmaCliente: 'datos-de-la-firma-del-cliente',
   firmaRecep: 'datos-de-la-firma-del-recepcionista',
-  // Opcionales: si no están, el documento sigue siendo válido.
+  // El contador asignado es obligatorio desde la rebanada 44.
   contadorId: 7,
+  // Opcionales: si no están, el documento sigue siendo válido.
   observaciones: 'sin incidencias',
   notificarCorreo: true
 }
@@ -126,22 +127,25 @@ describe('cada campo obligatorio, quitado uno por uno', () => {
 })
 
 describe('los campos opcionales no bloquean', () => {
-  for (const opcional of ['contadorId', 'observaciones', 'notificarCorreo', 'adjuntos']) {
+  for (const opcional of ['observaciones', 'notificarCorreo', 'adjuntos']) {
     test(`sin ${opcional} el documento sigue siendo válido`, () => {
       assert.deepEqual(validarDocumento(sinCampo(opcional)), [])
     })
   }
+})
 
-  test('⚠️ quitar el contador NO añade nada a la lista', () => {
-    // El contador es opcional porque `documentos.contador_id` admite nulo.
-    // Un documento puede registrarse sin él.
-    assert.deepEqual(validarDocumento(sinCampo('contadorId')), [])
+describe('el contador asignado es obligatorio', () => {
+  test('sin contador, o con contador vacío, falta el contador asignado', () => {
+    for (const datos of [sinCampo('contadorId'), conCampo('contadorId', null), conCampo('contadorId', '')]) {
+      const problema = problemaDe(validarDocumento(datos), 'contadorId')
+      assert.ok(problema, 'tiene que reportar el contador')
+      assert.equal(problema.problema, 'FALTA')
+      assert.equal(problema.etiqueta, 'contador asignado')
+    }
   })
 
-  test('el contador en cero cuenta como puesto', () => {
-    // Cero es un valor, no una ausencia. distinguish "no elige" de "eligió el
-    // que tiene id cero" importa cuando el catálogo se llame por índice.
-    assert.deepEqual(validarDocumento(conCampo('contadorId', 0)), [])
+  test('con contador puesto no reporta nada', () => {
+    assert.deepEqual(validarDocumento(conCampo('contadorId', 7)), [])
   })
 })
 

@@ -62,12 +62,21 @@ test('sin documentos, las cuatro cifras son cero', () => {
 })
 
 // --- Lo pendiente de meses anteriores (2026-11-04) ---------------------------
-// GET /documentos trae el periodo elegido MÁS lo que sigue en trámite de meses
-// anteriores. Las tarjetas «Recibidos» y «Completados» son del periodo; «En
-// trámite» y «Vencidos» cuentan todo lo vivo, venga del mes que venga.
+// GET /documentos trae lo recibido en el mes elegido MÁS lo que sigue en trámite
+// de meses anteriores (2026-11-25: el mes se decide por la fecha de recepción,
+// no por el periodo contable). Las tarjetas «Recibidos» y «Completados» son del
+// mes de recepción; «En trámite» y «Vencidos» cuentan todo lo vivo.
 
-/** Documento con periodo, para las pruebas que distinguen el mes. */
-const docDe = (periodo, estado, fechaLimite = null) => ({ periodo, estado, fechaLimite })
+/**
+ * Documento recibido en `mes` (`AAAA-MM`). `fechaRecepcion` llega local sin Z.
+ * El periodo contable es otro a propósito: no debe influir.
+ */
+const docDe = (mes, estado, fechaLimite = null) => ({
+  fechaRecepcion: `${mes}-10T09:00:00`,
+  periodo: '2026-01',
+  estado,
+  fechaLimite,
+})
 
 test('con periodo: recibidos y completados son del mes; en trámite y vencidos, de todo lo vivo', () => {
   const documentos = [
@@ -101,6 +110,34 @@ test('cada tarjeta filtra exactamente los documentos que cuenta', () => {
   assert.equal(cuantos('enTramite'), resumen.enTramite)
   assert.equal(cuantos('vencidos'), resumen.vencidos)
   assert.equal(cuantos('completados'), resumen.completados)
+})
+
+test('un completado recibido en el mes con otro periodo contable cuenta y sale al pulsar «Completados»', () => {
+  // Caso real: recibido en noviembre con periodo contable 2026-01
+  const completado = {
+    fechaRecepcion: '2026-11-25T09:00:00',
+    periodo: '2026-01',
+    estado: 'COMPLETADO',
+    fechaLimite: null,
+  }
+  const hoy = new Date(2026, 10, 25, 10, 0, 0)
+
+  assert.equal(coincideConTarjeta(completado, 'completados', hoy, '2026-11'), true)
+  assert.equal(coincideConTarjeta(completado, 'recibidos', hoy, '2026-11'), true)
+  assert.equal(resumirDocumentos([completado], hoy, '2026-11').completados, 1)
+})
+
+test('un completado recibido en otro mes no cuenta aunque su periodo contable sea el elegido', () => {
+  const completado = {
+    fechaRecepcion: '2026-10-31T23:59:59',
+    periodo: '2026-11',
+    estado: 'COMPLETADO',
+    fechaLimite: null,
+  }
+  const hoy = new Date(2026, 10, 25, 10, 0, 0)
+
+  assert.equal(coincideConTarjeta(completado, 'completados', hoy, '2026-11'), false)
+  assert.equal(coincideConTarjeta(completado, 'recibidos', hoy, '2026-11'), false)
 })
 
 test('sin tarjeta elegida no se filtra nada', () => {

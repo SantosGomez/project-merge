@@ -334,7 +334,15 @@
               </div>
             </div>
 
+            <div v-if="contadorFijo" class="row items-center no-wrap q-mb-sm contador-fijo">
+              <q-icon name="person_pin" color="primary" size="24px" aria-hidden="true" />
+              <div class="q-ml-sm">
+                <div class="text-caption text-grey-8">Contador que recibe la documentación</div>
+                <div class="text-weight-bold">{{ documentoSeleccionado.contador }}</div>
+              </div>
+            </div>
             <q-select
+              v-else
               v-model="contadorEntrega"
               :options="catalogoContadores"
               emit-value
@@ -612,7 +620,7 @@
               <th>Cliente</th>
               <th>Tipo</th>
               <th>Prioridad</th>
-              <th>Contador sugerido</th>
+              <th>Contador asignado</th>
               <th>Fecha límite</th>
             </tr>
           </thead>
@@ -766,7 +774,7 @@ const columns = [
   },
   {
     name: 'contador',
-    label: 'Contador sugerido',
+    label: 'Contador asignado',
     field: 'contador',
     align: 'left',
     classes: 'celda-texto celda-contador ocultar-en-xs',
@@ -824,6 +832,9 @@ const mostrarDialogoEntrega = ref(false)
 const mostrarConfirmacionCierre = ref(false)
 const mostrarDetalle = ref(false)
 const documentoSeleccionado = ref({})
+// Si el documento ya trae contador (el de la recepción o, en los anteriores, el
+// habitual del cliente), recibe ese y no se elige otro.
+const contadorFijo = computed(() => !!documentoSeleccionado.value?.contadorId)
 const submittedEntrega = ref(false)
 const contadorEntrega = ref(null)
 const observacionesEntrega = ref('')
@@ -998,7 +1009,9 @@ const confirmarEntrega = async () => {
     const firmaEntrega = canvasRecepcionista.value.toDataURL()
     const firmaContador = canvasContador.value.toDataURL()
     const nombreContador =
-      catalogoContadores.value.find((c) => c.value === contadorEntrega.value)?.label ||
+      (contadorFijo.value
+        ? documentoSeleccionado.value.contador
+        : catalogoContadores.value.find((c) => c.value === contadorEntrega.value)?.label) ||
       'el contador'
 
     await entregarDocumento(documentoSeleccionado.value.id, {

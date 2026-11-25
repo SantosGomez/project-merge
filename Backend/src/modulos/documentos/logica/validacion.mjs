@@ -44,7 +44,7 @@ const VIAS_DE_ENTREGA = ['PRESENCIAL', 'CORREO', 'DIGITAL', 'OTRO']
  */
 const FORMA_PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/
 
-// Los diez campos obligatorios de RF-5.2. La etiqueta es cómo se llama cada uno
+// Los campos obligatorios de RF-5.2 (más el contador asignado, rebanada 44). La etiqueta es cómo se llama cada uno
 // en la pantalla: el nombre técnico va al registro del servidor y el usuario
 // tiene que ver el otro.
 const OBLIGATORIOS = [
@@ -52,6 +52,7 @@ const OBLIGATORIOS = [
   { campo: 'empresaId', etiqueta: 'empresa receptora' },
   { campo: 'tipoDocId', etiqueta: 'tipo de documento' },
   { campo: 'departamentoId', etiqueta: 'departamento' },
+  { campo: 'contadorId', etiqueta: 'contador asignado' },
   { campo: 'asunto', etiqueta: 'asunto' },
   { campo: 'prioridad', etiqueta: 'prioridad' },
   { campo: 'periodo', etiqueta: 'periodo' },

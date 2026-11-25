@@ -45,7 +45,7 @@ export async function rutaCatalogos(pool) {
     // pueda elegir incluso clientes suspendidos; el guardado validará.
     // Unión, fase 3: el catálogo único de clientes guarda la razón social en 'nombre'.
     const [clientes] = await pool.query(
-      `SELECT id, clave, nombre AS razonSocial, rfc
+      `SELECT id, clave, nombre AS razonSocial, rfc, usuario_id AS contadorId
        FROM clientes
        ORDER BY nombre`
     );

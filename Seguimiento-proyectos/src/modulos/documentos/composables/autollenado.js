@@ -105,3 +105,18 @@ export const aplicarPlantilla = (tipo, form) => {
   }
   return true
 }
+
+/**
+ * Contador que se propone al elegir un cliente: su contador habitual, siempre
+ * que siga en el catálogo de contadores de documentos. Si no, `null` y la
+ * persona lo elige a mano.
+ *
+ * @param {{ contadorId?: number | null } | undefined} cliente - Cliente del catálogo.
+ * @param {Array<{ id: number }>} contadores - Catálogo de contadores.
+ * @returns {number | null}
+ */
+export const contadorPropuesto = (cliente, contadores) => {
+  const habitual = cliente?.contadorId
+  if (habitual == null) return null
+  return contadores.some((c) => c.id === habitual) ? habitual : null
+}

@@ -11,11 +11,18 @@ import {
 } from "./documentos.mjs";
 
 describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
-  // Doble de la base: devuelve las filas cuyo periodo coincide con el primer
-  // parámetro de la consulta, como haría el `WHERE d.periodo = ?`.
+  // Doble de la base: devuelve las filas cuya fecha de recepción cae en el
+  // rango [params[0], params[1]) de la consulta (el mes pedido), como haría el
+  // `WHERE d.fecha_recepcion >= ? AND d.fecha_recepcion < ?`.
+  const dos = (n) => String(n).padStart(2, "0");
+  const textoLocal = (f) =>
+    `${f.getFullYear()}-${dos(f.getMonth() + 1)}-${dos(f.getDate())} ${dos(f.getHours())}:${dos(f.getMinutes())}:${dos(f.getSeconds())}`;
   const poolMock = (filas = []) => ({
     query: async (sql, params = []) => [
-      filas.filter((f) => f.periodo === params[0]),
+      filas.filter((f) => {
+        const recibido = textoLocal(f.fechaRecepcion);
+        return recibido >= params[0] && recibido < params[1];
+      }),
     ],
   });
 
@@ -58,6 +65,53 @@ describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
         fechaLimite: null,
         estado: "RECEPCIONADO",
       },
+    ]);
+  });
+
+  test("el mes se decide por la fecha de recepción, no por el periodo contable", async () => {
+    const filas = [
+      {
+        id: 11,
+        folio: "DCA-2026-0011",
+        cliente: "Cliente A",
+        tipo: "Facturas",
+        periodo: "2026-01",
+        fechaRecepcion: new Date(2026, 9, 31, 23, 59, 59),
+        estado: "COMPLETADO",
+      },
+      {
+        id: 12,
+        folio: "DCA-2026-0012",
+        cliente: "Cliente A",
+        tipo: "Facturas",
+        periodo: "2026-10",
+        fechaRecepcion: new Date(2026, 10, 1, 0, 0, 0),
+        estado: "RECEPCIONADO",
+      },
+    ];
+
+    const res = await rutaListaDocumentos(poolMock(filas), {
+      periodo: "2026-10",
+    });
+
+    assert.deepStrictEqual(
+      res.body.documentos.map((d) => d.folio),
+      ["DCA-2026-0011"],
+    );
+  });
+
+  test("en diciembre el rango termina el primero de enero del año siguiente", async () => {
+    let paramsEjecutados = [];
+    const poolEspia = {
+      query: async (sql, params) => {
+        paramsEjecutados = params;
+        return [[]];
+      },
+    };
+    await rutaListaDocumentos(poolEspia, { periodo: "2026-12" });
+    assert.deepStrictEqual(paramsEjecutados.slice(0, 2), [
+      "2026-12-01 00:00:00",
+      "2027-01-01 00:00:00",
     ]);
   });
 
@@ -153,8 +207,14 @@ describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
     );
     assert.deepStrictEqual(
       paramsEjecutados,
-      ["2026-10", "2026-10", 5, 5],
-      "pasa los parámetros del periodo y del contador",
+      [
+        "2026-10-01 00:00:00",
+        "2026-11-01 00:00:00",
+        "2026-10-01 00:00:00",
+        5,
+        5,
+      ],
+      "pasa el rango de recepción del mes y los parámetros del contador",
     );
   });
 
@@ -179,7 +239,11 @@ describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
       !sqlEjecutada.includes("d.contador_id = ? OR c.usuario_id = ?"),
       "Administrador no filtra por contador",
     );
-    assert.deepStrictEqual(paramsEjecutados, ["2026-10", "2026-10"]);
+    assert.deepStrictEqual(paramsEjecutados, [
+      "2026-10-01 00:00:00",
+      "2026-11-01 00:00:00",
+      "2026-10-01 00:00:00",
+    ]);
 
     await rutaListaDocumentos(
       poolEspia,
@@ -190,7 +254,11 @@ describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
       !sqlEjecutada.includes("d.contador_id = ? OR c.usuario_id = ?"),
       "sin misDocumentos=1 Contador no filtra",
     );
-    assert.deepStrictEqual(paramsEjecutados, ["2026-10", "2026-10"]);
+    assert.deepStrictEqual(paramsEjecutados, [
+      "2026-10-01 00:00:00",
+      "2026-11-01 00:00:00",
+      "2026-10-01 00:00:00",
+    ]);
   });
 });
 
@@ -577,11 +645,12 @@ describe("rutaEntregarDocumento (entrega formal al contador)", () => {
    * de historial y si la transacción se confirmó o se deshizo.
    */
   const baseSimulada = (
-    { documentos = {}, contadores = {} } = {},
+    { documentos = {}, contadores = {}, asignados = {} } = {},
     { fallaEn } = {},
   ) => {
     const base = {
       documentos: { ...documentos },
+      asignados: { ...asignados },
       contadores: { ...contadores },
       actualizaciones: [],
       historial: [],
@@ -604,9 +673,15 @@ describe("rutaEntregarDocumento (entrega formal al contador)", () => {
             code: "ECONNRESET",
           });
         }
-        if (sql.includes("SELECT estado FROM documentos")) {
+        if (sql.includes("FROM documentos d") && sql.includes("FOR UPDATE")) {
           const estado = base.documentos[params[0]];
-          return [estado === undefined ? [] : [{ estado }]];
+          const { contadorId = null, contadorCliente = null } =
+            base.asignados[params[0]] ?? {};
+          return [
+            estado === undefined
+              ? []
+              : [{ estado, contadorId, contadorCliente }],
+          ];
         }
         if (sql.includes("SELECT u.id, u.nombre FROM usuarios")) {
           const cuenta = base.contadores[params[0]];
@@ -805,6 +880,89 @@ describe("rutaEntregarDocumento (entrega formal al contador)", () => {
     }
   });
 
+  const datosEntrega = (contadorId) => ({
+    contadorId,
+    firmaEntrega: FIRMA_ENTREGA,
+    firmaContador: FIRMA_RECIBE,
+  });
+  const dosContadores = {
+    13: { nombre: "C.P. Ana Martínez", activo: 1, esContador: true },
+    14: { nombre: "C.P. Luis Pérez", activo: 1, esContador: true },
+  };
+
+  test("con contador asignado en el documento, entregar a otro se rechaza con 400 y no cambia nada", async () => {
+    const base = baseSimulada({
+      documentos: { 5: "RECEPCIONADO" },
+      contadores: dosContadores,
+      asignados: { 5: { contadorId: 13, contadorCliente: 14 } },
+    });
+
+    const res = await rutaEntregarDocumento(base.pool, 5, datosEntrega(14), 9);
+
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error, "VALIDACION");
+    assert.match(res.body.mensaje, /asignado/i);
+    assert.deepStrictEqual(base.actualizaciones, []);
+    assert.deepStrictEqual(base.historial, []);
+    assert.strictEqual(base.confirmada, false);
+  });
+
+  test("con contador asignado en el documento, entregar a ese mismo contador funciona", async () => {
+    const base = baseSimulada({
+      documentos: { 5: "RECEPCIONADO" },
+      contadores: dosContadores,
+      asignados: { 5: { contadorId: 13, contadorCliente: 14 } },
+    });
+
+    const res = await rutaEntregarDocumento(base.pool, 5, datosEntrega(13), 9);
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.contadorId, 13);
+    assert.strictEqual(base.actualizaciones[0].contadorId, 13);
+  });
+
+  test("documento anterior sin contador: se entrega al contador habitual del cliente y a otro se rechaza", async () => {
+    const rechazo = baseSimulada({
+      documentos: { 5: "RECEPCIONADO" },
+      contadores: dosContadores,
+      asignados: { 5: { contadorId: null, contadorCliente: 14 } },
+    });
+    const resRechazo = await rutaEntregarDocumento(
+      rechazo.pool,
+      5,
+      datosEntrega(13),
+      9,
+    );
+    assert.strictEqual(resRechazo.status, 400);
+    assert.deepStrictEqual(rechazo.actualizaciones, []);
+
+    const acepta = baseSimulada({
+      documentos: { 5: "RECEPCIONADO" },
+      contadores: dosContadores,
+      asignados: { 5: { contadorId: null, contadorCliente: 14 } },
+    });
+    const resAcepta = await rutaEntregarDocumento(
+      acepta.pool,
+      5,
+      datosEntrega(14),
+      9,
+    );
+    assert.strictEqual(resAcepta.status, 200);
+    assert.strictEqual(acepta.actualizaciones[0].contadorId, 14);
+  });
+
+  test("sin contador en el documento ni en el cliente, acepta el contador elegido", async () => {
+    const base = baseSimulada({
+      documentos: { 5: "RECEPCIONADO" },
+      contadores: dosContadores,
+    });
+
+    const res = await rutaEntregarDocumento(base.pool, 5, datosEntrega(14), 9);
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(base.actualizaciones[0].contadorId, 14);
+  });
+
   test("sin las dos firmas o con un contador inválido responde 400 sin tocar la base", async () => {
     const casos = [
       { contadorId: 13, firmaEntrega: "", firmaContador: FIRMA_RECIBE },
@@ -908,23 +1066,27 @@ describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores n
       const [[empresa]] = await pool.query("SELECT MIN(id) AS id FROM empresas");
       const [[tipo]] = await pool.query("SELECT MIN(id) AS id FROM tipos_documento");
       const [[departamento]] = await pool.query("SELECT MIN(id) AS id FROM departamentos");
-      // [folio, periodo, estado, prioridad]
+      // [folio, mes de recepción, estado, prioridad, periodo contable]
+      // El periodo contable no coincide a propósito con el mes de recepción
+      // en algunos: el Dashboard se rige por la fecha de recepción.
       const documentos = [
-        ["NOV-RECIBIDO", "2026-11", "RECEPCIONADO", "MEDIA"],
-        ["NOV-COMPLETADO", "2026-11", "COMPLETADO", "BAJA"],
-        ["OCT-RECIBIDO", "2026-10", "RECEPCIONADO", "URGENTE"],
-        ["OCT-EN-PROCESO", "2026-10", "EN_PROCESO", "ALTA"],
-        ["SEP-PENDIENTE-CLIENTE", "2026-09", "PENDIENTE_CLIENTE", "MEDIA"],
-        ["OCT-COMPLETADO", "2026-10", "COMPLETADO", "MEDIA"],
-        ["OCT-CANCELADO", "2026-10", "CANCELADO", "MEDIA"],
-        ["DIC-RECIBIDO", "2026-12", "RECEPCIONADO", "MEDIA"],
+        ["NOV-RECIBIDO", "2026-11", "RECEPCIONADO", "MEDIA", "2026-11"],
+        ["NOV-COMPLETADO", "2026-11", "COMPLETADO", "BAJA", "2026-11"],
+        ["NOV-COMPLETADO-OTRO-PERIODO", "2026-11", "COMPLETADO", "BAJA", "2026-09"],
+        ["OCT-RECIBIDO", "2026-10", "RECEPCIONADO", "URGENTE", "2026-10"],
+        ["OCT-EN-PROCESO", "2026-10", "EN_PROCESO", "ALTA", "2026-10"],
+        ["SEP-PENDIENTE-CLIENTE", "2026-09", "PENDIENTE_CLIENTE", "MEDIA", "2026-09"],
+        ["OCT-COMPLETADO", "2026-10", "COMPLETADO", "MEDIA", "2026-10"],
+        ["OCT-CANCELADO", "2026-10", "CANCELADO", "MEDIA", "2026-10"],
+        ["OCT-COMPLETADO-PERIODO-NOV", "2026-10", "COMPLETADO", "MEDIA", "2026-11"],
+        ["DIC-RECIBIDO", "2026-12", "RECEPCIONADO", "MEDIA", "2026-12"],
       ];
-      for (const [folio, periodo, estado, prioridad] of documentos) {
+      for (const [folio, mesRecepcion, estado, prioridad, periodo] of documentos) {
         await pool.query(
           `INSERT INTO documentos (folio, cliente_id, empresa_id, tipo_doc_id, departamento_id,
-                                   usuario_recep_id, via_entrega, periodo, asunto, estado, prioridad)
-           VALUES (?, ?, ?, ?, ?, ?, 'PRESENCIAL', ?, 'Prueba', ?, ?)`,
-          [MARCA + folio, clienteId, empresa.id, tipo.id, departamento.id, usuarioId, PERIODOS[periodo], estado, prioridad],
+                                   usuario_recep_id, via_entrega, fecha_recepcion, periodo, asunto, estado, prioridad)
+           VALUES (?, ?, ?, ?, ?, ?, 'PRESENCIAL', ?, ?, 'Prueba', ?, ?)`,
+          [MARCA + folio, clienteId, empresa.id, tipo.id, departamento.id, usuarioId, `${PERIODOS[mesRecepcion]}-15 10:00:00`, PERIODOS[periodo], estado, prioridad],
         );
       }
     } catch (error) {
@@ -943,13 +1105,18 @@ describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores n
   const foliosDe = async (periodo) => {
     const res = await rutaListaDocumentos(pool, { periodo: PERIODOS[periodo] });
     assert.strictEqual(res.status, 200, JSON.stringify(res.body));
-    return res.body.documentos.map((d) => d.folio.replace(MARCA, "")).sort();
+    // Solo los de esta prueba: la base puede tener documentos reales en trámite
+    return res.body.documentos
+      .filter((d) => d.folio.startsWith(MARCA))
+      .map((d) => d.folio.replace(MARCA, ""))
+      .sort();
   };
 
   test("trae todo el periodo pedido más lo que sigue vivo de meses anteriores", async (t) => {
     if (motivo) return t.skip(motivo);
     assert.deepStrictEqual(await foliosDe("2026-11"), [
       "NOV-COMPLETADO",
+      "NOV-COMPLETADO-OTRO-PERIODO",
       "NOV-RECIBIDO",
       "OCT-EN-PROCESO",
       "OCT-RECIBIDO",
@@ -957,10 +1124,21 @@ describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores n
     ]);
   });
 
+  test("un documento recibido en el mes con otro periodo contable sale con cualquier estado", async (t) => {
+    if (motivo) return t.skip(motivo);
+    assert.ok((await foliosDe("2026-11")).includes("NOV-COMPLETADO-OTRO-PERIODO"));
+    assert.ok(!(await foliosDe("2026-09")).includes("NOV-COMPLETADO-OTRO-PERIODO"));
+  });
+
   test("lo terminado o cancelado de meses anteriores no se arrastra, ni lo de meses posteriores", async (t) => {
     if (motivo) return t.skip(motivo);
     const folios = await foliosDe("2026-11");
-    for (const ausente of ["OCT-COMPLETADO", "OCT-CANCELADO", "DIC-RECIBIDO"]) {
+    for (const ausente of [
+      "OCT-COMPLETADO",
+      "OCT-CANCELADO",
+      "OCT-COMPLETADO-PERIODO-NOV",
+      "DIC-RECIBIDO",
+    ]) {
       assert.ok(!folios.includes(ausente), ausente);
     }
   });
@@ -970,6 +1148,7 @@ describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores n
     assert.deepStrictEqual(await foliosDe("2026-10"), [
       "OCT-CANCELADO",
       "OCT-COMPLETADO",
+      "OCT-COMPLETADO-PERIODO-NOV",
       "OCT-EN-PROCESO",
       "OCT-RECIBIDO",
       "SEP-PENDIENTE-CLIENTE",
@@ -1021,6 +1200,7 @@ describe("rutaDocumentos (vinculación automática con cliente_doc_requeridos)",
     empresaId: 1,
     tipoDocId: 2,
     departamentoId: 1,
+    contadorId: 13,
     asunto: "Entrega de Opinión de Cumplimiento",
     prioridad: "MEDIA",
     periodo: "2026-10",
@@ -1044,6 +1224,9 @@ describe("rutaDocumentos (vinculación automática con cliente_doc_requeridos)",
           consultas.push({ sql, params });
           if (sql.includes("AS estado FROM clientes")) {
             return [[{ estado: "ACTIVO" }]];
+          }
+          if (sql.includes("SELECT u.id FROM usuarios")) {
+            return [[{ id: params[0] }]];
           }
           if (sql.includes("SELECT consecutivo FROM contador_folio")) {
             return [[{ consecutivo: 10 }]];
@@ -1074,5 +1257,88 @@ describe("rutaDocumentos (vinculación automática con cliente_doc_requeridos)",
     assert.strictEqual(actualizacionRequerido.params[1], 5);
     assert.strictEqual(actualizacionRequerido.params[2], 2);
     assert.strictEqual(actualizacionRequerido.params[3], "2026-10");
+  });
+
+  /** Pool simulado: `esContador` dice si la cuenta tiene el rol Contador en documentos. */
+  const poolConContador = (esContador) => {
+    const consultas = [];
+    let deshecha = false;
+    const pool = {
+      getConnection: async () => ({
+        beginTransaction: async () => {},
+        commit: async () => {},
+        rollback: async () => {
+          deshecha = true;
+        },
+        release: () => {},
+        query: async (sql, params) => {
+          consultas.push({ sql, params });
+          if (sql.includes("AS estado FROM clientes")) {
+            return [[{ estado: "ACTIVO" }]];
+          }
+          if (sql.includes("SELECT u.id FROM usuarios")) {
+            return [esContador ? [{ id: params[0] }] : []];
+          }
+          if (sql.includes("SELECT consecutivo FROM contador_folio")) {
+            return [[{ consecutivo: 10 }]];
+          }
+          if (sql.includes("INSERT INTO documentos")) {
+            return [{ insertId: 77 }];
+          }
+          return [[]];
+        },
+      }),
+    };
+    return { pool, consultas, fueDeshecha: () => deshecha };
+  };
+
+  test("guarda el contador asignado en documentos.contador_id", async () => {
+    const { pool, consultas } = poolConContador(true);
+
+    const res = await rutaDocumentos(pool, datosValidos, 1);
+
+    assert.strictEqual(res.status, 200);
+    const insercion = consultas.find((c) =>
+      c.sql.includes("INSERT INTO documentos"),
+    );
+    assert.ok(insercion.sql.includes("contador_id"));
+    assert.ok(
+      insercion.params.includes(13),
+      "el id del contador va en los parámetros",
+    );
+    const consultaContador = consultas.find((c) =>
+      c.sql.includes("SELECT u.id FROM usuarios"),
+    );
+    assert.deepStrictEqual(consultaContador.params, [13]);
+  });
+
+  test("sin contador responde 400 VALIDACION y no guarda nada", async () => {
+    const { pool, consultas } = poolConContador(true);
+    const { contadorId, ...sinContador } = datosValidos;
+
+    const res = await rutaDocumentos(pool, sinContador, 1);
+
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error, "VALIDACION");
+    assert.ok(res.body.faltantes.some((f) => f.campo === "contadorId"));
+    assert.strictEqual(
+      consultas.some((c) => c.sql.includes("INSERT INTO documentos")),
+      false,
+    );
+  });
+
+  test("una cuenta que no es Contador de documentos se rechaza con 400 y se deshace", async () => {
+    const { pool, consultas, fueDeshecha } = poolConContador(false);
+
+    const res = await rutaDocumentos(pool, datosValidos, 1);
+
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error, "VALIDACION");
+    assert.match(res.body.mensaje, /contador/i);
+    assert.strictEqual(
+      consultas.some((c) => c.sql.includes("INSERT INTO documentos")),
+      false,
+    );
+    assert.strictEqual(fueDeshecha(), true);
   });
 });

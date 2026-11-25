@@ -1,7 +1,13 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { TIPOS_RECEPCION, CAMPOS_AUTOLLENADO, PLANTILLAS, aplicarPlantilla } from './autollenado.js'
+import {
+  TIPOS_RECEPCION,
+  CAMPOS_AUTOLLENADO,
+  PLANTILLAS,
+  aplicarPlantilla,
+  contadorPropuesto,
+} from './autollenado.js'
 
 const formVacio = () => ({
   empresaDca: null,
@@ -91,5 +97,26 @@ describe('aplicarPlantilla', () => {
 
     assert.equal(aplicado, false)
     assert.deepEqual(form, copia)
+  })
+})
+
+describe('contadorPropuesto: el contador habitual del cliente', () => {
+  const contadores = [
+    { id: 13, nombre: 'C.P. Ana Martínez' },
+    { id: 14, nombre: 'C.P. Luis Pérez' },
+  ]
+
+  test('propone el contador habitual del cliente si está en el catálogo de contadores', () => {
+    assert.equal(contadorPropuesto({ id: 1, contadorId: 14 }, contadores), 14)
+  })
+
+  test('sin contador habitual, o con uno que ya no es contador de documentos, queda vacío', () => {
+    assert.equal(contadorPropuesto({ id: 1, contadorId: null }, contadores), null)
+    assert.equal(contadorPropuesto({ id: 1 }, contadores), null)
+    assert.equal(contadorPropuesto({ id: 1, contadorId: 99 }, contadores), null)
+  })
+
+  test('sin cliente elegido queda vacío', () => {
+    assert.equal(contadorPropuesto(undefined, contadores), null)
   })
 })

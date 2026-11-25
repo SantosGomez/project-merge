@@ -11,6 +11,8 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 - Cuentas de prueba en `delgrow_merge`: `admin_seed@prueba.local` (documentos por su rol) y `contador_seed@prueba.local` (documentos como contador, dado a mano el 2026-11-24; se pierde si se rehace la base). El import omite las cuentas de prueba de documentos.
 - Últimas cifras (tras traer status-conta): backend 906 de 906 en `verificarPruebas`; frontend 2118 de 2118, lint y build bien. `test/proximaJunta.test.js` viene sin formato desde status-conta.
 - 2026-11-24: se trajeron los 8 commits de `status-conta/main` hasta 7b36df8 (rebanada 43 de juntas, cabecera y píldora elástica de «Mi Calendario»).
+- 2026-11-25, rebanada 44 (sin commit): Recepción exige y guarda `documentos.contador_id` (propone `clientes.usuario_id`); Direccionamiento lo muestra fijo y `POST /doc/documentos/:id/entrega` rechaza (400) otro contador; sin contador propio ni del cliente se elige. Aprobada por el reviewer; falta la prueba en navegador por rol.
+- 2026-11-25, rebanada 45 (sin commit): el mes del Dashboard de documentos se rige por `fecha_recepcion`, no por el periodo contable (antes un completado de otro periodo desaparecía y no contaba). El parámetro sigue llamándose `periodo`; backend y `resumenDocumentos.js` deben tener la misma regla. Aprobada; falta navegador.
 - 2026-11-24: `AGENTS.md` y esta memoria se reescribieron para el proyecto unido (antes eran los de status-conta).
 
 ## Pendientes de la unión

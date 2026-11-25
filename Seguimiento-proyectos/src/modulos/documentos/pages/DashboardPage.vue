@@ -6,7 +6,7 @@
         <div class="col-12 col-sm">
           <div class="text-h5 text-weight-bold text-primary">Dashboard de Control Contable</div>
           <div class="text-subtitle2 text-grey-8">
-            Documentos del periodo y todo lo que sigue pendiente de meses anteriores
+            Documentos recibidos en el mes elegido y todo lo que sigue pendiente de meses anteriores
           </div>
         </div>
         <div class="col-12 col-sm-auto row items-center q-gutter-sm">
@@ -20,8 +20,8 @@
             outlined
             options-dense
             dropdown-icon="expand_more"
-            label="Periodo"
-            aria-label="Seleccionar el periodo de los documentos"
+            label="Mes de recepción"
+            aria-label="Seleccionar el mes de recepción de los documentos"
             name="periodo"
             class="selector-periodo selector-moderno"
             popup-content-class="menu-seleccion-custom"
@@ -768,7 +768,7 @@ const columns = [
   { name: 'acciones', label: 'Acciones', field: 'acciones', align: 'center' },
 ]
 
-// Documentos del periodo elegido (por omisión, el mes en curso), tal como los devuelve GET /documentos
+// Mes de recepción elegido (por omisión, el mes en curso); el parámetro sigue llamándose `periodo` en la API
 const periodo = ref(periodoDe(new Date()))
 const opcionesPeriodo = ultimosPeriodos(new Date(), 12)
 const rows = ref([])
@@ -796,8 +796,8 @@ const tarjetas = computed(() => {
       clave: 'recibidos',
       cifra: 'total',
       titulo: 'Recibidos',
-      pie: mes,
-      ayuda: `Mostrar solo los documentos de ${mes}`,
+      pie: `Recibidos en ${mes}`,
+      ayuda: `Mostrar solo los documentos recibidos en ${mes}`,
       borde: 'border-left-primary',
       colorCifra: 'text-primary',
       colorPie: 'text-grey-8',
@@ -835,8 +835,8 @@ const tarjetas = computed(() => {
       clave: 'completados',
       cifra: 'completados',
       titulo: 'Completados',
-      pie: `Terminados de ${mes}`,
-      ayuda: `Mostrar solo los documentos de ${mes} ya terminados`,
+      pie: `Recibidos en ${mes} y terminados`,
+      ayuda: `Mostrar solo los documentos recibidos en ${mes} ya terminados`,
       borde: 'border-left-positive',
       colorCifra: 'text-primary',
       colorPie: 'text-grey-8',
@@ -939,7 +939,7 @@ const mensajeTablaVacia = computed(() => {
   ) {
     return 'No hay documentos que coincidan con la búsqueda o el filtro'
   }
-  return `No hay documentos de ${formatearMesAnio(periodo.value)} ni pendientes de meses anteriores`
+  return `No hay documentos recibidos en ${formatearMesAnio(periodo.value)} ni pendientes de meses anteriores`
 })
 
 // Cargar los documentos del periodo desde el servidor
