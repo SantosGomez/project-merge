@@ -473,39 +473,33 @@ describe('D9 · los archivos que no se guardan se avisan y se pueden reintentar'
   })
 })
 
-describe('D10 · el tooltip del tipo de documento es legible', () => {
+describe('Campos sin tooltip redundante', () => {
   const PLANTILLA = FUENTE.replace(/<!--[\s\S]*?-->/g, '')
 
-  /** Bloque `<q-tooltip>…</q-tooltip>` que muestra el tipo de documento elegido. */
-  function tooltipDelTipo() {
-    const marca = PLANTILLA.indexOf('Tipo de documento seleccionado:')
-    assert.notEqual(marca, -1, 'no se encontró el tooltip del tipo de documento')
-    const inicio = PLANTILLA.lastIndexOf('<q-tooltip', marca)
-    const fin = PLANTILLA.indexOf('</q-tooltip>', marca)
-    return PLANTILLA.slice(inicio, fin)
-  }
+  test('el campo Cliente muestra el nombre elegido sin repetirlo en un tooltip', () => {
+    const marca = PLANTILLA.indexOf('class="campo-cliente selector-moderno"')
+    const inicio = PLANTILLA.lastIndexOf('<q-input', marca)
+    const fin = PLANTILLA.indexOf('</q-input>', marca)
+    const campo = PLANTILLA.slice(inicio, fin)
 
-  test('no pinta un fondo claro por dentro: el texto del tooltip es claro y se perdería', () => {
-    const bloque = tooltipDelTipo()
-    assert.doesNotMatch(bloque, /background/, 'el fondo claro deja el texto claro sobre claro')
-    assert.doesNotMatch(bloque, /style=/, 'no hace falta estilo propio dentro del tooltip')
-  })
-
-  test('solo aparece cuando ya hay un tipo elegido', () => {
-    assert.match(
-      tooltipDelTipo(),
-      /v-if="form\.tipoDocumento"/,
-      'sin tipo elegido el tooltip no debe aparecer',
-    )
-  })
-
-  test('muestra el tipo elegido, no un tipo inventado cuando no hay ninguno', () => {
-    const bloque = tooltipDelTipo()
-    assert.match(bloque, /\{\{\s*form\.tipoDocumento\s*\}\}/)
+    assert.match(campo, /:model-value="etiquetaCliente"/, 'el campo muestra el cliente elegido')
     assert.doesNotMatch(
-      bloque,
-      /\|\|/,
-      'el respaldo enseñaba un tipo que el usuario no había elegido',
+      campo,
+      /<q-tooltip[^>]*>\{\{\s*etiquetaCliente\s*\}\}<\/q-tooltip>/,
+      'no repite el nombre en un tooltip',
     )
+  })
+
+  test('el selector de tipo muestra la opción elegida sin repetirla en un tooltip', () => {
+    const inicio = PLANTILLA.indexOf('v-model="form.tipoDocumento"')
+    const fin = PLANTILLA.indexOf('</q-select>', inicio)
+    const selector = PLANTILLA.slice(inicio, fin)
+
+    assert.match(
+      selector,
+      /\{\{\s*scope\.opt\?\.label \?\? scope\.opt\s*\}\}/,
+      'el selector muestra el tipo elegido',
+    )
+    assert.doesNotMatch(selector, /q-tooltip/, 'no repite el tipo en un tooltip')
   })
 })

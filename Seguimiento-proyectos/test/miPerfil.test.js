@@ -127,7 +127,8 @@ describe('vista «Mi perfil»: menú y enlaces', () => {
     assert.match(bloque, /:aria-current="paginaActual\('mi-perfil'\)"/)
     assert.match(bloque, /active-class="drawer-usuario__fila--activa"/)
     assert.match(bloque, /v-if="session\.nombreVisible && session\.trabajaCasos"/)
-    assert.match(bloque, /<q-tooltip>\{\{ session\.nombreVisible \}\}<\/q-tooltip>/)
+    assert.match(bloque, /<p class="drawer-usuario__nombre">\{\{ session\.nombreVisible \}\}<\/p>/)
+    assert.doesNotMatch(bloque, /q-tooltip/, 'el nombre visible no se repite en un tooltip')
   })
 
   it('para administrador y usuario de sistema el bloque sigue sin enlace', () => {

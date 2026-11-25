@@ -31,10 +31,7 @@
             @click="drawerOpen = !drawerOpen"
           />
 
-          <h1 class="layout-bar__title">
-            {{ pageTitle }}
-            <q-tooltip>{{ pageTitle }}</q-tooltip>
-          </h1>
+          <h1 class="layout-bar__title">{{ pageTitle }}</h1>
 
           <CampanaAvisos v-if="session.veCampana" clara />
         </div>
@@ -379,20 +376,14 @@
         >
           <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
           <div class="drawer-usuario__datos">
-            <p class="drawer-usuario__nombre">
-              {{ session.nombreVisible }}
-              <q-tooltip>{{ session.nombreVisible }}</q-tooltip>
-            </p>
+            <p class="drawer-usuario__nombre">{{ session.nombreVisible }}</p>
             <p class="drawer-usuario__rol">{{ rolLegible }}</p>
           </div>
         </router-link>
         <div v-else-if="session.nombreVisible" class="drawer-usuario__fila">
           <div class="drawer-usuario__avatar" aria-hidden="true">{{ iniciales }}</div>
           <div class="drawer-usuario__datos">
-            <p class="drawer-usuario__nombre">
-              {{ session.nombreVisible }}
-              <q-tooltip>{{ session.nombreVisible }}</q-tooltip>
-            </p>
+            <p class="drawer-usuario__nombre">{{ session.nombreVisible }}</p>
             <p class="drawer-usuario__rol">{{ rolLegible }}</p>
           </div>
         </div>

@@ -168,9 +168,6 @@
                           <q-tooltip>Buscar y elegir cliente</q-tooltip>
                         </q-btn>
                       </template>
-                      <q-tooltip v-if="etiquetaCliente" :delay="600">{{
-                        etiquetaCliente
-                      }}</q-tooltip>
                     </q-input>
                     <SelectorClienteDialogo
                       v-model="mostrarSelectorCliente"
@@ -309,14 +306,6 @@
                         </q-item>
                       </template>
                     </q-select>
-
-                    <!-- Tooltip: solo cuando ya hay un tipo elegido; sin valor no se
-                       muestra nada, para no enseñar un tipo que el usuario no ha
-                       seleccionado. Texto plano, sin fondo propio: el tooltip ya es
-                       oscuro y un fondo claro dejaría el texto ilegible. -->
-                    <q-tooltip v-if="form.tipoDocumento" :delay="500">
-                      Tipo de documento seleccionado: {{ form.tipoDocumento }}
-                    </q-tooltip>
                   </div>
 
                   <div class="col-12 col-sm-6">

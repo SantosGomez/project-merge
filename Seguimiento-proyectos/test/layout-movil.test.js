@@ -41,15 +41,12 @@ describe('Barra móvil — verificación estática', () => {
     assert.match(titulo, /text-overflow:\s*ellipsis/, 'el título termina en «…»')
   })
 
-  it('el título de la barra ofrece su nombre completo en un tooltip', () => {
+  it('el título de la barra muestra el nombre sin repetirlo en un tooltip', () => {
     const titulo = barra.match(/<h1 class="layout-bar__title">[\s\S]*?<\/h1>/)?.[0] ?? ''
 
     assert.ok(titulo, 'falta el título de la barra')
-    assert.match(
-      titulo,
-      /<q-tooltip>\{\{\s*pageTitle\s*\}\}<\/q-tooltip>/,
-      'el tooltip muestra el nombre completo',
-    )
+    assert.match(titulo, /\{\{\s*pageTitle\s*\}\}/, 'el título muestra el nombre')
+    assert.doesNotMatch(titulo, /q-tooltip/, 'no repite el mismo texto en un tooltip')
   })
 
   it('la barra cabe en 56 px sin bajar de 44 px el área táctil', () => {

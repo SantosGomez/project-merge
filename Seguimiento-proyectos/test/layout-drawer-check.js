@@ -259,7 +259,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(opcionInicio > filaFin, 'la opción de cierre no va dentro de la fila del nombre')
   })
 
-  it('el nombre del pie se recorta en una línea y el tooltip muestra el nombre completo', () => {
+  it('el nombre del pie se recorta en una línea sin repetirlo en un tooltip', () => {
     const nombre = cssRule('.drawer-usuario__nombre')
     assert.match(nombre, /white-space:\s*nowrap/, 'el nombre no hace saltos de línea')
     assert.match(nombre, /overflow:\s*hidden/, 'el nombre se recorta')
@@ -271,10 +271,10 @@ describe('Drawer sidebar — verificación estática', () => {
     )
 
     const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('</q-drawer>'))
-    assert.match(
+    assert.doesNotMatch(
       pie,
       /<q-tooltip>\{\{\s*session\.nombreVisible\s*\}\}<\/q-tooltip>/,
-      'el tooltip muestra el nombre completo',
+      'no repite el mismo texto del nombre en un tooltip',
     )
   })
 
@@ -678,7 +678,7 @@ describe('Pie del menú con el nombre de la cuenta (login por correo)', () => {
     const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('<div class="drawer-usuario__salir"'))
     assert.match(pie, /v-if="session\.nombreVisible && session\.trabajaCasos"/, 'el enlace aparece con el nombre')
     assert.match(pie, /v-else-if="session\.nombreVisible"/, 'la fila sin enlace aparece con el nombre')
-    assert.match(pie, /\{\{ session\.nombreVisible \}\}\s*<q-tooltip>\{\{ session\.nombreVisible \}\}<\/q-tooltip>/, 'nombre y su tooltip')
+    assert.match(pie, /<p class="drawer-usuario__nombre">\{\{ session\.nombreVisible \}\}<\/p>/, 'nombre visible sin tooltip redundante')
     assert.doesNotMatch(pie, /session\.usuario/, 'el pie ya no muestra el usuario')
     assert.match(src, /formatearIniciales\(session\.nombreVisible\)/, 'iniciales del nombre')
   })
