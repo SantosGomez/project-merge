@@ -33,7 +33,12 @@ function marcadores(lista) {
  */
 async function clientesDeUsuario(usuarioId, ids) {
   if (ids.length === 0) return [];
-  const filas = await query(`SELECT id, activo FROM clientes WHERE usuario_id = ? AND id IN (${marcadores(ids)})`, [usuarioId, ...ids]);
+  const filas = await query(
+    `SELECT id, activo FROM clientes
+     WHERE EXISTS (SELECT 1 FROM cliente_contador cc WHERE cc.cliente_id = clientes.id AND cc.usuario_id = ?)
+       AND id IN (${marcadores(ids)})`,
+    [usuarioId, ...ids]
+  );
   return filas.map((fila) => ({ id: fila.id, activo: Boolean(fila.activo) }));
 }
 

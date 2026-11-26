@@ -2,6 +2,12 @@ import { clasificarFallo, mensajeDeFallo } from '../logica/errores.mjs';
 import { semaforoDe } from '../logica/semaforo.mjs';
 import { normalizarParaBuscar, normalizarRfc } from '../logica/normalizar.mjs';
 import { aFechaLocal } from '../logica/fechas.mjs';
+import { createRequire } from 'node:module';
+
+// El modelo de contadores es CommonJS: es el único punto que escribe cliente_contador y usuario_id.
+const { reemplazarContadores, enTransaccionDePool } = createRequire(import.meta.url)(
+  '../../../models/ClienteContadorModel.js'
+);
 
 /** Formato de periodo YYYY-MM */
 const REGEX_PERIODO = /^\d{4}-\d{2}$/;
@@ -9,6 +15,33 @@ const REGEX_PERIODO = /^\d{4}-\d{2}$/;
 const REGEX_RFC = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
 /** Formato básico de correo electrónico */
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Id del contador principal del cliente `c`: el de menor asignado_en y, a igualdad, el de menor usuario_id. */
+const PRINCIPAL_DE_C =
+  '(SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)';
+
+/**
+ * Contadores de los clientes (el principal primero), agrupados por cliente.
+ * @param {Pool} pool - Conexiones de base de datos.
+ * @param {number} [idCliente] - Si se da, solo ese cliente.
+ * @returns {Promise<Map<number, Array<{ id: number, nombre: string }>>>}
+ */
+async function contadoresPorCliente(pool, idCliente) {
+  const [filas] = await pool.query(
+    `SELECT cc.cliente_id AS clienteId, u.id, u.nombre
+     FROM cliente_contador cc
+     JOIN usuarios u ON u.id = cc.usuario_id
+     ${idCliente === undefined ? '' : 'WHERE cc.cliente_id = ?'}
+     ORDER BY cc.cliente_id ASC, cc.asignado_en ASC, cc.usuario_id ASC`,
+    idCliente === undefined ? [] : [idCliente]
+  );
+  const mapa = new Map();
+  for (const fila of filas) {
+    if (!mapa.has(fila.clienteId)) mapa.set(fila.clienteId, []);
+    mapa.get(fila.clienteId).push({ id: fila.id, nombre: fila.nombre });
+  }
+  return mapa;
+}
 
 /**
  * GET /clientes
@@ -45,7 +78,7 @@ export async function rutaClientes(pool, query = {}) {
       SELECT c.id, c.clave, c.rfc, c.nombre AS razonSocial, IF(c.activo = 1, 'ACTIVO', 'INACTIVO') AS estado,
              u.nombre AS contador
       FROM clientes c
-      LEFT JOIN usuarios u ON c.usuario_id = u.id
+      LEFT JOIN usuarios u ON u.id = ${PRINCIPAL_DE_C}
     `;
     const paramsClientes = [];
 
@@ -56,6 +89,7 @@ export async function rutaClientes(pool, query = {}) {
     sqlClientes += ` ORDER BY c.nombre ASC`;
 
     const [filasClientes] = await pool.query(sqlClientes, paramsClientes);
+    const contadores = await contadoresPorCliente(pool);
 
     // 3. Consultar documentos del periodo consultado
     // Traemos estado, fecha_limite_sla y cliente_id
@@ -95,6 +129,7 @@ export async function rutaClientes(pool, query = {}) {
         estado: cliente.estado,
         esBaja: cliente.estado !== 'ACTIVO',
         contador: cliente.contador || null,
+        contadores: contadores.get(cliente.id) || [],
         semaforo,
         totalDocumentos: docsCliente.length
       });
@@ -246,11 +281,16 @@ export async function rutaCrearCliente(pool, body = {}) {
       nombreContador = contadores[0].nombre;
     }
 
-    const [resultado] = await pool.query(
-      `INSERT INTO clientes (clave, usuario_id, nombre, rfc, email, telefono, activo, creado_en)
-       VALUES (?, ?, ?, ?, ?, ?, 1, NOW())`,
-      [clave, contadorId, razonSocial, rfc, email, telefono]
-    );
+    // El cliente y su conjunto de contadores ([contadorId], o vacío) se guardan en una sola transacción.
+    const resultado = await enTransaccionDePool(pool, async (ejecutar) => {
+      const insertado = await ejecutar(
+        `INSERT INTO clientes (clave, usuario_id, nombre, rfc, email, telefono, activo, creado_en)
+         VALUES (?, ?, ?, ?, ?, ?, 1, NOW())`,
+        [clave, contadorId, razonSocial, rfc, email, telefono]
+      );
+      await reemplazarContadores(insertado.insertId, contadorId === null ? [] : [contadorId], ejecutar);
+      return insertado;
+    });
 
     return {
       status: 201,
@@ -266,6 +306,7 @@ export async function rutaCrearCliente(pool, body = {}) {
           esBaja: false,
           contadorId,
           contador: nombreContador,
+          contadores: contadorId === null ? [] : [{ id: contadorId, nombre: nombreContador }],
           semaforo: 'NEUTRO',
           totalDocumentos: 0
         }
@@ -334,9 +375,9 @@ function respuestaDeFallo(error) {
 async function leerCliente(pool, idCliente) {
   const [filas] = await pool.query(
     `SELECT c.id, c.clave, c.rfc, c.nombre, c.email, c.telefono, c.activo, c.creado_en,
-            c.usuario_id, u.nombre AS contador
+            ${PRINCIPAL_DE_C} AS usuario_id, u.nombre AS contador
      FROM clientes c
-     LEFT JOIN usuarios u ON u.id = c.usuario_id
+     LEFT JOIN usuarios u ON u.id = ${PRINCIPAL_DE_C}
      WHERE c.id = ?
      LIMIT 1`,
     [idCliente]
@@ -353,6 +394,7 @@ async function leerCliente(pool, idCliente) {
     telefono: fila.telefono ?? null,
     contadorId: fila.usuario_id ?? null,
     contador: fila.contador ?? null,
+    contadores: (await contadoresPorCliente(pool, idCliente)).get(idCliente) || [],
     activo,
     estado: activo ? 'ACTIVO' : 'INACTIVO',
     creadoEn: aTextoLocal(fila.creado_en)
@@ -459,12 +501,17 @@ export async function rutaEditarCliente(pool, idCliente, body = {}) {
     }
 
     const activo = body.activo === undefined ? actual.activo : body.activo;
-    await pool.query(
-      `UPDATE clientes
-       SET clave = ?, usuario_id = ?, nombre = ?, rfc = ?, email = ?, telefono = ?, activo = ?
-       WHERE id = ?`,
-      [clave, contadorId, razonSocial, rfc, email, telefono, activo ? 1 : 0, idCliente]
-    );
+    // Los datos y el conjunto de contadores (queda en [contadorId], o vacío) se guardan en una sola
+    // transacción: si el UPDATE choca con una unicidad, el conjunto tampoco cambia.
+    await enTransaccionDePool(pool, async (ejecutar) => {
+      await ejecutar(
+        `UPDATE clientes
+         SET clave = ?, usuario_id = ?, nombre = ?, rfc = ?, email = ?, telefono = ?, activo = ?
+         WHERE id = ?`,
+        [clave, contadorId, razonSocial, rfc, email, telefono, activo ? 1 : 0, idCliente]
+      );
+      await reemplazarContadores(idCliente, contadorId === null ? [] : [contadorId], ejecutar);
+    });
 
     return { status: 200, body: { cliente: await leerCliente(pool, idCliente) } };
   } catch (error) {

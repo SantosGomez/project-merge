@@ -8,6 +8,7 @@ const {
 } = require('../soporte-pruebas/bd');
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { query } = require('../src/config/db');
+const ClienteContadorModel = require('../src/models/ClienteContadorModel');
 
 /**
  * Ajustes > Clientes (rebanada 52): GET /ajustes/clientes lista todos los clientes del catálogo
@@ -20,6 +21,7 @@ const cuentas = {};
 const tokens = {};
 let idClienteConContador;
 let idClienteSinContador;
+let idClienteDosContadores;
 
 const pedir = (metodo, ruta, token) => peticion(servidor.puerto, metodo, ruta, undefined, token);
 
@@ -36,10 +38,16 @@ describe('GET /ajustes/clientes', () => {
       [cuentas.contador.id]
     );
     idClienteConContador = conContador.insertId;
+    await ClienteContadorModel.reemplazarContadores(idClienteConContador, [cuentas.contador.id]);
     const sinContador = await query(
       "INSERT INTO clientes (usuario_id, clave, nombre, rfc, activo, creado_en) VALUES (NULL, NULL, 'zz_test_ Cliente sin contador', NULL, 0, NOW())"
     );
     idClienteSinContador = sinContador.insertId;
+    const dosContadores = await query(
+      "INSERT INTO clientes (usuario_id, clave, nombre, rfc, activo, creado_en) VALUES (NULL, NULL, 'zz_test_ Cliente con dos contadores', NULL, 1, NOW())"
+    );
+    idClienteDosContadores = dosContadores.insertId;
+    await ClienteContadorModel.reemplazarContadores(idClienteDosContadores, [cuentas.contador.id, cuentas.recepcionista.id]);
   });
 
   after(async () => {
@@ -63,6 +71,20 @@ describe('GET /ajustes/clientes', () => {
     assert.strictEqual(sin.activo, false);
     assert.strictEqual(sin.contador_id, null);
     assert.strictEqual(sin.contador_nombre, null);
+    assert.deepStrictEqual(sin.contadores, []);
+    assert.deepStrictEqual(con.contadores, [{ id: cuentas.contador.id, nombre: cuentas.contador.nombre }]);
+  });
+
+  test('un cliente con dos contadores trae a los dos y conserva al principal en contador_id y contador_nombre (55b)', async () => {
+    const respuesta = await pedir('GET', '/ajustes/clientes', tokens.administrador);
+    const filas = respuesta.body.clientes.filter((c) => c.id === idClienteDosContadores);
+    assert.strictEqual(filas.length, 1, 'el cliente sale una sola vez');
+    const [cliente] = filas;
+    const ids = cliente.contadores.map((c) => c.id).sort((a, b) => a - b);
+    assert.deepStrictEqual(ids, [cuentas.contador.id, cuentas.recepcionista.id].sort((a, b) => a - b));
+    assert.strictEqual(cliente.contador_id, cliente.contadores[0].id, 'el principal va primero');
+    assert.strictEqual(cliente.contador_id, Math.min(cuentas.contador.id, cuentas.recepcionista.id));
+    assert.strictEqual(cliente.contador_nombre, cliente.contadores[0].nombre);
   });
 
   test('el usuario de sistemas también lo ve', async () => {

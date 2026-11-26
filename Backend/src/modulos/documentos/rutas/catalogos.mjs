@@ -43,11 +43,13 @@ export async function rutaCatalogos(pool) {
 
     // 5. Clientes: todos (sin filtrar por estado), para que el formulario
     // pueda elegir incluso clientes suspendidos; el guardado validará.
+    // contadorId es el contador principal (cliente_contador), el que Recepción propone.
     // Unión, fase 3: el catálogo único de clientes guarda la razón social en 'nombre'.
     const [clientes] = await pool.query(
-      `SELECT id, clave, nombre AS razonSocial, rfc, usuario_id AS contadorId
-       FROM clientes
-       ORDER BY nombre`
+      `SELECT c.id, c.clave, c.nombre AS razonSocial, c.rfc,
+              (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1) AS contadorId
+       FROM clientes c
+       ORDER BY c.nombre`
     );
 
     return {

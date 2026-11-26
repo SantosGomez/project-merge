@@ -203,7 +203,7 @@ describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
     );
 
     assert.ok(
-      sqlEjecutada.includes("d.contador_id = ? OR c.usuario_id = ?"),
+      sqlEjecutada.includes("d.contador_id = ? OR EXISTS"),
       "la SQL incluye filtro de contador",
     );
     assert.deepStrictEqual(
@@ -237,7 +237,7 @@ describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
       usuarioAdmin,
     );
     assert.ok(
-      !sqlEjecutada.includes("d.contador_id = ? OR c.usuario_id = ?"),
+      !sqlEjecutada.includes("d.contador_id = ? OR EXISTS"),
       "Administrador no filtra por contador",
     );
     assert.deepStrictEqual(paramsEjecutados, [
@@ -252,7 +252,7 @@ describe("rutaListaDocumentos (Dashboard con documentos reales)", () => {
       { id: 5, rol: "Contador" },
     );
     assert.ok(
-      !sqlEjecutada.includes("d.contador_id = ? OR c.usuario_id = ?"),
+      !sqlEjecutada.includes("d.contador_id = ? OR EXISTS"),
       "sin misDocumentos=1 Contador no filtra",
     );
     assert.deepStrictEqual(paramsEjecutados, [
@@ -1175,6 +1175,7 @@ describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores n
   const require = createRequire(import.meta.url);
   const { seedDatabase } = require("../../../utils/seed.js");
   const { pool: poolApp } = require("../../../config/db.js");
+  const modeloContadores = require("../../../models/ClienteContadorModel.js");
   const PERIODOS = { "2026-09": "2090-09", "2026-10": "2090-10", "2026-11": "2090-11", "2026-12": "2090-12" };
   const MARCA = `ZZT${Date.now().toString(36)}-`;
 
@@ -1314,7 +1315,8 @@ describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores n
     await pool.query(
       "UPDATE documentos SET contador_id = ? WHERE folio = ?", [usuarioId, MARCA + "OCT-EN-PROCESO"],
     );
-    await pool.query("UPDATE clientes SET usuario_id = ? WHERE id = ?", [usuarioId, clienteId]); // cliente de OCT-RECIBIDO
+    // cliente de OCT-RECIBIDO: el contador figura en cliente_contador (rebanada 55b)
+    await modeloContadores.reemplazarContadores(clienteId, [usuarioId]);
     const res = await rutaListaDocumentos(
       pool,
       { periodo: PERIODOS["2026-11"], misDocumentos: "1" },
@@ -1325,6 +1327,35 @@ describe("rutaListaDocumentos contra MariaDB: lo pendiente de meses anteriores n
       folios.includes("OCT-EN-PROCESO"),
       "incluye documento asignado al contador",
     );
+  });
+
+  test("misDocumentos=1 incluye los documentos de un cliente con dos contadores para cada uno de ellos (55b)", async (t) => {
+    if (motivo) return t.skip(motivo);
+    const [segundo] = await pool.query(
+      "INSERT INTO usuarios (nombre, correo, password_hash, rol, creado_en, actualizado_en) VALUES ('zz_test_segundo_contador', ?, 'x', 'contador', NOW(), NOW())",
+      [`zz_test_${MARCA}segundo@prueba.local`],
+    );
+    try {
+      await modeloContadores.reemplazarContadores(clienteId, [usuarioId]);
+      await modeloContadores.agregarContador(clienteId, segundo.insertId);
+      for (const id of [usuarioId, segundo.insertId]) {
+        const res = await rutaListaDocumentos(
+          pool,
+          { periodo: PERIODOS["2026-11"], misDocumentos: "1" },
+          { id, rol: "Contador" },
+        );
+        const folios = res.body.documentos.map((d) => d.folio.replace(MARCA, ""));
+        assert.ok(folios.includes("OCT-RECIBIDO"), `el contador ${id} ve los documentos del cliente compartido`);
+        assert.strictEqual(
+          folios.filter((f) => f === "OCT-RECIBIDO").length,
+          1,
+          "sin filas duplicadas",
+        );
+      }
+    } finally {
+      await modeloContadores.quitarContador(clienteId, segundo.insertId);
+      await pool.query("DELETE FROM usuarios WHERE id = ?", [segundo.insertId]);
+    }
   });
 });
 

@@ -64,6 +64,7 @@ describe('rutaConsultarCliente', () => {
       telefono: '5512345678',
       contadorId: 7,
       contador: 'CP Ana',
+      contadores: [],
       activo: true,
       estado: 'ACTIVO',
       creadoEn: '2026-01-05 09:30:15'
@@ -115,13 +116,55 @@ describe('rutaConsultarCliente', () => {
   });
 });
 
+describe('contadores en la ficha y el listado (rebanada 55b)', () => {
+  const contadores = [
+    { clienteId: 5, id: 7, nombre: 'CP Ana' },
+    { clienteId: 5, id: 9, nombre: 'CP Luis' }
+  ];
+  const poolConContadores = {
+    query: async (sql) => {
+      if (sql.includes('FROM cliente_contador cc')) return [contadores];
+      if (sql.includes('FROM clientes')) return [[{ ...FILA_CLIENTE, razonSocial: 'Acme S.A.', estado: 'ACTIVO', contador: 'CP Ana' }]];
+      return [[]];
+    }
+  };
+
+  test('la ficha trae a todos los contadores y conserva el principal en contadorId y contador', async () => {
+    const r = await rutaConsultarCliente(poolConContadores, 5);
+    assert.strictEqual(r.body.cliente.contadorId, 7);
+    assert.strictEqual(r.body.cliente.contador, 'CP Ana');
+    assert.deepStrictEqual(r.body.cliente.contadores, [
+      { id: 7, nombre: 'CP Ana' },
+      { id: 9, nombre: 'CP Luis' }
+    ]);
+  });
+
+  test('el listado trae contadores por cliente, vacío si no tiene', async () => {
+    const pool = {
+      query: async (sql) => {
+        if (sql.includes('FROM cliente_contador cc')) return [contadores];
+        if (sql.includes('FROM clientes')) {
+          return [[
+            { id: 5, rfc: 'A', razonSocial: 'Con dos', estado: 'ACTIVO', contador: 'CP Ana' },
+            { id: 6, rfc: 'B', razonSocial: 'Sin contador', estado: 'ACTIVO', contador: null }
+          ]];
+        }
+        return [[]];
+      }
+    };
+    const r = await rutaClientes(pool, {});
+    assert.deepStrictEqual(r.body.clientes[0].contadores.map((c) => c.id), [7, 9]);
+    assert.deepStrictEqual(r.body.clientes[1].contadores, []);
+  });
+});
+
 describe('rutaEditarCliente', () => {
   const poolEdicion = ({ existe = true, contadorValido = true, errorUpdate = null } = {}) => {
     const estado = { update: null };
     return {
       estado,
       query: async (sql, params = []) => {
-        if (sql.includes('UPDATE clientes')) {
+        if (sql.includes('UPDATE clientes') && sql.includes('SET clave')) {
           if (errorUpdate) throw errorUpdate;
           estado.update = params;
           return [{ affectedRows: 1 }];
@@ -395,5 +438,73 @@ describe('rutaCrearCliente', () => {
     const res = await rutaCrearCliente(pool, { razonSocial: 'Acme', clave: '0001' });
     assert.strictEqual(res.status, 409);
     assert.strictEqual(res.body.error, 'CLIENTE_DUPLICADO');
+  });
+});
+
+describe('contadores del cliente (rebanada 55a)', () => {
+  // Doble que anota cada instrucción y simula las respuestas mínimas de alta y edición.
+  const poolEspia = () => {
+    const sqls = [];
+    return {
+      sqls,
+      query: async (sql, params = []) => {
+        sqls.push({ sql, params });
+        if (sql.includes('FROM usuarios u') && sql.includes('usuario_modulos')) return [[{ id: 7, nombre: 'CP Ana' }]];
+        if (sql.includes('INSERT INTO clientes')) return [{ insertId: 42 }];
+        if (sql.includes('FROM clientes')) return [[FILA_CLIENTE]];
+        return [[]];
+      }
+    };
+  };
+  const deContadores = (pool) => pool.sqls.filter((c) => c.sql.includes('cliente_contador'));
+
+  test('el alta con contador deja el conjunto en [contadorId]', async () => {
+    const pool = poolEspia();
+    const r = await rutaCrearCliente(pool, { razonSocial: 'Acme', contadorId: 7 });
+    assert.strictEqual(r.status, 201);
+    const insercion = deContadores(pool).find((c) => c.sql.includes('INSERT INTO cliente_contador'));
+    assert.deepStrictEqual(insercion.params, [42, 7]);
+  });
+
+  test('el alta sin contador deja el conjunto vacío', async () => {
+    const pool = poolEspia();
+    await rutaCrearCliente(pool, { razonSocial: 'Acme' });
+    const llamadas = deContadores(pool);
+    assert.ok(llamadas.some((c) => c.sql.includes('DELETE FROM cliente_contador') && c.params[0] === 42));
+    assert.ok(!llamadas.some((c) => c.sql.includes('INSERT INTO cliente_contador')));
+  });
+
+  test('la edición reemplaza el conjunto por [contadorId] o lo vacía', async () => {
+    const conContador = poolEspia();
+    await rutaEditarCliente(conContador, 5, { razonSocial: 'Acme', contadorId: 7 });
+    const insercion = deContadores(conContador).find((c) => c.sql.includes('INSERT INTO cliente_contador'));
+    assert.deepStrictEqual(insercion.params, [5, 7]);
+
+    const sinContador = poolEspia();
+    await rutaEditarCliente(sinContador, 5, { razonSocial: 'Acme', contadorId: null });
+    assert.ok(deContadores(sinContador).some((c) => c.sql.includes('DELETE FROM cliente_contador') && c.params[0] === 5));
+    assert.ok(!deContadores(sinContador).some((c) => c.sql.includes('INSERT INTO cliente_contador')));
+  });
+
+  test('con un pool real guarda dentro de una transacción y la deshace si algo falla', async () => {
+    const eventos = [];
+    const conexion = {
+      beginTransaction: async () => eventos.push('begin'),
+      commit: async () => eventos.push('commit'),
+      rollback: async () => eventos.push('rollback'),
+      release: () => eventos.push('release'),
+      query: async (sql) => {
+        if (sql.includes('INSERT INTO cliente_contador')) throw new Error('falla a la mitad');
+        if (sql.includes('INSERT INTO clientes')) return [{ insertId: 42 }];
+        return [[]];
+      }
+    };
+    const pool = {
+      getConnection: async () => conexion,
+      query: async (sql) => (sql.includes('usuario_modulos') ? [[{ id: 7, nombre: 'CP Ana' }]] : [[]])
+    };
+    const r = await rutaCrearCliente(pool, { razonSocial: 'Acme', contadorId: 7 });
+    assert.strictEqual(r.status, 500);
+    assert.deepStrictEqual(eventos, ['begin', 'rollback', 'release']);
   });
 });

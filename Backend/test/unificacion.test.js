@@ -252,6 +252,13 @@ describe('unificación: importación desde la base de documentos', () => {
     assert.strictEqual(prueba.length, 0);
   });
 
+  test('el cliente ligado con contador queda con su fila en cliente_contador y el nuevo sin filas (rebanada 55a)', async () => {
+    const filas = await query('SELECT usuario_id FROM cliente_contador WHERE cliente_id = ?', [clienteExistenteId]);
+    assert.deepStrictEqual(filas.map((f) => f.usuario_id), [contador.id]);
+    const [nuevo] = await query('SELECT id FROM clientes WHERE nombre = ?', [razonNueva]);
+    assert.deepStrictEqual(await query('SELECT 1 FROM cliente_contador WHERE cliente_id = ?', [nuevo.id]), []);
+  });
+
   test('correrla otra vez no duplica nada', async () => {
     const resumen = await importarDocumentos(origen());
     assert.deepStrictEqual(resumen.usuarios, { ligados: 0, insertados: 0, omitidosDePrueba: 1, yaImportados: 2 });
@@ -275,5 +282,12 @@ describe('unificación: importación desde la base de documentos', () => {
     assert.strictEqual(existente.telefono, null);
     const nuevos = await query('SELECT id FROM clientes WHERE nombre = ?', [razonNueva]);
     assert.strictEqual(nuevos.length, 0);
+    // El ligado conserva su contador y su fila; ninguna fila queda sin cliente (rebanada 55a).
+    const filasLigado = await query('SELECT usuario_id FROM cliente_contador WHERE cliente_id = ?', [clienteExistenteId]);
+    assert.deepStrictEqual(filasLigado.map((f) => f.usuario_id), [contador.id]);
+    const sueltas = await query(
+      'SELECT cc.cliente_id FROM cliente_contador cc LEFT JOIN clientes c ON c.id = cc.cliente_id WHERE c.id IS NULL'
+    );
+    assert.strictEqual(sueltas.length, 0);
   });
 });

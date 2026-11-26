@@ -12,6 +12,7 @@ const {
 } = require('../soporte-pruebas/bd');
 const { iniciarServidor, peticion, iniciarSesion } = require('../soporte-pruebas/http');
 const { query } = require('../src/config/db');
+const ClienteContadorModel = require('../src/models/ClienteContadorModel');
 
 /**
  * Fase 3 de la unión: el módulo «Recepción de documentos» dentro de status-conta, en /doc.
@@ -132,6 +133,8 @@ before(async () => {
     [cuentas.otroContador.id, `ZZ Cliente Documentos ${Date.now()}`]
   );
   clienteId = resultado.insertId;
+  // El contador del cliente vive en cliente_contador (rebanada 55b)
+  await ClienteContadorModel.reemplazarContadores(clienteId, [cuentas.otroContador.id]);
 });
 
 after(async () => {

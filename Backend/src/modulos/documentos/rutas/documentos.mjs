@@ -326,7 +326,8 @@ export async function rutaListaDocumentos(pool, query = {}, usuario = null) {
     const params = [inicioMes, inicioSiguiente, inicioMes];
 
     if (filtrarMisDocumentos) {
-      sql += ` AND (d.contador_id = ? OR c.usuario_id = ?)`;
+      // Es suyo el documento asignado a él o el de un cliente donde figura como uno de sus contadores.
+      sql += ` AND (d.contador_id = ? OR EXISTS (SELECT 1 FROM cliente_contador cc WHERE cc.cliente_id = c.id AND cc.usuario_id = ?))`;
       params.push(usuario.id, usuario.id);
     }
 
@@ -383,7 +384,7 @@ export async function rutaListaDireccionamiento(pool) {
               d.fecha_recepcion AS fechaRecepcion,
               d.fecha_limite_sla AS fechaLimite,
               d.prioridad, d.estado,
-              COALESCE(d.contador_id, c.usuario_id) AS contadorId,
+              COALESCE(d.contador_id, (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)) AS contadorId,
               COALESCE(uc.nombre, ucl.nombre) AS contador,
               ur.nombre AS recibidoPor
        FROM documentos d
@@ -391,7 +392,7 @@ export async function rutaListaDireccionamiento(pool) {
        JOIN tipos_documento t ON t.id = d.tipo_doc_id
        JOIN usuarios ur ON ur.id = d.usuario_recep_id
        LEFT JOIN usuarios uc ON uc.id = d.contador_id
-       LEFT JOIN usuarios ucl ON ucl.id = c.usuario_id
+       LEFT JOIN usuarios ucl ON ucl.id = (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)
        WHERE d.estado = 'RECEPCIONADO'
        ORDER BY d.fecha_recepcion ASC, d.id ASC`,
     );
@@ -564,7 +565,7 @@ export async function rutaEntregarDocumento(
 
     // Bloqueo de fila: dos entregas simultáneas no pueden pasar las dos
     const [filas] = await conexion.query(
-      `SELECT d.estado, d.contador_id AS contadorId, c.usuario_id AS contadorCliente
+      `SELECT d.estado, d.contador_id AS contadorId, (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1) AS contadorCliente
        FROM documentos d
        LEFT JOIN clientes c ON c.id = d.cliente_id
        WHERE d.id = ? FOR UPDATE`,

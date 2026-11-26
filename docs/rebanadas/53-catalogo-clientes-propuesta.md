@@ -59,8 +59,8 @@ Es una base de pruebas: sirve para dimensionar, no para decidir. Antes de la reb
 | # | Rebanada | Riesgo | Revisa |
 |---|---|---|---|
 | 54 | Esquema *expand*: `cliente_contador` con relleno desde `usuario_id`, sin quitar nada; todo idempotente en `seed.js` | Alto | Opus |
-| 55 | API del catálogo (alta, edición, estado, asignación de contadores) y permisos por rol | Alto | Opus |
-| 56 | Pestaña «Clientes» de Ajustes completa (alta, edición, asignar contadores) y «Mi cartera» leyendo `cliente_contador` | Medio | Sonnet |
+| 55a y 55b | Corte a `cliente_contador` (escrituras y modelo, luego lecturas y `contadores`), sin cambios visibles | Alto | Opus |
+| 56 | API del catálogo (alta, edición, estado y contadores), política de alta y pestaña «Clientes» de Ajustes completa | Alto | Opus |
 | 57 | `cliente_id` en `casos`, `auditorias` y `juntas` + selector con búsqueda + mapeo asistido | Alto | Opus |
 | 58 | Firmas en Base64 a archivos (independiente de las anteriores) | Alto | Opus |
 

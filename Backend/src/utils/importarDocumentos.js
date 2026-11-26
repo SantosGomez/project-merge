@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise');
 const { pool } = require('../config/db');
+const { agregarContador } = require('../models/ClienteContadorModel');
 
 /**
  * Unión con Proyecto-documentos, fase 1: trae a esta base los usuarios y clientes de la base de
@@ -127,7 +128,7 @@ async function importarUsuarios(q, usuarios) {
 
 async function importarClientes(q, clientes) {
   const resumen = { ligados: 0, insertados: 0, omitidosDePrueba: 0, yaImportados: 0 };
-  const destino = await q('SELECT id, clave, nombre FROM clientes ORDER BY id');
+  const destino = await q('SELECT id, clave, nombre, usuario_id FROM clientes ORDER BY id');
   const ligadosAhora = new Set(
     (await q("SELECT id_destino FROM unificacion_mapa WHERE tabla = 'clientes'")).map((f) => f.id_destino)
   );
@@ -151,6 +152,8 @@ async function importarClientes(q, clientes) {
         'UPDATE clientes SET clave = COALESCE(clave, ?), email = COALESCE(email, ?), telefono = COALESCE(telefono, ?) WHERE id = ?',
         [c.clave || null, c.email || null, c.telefono || null, pareja.id]
       );
+      // Si el cliente ya tenía contador, su fila en cliente_contador debe existir (no se quita al deshacer).
+      if (pareja.usuario_id) await agregarContador(pareja.id, pareja.usuario_id, q);
       ligadosAhora.add(pareja.id);
       await registrarEnMapa(q, 'clientes', c.id, pareja.id, 'ligado');
       resumen.ligados += 1;

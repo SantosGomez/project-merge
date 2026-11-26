@@ -1,4 +1,5 @@
-const { query } = require('../config/db');
+const { query, conTransaccion } = require('../config/db');
+const { agregarContador } = require('./ClienteContadorModel');
 const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 
 /**
@@ -7,6 +8,14 @@ const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
  */
 
 const COLUMNAS = 'id, nombre, rfc, activo, creado_en';
+
+// El cliente es del usuario si figura entre sus contadores en cliente_contador (puede tener varios).
+const ES_CONTADOR_DEL_CLIENTE =
+  'EXISTS (SELECT 1 FROM cliente_contador cc WHERE cc.cliente_id = clientes.id AND cc.usuario_id = ?)';
+
+// Id del contador principal del cliente `c`: el de menor asignado_en y, a igualdad, el de menor usuario_id.
+const PRINCIPAL_DE_C =
+  '(SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)';
 
 /**
  * Convierte una fila de la tabla en el cliente que entrega la API.
@@ -44,23 +53,33 @@ function traducirDuplicado(error) {
  */
 async function listarDeUsuario(usuarioId) {
   const filas = await query(
-    `SELECT ${COLUMNAS} FROM clientes WHERE usuario_id = ? ORDER BY activo DESC, nombre ASC, id ASC`,
+    `SELECT ${COLUMNAS} FROM clientes WHERE ${ES_CONTADOR_DEL_CLIENTE} ORDER BY activo DESC, nombre ASC, id ASC`,
     [usuarioId]
   );
   return filas.map(aCliente);
 }
 
 /**
- * Todos los clientes del catálogo, con su contador (si tiene): activos primero, cada grupo por nombre.
+ * Todos los clientes del catálogo, con sus contadores (si tiene): activos primero, cada grupo por nombre.
+ * `contador_id` y `contador_nombre` son los del principal; `contadores` lista a todos, el principal primero.
  * Solo lectura, para Ajustes; no filtra por dueño.
  * @returns {Promise<Array<Object>>}
  */
 async function listarTodos() {
   const filas = await query(
-    `SELECT c.id, c.clave, c.nombre, c.rfc, c.activo, c.usuario_id AS contador_id, u.nombre AS contador_nombre
-     FROM clientes c LEFT JOIN usuarios u ON u.id = c.usuario_id
+    `SELECT c.id, c.clave, c.nombre, c.rfc, c.activo, ${PRINCIPAL_DE_C} AS contador_id, u.nombre AS contador_nombre
+     FROM clientes c LEFT JOIN usuarios u ON u.id = ${PRINCIPAL_DE_C}
      ORDER BY c.activo DESC, c.nombre ASC, c.id ASC`
   );
+  const asignaciones = await query(
+    `SELECT cc.cliente_id, u.id, u.nombre FROM cliente_contador cc JOIN usuarios u ON u.id = cc.usuario_id
+     ORDER BY cc.cliente_id ASC, cc.asignado_en ASC, cc.usuario_id ASC`
+  );
+  const contadoresPorCliente = new Map();
+  for (const asignacion of asignaciones) {
+    if (!contadoresPorCliente.has(asignacion.cliente_id)) contadoresPorCliente.set(asignacion.cliente_id, []);
+    contadoresPorCliente.get(asignacion.cliente_id).push({ id: asignacion.id, nombre: asignacion.nombre });
+  }
   return filas.map((fila) => ({
     id: fila.id,
     clave: fila.clave,
@@ -69,6 +88,7 @@ async function listarTodos() {
     activo: Boolean(fila.activo),
     contador_id: fila.contador_id,
     contador_nombre: fila.contador_nombre,
+    contadores: contadoresPorCliente.get(fila.id) || [],
   }));
 }
 
@@ -79,7 +99,7 @@ async function listarTodos() {
  * @returns {Promise<Object|null>}
  */
 async function buscarDeUsuario(id, usuarioId) {
-  const filas = await query(`SELECT ${COLUMNAS} FROM clientes WHERE id = ? AND usuario_id = ?`, [id, usuarioId]);
+  const filas = await query(`SELECT ${COLUMNAS} FROM clientes WHERE id = ? AND ${ES_CONTADOR_DEL_CLIENTE}`, [id, usuarioId]);
   return filas.length > 0 ? aCliente(filas[0]) : null;
 }
 
@@ -92,10 +112,16 @@ async function buscarDeUsuario(id, usuarioId) {
  */
 async function crear(usuarioId, { nombre, rfc }) {
   try {
-    const resultado = await query(
-      'INSERT INTO clientes (usuario_id, nombre, rfc, activo, creado_en) VALUES (?, ?, ?, 1, ?)',
-      [usuarioId, nombre, rfc, formatLocalDate(nowLocal())]
-    );
+    // El cliente y su fila en cliente_contador se guardan juntos (la unicidad por contador y nombre
+    // sigue apoyándose en usuario_id, que el modelo de contadores mantiene como principal).
+    const resultado = await conTransaccion(async (ejecutar) => {
+      const insertado = await ejecutar(
+        'INSERT INTO clientes (usuario_id, nombre, rfc, activo, creado_en) VALUES (?, ?, ?, 1, ?)',
+        [usuarioId, nombre, rfc, formatLocalDate(nowLocal())]
+      );
+      await agregarContador(insertado.insertId, usuarioId, ejecutar);
+      return insertado;
+    });
     return await buscarDeUsuario(resultado.insertId, usuarioId);
   } catch (error) {
     return traducirDuplicado(error);
@@ -125,7 +151,7 @@ async function actualizar(id, usuarioId, cambios) {
   }
 
   try {
-    await query(`UPDATE clientes SET ${campos.join(', ')} WHERE id = ? AND usuario_id = ?`, [...valores, id, usuarioId]);
+    await query(`UPDATE clientes SET ${campos.join(', ')} WHERE id = ? AND ${ES_CONTADOR_DEL_CLIENTE}`, [...valores, id, usuarioId]);
   } catch (error) {
     return traducirDuplicado(error);
   }

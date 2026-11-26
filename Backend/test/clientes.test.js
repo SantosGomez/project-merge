@@ -196,6 +196,21 @@ async function testSoloContadorYAuxiliar() {
   assert.strictEqual((await peticion(servidor.puerto, 'GET', '/clientes')).statusCode, 401);
 }
 
+async function testAltaDejaSuFilaEnClienteContador() {
+  const respuesta = await crear(tokenContador, { nombre: 'Con fila de contador' });
+  assert.strictEqual(respuesta.statusCode, 201);
+  const filas = await query('SELECT usuario_id FROM cliente_contador WHERE cliente_id = ?', [respuesta.body.cliente.id]);
+  assert.deepStrictEqual(filas.map((f) => f.usuario_id), [contador.id]);
+  const [cliente] = await query('SELECT usuario_id FROM clientes WHERE id = ?', [respuesta.body.cliente.id]);
+  assert.strictEqual(cliente.usuario_id, contador.id);
+
+  // Un alta rechazada (nombre repetido) no deja fila de más: se deshace con su transacción.
+  const antes = await query('SELECT COUNT(*) AS n FROM cliente_contador WHERE usuario_id = ?', [contador.id]);
+  assert.strictEqual((await crear(tokenContador, { nombre: 'CON FILA DE CONTADOR' })).statusCode, 409);
+  const despues = await query('SELECT COUNT(*) AS n FROM cliente_contador WHERE usuario_id = ?', [contador.id]);
+  assert.strictEqual(Number(despues[0].n), Number(antes[0].n));
+}
+
 describe('/clientes', () => {
   before(async () => {
     await prepararBaseDeDatos();
@@ -217,6 +232,7 @@ describe('/clientes', () => {
   });
 
   test('el seed crea la tabla clientes y se puede repetir', testSeedCreaLaTablaDeFormaIdempotente);
+  test('el alta deja su fila en cliente_contador (55a)', testAltaDejaSuFilaEnClienteContador);
   test('el alta responde 201 con nombre recortado y RFC en mayúsculas', testAltaDevuelve201ConElClienteSinEspaciosYRfcEnMayusculas);
   test('el RFC es opcional y acepta persona física', testRfcEsOpcionalYAceptaPersonaFisica);
   test('rechaza datos inválidos con mensaje en tres partes', testRechazaDatosInvalidosConTresPartes);
