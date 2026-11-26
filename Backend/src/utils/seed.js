@@ -687,6 +687,34 @@ async function migrarUnificacion() {
   `);
 
   await migrarTablasDocumentos();
+  await migrarClienteContador();
+}
+
+/**
+ * Rebanada 54 (catálogo de clientes, fase expand). Idempotente y sin borrar datos:
+ * - `cliente_contador`: varios contadores por cliente. Se borra en cascada con la cuenta o el cliente;
+ * - copia de `clientes.usuario_id`: solo AGREGA filas (INSERT IGNORE). Nadie la lee todavía y
+ *   `clientes.usuario_id` sigue siendo la fuente de verdad; la rebanada 55 hace el corte
+ *   (con una resincronización completa).
+ * La llave `clientes.usuario_id` -> `usuarios` no se toca: sigue en ON DELETE CASCADE.
+ */
+async function migrarClienteContador() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS cliente_contador (
+      cliente_id INT NOT NULL,
+      usuario_id INT NOT NULL,
+      asignado_en DATETIME NOT NULL,
+      PRIMARY KEY (cliente_id, usuario_id),
+      KEY idx_cliente_contador_usuario (usuario_id),
+      CONSTRAINT fk_cliente_contador_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+      CONSTRAINT fk_cliente_contador_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  `);
+
+  await query(`
+    INSERT IGNORE INTO cliente_contador (cliente_id, usuario_id, asignado_en)
+    SELECT id, usuario_id, NOW() FROM clientes WHERE usuario_id IS NOT NULL
+  `);
 }
 
 /**
