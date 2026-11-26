@@ -543,8 +543,8 @@ const cerrarSesion = async () => {
   border: none;
   border-radius: 50%;
   overflow: hidden;
-  background-color: var(--q-primary);
-  color: var(--dg-texto-claro);
+  background-color: var(--q-error);
+  color: var(--dg-texto-oscuro);
   box-shadow: var(--dg-sombra-tarjeta);
   transition:
     width 0.3s var(--dg-curva-salida),
@@ -582,7 +582,7 @@ const cerrarSesion = async () => {
   white-space: nowrap;
   font-size: 0.92rem;
   font-weight: 600;
-  color: var(--dg-texto-claro);
+  color: var(--dg-texto-oscuro);
   transition:
     opacity 0.3s var(--dg-curva-salida),
     width 0.3s var(--dg-curva-salida),
@@ -593,7 +593,6 @@ const cerrarSesion = async () => {
 .boton-ajustes:focus-visible {
   width: 168px;
   border-radius: 40px;
-  background-color: var(--dg-acento);
 }
 
 .boton-ajustes:hover .boton-ajustes__icono,
