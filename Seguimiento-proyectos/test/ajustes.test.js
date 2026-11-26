@@ -161,9 +161,12 @@ describe('Ajustes: pantalla con pestañas', () => {
     assert.match(pagina, /<AjustesClientes/)
   })
 
-  it('la pestaña «Clientes» solo la ven administrador y sistemas', () => {
+  it('la pestaña «Clientes» la ven administrador, sistemas y la recepcionista (56c)', () => {
     const pagina = leer('../src/pages/AjustesPage.vue')
-    assert.match(pagina, /session\.esAdministrador \|\| session\.esUsuarioSistema/)
+    assert.match(
+      pagina,
+      /session\.esAdministrador \|\| session\.esUsuarioSistema \|\| session\.esRecepcionista/,
+    )
     assert.match(pagina, /<q-tab v-if="veClientes" name="clientes"/)
     assert.match(pagina, /<q-tab-panel v-if="veClientes" name="clientes"/)
     assert.match(pagina, /veClientes\.value && route\.query\.tab === 'clientes'/)
@@ -175,7 +178,7 @@ describe('Ajustes: pantalla con pestañas', () => {
     assert.doesNotMatch(pagina, /transition:\s*all/)
   })
 
-  it('la lista de clientes es de solo lectura, con búsqueda y los dos textos vacíos', () => {
+  it('la lista de clientes tiene búsqueda y los dos textos vacíos; las escrituras viven en los diálogos (56c)', () => {
     const lista = leer('../src/components/AjustesClientes.vue')
     assert.match(lista, /<q-table/)
     assert.match(lista, /no-data-label="/)
@@ -184,6 +187,7 @@ describe('Ajustes: pantalla con pestañas', () => {
     assert.match(lista, /Activo/)
     assert.match(lista, /Inactivo/)
     assert.match(lista, /<q-input/)
+    // La lista no arma formularios ni llama a la API directo: delega en los diálogos y el servicio.
     assert.doesNotMatch(lista, /type="submit"|@submit|<q-form|\.post\(|\.patch\(/)
     assert.doesNotMatch(lista, /transition:\s*all/)
     assert.doesNotMatch(lista, /#[0-9a-fA-F]{3,8}\b/)

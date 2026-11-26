@@ -63,7 +63,7 @@ async function listarDeUsuario(usuarioId) {
  */
 async function listarTodos() {
   const filas = await query(
-    `SELECT c.id, c.clave, c.nombre, c.rfc, c.activo, ${SQL_PRINCIPAL_DE_C} AS contador_id, u.nombre AS contador_nombre
+    `SELECT c.id, c.clave, c.nombre, c.rfc, c.email, c.telefono, c.activo, ${SQL_PRINCIPAL_DE_C} AS contador_id, u.nombre AS contador_nombre
      FROM clientes c LEFT JOIN usuarios u ON u.id = ${SQL_PRINCIPAL_DE_C}
      ORDER BY c.activo DESC, c.nombre ASC, c.id ASC`
   );
@@ -81,6 +81,8 @@ async function listarTodos() {
     clave: fila.clave,
     nombre: fila.nombre,
     rfc: fila.rfc,
+    email: fila.email,
+    telefono: fila.telefono,
     activo: Boolean(fila.activo),
     contador_id: fila.contador_id,
     contador_nombre: fila.contador_nombre,

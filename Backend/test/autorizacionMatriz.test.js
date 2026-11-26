@@ -120,7 +120,9 @@ const MATRIZ = [
   ['PATCH', '/juntas/:x/respuesta', CALENDARIO, {}],
   ['DELETE', '/juntas/:x', CALENDARIO],
   // ajustes (rebanada 52)
-  ['GET', '/ajustes/clientes', [ADMIN, SISTEMA]],
+  ['GET', '/ajustes/clientes', [ADMIN, SISTEMA, RECEPCIONISTA]],
+  // ajustes, lecturas de la 56c: el listado de contadores elegibles lo piden las tres cuentas que dan de alta
+  ['GET', '/ajustes/contadores', [ADMIN, SISTEMA, RECEPCIONISTA]],
   // ajustes, escrituras del catálogo (rebanada 56a): el alta también la hace la recepcionista
   ['POST', '/ajustes/clientes', [ADMIN, SISTEMA, RECEPCIONISTA], {}],
   ['PATCH', '/ajustes/clientes/:x', [ADMIN, SISTEMA], {}],

@@ -94,12 +94,13 @@ describe('GET /ajustes/clientes', () => {
     assert.ok(Array.isArray(respuesta.body.clientes));
   });
 
-  test('la recepcionista y el contador reciben 403', async () => {
-    for (const rol of ['recepcionista', 'contador']) {
-      const respuesta = await pedir('GET', '/ajustes/clientes', tokens[rol]);
-      assert.strictEqual(respuesta.statusCode, 403, rol);
-      assert.ok(respuesta.body.mensaje);
-    }
+  test('la recepcionista también lo ve (56c) y el contador recibe 403', async () => {
+    const recepcionista = await pedir('GET', '/ajustes/clientes', tokens.recepcionista);
+    assert.strictEqual(recepcionista.statusCode, 200);
+    assert.ok(Array.isArray(recepcionista.body.clientes));
+    const respuesta = await pedir('GET', '/ajustes/clientes', tokens.contador);
+    assert.strictEqual(respuesta.statusCode, 403);
+    assert.ok(respuesta.body.mensaje);
   });
 
   test('sin sesión responde 401', async () => {

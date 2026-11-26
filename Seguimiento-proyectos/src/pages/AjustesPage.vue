@@ -10,7 +10,7 @@
       class="ajustes-page__pestanas"
     >
       <q-tab v-if="veClientes" name="clientes" icon="business" label="Clientes">
-        <q-tooltip>Consulta el catálogo de clientes del despacho.</q-tooltip>
+        <q-tooltip>Consulta, da de alta y administra los clientes del despacho.</q-tooltip>
       </q-tab>
       <q-tab name="usuarios" icon="group" label="Usuarios">
         <q-tooltip>Consulta las cuentas del equipo.</q-tooltip>
@@ -46,16 +46,18 @@ import { useSessionStore } from '../stores/session.js'
 import { hayAccesoDocumentos } from '../utils/modulos.js'
 
 /*
- * Ajustes: «Usuarios» (el directorio de cuentas) y «Clientes» (catálogo de solo lectura).
+ * Ajustes: «Usuarios» (el directorio de cuentas) y «Clientes» (catálogo: lista, alta, edición y contadores).
  * La pestaña viaja en la URL (?tab=clientes|usuarios|accesos); por omisión se abre «Usuarios».
- * «Clientes» solo la ven el administrador y el usuario de sistemas; la recepcionista cae en «Usuarios».
+ * «Clientes» la ven el administrador, el usuario de sistemas y la recepcionista (ella solo lista y da de alta).
  * «Acceso a módulos» (quién entra a documentos y con qué rol) la ve quien administra usuarios en documentos.
  */
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
-const veClientes = computed(() => session.esAdministrador || session.esUsuarioSistema)
+const veClientes = computed(
+  () => session.esAdministrador || session.esUsuarioSistema || session.esRecepcionista,
+)
 const veAccesos = computed(() => hayAccesoDocumentos(session.rolDocumentos, 'administrar_usuarios'))
 
 const pestana = computed({

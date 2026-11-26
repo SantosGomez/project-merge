@@ -107,6 +107,16 @@ async function listarClientes(req, res) {
 }
 
 /**
+ * GET /ajustes/contadores — Cuentas que pueden llevar clientes, para elegirlas al dar de alta o asignar.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function listarContadores(req, res) {
+  const contadores = await ClienteContadorModel.listarQuePuedenLlevarClientes();
+  return res.status(200).json({ contadores });
+}
+
+/**
  * POST /ajustes/clientes — Da de alta un cliente del catálogo con sus contadores (opcional).
  * La clave de carpeta es obligatoria; el primer contador de la lista queda como principal.
  * @param {Object} req - Petición Express.
@@ -208,4 +218,4 @@ async function reemplazarContadoresDelCliente(req, res) {
   return res.status(200).json({ cliente: await ClienteModel.buscarDelCatalogo(id) });
 }
 
-module.exports = { listarClientes, crearCliente, actualizarCliente, reemplazarContadoresDelCliente };
+module.exports = { listarClientes, listarContadores, crearCliente, actualizarCliente, reemplazarContadoresDelCliente };

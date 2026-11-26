@@ -170,6 +170,10 @@ async function quitarContador(clienteId, usuarioId, ejecutar) {
   });
 }
 
+// Condición SQL de la regla (alias obligatorio `u` en la consulta que la use).
+const SQL_PUEDE_LLEVAR_CLIENTES = `(u.rol IN ('contador', 'auxiliar')
+            OR EXISTS (SELECT 1 FROM usuario_modulos m WHERE m.usuario_id = u.id AND m.modulo = 'documentos' AND m.rol = 'contador'))`;
+
 /**
  * Regla única de quién puede llevar clientes (ser contador de un cliente): una cuenta con rol general
  * `contador` o `auxiliar`, o con el rol Contador en el módulo de Documentos (`usuario_modulos`: modulo
@@ -184,8 +188,7 @@ async function idsQueNoPuedenLlevarClientes(usuarioIds) {
   const validos = await query(
     `SELECT u.id FROM usuarios u
      WHERE u.id IN (${marcas})
-       AND (u.rol IN ('contador', 'auxiliar')
-            OR EXISTS (SELECT 1 FROM usuario_modulos m WHERE m.usuario_id = u.id AND m.modulo = 'documentos' AND m.rol = 'contador'))`,
+       AND ${SQL_PUEDE_LLEVAR_CLIENTES}`,
     usuarioIds
   );
   const ids = new Set(validos.map((fila) => Number(fila.id)));
@@ -201,8 +204,32 @@ async function puedeLlevarClientes(usuarioId) {
   return (await idsQueNoPuedenLlevarClientes([Number(usuarioId)])).length === 0;
 }
 
+/**
+ * Cuentas que pueden llevar clientes (la misma regla de `idsQueNoPuedenLlevarClientes`), por nombre.
+ * Solo trae lo necesario para elegirlas: id, nombre, rol de Seguimiento y si son Contador en Documentos
+ * (Recepción solo propone como principal a quien lo es).
+ * @returns {Promise<Array<{ id: number, nombre: string, rol: string, contador_documentos: boolean }>>}
+ */
+async function listarQuePuedenLlevarClientes() {
+  const { query } = require('../config/db');
+  const filas = await query(
+    `SELECT u.id, u.nombre, u.rol,
+            EXISTS (SELECT 1 FROM usuario_modulos m WHERE m.usuario_id = u.id AND m.modulo = 'documentos' AND m.rol = 'contador') AS contador_documentos
+     FROM usuarios u
+     WHERE ${SQL_PUEDE_LLEVAR_CLIENTES}
+     ORDER BY u.nombre ASC, u.id ASC`
+  );
+  return filas.map((fila) => ({
+    id: fila.id,
+    nombre: fila.nombre,
+    rol: fila.rol,
+    contador_documentos: Boolean(Number(fila.contador_documentos)),
+  }));
+}
+
 module.exports = {
   SQL_PRINCIPAL_DE_C,
+  listarQuePuedenLlevarClientes,
   idsQueNoPuedenLlevarClientes,
   puedeLlevarClientes,
   contadoresDe,

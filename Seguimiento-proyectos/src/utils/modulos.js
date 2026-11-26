@@ -101,6 +101,19 @@ export const puedeAbrirAjustes = (rol) =>
   [PROFILES.administrador, PROFILES.sistema, PROFILES.recepcionista].includes(rol)
 
 /**
+ * Quién da de alta clientes en Ajustes: administrador, sistemas y recepcionista (igual que el backend).
+ * @param {string|null|undefined} rol - rol general de la cuenta.
+ */
+export const puedeAgregarClientes = (rol) =>
+  [PROFILES.administrador, PROFILES.sistema, PROFILES.recepcionista].includes(rol)
+
+/**
+ * Quién edita clientes, los activa o desactiva y les asigna contadores: administrador y sistemas.
+ * @param {string|null|undefined} rol - rol general de la cuenta.
+ */
+export const puedeEditarClientes = (rol) => [PROFILES.administrador, PROFILES.sistema].includes(rol)
+
+/**
  * Si la cuenta puede entrar a Seguimiento desde el selector. Sistemas tiene el módulo pero su
  * trabajo está en Ajustes. Sin rol, o con un rol sin pantalla, no hay a dónde ir: sin acceso.
  * Una sesión vieja sin lista de módulos pero con rol válido se trata como con acceso.
