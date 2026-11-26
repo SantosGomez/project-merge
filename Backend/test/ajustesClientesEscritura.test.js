@@ -24,7 +24,7 @@ const cuentas = {};
 const tokens = {};
 let contadorA;
 let contadorB;
-let contadorSinRol;
+let cuentaSinCondicion;
 let secuencia = 0;
 let lineas;
 let restaurar;
@@ -78,7 +78,8 @@ describe('escrituras de Ajustes > Clientes (rebanada 56a)', () => {
     }
     contadorA = cuentas.contador;
     contadorB = await crearUsuarioDePrueba('contador');
-    contadorSinRol = await crearUsuarioDePrueba('contador');
+    // Rebanada 56b: un contador de Seguimiento ya puede llevar clientes; la cuenta inválida es una de sistema.
+    cuentaSinCondicion = await crearUsuarioDePrueba('usuarios_de_sistema');
     await darRolContador(contadorA.id);
     await darRolContador(contadorB.id);
     const ocupadas = await query("SELECT clave FROM clientes WHERE clave LIKE 'ZT__'");
@@ -207,7 +208,7 @@ describe('escrituras de Ajustes > Clientes (rebanada 56a)', () => {
         ['contador que no es número', { contadores: ['abc'] }],
         ['contador repetido en la lista', { contadores: [contadorA.id, contadorA.id] }],
         ['contador que no existe', { contadores: [2147483000] }],
-        ['contador sin rol Contador en Documentos', { contadores: [contadorSinRol.id] }],
+        ['cuenta de sistema (ni contador, ni auxiliar, ni Contador en Documentos)', { contadores: [cuentaSinCondicion.id] }],
         ['contador que es administrador', { contadores: [cuentas.administrador.id] }],
       ];
       for (const [descripcion, extra] of casos) {
@@ -402,7 +403,7 @@ describe('escrituras de Ajustes > Clientes (rebanada 56a)', () => {
         ['id que no es número', { contadores: ['x'] }],
         ['id repetido', { contadores: [contadorB.id, contadorB.id] }],
         ['id inexistente', { contadores: [contadorB.id, 2147483000] }],
-        ['contador sin rol Contador en Documentos', { contadores: [contadorSinRol.id] }],
+        ['cuenta de sistema (ni contador, ni auxiliar, ni Contador en Documentos)', { contadores: [cuentaSinCondicion.id] }],
         ['cuenta con otro rol', { contadores: [cuentas.recepcionista.id] }],
       ];
       for (const [descripcion, cuerpo] of casos) {

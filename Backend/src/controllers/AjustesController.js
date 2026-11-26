@@ -49,7 +49,7 @@ const ERROR_LISTA_CONTADORES = buildError(
 const ERROR_CONTADOR_SIN_ROL = buildError(
   'Hay cuentas que no pueden ser contador de un cliente',
   'contadores',
-  'Elige solo cuentas con rol de Contador en Documentos; si falta, asigna el rol en «Acceso a módulos»'
+  'Elige solo cuentas de contador o auxiliar, o con rol de Contador en Documentos (se asigna en «Acceso a módulos»)'
 );
 const ERROR_NOMBRE_REPETIDO = buildError(
   'Ya existe un cliente con ese nombre',
@@ -127,7 +127,7 @@ async function crearCliente(req, res) {
 
   const contadores = cuerpo.contadores === undefined ? [] : leerListaDeContadores(cuerpo.contadores);
   if (contadores === null) return res.status(400).json(ERROR_LISTA_CONTADORES);
-  if ((await ClienteContadorModel.idsSinRolContadorEnDocumentos(contadores)).length > 0) {
+  if ((await ClienteContadorModel.idsQueNoPuedenLlevarClientes(contadores)).length > 0) {
     return res.status(400).json(ERROR_CONTADOR_SIN_ROL);
   }
 
@@ -199,7 +199,7 @@ async function reemplazarContadoresDelCliente(req, res) {
   if (contadores === null) return res.status(400).json(ERROR_LISTA_CONTADORES);
 
   if (!(await ClienteModel.buscarDelCatalogo(id))) return res.status(404).json(ERROR_NO_ENCONTRADO);
-  if ((await ClienteContadorModel.idsSinRolContadorEnDocumentos(contadores)).length > 0) {
+  if ((await ClienteContadorModel.idsQueNoPuedenLlevarClientes(contadores)).length > 0) {
     return res.status(400).json(ERROR_CONTADOR_SIN_ROL);
   }
 

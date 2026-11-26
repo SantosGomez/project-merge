@@ -1,6 +1,7 @@
 const ClienteModel = require('../models/ClienteModel');
 const { buildError } = require('../utils/errorUtils');
 const { parseCounterId, validarCampoTexto } = require('../utils/validationUtils');
+const bitacora = require('../utils/bitacoraSeguridad');
 
 /**
  * Controladores de /clientes: cada contador o auxiliar ve y modifica solo sus clientes.
@@ -155,4 +156,114 @@ async function actualizarCliente(req, res) {
   }
 }
 
-module.exports = { listarMisClientes, crearCliente, actualizarCliente };
+const MAX_CLIENTES_POR_VINCULO = 50;
+const LIMITE_POR_OMISION = 25;
+const LONGITUD_MAX_BUSQUEDA = 150;
+
+const ERROR_LIMITE = buildError('El límite no es válido', 'límite', `Envía un número entero de 1 a ${MAX_CLIENTES_POR_VINCULO}`);
+const ERROR_BUSQUEDA = buildError(
+  'El texto buscado es demasiado largo',
+  'búsqueda',
+  `Escribe como máximo ${LONGITUD_MAX_BUSQUEDA} caracteres`
+);
+const ERROR_LISTA_CLIENTES = buildError(
+  'La lista de clientes no es válida',
+  'clienteIds',
+  `Envía de 1 a ${MAX_CLIENTES_POR_VINCULO} ids de clientes, números enteros y sin repetir`
+);
+const ERROR_CLIENTES_NO_VALIDOS = buildError(
+  'No se vinculó ningún cliente porque alguno no existe o está inactivo',
+  'clienteIds',
+  'Actualiza la búsqueda y elige solo clientes activos del catálogo'
+);
+const ERROR_NO_EN_CARTERA = buildError(
+  'Ese cliente no está en tu cartera',
+  'cliente solicitado',
+  'Actualiza tu cartera y elige uno de tus clientes'
+);
+
+/**
+ * Lee la lista de ids a vincular: de 1 a 50 enteros positivos, sin repetir.
+ * @param {*} valor - `clienteIds` del cuerpo.
+ * @returns {number[]|null} Los ids, o null si la lista no es válida.
+ */
+function leerClienteIds(valor) {
+  if (!Array.isArray(valor) || valor.length === 0 || valor.length > MAX_CLIENTES_POR_VINCULO) return null;
+  const ids = valor.map((id) => (typeof id === 'number' || typeof id === 'string' ? parseCounterId(id) : null));
+  if (ids.includes(null) || new Set(ids).size !== ids.length) return null;
+  return ids;
+}
+
+/**
+ * GET /clientes/mi-cartera — Clientes vinculados a la cuenta (activos e inactivos), por nombre.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function miCartera(req, res) {
+  const clientes = await ClienteModel.listarCartera(Number(req.user.id));
+  return res.status(200).json({ clientes });
+}
+
+/**
+ * GET /clientes/catalogo?q=&limite= — Busca clientes activos del catálogo para vincularlos.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function buscarCatalogo(req, res) {
+  const texto = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  if (texto.length > LONGITUD_MAX_BUSQUEDA) return res.status(400).json(ERROR_BUSQUEDA);
+
+  let limite = LIMITE_POR_OMISION;
+  if (req.query.limite !== undefined) {
+    const pedido = typeof req.query.limite === 'string' ? parseCounterId(req.query.limite) : null;
+    if (pedido === null) return res.status(400).json(ERROR_LIMITE);
+    limite = Math.min(pedido, MAX_CLIENTES_POR_VINCULO);
+  }
+
+  const clientes = await ClienteModel.buscarParaCartera(Number(req.user.id), texto, limite);
+  return res.status(200).json({ clientes });
+}
+
+/**
+ * POST /clientes/vinculos — Vincula a la cuenta como contador de clientes activos del catálogo.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function vincularClientes(req, res) {
+  const clienteIds = leerClienteIds((req.body || {}).clienteIds);
+  if (clienteIds === null) return res.status(400).json(ERROR_LISTA_CLIENTES);
+
+  try {
+    const resultado = await ClienteModel.vincularACartera(Number(req.user.id), clienteIds);
+    bitacora.registrar('cliente_vinculado', req, { ...resultado, clienteIds: clienteIds.join(',') });
+    return res.status(200).json(resultado);
+  } catch (error) {
+    if (error.codigo === 'CLIENTES_NO_VALIDOS') return res.status(400).json(ERROR_CLIENTES_NO_VALIDOS);
+    throw error;
+  }
+}
+
+/**
+ * DELETE /clientes/vinculos/:clienteId — Quita solo el vínculo de la cuenta con el cliente.
+ * @param {Object} req - Petición Express.
+ * @param {Object} res - Respuesta Express.
+ */
+async function desvincularCliente(req, res) {
+  const clienteId = parseCounterId(req.params.clienteId);
+  if (clienteId === null) return res.status(400).json(ERROR_ID_INVALIDO);
+
+  const quitado = await ClienteModel.desvincularDeCartera(Number(req.user.id), clienteId);
+  if (!quitado) return res.status(404).json(ERROR_NO_EN_CARTERA);
+  bitacora.registrar('cliente_desvinculado', req, { clienteId });
+  return res.status(200).json({ desvinculado: true });
+}
+
+module.exports = {
+  listarMisClientes,
+  crearCliente,
+  actualizarCliente,
+  miCartera,
+  buscarCatalogo,
+  vincularClientes,
+  desvincularCliente,
+};

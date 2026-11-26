@@ -177,6 +177,44 @@ async function requireAltaClientes(req, res, next) {
 }
 
 /**
+ * Middleware de la cartera propia de clientes: permite a quien puede llevar clientes (rol contador o
+ * auxiliar, o rol Contador en Documentos; ver `ClienteContadorModel.idsQueNoPuedenLlevarClientes`).
+ * No exige el módulo «Mis actividades»: «Mi perfil» lo ve todo el que trabaja casos.
+ * @param {Object} req - Objeto de petición (debe contener req.user con id).
+ * @param {Object} res - Objeto de respuesta.
+ * @param {Function} next - Función siguiente del middleware.
+ */
+async function requireLlevaClientes(req, res, next) {
+  if (!req.user) {
+    res.status(403).json(
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión con una cuenta de contador o auxiliar')
+    );
+    return;
+  }
+
+  const { puedeLlevarClientes } = require('../models/ClienteContadorModel');
+  let puede;
+  try {
+    puede = await puedeLlevarClientes(req.user.id);
+  } catch (error) {
+    next(error);
+    return;
+  }
+  if (!puede) {
+    res.status(403).json(
+      buildError(
+        'Tu cuenta no lleva clientes',
+        'cartera de clientes',
+        'Pide a un administrador que te dé rol de contador o auxiliar, o el rol Contador en Documentos'
+      )
+    );
+    return;
+  }
+
+  next();
+}
+
+/**
  * Middleware del calendario de juntas: permite a administrador, contador, auxiliar y recepcionista.
  * usuarios_de_sistema no usa el calendario.
  * @param {Object} req - Objeto de petición (debe contener req.user con rol).
@@ -209,5 +247,6 @@ module.exports = {
   requireContadorOAuxiliar,
   requireConsultaDirectorio,
   requireAltaClientes,
+  requireLlevaClientes,
   requireCalendario,
 };

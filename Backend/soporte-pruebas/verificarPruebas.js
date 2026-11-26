@@ -24,6 +24,7 @@ const MINIMOS = {
   'clienteContadorPrincipal.test.js': 7,
   'indiceNombreClientes.test.js': 4,
   'ajustesClientesEscritura.test.js': 26,
+  'clientesCartera.test.js': 32,
   'actividadesMes.test.js': 14,
   'adminVeEquiposYCampana.test.js': 4,
   'appCors.test.js': 4,

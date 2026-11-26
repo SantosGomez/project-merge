@@ -1,5 +1,5 @@
 const { query, conTransaccion } = require('../config/db');
-const { agregarContador, reemplazarContadores, contadoresDe, SQL_PRINCIPAL_DE_C } = require('./ClienteContadorModel');
+const { agregarContador, quitarContador, reemplazarContadores, contadoresDe, SQL_PRINCIPAL_DE_C } = require('./ClienteContadorModel');
 const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 
 /**
@@ -272,7 +272,106 @@ async function actualizarEnCatalogo(id, cambios) {
   return buscarDelCatalogo(id);
 }
 
+/** Escapa los comodines de LIKE (barra invertida, % y _) para que el texto buscado se tome literal. */
+function escaparComodines(texto) {
+  return texto.replace(/[\\%_]/g, '\\$&');
+}
+
+/**
+ * Cartera propia: todos los clientes donde la cuenta es contador (activos e inactivos), por nombre.
+ * @param {number} usuarioId - Cuenta que consulta.
+ * @returns {Promise<Array<{ id: number, clave: string|null, nombre: string, activo: boolean }>>}
+ */
+async function listarCartera(usuarioId) {
+  const filas = await query(
+    `SELECT id, clave, nombre, activo FROM clientes WHERE ${ES_CONTADOR_DEL_CLIENTE} ORDER BY nombre ASC, id ASC`,
+    [usuarioId]
+  );
+  return filas.map((fila) => ({ id: fila.id, clave: fila.clave, nombre: fila.nombre, activo: Boolean(fila.activo) }));
+}
+
+/**
+ * Busca clientes activos del catálogo por nombre o clave (sin distinguir acentos ni mayúsculas, por la
+ * colación de la tabla) y marca cuáles ya están en la cartera de la cuenta.
+ * @param {number} usuarioId - Cuenta que consulta.
+ * @param {string} texto - Texto buscado (puede ir vacío).
+ * @param {number} limite - Máximo de resultados (ya validado, entero de 1 a 50).
+ * @returns {Promise<Array<{ id: number, clave: string|null, nombre: string, vinculado: boolean }>>}
+ */
+async function buscarParaCartera(usuarioId, texto, limite) {
+  const patron = `%${escaparComodines(texto)}%`;
+  // El límite es un entero que ya validó el controlador, por eso va en el texto y no como parámetro.
+  const filas = await query(
+    `SELECT clientes.id, clientes.clave, clientes.nombre, ${ES_CONTADOR_DEL_CLIENTE} AS vinculado
+     FROM clientes
+     WHERE clientes.activo = 1 AND (clientes.nombre LIKE ? OR clientes.clave LIKE ?)
+     ORDER BY clientes.nombre ASC, clientes.id ASC
+     LIMIT ${Number(limite)}`,
+    [usuarioId, patron, patron]
+  );
+  return filas.map((fila) => ({
+    id: fila.id,
+    clave: fila.clave,
+    nombre: fila.nombre,
+    vinculado: Boolean(fila.vinculado),
+  }));
+}
+
+/**
+ * Vincula a la cuenta como contador de cada cliente, todo o nada en una transacción. Los clientes se
+ * bloquean en orden de id; si alguno no existe o está inactivo no se vincula ninguno. Quien ya era
+ * contador de uno no cambia (se cuenta en `yaEstaban`).
+ * @param {number} usuarioId - Cuenta que se vincula.
+ * @param {number[]} clienteIds - Ids sin repetir (ya validados).
+ * @returns {Promise<{ vinculados: number, yaEstaban: number }>}
+ * @throws {Error} Con `codigo` CLIENTES_NO_VALIDOS si alguno no existe o está inactivo.
+ */
+async function vincularACartera(usuarioId, clienteIds) {
+  return conTransaccion(async (ejecutar) => {
+    const marcas = clienteIds.map(() => '?').join(', ');
+    const filas = await ejecutar(
+      `SELECT id, activo FROM clientes WHERE id IN (${marcas}) ORDER BY id FOR UPDATE`,
+      clienteIds
+    );
+    if (filas.length !== clienteIds.length || filas.some((fila) => !fila.activo)) {
+      const error = new Error('hay clientes que no existen o están inactivos');
+      error.codigo = 'CLIENTES_NO_VALIDOS';
+      throw error;
+    }
+    const previos = await ejecutar(
+      `SELECT cliente_id FROM cliente_contador WHERE usuario_id = ? AND cliente_id IN (${marcas})`,
+      [usuarioId, ...clienteIds]
+    );
+    const yaVinculados = new Set(previos.map((fila) => Number(fila.cliente_id)));
+    const nuevos = clienteIds.filter((id) => !yaVinculados.has(id));
+    for (const id of nuevos) await agregarContador(id, usuarioId, ejecutar);
+    return { vinculados: nuevos.length, yaEstaban: yaVinculados.size };
+  });
+}
+
+/**
+ * Quita solo el vínculo de la cuenta con el cliente; el cliente no se borra ni se desactiva.
+ * @param {number} usuarioId - Cuenta que se desvincula.
+ * @param {number} clienteId - Id del cliente.
+ * @returns {Promise<boolean>} false si el cliente no estaba en su cartera.
+ */
+async function desvincularDeCartera(usuarioId, clienteId) {
+  return conTransaccion(async (ejecutar) => {
+    const filas = await ejecutar(
+      'SELECT cliente_id FROM cliente_contador WHERE cliente_id = ? AND usuario_id = ? FOR UPDATE',
+      [clienteId, usuarioId]
+    );
+    if (filas.length === 0) return false;
+    await quitarContador(clienteId, usuarioId, ejecutar);
+    return true;
+  });
+}
+
 module.exports = {
+  listarCartera,
+  buscarParaCartera,
+  vincularACartera,
+  desvincularDeCartera,
   listarDeUsuario,
   listarTodos,
   buscarDeUsuario,

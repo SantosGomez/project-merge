@@ -171,28 +171,40 @@ async function quitarContador(clienteId, usuarioId, ejecutar) {
 }
 
 /**
- * De una lista de cuentas, las que NO pueden ser contador de un cliente: no existen o no tienen el rol
- * Contador en el módulo de Documentos (`usuario_modulos`: modulo 'documentos', rol 'contador').
+ * Regla única de quién puede llevar clientes (ser contador de un cliente): una cuenta con rol general
+ * `contador` o `auxiliar`, o con el rol Contador en el módulo de Documentos (`usuario_modulos`: modulo
+ * 'documentos', rol 'contador'). `usuarios` no tiene un campo de cuenta activa, así que no se exige.
  * @param {number[]} usuarioIds - Ids a comprobar (sin repetir).
- * @returns {Promise<number[]>} Los ids que no cumplen; vacío si todos son válidos.
+ * @returns {Promise<number[]>} Los ids que no cumplen (incluye los que no existen); vacío si todos pueden.
  */
-async function idsSinRolContadorEnDocumentos(usuarioIds) {
+async function idsQueNoPuedenLlevarClientes(usuarioIds) {
   if (usuarioIds.length === 0) return [];
   const { query } = require('../config/db');
   const marcas = usuarioIds.map(() => '?').join(', ');
   const validos = await query(
     `SELECT u.id FROM usuarios u
-     JOIN usuario_modulos m ON m.usuario_id = u.id AND m.modulo = 'documentos' AND m.rol = 'contador'
-     WHERE u.id IN (${marcas})`,
+     WHERE u.id IN (${marcas})
+       AND (u.rol IN ('contador', 'auxiliar')
+            OR EXISTS (SELECT 1 FROM usuario_modulos m WHERE m.usuario_id = u.id AND m.modulo = 'documentos' AND m.rol = 'contador'))`,
     usuarioIds
   );
   const ids = new Set(validos.map((fila) => Number(fila.id)));
   return usuarioIds.filter((id) => !ids.has(Number(id)));
 }
 
+/**
+ * Indica si una cuenta puede llevar clientes (ver `idsQueNoPuedenLlevarClientes`).
+ * @param {number} usuarioId - Id de la cuenta.
+ * @returns {Promise<boolean>}
+ */
+async function puedeLlevarClientes(usuarioId) {
+  return (await idsQueNoPuedenLlevarClientes([Number(usuarioId)])).length === 0;
+}
+
 module.exports = {
   SQL_PRINCIPAL_DE_C,
-  idsSinRolContadorEnDocumentos,
+  idsQueNoPuedenLlevarClientes,
+  puedeLlevarClientes,
   contadoresDe,
   principalDe,
   reemplazarContadores,

@@ -125,6 +125,12 @@ const MATRIZ = [
   ['POST', '/ajustes/clientes', [ADMIN, SISTEMA, RECEPCIONISTA], {}],
   ['PATCH', '/ajustes/clientes/:x', [ADMIN, SISTEMA], {}],
   ['PUT', '/ajustes/clientes/:x/contadores', [ADMIN, SISTEMA], {}],
+  // cartera propia de clientes (rebanada 56b): contador y auxiliar; también entra quien tenga el rol
+  // Contador en Documentos (condición que cubre clientesCartera.test.js, aquí nadie la tiene)
+  ['GET', '/clientes/mi-cartera', CONTADOR_O_AUXILIAR],
+  ['GET', '/clientes/catalogo', CONTADOR_O_AUXILIAR],
+  ['POST', '/clientes/vinculos', CONTADOR_O_AUXILIAR, {}],
+  ['DELETE', '/clientes/vinculos/:x', CONTADOR_O_AUXILIAR],
   // módulo de documentos (unión, fase 3): entra quien tiene el módulo; aquí solo el administrador
   // lo tiene por su rol. Los permisos por rol dentro del módulo están en documentosModulo.test.js.
   ['GET', '/doc/catalogos', [ADMIN]],
