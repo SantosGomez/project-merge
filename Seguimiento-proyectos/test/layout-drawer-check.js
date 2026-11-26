@@ -61,7 +61,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(!header.includes('abrirDialogoCierre'), 'la barra ya no abre el diálogo de cierre')
     assert.ok(!src.includes('botonCerrarSesion'), 'no queda la ref botonCerrarSesion')
     assert.ok(!src.includes('.layout-bar__close'), 'no queda la clase layout-bar__close')
-    assert.ok(!header.includes('icon="arrow_back"'), 'la barra ya no tiene «Volver»')
+    assert.equal((header.match(/<q-btn[^>]*icon="arrow_back"/g) ?? []).length, 1, '«Volver» solo en el perfil desde módulos')
     assert.ok(header.includes('icon="menu"'), 'la barra conserva el botón de menú')
     assert.ok(header.includes('layout-bar__title'), 'la barra conserva el título')
   })
@@ -663,7 +663,7 @@ describe('Sección «Usuarios» y aviso de acceso (historia 9a) — verificació
 describe('Pie del menú con el nombre de la cuenta (login por correo)', () => {
   it('muestra el nombre visible y sus iniciales, no el usuario', () => {
     const pie = src.slice(src.indexOf('class="drawer-usuario"'), src.indexOf('<div class="drawer-usuario__salir"'))
-    assert.match(pie, /v-if="session\.nombreVisible && session\.trabajaCasos"/, 'el enlace aparece con el nombre')
+    assert.match(pie, /v-if="session\.nombreVisible && session\.tienePerfil"/, 'el enlace aparece con el nombre')
     assert.match(pie, /v-else-if="session\.nombreVisible"/, 'la fila sin enlace aparece con el nombre')
     assert.match(pie, /<p class="drawer-usuario__nombre">\{\{ session\.nombreVisible \}\}<\/p>/, 'nombre visible sin tooltip redundante')
     assert.doesNotMatch(pie, /session\.usuario/, 'el pie ya no muestra el usuario')

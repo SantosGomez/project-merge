@@ -20,9 +20,9 @@
       </div>
 
       <RouterLink
-        v-if="session.trabajaCasos"
+        v-if="session.tienePerfil"
         class="tarjeta-perfil boton-presionable"
-        :to="{ name: 'mi-perfil' }"
+        :to="{ name: 'mi-perfil', query: { desde: 'modulos' } }"
         aria-label="Ir a mi perfil"
       >
         <span class="tarjeta-perfil__avatar" aria-hidden="true">
@@ -700,7 +700,7 @@ const cerrarSesion = async () => {
   border-radius: 50%;
   overflow: hidden;
   background-color: var(--q-error);
-  color: var(--dg-texto-claro);
+  color: var(--dg-texto-oscuro);
   box-shadow: var(--dg-sombra-tarjeta);
   transition:
     width 0.3s var(--dg-curva-salida),
@@ -738,7 +738,7 @@ const cerrarSesion = async () => {
   white-space: nowrap;
   font-size: 0.92rem;
   font-weight: 600;
-  color: var(--dg-texto-claro);
+  color: var(--dg-texto-oscuro);
   transition:
     opacity 0.3s var(--dg-curva-salida),
     width 0.3s var(--dg-curva-salida),

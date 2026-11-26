@@ -196,7 +196,7 @@ const routes = [
         component: ContadorAuxiliaresPage,
         meta: {
           requiereSesion: true,
-          perfil: [PROFILES.contador, PROFILES.auxiliar],
+          perfil: Object.values(PROFILES),
           titulo: 'Mi perfil',
         },
       },

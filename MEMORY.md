@@ -67,6 +67,8 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 - Un oráculo sobre la plantilla no prueba que el permiso exista: comprobar en el navegador con cada rol.
 - Guardia de rutas: `useQuasar()` no funciona ahí; cada redirección lleva `return`; el permiso va en cada ruta hija.
 
+- «Mi perfil» lo tienen todos los roles (`session.tienePerfil`); contador/auxiliar ven además equipo y cartera, el resto solo «Mi cuenta». Desde la tarjeta de /modulos se abre con `?desde=modulos`: sin dock ni menú y con «Volver». Botones de ModulosPage usan `--dg-texto-oscuro` a propósito (aún no está en la paleta; falla una prueba de CSS).
+
 ---
 
 Nada sensible en esta memoria.

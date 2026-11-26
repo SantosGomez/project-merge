@@ -29,8 +29,10 @@ describe('Barra móvil — verificación estática', () => {
     assert.ok(menu < titulo, 'el menú va antes del título')
   })
 
-  it('la barra ya no tiene el botón «Volver»', () => {
-    assert.ok(!barra.includes('icon="arrow_back"'), 'no queda la flecha de volver')
+  it('la barra solo tiene «Volver» en «Mi perfil» abierto desde módulos', () => {
+    const flechas = barra.match(/<q-btn[^>]*icon="arrow_back"/g) ?? []
+    assert.equal(flechas.length, 1, 'una sola flecha de volver')
+    assert.match(flechas[0], /v-if="perfilDesdeModulos"/, 'solo con el perfil desde módulos')
     assert.ok(!src.includes('backRouteName'), 'no queda el cálculo del destino de vuelta')
   })
 

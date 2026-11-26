@@ -120,13 +120,13 @@ describe('vista «Mi perfil»: menú y enlaces', () => {
     assert.doesNotMatch(menu, /contador-auxiliares/)
   })
 
-  it('el bloque del usuario es un enlace a «Mi perfil» solo para quien trabaja casos', () => {
+  it('el bloque del usuario es un enlace a «Mi perfil» para todos los roles', () => {
     const bloque = menu.slice(menu.indexOf('class="drawer-usuario"'), menu.indexOf('drawer-usuario__salir'))
     assert.match(bloque, /:to="\{ name: 'mi-perfil' \}"/)
     assert.match(bloque, /aria-label="Ir a mi perfil"/)
     assert.match(bloque, /:aria-current="paginaActual\('mi-perfil'\)"/)
     assert.match(bloque, /active-class="drawer-usuario__fila--activa"/)
-    assert.match(bloque, /v-if="session\.nombreVisible && session\.trabajaCasos"/)
+    assert.match(bloque, /v-if="session\.nombreVisible && session\.tienePerfil"/)
     assert.match(bloque, /<p class="drawer-usuario__nombre">\{\{ session\.nombreVisible \}\}<\/p>/)
     assert.doesNotMatch(bloque, /q-tooltip/, 'el nombre visible no se repite en un tooltip')
   })

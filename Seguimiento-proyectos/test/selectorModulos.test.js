@@ -68,10 +68,10 @@ describe('Selector de módulos: botón «Ajustes»', () => {
 describe('Selector de módulos: tarjeta de perfil', () => {
   const pagina = leer('../src/pages/ModulosPage.vue')
 
-  it('toda la tarjeta es un enlace a «Mi perfil» y solo la ve quien trabaja casos', () => {
+  it('toda la tarjeta es un enlace a «Mi perfil» y la ven todos los roles', () => {
     assert.match(
       pagina,
-      /<RouterLink\s+v-if="session\.trabajaCasos"\s+class="tarjeta-perfil boton-presionable"\s+:to="\{ name: 'mi-perfil' \}"\s+aria-label="Ir a mi perfil"/,
+      /<RouterLink\s+v-if="session\.tienePerfil"\s+class="tarjeta-perfil boton-presionable"\s+:to="\{ name: 'mi-perfil', query: \{ desde: 'modulos' \} \}"\s+aria-label="Ir a mi perfil"/,
     )
     const inicio = pagina.indexOf('class="tarjeta-perfil boton-presionable"')
     const tarjeta = pagina.slice(inicio, pagina.indexOf('</RouterLink>', inicio))
@@ -122,5 +122,17 @@ describe('Selector de módulos: tarjetas sin acceso', () => {
     assert.match(pagina, /\$q\.notify\(/)
     assert.match(pagina, /mensajeSinAccesoModulo\(modulo\.nombre\)/)
     assert.match(pagina, /@click="modulo\.tieneAcceso \? undefined : avisarSinAcceso\(modulo\)"/)
+  })
+})
+
+describe('Mi perfil abierto desde módulos', () => {
+  const layout = leer('../src/layouts/MaquetaLayout.vue')
+
+  it('sin dock ni menú lateral y con botón «Volver» a módulos', () => {
+    assert.match(layout, /route\.name === 'mi-perfil' && route\.query\.desde === 'modulos'/)
+    assert.match(layout, /session\.autenticado && !perfilDesdeModulos\.value/)
+    assert.match(layout, /v-if="!usarDock && !session\.sesionCaducada && !perfilDesdeModulos"/)
+    assert.match(layout, /const volverAModulos = \(\) => router\.push\(\{ name: 'modulos' \}\)/)
+    assert.equal((layout.match(/label="Volver"/g) ?? []).length, 2, 'escritorio y celular')
   })
 })

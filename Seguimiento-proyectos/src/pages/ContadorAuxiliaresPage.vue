@@ -214,7 +214,7 @@
         </q-card>
       </section>
 
-      <section aria-labelledby="perfil-titulo-cartera">
+      <section v-if="session.trabajaCasos" aria-labelledby="perfil-titulo-cartera">
         <q-card flat bordered class="perfil-page__tarjeta">
           <q-card-section>
             <div class="cartera__cabecera">
@@ -501,7 +501,7 @@ const retry = () => {
 
 onMounted(() => {
   cargarPerfil()
-  cases.cargarCasos()
+  if (session.trabajaCasos) cases.cargarCasos()
   // El auxiliar no gestiona auxiliares: no se piden sus datos.
   if (session.esContador) {
     auxiliares.cargarAuxiliares(Number(session.id))
@@ -516,7 +516,7 @@ onMounted(() => {
  * cambió tu equipo) se releen cuenta, cartera y equipo. Un fallo conserva lo que ya se ve.
  */
 const refrescarEnSilencio = async () => {
-  cases.refrescarEnSilencio()
+  if (session.trabajaCasos) cases.refrescarEnSilencio()
   if (session.esContador) auxiliares.refrescarAuxiliaresEnSilencio(Number(session.id))
   if (session.esAuxiliar && !cargandoContadores.value && !errorContadores.value) {
     const resultado = await auxiliares.listarContadoresQueMeTienenComoAuxiliar(Number(session.id))

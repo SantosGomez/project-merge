@@ -172,8 +172,8 @@ describe('Textos de acceso en trato de tú y sin jerga', () => {
     const maqueta = leer('../src/layouts/MaquetaLayout.vue')
     const drawer = maqueta.match(/<q-drawer[\s\S]*?>/)?.[0] ?? ''
     const botonMenu = maqueta.match(/<q-btn\s+ref="botonMenu"[\s\S]*?\/>/)?.[0] ?? ''
-    assert.match(drawer, /v-if="!usarDock && !session\.sesionCaducada"/)
-    assert.match(botonMenu, /v-if="!session\.sesionCaducada"/)
+    assert.match(drawer, /v-if="!usarDock && !session\.sesionCaducada && !perfilDesdeModulos"/)
+    assert.match(botonMenu, /v-if="!session\.sesionCaducada && !perfilDesdeModulos"/)
   })
 })
 

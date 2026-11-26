@@ -153,6 +153,11 @@ export const crearSessionStore = (dependencias = {}) => {
       esAuxiliar: (state) => state.rol === 'auxiliar',
       /** Contador o auxiliar: tiene «Mis casos», «Mi resumen» y la campana de avisos. */
       trabajaCasos: (state) => ['contador', 'auxiliar'].includes(state.rol),
+      /** «Mi perfil» lo tienen todos los roles; contador y auxiliar además ven equipo y cartera. */
+      tienePerfil: (state) =>
+        ['administrador', 'contador', 'auxiliar', 'recepcionista', 'usuarios_de_sistema'].includes(
+          state.rol,
+        ),
       /** Los 4 roles del calendario ven la campana de avisos; el usuario de sistema no. */
       veCampana: (state) =>
         ['administrador', 'contador', 'auxiliar', 'recepcionista'].includes(state.rol),

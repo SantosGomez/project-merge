@@ -21,7 +21,7 @@
         <div class="layout-bar__row">
           <q-btn
             ref="botonMenu"
-            v-if="!session.sesionCaducada"
+            v-if="!session.sesionCaducada && !perfilDesdeModulos"
             flat
             icon="menu"
             aria-label="Abrir menú de navegación"
@@ -30,6 +30,19 @@
             class="layout-bar__menu control-touch"
             @click="drawerOpen = !drawerOpen"
           />
+
+          <q-btn
+            v-if="perfilDesdeModulos"
+            flat
+            no-caps
+            icon="arrow_back"
+            label="Volver"
+            aria-label="Volver a módulos"
+            class="layout-bar__menu control-touch boton-presionable"
+            @click="volverAModulos"
+          >
+            <q-tooltip>Volver a la lista de módulos</q-tooltip>
+          </q-btn>
 
           <h1 class="layout-bar__title">{{ pageTitle }}</h1>
 
@@ -45,7 +58,7 @@
       :iniciales="iniciales"
       :nombre-usuario="session.nombreVisible"
       :rol="rolLegible"
-      :perfil-to="session.trabajaCasos ? { name: 'mi-perfil' } : null"
+      :perfil-to="session.tienePerfil ? { name: 'mi-perfil' } : null"
       :logo-to="{ name: 'modulos' }"
       :perfil-activo="route.name === 'mi-perfil'"
       :cerrando-sesion="cerrandoSesion"
@@ -55,7 +68,7 @@
 
     <!-- Con la sesión cerrada no hay menú: solo queda el aviso para volver a entrar. -->
     <q-drawer
-      v-if="!usarDock && !session.sesionCaducada"
+      v-if="!usarDock && !session.sesionCaducada && !perfilDesdeModulos"
       id="menu-lateral"
       v-model="drawerOpen"
       show-if-above
@@ -323,9 +336,9 @@
       </q-scroll-area>
 
       <div class="drawer-usuario" v-if="session.autenticado">
-        <!-- Quien trabaja casos entra a «Mi perfil» desde su nombre; el resto ve el bloque sin enlace. -->
+        <!-- Todos los roles entran a «Mi perfil» desde su nombre. -->
         <router-link
-          v-if="session.nombreVisible && session.trabajaCasos"
+          v-if="session.nombreVisible && session.tienePerfil"
           :to="{ name: 'mi-perfil' }"
           :aria-current="paginaActual('mi-perfil')"
           aria-label="Ir a mi perfil"
@@ -377,6 +390,19 @@
       :inert="fondoBloqueado"
     >
       <header v-if="$q.screen.gt.sm" class="page-header">
+        <q-btn
+          v-if="perfilDesdeModulos"
+          flat
+          no-caps
+          color="primary"
+          icon="arrow_back"
+          label="Volver"
+          aria-label="Volver a módulos"
+          class="control-touch boton-presionable"
+          @click="volverAModulos"
+        >
+          <q-tooltip>Volver a la lista de módulos</q-tooltip>
+        </q-btn>
         <h1 class="page-header__title">{{ pageTitle }}</h1>
         <CampanaAvisos v-if="session.veCampana" class="page-header__campana" />
       </header>
@@ -635,7 +661,13 @@ const rolLegible = computed(() =>
  * Dock de escritorio (prueba en «experimento»): las mismas opciones del menú lateral por rol,
  * como datos. En celular se sigue usando el menú lateral.
  */
-const usarDock = computed(() => esEscritorio.value && session.autenticado)
+const perfilDesdeModulos = computed(
+  () => route.name === 'mi-perfil' && route.query.desde === 'modulos',
+)
+const volverAModulos = () => router.push({ name: 'modulos' })
+const usarDock = computed(
+  () => esEscritorio.value && session.autenticado && !perfilDesdeModulos.value,
+)
 
 /*
  * Unión con documentos: módulo en el que está la pantalla y opciones de su menú.
