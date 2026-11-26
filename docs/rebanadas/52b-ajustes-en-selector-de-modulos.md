@@ -123,3 +123,9 @@ No verificado: crear contraseña propia en vivo (solo por prueba), `prefers-redu
 - Tabla de accesos: «Correo» y «Usuario» ocultos bajo 1024 px (el correo se ve bajo el nombre hasta ahí); `scrollWidth - clientWidth` = 0 a 1440, 1024, 768, 700, 644, 620, 600, 375 y 320.
 - `mensajeSinAccesoModulo`: «No tienes acceso a {módulo}. Tu cuenta no tiene permiso para entrar ahí: pide a un administrador que te lo asigne.» Títulos de pruebas de `sessionStore` corregidos.
 - Verificado por el orquestador: `node --test` del frontend 2254/2254. No se pidió una tercera vuelta; quedan los opcionales del reviewer (cuentas de contador/auxiliar con rol Administrador en documentos, `meta.comun` de `/ajustes`, `session.variosModulos` sin uso, etiqueta «Fijar menú abierto» en celular).
+
+## Restauración del estilo del botón «Ajustes» (a petición del usuario)
+
+- El criterio 3 («texto siempre visible») era una propuesta del orquestador, no una decisión del usuario, y el implementer reescribió el CSS del botón. Se restauró el estilo original del usuario: círculo de 45 px que se expande a 168 px al pasar el mouse (mismo mecanismo que «Cerrar sesión»), con el texto visible en pantallas táctiles (`hover: none`).
+- Se conserva la función (`abrirAjustes`, `v-if="veAjustes"`), el tooltip «Usuarios y clientes del despacho», el anillo de foco (`--dg-foco`) y `prefers-reduced-motion`. Colores de la paleta: `--q-primary` y `--dg-acento` al pasar el mouse (las variables `--dg-primary` y `--dg-texto-oscuro` no existen). Se quitó `boton-presionable` para conservar el efecto de pulsar original.
+- Prueba reemplazada en `test/selectorModulos.test.js` (en rojo antes del cambio). Probado en navegador con una cuenta `zz_test_` (se expande, tooltip, abre `/ajustes`); 0 filas `zz_test_%` al terminar.

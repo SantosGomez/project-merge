@@ -22,7 +22,6 @@ describe('Selector de módulos: botón «Ajustes»', () => {
     assert.match(boton, /v-if="veAjustes"/)
     assert.match(boton, /aria-label="Ajustes"/)
     assert.match(boton, /@click="abrirAjustes"/)
-    assert.match(boton, /boton-presionable/)
     assert.match(boton, /<span class="boton-ajustes__texto">Ajustes<\/span>/)
     assert.match(boton, /<q-tooltip>Usuarios y clientes del despacho<\/q-tooltip>/)
     assert.match(pagina, /const veAjustes = computed\(\(\) => puedeAbrirAjustes\(session\.rol\)\)/)
@@ -35,11 +34,17 @@ describe('Selector de módulos: botón «Ajustes»', () => {
     )
   })
 
-  it('el texto «Ajustes» se ve siempre (no solo al pasar el mouse)', () => {
-    const texto = pagina.slice(pagina.indexOf('.boton-ajustes__texto {'))
-    const regla = texto.slice(0, texto.indexOf('}'))
-    assert.doesNotMatch(regla, /opacity:\s*0/)
-    assert.doesNotMatch(regla, /width:\s*0/)
+  it('conserva el estilo del usuario: círculo de 45 px que se expande al pasar el mouse, como «Cerrar sesión»', () => {
+    assert.match(pagina, /\.boton-ajustes \{[^}]*width: 45px;[^}]*border-radius: 50%/s)
+    assert.match(pagina, /\.boton-ajustes__texto \{[^}]*width: 0;[^}]*opacity: 0/s)
+    assert.match(
+      pagina,
+      /\.boton-ajustes:hover,\s*\.boton-ajustes:focus-visible \{[^}]*width: 168px;[^}]*border-radius: 40px/s,
+    )
+    // En pantallas táctiles no hay hover: ahí el botón se ve abierto, con su texto.
+    const tactil = pagina.slice(pagina.indexOf('@media (hover: none)'))
+    assert.match(tactil, /\.boton-ajustes \{[^}]*width: 168px/s)
+    assert.match(tactil, /\.boton-ajustes__texto \{[^}]*opacity: 1/s)
   })
 
   it('el CSS usa solo variables de la paleta que existen y el movimiento reducido tiene todas sus comas', () => {

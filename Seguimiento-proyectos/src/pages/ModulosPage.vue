@@ -97,7 +97,7 @@
         unelevated
         no-caps
         type="button"
-        class="boton-ajustes boton-presionable"
+        class="boton-ajustes"
         aria-label="Ajustes"
         @click="abrirAjustes"
       >
@@ -511,46 +511,102 @@ const cerrarSesion = async () => {
     width: 70%;
     padding-right: 14px;
   }
+
+  .boton-ajustes {
+    width: 168px;
+    border-radius: 40px;
+  }
+
+  .boton-ajustes__icono {
+    width: 30%;
+    padding-left: 14px;
+  }
+
+  .boton-ajustes__texto {
+    opacity: 1;
+    width: 70%;
+    padding-right: 14px;
+  }
 }
 
+/* «Ajustes» comparte la mecánica de «Cerrar sesión»: círculo que se expande al pasar el mouse. */
 .boton-ajustes {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  width: 45px;
+  min-width: 45px;
+  height: 45px;
   min-height: 45px;
   margin-left: 15px;
-  padding: 0 18px 0 14px;
+  padding: 0;
   border: none;
-  border-radius: 40px;
+  border-radius: 50%;
+  overflow: hidden;
   background-color: var(--q-primary);
   color: var(--dg-texto-claro);
   box-shadow: var(--dg-sombra-tarjeta);
   transition:
+    width 0.3s var(--dg-curva-salida),
+    border-radius 0.3s var(--dg-curva-salida),
     background-color 0.2s var(--dg-curva-salida),
     transform 0.15s var(--dg-curva-salida);
 }
 
-/* A diferencia de «Cerrar sesión», el texto se ve siempre: es la entrada a Ajustes. */
 .boton-ajustes :deep(.q-btn__content) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
   flex-wrap: nowrap;
-  gap: 10px;
 }
 
 .boton-ajustes__icono {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  flex-shrink: 0;
+  transition:
+    width 0.3s var(--dg-curva-salida),
+    padding-left 0.3s var(--dg-curva-salida);
 }
 
 .boton-ajustes__texto {
+  position: absolute;
+  right: 0;
+  width: 0;
+  opacity: 0;
   white-space: nowrap;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--dg-texto-claro);
+  transition:
+    opacity 0.3s var(--dg-curva-salida),
+    width 0.3s var(--dg-curva-salida),
+    padding-right 0.3s var(--dg-curva-salida);
 }
 
-.boton-ajustes:hover {
+.boton-ajustes:hover,
+.boton-ajustes:focus-visible {
+  width: 168px;
+  border-radius: 40px;
   background-color: var(--dg-acento);
+}
+
+.boton-ajustes:hover .boton-ajustes__icono,
+.boton-ajustes:focus-visible .boton-ajustes__icono {
+  width: 30%;
+  padding-left: 14px;
+}
+
+.boton-ajustes:hover .boton-ajustes__texto,
+.boton-ajustes:focus-visible .boton-ajustes__texto {
+  opacity: 1;
+  width: 70%;
+  padding-right: 14px;
 }
 
 /* El q-btn trae un contorno interior con !important (app.scss): aquí se pide el anillo exterior. */
@@ -567,6 +623,8 @@ const cerrarSesion = async () => {
   .modulo-tarjeta,
   .modulo-tarjeta__imagen,
   .modulo-tarjeta__flecha,
+  .boton-ajustes__icono,
+  .boton-ajustes__texto,
   .boton-cerrar-sesion,
   .boton-cerrar-sesion__icono,
   .boton-cerrar-sesion__texto,
