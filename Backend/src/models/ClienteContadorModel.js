@@ -3,12 +3,20 @@
  * mantiene `clientes.usuario_id` como «contador principal».
  *
  * Invariante: `clientes.usuario_id` es NULL si el cliente no tiene filas en `cliente_contador`, o es
- * el principal: el de menor `asignado_en` y, a igualdad, el de menor `usuario_id`.
+ * el principal: el de menor `asignado_en` (DATETIME(3)) y, a igualdad, el de menor `usuario_id`.
  *
  * Todas las funciones aceptan al final una función `ejecutar(sql, params) => Promise<filas>` ligada a
  * una transacción que ya abrió quien llama (así el alta de un cliente y sus contadores se guardan
  * juntos). Sin ella, cada escritura abre su propia transacción: si falla a la mitad, no cambia nada.
  */
+
+/**
+ * Subconsulta SQL con el id del contador principal del cliente `c` (alias obligatorio `c` en la consulta
+ * que la use). Es el ÚNICO lugar donde se escribe esa regla de lectura: el de menor `asignado_en` y, a
+ * igualdad, el de menor `usuario_id` (la misma que mantiene `sincronizarPrincipal`).
+ */
+const SQL_PRINCIPAL_DE_C =
+  '(SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)';
 
 /** Ejecuta `trabajo` en la transacción de quien llama o, si no hay, en una propia. */
 async function enTransaccion(ejecutar, trabajo) {
@@ -52,10 +60,16 @@ async function sincronizarPrincipal(ejecutar, clienteId) {
   );
 }
 
-/** Inserta las asignaciones que falten (con la hora de ahora); las que ya existen no cambian. */
+/**
+ * Inserta las asignaciones que falten; las que ya existen no cambian. Cada una lleva la hora de ahora
+ * con milisegundos más 1 ms por su posición en la lista, para que el primero quede como principal.
+ */
 async function insertarAsignaciones(ejecutar, clienteId, usuarioIds) {
   if (usuarioIds.length === 0) return;
-  const valores = usuarioIds.map(() => '(?, ?, NOW())').join(', ');
+  // El desfase es un entero calculado aquí (no viene de quien llama), por eso va en el texto y no como parámetro.
+  const valores = usuarioIds
+    .map((_, posicion) => `(?, ?, DATE_ADD(NOW(3), INTERVAL ${posicion * 1000} MICROSECOND))`)
+    .join(', ');
   const parametros = usuarioIds.flatMap((usuarioId) => [clienteId, usuarioId]);
   await ejecutar(
     `INSERT INTO cliente_contador (cliente_id, usuario_id, asignado_en) VALUES ${valores}
@@ -92,8 +106,22 @@ async function principalDe(clienteId, ejecutar) {
 }
 
 /**
- * Deja como contadores del cliente exactamente a `usuarioIds` (vacío = sin contador). Quien ya estaba
- * conserva su fecha de asignación.
+ * Si el primero de la lista ya estaba y otro contador lo precede en antigüedad, lo pasa 1 ms antes del
+ * más antiguo de los demás: así «el primero de la lista» siempre es el principal.
+ */
+async function adelantarAlPrimero(ejecutar, clienteId, primeroId) {
+  const antiguoDeLosDemas = '(SELECT m FROM (SELECT MIN(asignado_en) AS m FROM cliente_contador WHERE cliente_id = ? AND usuario_id <> ?) t)';
+  await ejecutar(
+    `UPDATE cliente_contador SET asignado_en = DATE_SUB(${antiguoDeLosDemas}, INTERVAL 1000 MICROSECOND)
+     WHERE cliente_id = ? AND usuario_id = ? AND asignado_en >= ${antiguoDeLosDemas}`,
+    [clienteId, primeroId, clienteId, primeroId, clienteId, primeroId]
+  );
+}
+
+/**
+ * Deja como contadores del cliente exactamente a `usuarioIds` (vacío = sin contador); el primero de la
+ * lista queda como principal. Quien ya estaba conserva su fecha de asignación, salvo que haya que
+ * adelantarlo para que sea el principal.
  * @param {number} clienteId - Id del cliente.
  * @param {number[]} usuarioIds - Cuentas que serán sus contadores.
  * @param {Function} [ejecutar] - Transacción ajena (opcional).
@@ -108,6 +136,7 @@ async function reemplazarContadores(clienteId, usuarioIds, ejecutar) {
       const marcas = ids.map(() => '?').join(', ');
       await ejec(`DELETE FROM cliente_contador WHERE cliente_id = ? AND usuario_id NOT IN (${marcas})`, [clienteId, ...ids]);
       await insertarAsignaciones(ejec, clienteId, ids);
+      await adelantarAlPrimero(ejec, clienteId, ids[0]);
     }
     await sincronizarPrincipal(ejec, clienteId);
   });
@@ -141,7 +170,29 @@ async function quitarContador(clienteId, usuarioId, ejecutar) {
   });
 }
 
+/**
+ * De una lista de cuentas, las que NO pueden ser contador de un cliente: no existen o no tienen el rol
+ * Contador en el módulo de Documentos (`usuario_modulos`: modulo 'documentos', rol 'contador').
+ * @param {number[]} usuarioIds - Ids a comprobar (sin repetir).
+ * @returns {Promise<number[]>} Los ids que no cumplen; vacío si todos son válidos.
+ */
+async function idsSinRolContadorEnDocumentos(usuarioIds) {
+  if (usuarioIds.length === 0) return [];
+  const { query } = require('../config/db');
+  const marcas = usuarioIds.map(() => '?').join(', ');
+  const validos = await query(
+    `SELECT u.id FROM usuarios u
+     JOIN usuario_modulos m ON m.usuario_id = u.id AND m.modulo = 'documentos' AND m.rol = 'contador'
+     WHERE u.id IN (${marcas})`,
+    usuarioIds
+  );
+  const ids = new Set(validos.map((fila) => Number(fila.id)));
+  return usuarioIds.filter((id) => !ids.has(Number(id)));
+}
+
 module.exports = {
+  SQL_PRINCIPAL_DE_C,
+  idsSinRolContadorEnDocumentos,
   contadoresDe,
   principalDe,
   reemplazarContadores,

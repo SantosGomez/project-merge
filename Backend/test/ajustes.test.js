@@ -83,7 +83,8 @@ describe('GET /ajustes/clientes', () => {
     const ids = cliente.contadores.map((c) => c.id).sort((a, b) => a - b);
     assert.deepStrictEqual(ids, [cuentas.contador.id, cuentas.recepcionista.id].sort((a, b) => a - b));
     assert.strictEqual(cliente.contador_id, cliente.contadores[0].id, 'el principal va primero');
-    assert.strictEqual(cliente.contador_id, Math.min(cuentas.contador.id, cuentas.recepcionista.id));
+    // Rebanada 56a: el primero de la lista de reemplazarContadores es el principal (ya no gana el menor id).
+    assert.strictEqual(cliente.contador_id, cuentas.contador.id);
     assert.strictEqual(cliente.contador_nombre, cliente.contadores[0].nombre);
   });
 

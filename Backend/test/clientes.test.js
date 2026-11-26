@@ -96,9 +96,12 @@ async function testNombreRepetidoDelMismoUsuarioDa409SinDistinguirMayusculasNiAc
   }
 }
 
-async function testDosUsuariosPuedenTenerElMismoNombre() {
+// Rebanada 56a: el nombre es único en todo el catálogo (índice uq_clientes_nombre), no solo por usuario.
+async function testDosUsuariosNoPuedenTenerElMismoNombre() {
   assert.strictEqual((await crear(tokenContador, { nombre: 'Compartido SA' })).statusCode, 201);
-  assert.strictEqual((await crear(tokenOtroContador, { nombre: 'Compartido SA' })).statusCode, 201);
+  const repetido = await crear(tokenOtroContador, { nombre: 'Compartido SA' });
+  assert.strictEqual(repetido.statusCode, 409);
+  assert.match(repetido.body.mensaje, /ya existe/i);
 }
 
 async function testListaSoloLoPropioConActivosPrimero() {
@@ -240,7 +243,7 @@ describe('/clientes', () => {
     'nombre repetido del mismo usuario da 409 sin distinguir mayúsculas ni acentos',
     testNombreRepetidoDelMismoUsuarioDa409SinDistinguirMayusculasNiAcentos
   );
-  test('dos usuarios pueden tener el mismo nombre', testDosUsuariosPuedenTenerElMismoNombre);
+  test('dos usuarios no pueden tener el mismo nombre (único en el catálogo)', testDosUsuariosNoPuedenTenerElMismoNombre);
   test('lista solo lo propio, activos primero', testListaSoloLoPropioConActivosPrimero);
   test('editar cambia nombre y RFC y permite limpiar el RFC', testEditarCambiaNombreYRfcYPermiteLimpiarElRfc);
   test('editar con nombre repetido da 409 y con datos inválidos 400', testEditarConNombreRepetidoDa409YDatosInvalidosDa400);

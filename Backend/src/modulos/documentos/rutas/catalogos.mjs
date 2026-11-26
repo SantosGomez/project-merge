@@ -1,4 +1,8 @@
 import { clasificarFallo, mensajeDeFallo } from '../logica/errores.mjs';
+import { createRequire } from 'node:module';
+
+// El modelo de contadores es CommonJS: aquí solo se toma su subconsulta del contador principal.
+const { SQL_PRINCIPAL_DE_C } = createRequire(import.meta.url)('../../../models/ClienteContadorModel.js');
 
 /**
  * GET /catalogos
@@ -47,7 +51,7 @@ export async function rutaCatalogos(pool) {
     // Unión, fase 3: el catálogo único de clientes guarda la razón social en 'nombre'.
     const [clientes] = await pool.query(
       `SELECT c.id, c.clave, c.nombre AS razonSocial, c.rfc,
-              (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1) AS contadorId
+              ${SQL_PRINCIPAL_DE_C} AS contadorId
        FROM clientes c
        ORDER BY c.nombre`
     );

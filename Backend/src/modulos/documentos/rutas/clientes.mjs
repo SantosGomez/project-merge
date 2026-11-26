@@ -5,7 +5,7 @@ import { aFechaLocal } from '../logica/fechas.mjs';
 import { createRequire } from 'node:module';
 
 // El modelo de contadores es CommonJS: es el único punto que escribe cliente_contador y usuario_id.
-const { reemplazarContadores, enTransaccionDePool } = createRequire(import.meta.url)(
+const { reemplazarContadores, enTransaccionDePool, SQL_PRINCIPAL_DE_C } = createRequire(import.meta.url)(
   '../../../models/ClienteContadorModel.js'
 );
 
@@ -15,10 +15,6 @@ const REGEX_PERIODO = /^\d{4}-\d{2}$/;
 const REGEX_RFC = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
 /** Formato básico de correo electrónico */
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Id del contador principal del cliente `c`: el de menor asignado_en y, a igualdad, el de menor usuario_id. */
-const PRINCIPAL_DE_C =
-  '(SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)';
 
 /**
  * Contadores de los clientes (el principal primero), agrupados por cliente.
@@ -78,7 +74,7 @@ export async function rutaClientes(pool, query = {}) {
       SELECT c.id, c.clave, c.rfc, c.nombre AS razonSocial, IF(c.activo = 1, 'ACTIVO', 'INACTIVO') AS estado,
              u.nombre AS contador
       FROM clientes c
-      LEFT JOIN usuarios u ON u.id = ${PRINCIPAL_DE_C}
+      LEFT JOIN usuarios u ON u.id = ${SQL_PRINCIPAL_DE_C}
     `;
     const paramsClientes = [];
 
@@ -180,23 +176,23 @@ export async function rutaClientes(pool, query = {}) {
 /**
  * Valida y normaliza el payload para crear un cliente en el catálogo único.
  * @param {object} datos
- * @returns {{ error: string } | { datos: { razonSocial: string, clave: string|null, rfc: string|null, email: string|null, telefono: string|null, contadorId: number|null } }}
+ * @returns {{ error: string, campo: string } | { datos: { razonSocial: string, clave: string|null, rfc: string|null, email: string|null, telefono: string|null, contadorId: number|null } }}
  */
-function validarDatosNuevoCliente(datos = {}) {
+export function validarDatosNuevoCliente(datos = {}) {
   const brutoNombre = datos.razonSocial ?? datos.nombre;
   const razonSocial = typeof brutoNombre === 'string' ? brutoNombre.trim() : '';
   if (!razonSocial) {
-    return { error: 'La razón social o nombre del cliente es obligatorio.' };
+    return { error: 'La razón social o nombre del cliente es obligatorio.', campo: 'nombre' };
   }
   if (razonSocial.length > 150) {
-    return { error: 'La razón social no puede exceder 150 caracteres.' };
+    return { error: 'La razón social no puede exceder 150 caracteres.', campo: 'nombre' };
   }
 
   let clave = null;
   if (datos.clave !== null && datos.clave !== undefined && String(datos.clave).trim() !== '') {
     clave = String(datos.clave).trim().toUpperCase();
     if (clave.length > 4 || /\s/.test(clave)) {
-      return { error: 'La clave de carpeta debe tener máximo 4 caracteres sin espacios.' };
+      return { error: 'La clave de carpeta debe tener máximo 4 caracteres sin espacios.', campo: 'clave' };
     }
   }
 
@@ -204,7 +200,7 @@ function validarDatosNuevoCliente(datos = {}) {
   if (datos.rfc !== null && datos.rfc !== undefined && String(datos.rfc).trim() !== '') {
     rfc = normalizarRfc(String(datos.rfc));
     if (!REGEX_RFC.test(rfc)) {
-      return { error: 'El RFC debe tener 12 o 13 caracteres válidos (ej. ABC010101XY1).' };
+      return { error: 'El RFC debe tener 12 o 13 caracteres válidos (ej. ABC010101XY1).', campo: 'rfc' };
     }
   }
 
@@ -212,7 +208,7 @@ function validarDatosNuevoCliente(datos = {}) {
   if (datos.email !== null && datos.email !== undefined && String(datos.email).trim() !== '') {
     email = String(datos.email).trim();
     if (email.length > 150 || !REGEX_EMAIL.test(email)) {
-      return { error: 'El correo electrónico no tiene un formato válido.' };
+      return { error: 'El correo electrónico no tiene un formato válido.', campo: 'email' };
     }
   }
 
@@ -220,7 +216,7 @@ function validarDatosNuevoCliente(datos = {}) {
   if (datos.telefono !== null && datos.telefono !== undefined && String(datos.telefono).trim() !== '') {
     telefono = String(datos.telefono).trim();
     if (telefono.length > 20) {
-      return { error: 'El teléfono no puede exceder 20 caracteres.' };
+      return { error: 'El teléfono no puede exceder 20 caracteres.', campo: 'telefono' };
     }
   }
 
@@ -375,9 +371,9 @@ function respuestaDeFallo(error) {
 async function leerCliente(pool, idCliente) {
   const [filas] = await pool.query(
     `SELECT c.id, c.clave, c.rfc, c.nombre, c.email, c.telefono, c.activo, c.creado_en,
-            ${PRINCIPAL_DE_C} AS usuario_id, u.nombre AS contador
+            ${SQL_PRINCIPAL_DE_C} AS usuario_id, u.nombre AS contador
      FROM clientes c
-     LEFT JOIN usuarios u ON u.id = ${PRINCIPAL_DE_C}
+     LEFT JOIN usuarios u ON u.id = ${SQL_PRINCIPAL_DE_C}
      WHERE c.id = ?
      LIMIT 1`,
     [idCliente]

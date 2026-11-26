@@ -1,5 +1,5 @@
 const { query, conTransaccion } = require('../config/db');
-const { agregarContador } = require('./ClienteContadorModel');
+const { agregarContador, reemplazarContadores, contadoresDe, SQL_PRINCIPAL_DE_C } = require('./ClienteContadorModel');
 const { formatLocalDate, nowLocal } = require('../utils/dateUtils');
 
 /**
@@ -12,10 +12,6 @@ const COLUMNAS = 'id, nombre, rfc, activo, creado_en';
 // El cliente es del usuario si figura entre sus contadores en cliente_contador (puede tener varios).
 const ES_CONTADOR_DEL_CLIENTE =
   'EXISTS (SELECT 1 FROM cliente_contador cc WHERE cc.cliente_id = clientes.id AND cc.usuario_id = ?)';
-
-// Id del contador principal del cliente `c`: el de menor asignado_en y, a igualdad, el de menor usuario_id.
-const PRINCIPAL_DE_C =
-  '(SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)';
 
 /**
  * Convierte una fila de la tabla en el cliente que entrega la API.
@@ -67,8 +63,8 @@ async function listarDeUsuario(usuarioId) {
  */
 async function listarTodos() {
   const filas = await query(
-    `SELECT c.id, c.clave, c.nombre, c.rfc, c.activo, ${PRINCIPAL_DE_C} AS contador_id, u.nombre AS contador_nombre
-     FROM clientes c LEFT JOIN usuarios u ON u.id = ${PRINCIPAL_DE_C}
+    `SELECT c.id, c.clave, c.nombre, c.rfc, c.activo, ${SQL_PRINCIPAL_DE_C} AS contador_id, u.nombre AS contador_nombre
+     FROM clientes c LEFT JOIN usuarios u ON u.id = ${SQL_PRINCIPAL_DE_C}
      ORDER BY c.activo DESC, c.nombre ASC, c.id ASC`
   );
   const asignaciones = await query(
@@ -158,4 +154,131 @@ async function actualizar(id, usuarioId, cambios) {
   return buscarDeUsuario(id, usuarioId);
 }
 
-module.exports = { listarDeUsuario, listarTodos, buscarDeUsuario, crear, actualizar };
+/**
+ * Convierte el rechazo de una clave única del catálogo en un error con código CLAVE_REPETIDA o
+ * NOMBRE_REPETIDO (también cuando lo rechaza `uq_clientes_usuario_nombre`).
+ * @param {Error} error - Error de la base de datos.
+ * @throws {Error} CLAVE_REPETIDA, NOMBRE_REPETIDO o el error original.
+ */
+function traducirDuplicadoDelCatalogo(error) {
+  if (error.code === 'ER_DUP_ENTRY') {
+    const esClave = String(error.message || '').includes('uq_clientes_clave');
+    const repetido = new Error(esClave ? 'ya existe un cliente con esa clave' : 'ya existe un cliente con ese nombre');
+    repetido.codigo = esClave ? 'CLAVE_REPETIDA' : 'NOMBRE_REPETIDO';
+    throw repetido;
+  }
+  throw error;
+}
+
+/**
+ * Comprueba que ningún OTRO cliente tenga ese nombre (la colación ignora mayúsculas y acentos). Vale
+ * aunque `uq_clientes_nombre` aún no exista porque haya nombres repetidos por consolidar.
+ */
+async function exigirNombreLibre(ejecutar, nombre, idPropio) {
+  const filas = await ejecutar('SELECT id FROM clientes WHERE nombre = ? AND id <> ? LIMIT 1', [nombre, idPropio]);
+  if (filas.length > 0) {
+    const repetido = new Error('ya existe un cliente con ese nombre');
+    repetido.codigo = 'NOMBRE_REPETIDO';
+    throw repetido;
+  }
+}
+
+/**
+ * Un cliente del catálogo con todos sus datos y sus contadores (el principal primero), para Ajustes.
+ * @param {number} id - Id del cliente.
+ * @param {Function} [ejecutar] - Consulta dentro de una transacción ajena (opcional).
+ * @returns {Promise<Object|null>} null si no existe.
+ */
+async function buscarDelCatalogo(id, ejecutar = query) {
+  const filas = await ejecutar(
+    `SELECT c.id, c.clave, c.nombre, c.rfc, c.email, c.telefono, c.activo, ${SQL_PRINCIPAL_DE_C} AS contador_id,
+            u.nombre AS contador_nombre
+     FROM clientes c LEFT JOIN usuarios u ON u.id = ${SQL_PRINCIPAL_DE_C}
+     WHERE c.id = ?`,
+    [id]
+  );
+  if (filas.length === 0) return null;
+  const fila = filas[0];
+  return {
+    id: fila.id,
+    clave: fila.clave,
+    nombre: fila.nombre,
+    rfc: fila.rfc,
+    email: fila.email,
+    telefono: fila.telefono,
+    activo: Boolean(fila.activo),
+    contador_id: fila.contador_id,
+    contador_nombre: fila.contador_nombre,
+    contadores: await contadoresDe(id, ejecutar),
+  };
+}
+
+/**
+ * Da de alta un cliente en el catálogo con sus contadores, en una sola transacción: el primero de la
+ * lista queda como principal. Si algo falla, no se guarda nada.
+ * @param {{ clave: string, nombre: string, rfc: string|null, email: string|null, telefono: string|null }} datos - Ya validados.
+ * @param {number[]} [contadores] - Ids de las cuentas contador, sin repetir.
+ * @returns {Promise<Object>} El cliente creado (forma de `buscarDelCatalogo`).
+ * @throws {Error} NOMBRE_REPETIDO o CLAVE_REPETIDA.
+ */
+async function crearEnCatalogo({ clave, nombre, rfc, email, telefono }, contadores = []) {
+  try {
+    const id = await conTransaccion(async (ejecutar) => {
+      await exigirNombreLibre(ejecutar, nombre, 0);
+      const insertado = await ejecutar(
+        'INSERT INTO clientes (clave, usuario_id, nombre, rfc, email, telefono, activo, creado_en) VALUES (?, NULL, ?, ?, ?, ?, 1, ?)',
+        [clave, nombre, rfc, email, telefono, formatLocalDate(nowLocal())]
+      );
+      await reemplazarContadores(insertado.insertId, contadores, ejecutar);
+      return insertado.insertId;
+    });
+    return await buscarDelCatalogo(id);
+  } catch (error) {
+    return traducirDuplicadoDelCatalogo(error);
+  }
+}
+
+/**
+ * Cambia solo los campos recibidos de un cliente del catálogo (no toca a los contadores).
+ * @param {number} id - Id del cliente.
+ * @param {{ nombre?: string, clave?: string, rfc?: string|null, email?: string|null, telefono?: string|null, activo?: boolean }} cambios - Ya validados.
+ * @returns {Promise<Object|null>} El cliente actualizado, o null si no existe.
+ * @throws {Error} NOMBRE_REPETIDO o CLAVE_REPETIDA.
+ */
+async function actualizarEnCatalogo(id, cambios) {
+  const campos = [];
+  const valores = [];
+  for (const campo of ['clave', 'nombre', 'rfc', 'email', 'telefono']) {
+    if (cambios[campo] !== undefined) {
+      campos.push(`${campo} = ?`);
+      valores.push(cambios[campo]);
+    }
+  }
+  if (cambios.activo !== undefined) {
+    campos.push('activo = ?');
+    valores.push(cambios.activo ? 1 : 0);
+  }
+
+  try {
+    if (campos.length > 0) {
+      await conTransaccion(async (ejecutar) => {
+        if (cambios.nombre !== undefined) await exigirNombreLibre(ejecutar, cambios.nombre, id);
+        await ejecutar(`UPDATE clientes SET ${campos.join(', ')} WHERE id = ?`, [...valores, id]);
+      });
+    }
+  } catch (error) {
+    return traducirDuplicadoDelCatalogo(error);
+  }
+  return buscarDelCatalogo(id);
+}
+
+module.exports = {
+  listarDeUsuario,
+  listarTodos,
+  buscarDeUsuario,
+  crear,
+  actualizar,
+  buscarDelCatalogo,
+  crearEnCatalogo,
+  actualizarEnCatalogo,
+};

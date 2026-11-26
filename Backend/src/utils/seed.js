@@ -2,6 +2,7 @@ const { query } = require('../config/db');
 const { formatearFechaISO, calcularFechaVencimiento } = require('../utils/dateUtils');
 const { hashPassword } = require('../utils/passwordUtils');
 const UserModel = require('../models/UserModel');
+const { registrar } = require('./bitacoraSeguridad');
 
 // Cuentas demo del seed, solo para desarrollo y pruebas: se crean únicamente con SEED_CUENTAS_DEMO=true.
 // Sus contraseñas están en el código, así que nunca deben existir en un servidor real.
@@ -703,7 +704,7 @@ async function migrarClienteContador() {
     CREATE TABLE IF NOT EXISTS cliente_contador (
       cliente_id INT NOT NULL,
       usuario_id INT NOT NULL,
-      asignado_en DATETIME NOT NULL,
+      asignado_en DATETIME(3) NOT NULL,
       PRIMARY KEY (cliente_id, usuario_id),
       KEY idx_cliente_contador_usuario (usuario_id),
       CONSTRAINT fk_cliente_contador_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
@@ -711,10 +712,44 @@ async function migrarClienteContador() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   `);
 
+  // Rebanada 56a: milisegundos en `asignado_en` para que no haya empates de segundo entre contadores.
+  // MODIFY conserva los valores que ya hay; solo se corre si la columna aún no tiene fracciones.
+  const [columna] = await query(
+    `SELECT DATETIME_PRECISION AS precision_ FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cliente_contador' AND COLUMN_NAME = 'asignado_en'`
+  );
+  if (columna && Number(columna.precision_) !== 3) {
+    await query('ALTER TABLE cliente_contador MODIFY asignado_en DATETIME(3) NOT NULL');
+  }
+
   await query(`
     INSERT IGNORE INTO cliente_contador (cliente_id, usuario_id, asignado_en)
-    SELECT id, usuario_id, NOW() FROM clientes WHERE usuario_id IS NOT NULL
+    SELECT id, usuario_id, NOW(3) FROM clientes WHERE usuario_id IS NOT NULL
   `);
+
+  await asegurarIndiceUnicoNombre();
+}
+
+/**
+ * Rebanada 56a: el nombre del cliente es único en todo el catálogo (la colación de la tabla ignora
+ * mayúsculas y acentos). Crea `uq_clientes_nombre` solo si no hay nombres repetidos; si los hay, no lo
+ * crea, no borra nada y deja un aviso en la bitácora (la rebanada 56c los consolida).
+ * @param {Function} [ejecutar] - `ejecutar(sql, params)` que devuelve las filas (por omisión, el pool).
+ * @param {string} [tabla] - Tabla del catálogo; solo cambia en las pruebas.
+ * @returns {Promise<boolean>} true si el índice existe al terminar; false si se omitió por repetidos.
+ */
+async function asegurarIndiceUnicoNombre(ejecutar = query, tabla = 'clientes') {
+  const existente = await ejecutar(`SHOW INDEX FROM ${tabla} WHERE Key_name = 'uq_clientes_nombre'`);
+  if (existente.length > 0) return true;
+  const [{ repetidos }] = await ejecutar(
+    `SELECT COUNT(*) AS repetidos FROM (SELECT 1 FROM ${tabla} GROUP BY nombre HAVING COUNT(*) > 1) r`
+  );
+  if (Number(repetidos) > 0) {
+    registrar('indice_nombre_clientes_omitido', null, { repetidos: Number(repetidos), tabla }, 'warn');
+    return false;
+  }
+  await ejecutar(`CREATE UNIQUE INDEX uq_clientes_nombre ON ${tabla} (nombre)`);
+  return true;
 }
 
 /**
@@ -862,4 +897,4 @@ async function sembrarSiVacia(tabla, sql, params) {
   }
 }
 
-module.exports = { seedDatabase, debeSembrarCuentasDemo, verificarSeedDemoEnProduccion };
+module.exports = { seedDatabase, debeSembrarCuentasDemo, verificarSeedDemoEnProduccion, asegurarIndiceUnicoNombre };

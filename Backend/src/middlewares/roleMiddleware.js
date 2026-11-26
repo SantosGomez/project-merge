@@ -152,6 +152,31 @@ async function requireConsultaDirectorio(req, res, next) {
 }
 
 /**
+ * Middleware del alta de clientes del catálogo (Ajustes): permite a administrador, usuarios_de_sistema
+ * y recepcionista. Editar clientes y cambiar sus contadores sigue con requireAdminOrSistema.
+ * @param {Object} req - Objeto de petición (debe contener req.user con rol).
+ * @param {Object} res - Objeto de respuesta.
+ * @param {Function} next - Función siguiente del middleware.
+ */
+async function requireAltaClientes(req, res, next) {
+  if (!req.user) {
+    res.status(403).json(
+      buildError('Acceso denegado', 'usuario autenticado', 'Inicia sesión para dar de alta clientes')
+    );
+    return;
+  }
+
+  if (!['administrador', 'usuarios_de_sistema', 'recepcionista'].includes(req.user.rol)) {
+    res.status(403).json(
+      buildError('Rol insuficiente', 'usuario autenticado', 'Se requiere rol de administrador, usuario de sistema o recepcionista para dar de alta clientes')
+    );
+    return;
+  }
+
+  next();
+}
+
+/**
  * Middleware del calendario de juntas: permite a administrador, contador, auxiliar y recepcionista.
  * usuarios_de_sistema no usa el calendario.
  * @param {Object} req - Objeto de petición (debe contener req.user con rol).
@@ -183,5 +208,6 @@ module.exports = {
   requireContador,
   requireContadorOAuxiliar,
   requireConsultaDirectorio,
+  requireAltaClientes,
   requireCalendario,
 };

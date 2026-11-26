@@ -15,6 +15,10 @@ import {
   escribirArchivo,
   buscarCarpetaCliente,
 } from "../logica/almacenamiento.mjs";
+import { createRequire } from "node:module";
+
+// El modelo de contadores es CommonJS: aquí solo se toma su subconsulta del contador principal.
+const { SQL_PRINCIPAL_DE_C } = createRequire(import.meta.url)("../../../models/ClienteContadorModel.js");
 
 /**
  * POST /documentos
@@ -384,7 +388,7 @@ export async function rutaListaDireccionamiento(pool) {
               d.fecha_recepcion AS fechaRecepcion,
               d.fecha_limite_sla AS fechaLimite,
               d.prioridad, d.estado,
-              COALESCE(d.contador_id, (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)) AS contadorId,
+              COALESCE(d.contador_id, ${SQL_PRINCIPAL_DE_C}) AS contadorId,
               COALESCE(uc.nombre, ucl.nombre) AS contador,
               ur.nombre AS recibidoPor
        FROM documentos d
@@ -392,7 +396,7 @@ export async function rutaListaDireccionamiento(pool) {
        JOIN tipos_documento t ON t.id = d.tipo_doc_id
        JOIN usuarios ur ON ur.id = d.usuario_recep_id
        LEFT JOIN usuarios uc ON uc.id = d.contador_id
-       LEFT JOIN usuarios ucl ON ucl.id = (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1)
+       LEFT JOIN usuarios ucl ON ucl.id = ${SQL_PRINCIPAL_DE_C}
        WHERE d.estado = 'RECEPCIONADO'
        ORDER BY d.fecha_recepcion ASC, d.id ASC`,
     );
@@ -565,7 +569,7 @@ export async function rutaEntregarDocumento(
 
     // Bloqueo de fila: dos entregas simultáneas no pueden pasar las dos
     const [filas] = await conexion.query(
-      `SELECT d.estado, d.contador_id AS contadorId, (SELECT x.usuario_id FROM cliente_contador x WHERE x.cliente_id = c.id ORDER BY x.asignado_en ASC, x.usuario_id ASC LIMIT 1) AS contadorCliente
+      `SELECT d.estado, d.contador_id AS contadorId, ${SQL_PRINCIPAL_DE_C} AS contadorCliente
        FROM documentos d
        LEFT JOIN clientes c ON c.id = d.cliente_id
        WHERE d.id = ? FOR UPDATE`,

@@ -121,6 +121,10 @@ const MATRIZ = [
   ['DELETE', '/juntas/:x', CALENDARIO],
   // ajustes (rebanada 52)
   ['GET', '/ajustes/clientes', [ADMIN, SISTEMA]],
+  // ajustes, escrituras del catálogo (rebanada 56a): el alta también la hace la recepcionista
+  ['POST', '/ajustes/clientes', [ADMIN, SISTEMA, RECEPCIONISTA], {}],
+  ['PATCH', '/ajustes/clientes/:x', [ADMIN, SISTEMA], {}],
+  ['PUT', '/ajustes/clientes/:x/contadores', [ADMIN, SISTEMA], {}],
   // módulo de documentos (unión, fase 3): entra quien tiene el módulo; aquí solo el administrador
   // lo tiene por su rol. Los permisos por rol dentro del módulo están en documentosModulo.test.js.
   ['GET', '/doc/catalogos', [ADMIN]],
