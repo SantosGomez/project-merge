@@ -56,12 +56,54 @@ describe('Selector de módulos: botón «Ajustes»', () => {
     )
     assert.equal(
       (pagina.match(/focus-visible \{\s*outline: 3px solid var\(--dg-foco\)/g) ?? []).length,
-      2,
-      'tarjeta y botón Ajustes',
+      3,
+      'tarjeta de módulo, botón Ajustes y botón del perfil',
     )
-    assert.match(pagina, /\.boton-cerrar-sesion__texto,\s*\.boton-ajustes \{/)
+    assert.match(pagina, /\.boton-cerrar-sesion__texto,\s*\.boton-ajustes,\s*\.tarjeta-perfil \{/)
     assert.doesNotMatch(pagina, /transition:\s*all/)
     assert.doesNotMatch(pagina, /#[0-9a-fA-F]{3,8}\b/)
+  })
+})
+
+describe('Selector de módulos: tarjeta de perfil', () => {
+  const pagina = leer('../src/pages/ModulosPage.vue')
+
+  it('toda la tarjeta es un enlace a «Mi perfil» y solo la ve quien trabaja casos', () => {
+    assert.match(
+      pagina,
+      /<RouterLink\s+v-if="session\.trabajaCasos"\s+class="tarjeta-perfil boton-presionable"\s+:to="\{ name: 'mi-perfil' \}"\s+aria-label="Ir a mi perfil"/,
+    )
+    const inicio = pagina.indexOf('class="tarjeta-perfil boton-presionable"')
+    const tarjeta = pagina.slice(inicio, pagina.indexOf('</RouterLink>', inicio))
+    assert.match(tarjeta, /<span class="tarjeta-perfil__boton">Ver perfil<\/span>/)
+    assert.doesNotMatch(tarjeta, /<q-btn/, 'un botón dentro del enlace sería un control anidado')
+  })
+
+  it('muestra el nombre y el rol general con un ícono de avatar y sin hexadecimales', () => {
+    assert.match(pagina, /\{\{ nombrePerfil \}\}/)
+    assert.match(pagina, /\{\{ rolPerfil \}\}/)
+    assert.match(
+      pagina,
+      /const nombrePerfil = computed\(\(\) => session\.nombreVisible \|\| 'Tu cuenta'\)/,
+    )
+    assert.match(pagina, /const rolPerfil = computed\(\(\) => formatearRol\(session\.rol\)\)/)
+    assert.match(pagina, /<q-icon name="person"/)
+    assert.doesNotMatch(pagina, /#[0-9a-fA-F]{3,8}\b/)
+  })
+
+  it('en escritorio va fija en la esquina de la pantalla y en horizontal', () => {
+    const escritorio = pagina.slice(pagina.indexOf('@media (min-width: 1200px)'))
+    assert.match(
+      escritorio,
+      /\.tarjeta-perfil \{[^}]*position: fixed;[^}]*top: 24px;[^}]*right: 24px;/s,
+    )
+    assert.match(escritorio, /\.tarjeta-perfil \{[^}]*flex-wrap: nowrap;/s)
+  })
+
+  it('en pantallas angostas se queda en el flujo, debajo del saludo', () => {
+    assert.match(pagina, /\.tarjeta-perfil \{[^}]*max-width: 340px;/s)
+    assert.match(pagina, /\.tarjeta-perfil \{[^}]*flex-wrap: wrap;/s)
+    assert.doesNotMatch(pagina, /@media \(max-width: 899px\)/)
   })
 })
 

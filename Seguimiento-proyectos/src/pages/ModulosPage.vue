@@ -1,21 +1,39 @@
 <template>
   <div class="modulos-fondo" aria-hidden="true"></div>
   <main class="modulos-page">
-    <div class="modulos-page__intro">
-      <q-img
-        class="modulos-page__logo"
-        src="logos/PNG/DELGROW_LOGO-OF.png"
-        alt="DelGrow Business Solutions"
-        fit="contain"
-        no-spinner
-      />
-      <h1 class="modulos-page__titulo">
-        ¡Hola{{ session.nombreVisible ? `, ${session.nombreVisible}` : '' }}!
-      </h1>
-      <p class="modulos-page__lead">
-        Elige el módulo con el que quieres trabajar hoy. Puedes cambiar de área en cualquier momento
-        desde el menú.
-      </p>
+    <div class="modulos-page__encabezado">
+      <div class="modulos-page__intro">
+        <q-img
+          class="modulos-page__logo"
+          src="logos/PNG/DELGROW_LOGO-OF.png"
+          alt="DelGrow Business Solutions"
+          fit="contain"
+          no-spinner
+        />
+        <h1 class="modulos-page__titulo">
+          ¡Hola{{ session.nombreVisible ? `, ${session.nombreVisible}` : '' }}!
+        </h1>
+        <p class="modulos-page__lead">
+          Elige el módulo con el que quieres trabajar hoy. Puedes cambiar de área en cualquier
+          momento desde el menú.
+        </p>
+      </div>
+
+      <RouterLink
+        v-if="session.trabajaCasos"
+        class="tarjeta-perfil boton-presionable"
+        :to="{ name: 'mi-perfil' }"
+        aria-label="Ir a mi perfil"
+      >
+        <span class="tarjeta-perfil__avatar" aria-hidden="true">
+          <q-icon name="person" class="tarjeta-perfil__icono" />
+        </span>
+        <span class="tarjeta-perfil__info">
+          <span class="tarjeta-perfil__nombre">{{ nombrePerfil }}</span>
+          <span v-if="rolPerfil" class="tarjeta-perfil__rol">{{ rolPerfil }}</span>
+        </span>
+        <span class="tarjeta-perfil__boton">Ver perfil</span>
+      </RouterLink>
     </div>
 
     <nav class="modulos-page__lista" aria-label="Módulos disponibles">
@@ -141,6 +159,8 @@ const router = useRouter()
 const cerrando = ref(false)
 
 const veAjustes = computed(() => puedeAbrirAjustes(session.rol))
+const nombrePerfil = computed(() => session.nombreVisible || 'Tu cuenta')
+const rolPerfil = computed(() => formatearRol(session.rol))
 
 const modulos = computed(() => [
   {
@@ -220,8 +240,144 @@ const cerrarSesion = async () => {
   gap: 28px;
 }
 
+.modulos-page__encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .modulos-page__intro {
+  min-width: 0;
   text-align: center;
+}
+
+/*
+ * Acceso rápido a «Mi perfil» para contador y auxiliar: toda la tarjeta es el enlace.
+ * No sustituye al dock ni al menú lateral.
+ */
+.tarjeta-perfil {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid var(--dg-borde);
+  border-radius: 16px;
+  background: var(--dg-superficie);
+  box-shadow:
+    inset 4px 4px 10px color-mix(in srgb, var(--dg-borde-fuerte) 50%, transparent),
+    inset -4px -4px 10px var(--dg-superficie),
+    var(--dg-sombra-tarjeta);
+  color: var(--dg-texto);
+  text-align: left;
+  text-decoration: none;
+  transition:
+    border-color 160ms var(--dg-curva-salida),
+    transform 120ms var(--dg-curva-salida);
+}
+
+.tarjeta-perfil:hover {
+  border-color: var(--dg-acento);
+}
+
+.tarjeta-perfil__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 30%;
+  background: var(--dg-fondo-panel);
+  color: var(--q-primary);
+  font-size: 40px;
+  box-shadow:
+    -5px -5px 8px var(--dg-superficie),
+    5px 5px 8px color-mix(in srgb, var(--dg-borde-fuerte) 70%, transparent);
+}
+
+.tarjeta-perfil__info {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tarjeta-perfil__nombre {
+  color: var(--dg-texto);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.tarjeta-perfil__rol {
+  color: var(--dg-texto-secundario);
+  font-size: 0.9rem;
+}
+
+.tarjeta-perfil__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, var(--q-primary), var(--dg-acento));
+  color: var(--dg-texto-claro);
+  font-weight: 600;
+}
+
+.tarjeta-perfil:focus-visible {
+  outline: 3px solid var(--dg-foco) !important;
+  outline-offset: 2px;
+}
+
+/* Escritorio: fija en la esquina superior derecha de la pantalla y en horizontal. */
+@media (min-width: 1200px) {
+  .tarjeta-perfil {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 2;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .tarjeta-perfil__avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 26px;
+  }
+
+  .tarjeta-perfil__info {
+    flex: none;
+    max-width: 220px;
+  }
+
+  .tarjeta-perfil__nombre {
+    font-size: 0.95rem;
+  }
+
+  .tarjeta-perfil__rol {
+    font-size: 0.8rem;
+  }
+
+  .tarjeta-perfil__boton {
+    width: auto;
+    min-height: 40px;
+    font-size: 0.9rem;
+  }
 }
 
 .modulos-page__logo {
@@ -544,7 +700,7 @@ const cerrarSesion = async () => {
   border-radius: 50%;
   overflow: hidden;
   background-color: var(--q-error);
-  color: var(--dg-texto-oscuro);
+  color: var(--dg-texto-claro);
   box-shadow: var(--dg-sombra-tarjeta);
   transition:
     width 0.3s var(--dg-curva-salida),
@@ -582,7 +738,7 @@ const cerrarSesion = async () => {
   white-space: nowrap;
   font-size: 0.92rem;
   font-weight: 600;
-  color: var(--dg-texto-oscuro);
+  color: var(--dg-texto-claro);
   transition:
     opacity 0.3s var(--dg-curva-salida),
     width 0.3s var(--dg-curva-salida),
@@ -627,7 +783,8 @@ const cerrarSesion = async () => {
   .boton-cerrar-sesion,
   .boton-cerrar-sesion__icono,
   .boton-cerrar-sesion__texto,
-  .boton-ajustes {
+  .boton-ajustes,
+  .tarjeta-perfil {
     transition: none;
   }
 
