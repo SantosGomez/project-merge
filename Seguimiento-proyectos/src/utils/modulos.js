@@ -2,12 +2,14 @@
 // El backend decide qué módulos tiene cada cuenta (`modulos` del login y del perfil); aquí solo
 // se ordena la pantalla: a dónde ir al entrar, qué menú mostrar y qué permiso pide cada vista.
 
+import { PROFILES, RUTA_PRINCIPAL_POR_ROL } from './constants.js'
+
 export const MODULOS = Object.freeze({
   seguimiento: 'seguimiento',
   documentos: 'documentos',
 })
 
-/** Pantalla para elegir módulo cuando la cuenta tiene más de uno. */
+/** Selector de módulos: pantalla a la que llega toda cuenta al entrar. */
 export const RUTA_SELECTOR_MODULOS = '/modulos'
 
 /** Pantalla de entrada del módulo de documentos (elige la vista según el rol). */
@@ -85,17 +87,31 @@ export const vistaInicialDocumentos = (rol) => {
 }
 
 /**
- * A dónde ir al entrar: con varios módulos, al selector; con solo documentos, a documentos;
- * si no, a la pantalla principal de su rol en seguimiento (como siempre).
- * @param {Array<{ modulo: string }>} modulos
- * @param {string|null} pantallaSeguimiento - pantalla principal del rol en seguimiento.
- * @returns {string|null}
+ * A dónde ir al entrar: todas las cuentas pasan primero por el selector de módulos, tengan uno
+ * o varios. Desde ahí eligen un módulo (o «Ajustes»); el selector avisa si no tienen acceso.
+ * @returns {string}
  */
-export const destinoTrasEntrar = (modulos, pantallaSeguimiento) => {
-  const lista = (modulos ?? []).map((m) => m.modulo)
-  const conDocumentos = lista.includes(MODULOS.documentos) && rolDocumentosDe(modulos) !== null
-  const conSeguimiento = lista.includes(MODULOS.seguimiento)
-  if (conDocumentos && conSeguimiento) return RUTA_SELECTOR_MODULOS
-  if (conDocumentos) return RUTA_DOCUMENTOS
-  return pantallaSeguimiento
-}
+export const destinoTrasEntrar = () => RUTA_SELECTOR_MODULOS
+
+/**
+ * Quién ve el botón «Ajustes» del selector: administrador, sistemas y recepcionista.
+ * @param {string|null|undefined} rol - rol general de la cuenta.
+ */
+export const puedeAbrirAjustes = (rol) =>
+  [PROFILES.administrador, PROFILES.sistema, PROFILES.recepcionista].includes(rol)
+
+/**
+ * Si la cuenta puede entrar a Seguimiento desde el selector. Sistemas tiene el módulo pero su
+ * trabajo está en Ajustes. Sin rol, o con un rol sin pantalla, no hay a dónde ir: sin acceso.
+ * Una sesión vieja sin lista de módulos pero con rol válido se trata como con acceso.
+ * @param {Array<{ modulo: string }>} modulos
+ * @param {string|null|undefined} rol
+ */
+export const tieneAccesoSeguimiento = (modulos, rol) =>
+  Boolean(RUTA_PRINCIPAL_POR_ROL[rol]) &&
+  rol !== PROFILES.sistema &&
+  ((modulos ?? []).length === 0 || modulos.some((m) => m.modulo === MODULOS.seguimiento))
+
+/** Aviso de tres partes (qué pasó, por qué, qué hacer) al pulsar un módulo sin acceso. */
+export const mensajeSinAccesoModulo = (nombreModulo) =>
+  `No tienes acceso a ${nombreModulo}. Tu cuenta no tiene permiso para entrar ahí: pide a un administrador que te lo asigne.`

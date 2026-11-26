@@ -18,6 +18,7 @@ const { run } = require('node:test');
 
 // Mínimos de pruebas por archivo (los del plan 9.5 y los que se fueron sumando con cada rebanada).
 const MINIMOS = {
+  'ajustes.test.js': 4,
   'actividadesMes.test.js': 14,
   'adminVeEquiposYCampana.test.js': 4,
   'appCors.test.js': 4,

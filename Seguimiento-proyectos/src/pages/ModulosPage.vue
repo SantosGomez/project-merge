@@ -19,12 +19,22 @@
     </div>
 
     <nav class="modulos-page__lista" aria-label="Módulos disponibles">
-      <router-link
+      <!-- Sin acceso la tarjeta se ve apagada pero sigue enfocable: al pulsarla avisa y no navega. -->
+      <component
+        :is="modulo.tieneAcceso ? RouterLink : 'button'"
         v-for="modulo in modulos"
         :key="modulo.clave"
-        :to="modulo.destino"
+        :to="modulo.tieneAcceso ? modulo.destino : undefined"
+        :type="modulo.tieneAcceso ? undefined : 'button'"
         class="modulo-tarjeta boton-presionable"
-        :aria-label="`Entrar a ${modulo.nombre}${modulo.rol ? ` como ${modulo.rol}` : ''}`"
+        :class="{ 'modulo-tarjeta--sin-acceso': !modulo.tieneAcceso }"
+        :aria-disabled="modulo.tieneAcceso ? undefined : 'true'"
+        :aria-label="
+          modulo.tieneAcceso
+            ? `Entrar a ${modulo.nombre}${modulo.rol ? ` como ${modulo.rol}` : ''}`
+            : `${modulo.nombre}: sin acceso. Pulsa para saber por qué.`
+        "
+        @click="modulo.tieneAcceso ? undefined : avisarSinAcceso(modulo)"
       >
         <div class="modulo-tarjeta__media">
           <q-img
@@ -35,7 +45,7 @@
             class="modulo-tarjeta__imagen"
           />
           <q-chip
-            v-if="modulo.rol"
+            v-if="modulo.rol && modulo.tieneAcceso"
             dense
             color="primary"
             text-color="dg-texto-claro"
@@ -55,11 +65,16 @@
           </div>
 
           <div class="modulo-tarjeta__pie" aria-hidden="true">
-            <span class="modulo-tarjeta__accion">Entrar al módulo</span>
-            <q-icon name="arrow_forward" class="modulo-tarjeta__flecha" />
+            <span class="modulo-tarjeta__accion">{{
+              modulo.tieneAcceso ? 'Entrar al módulo' : 'Sin acceso'
+            }}</span>
+            <q-icon
+              :name="modulo.tieneAcceso ? 'arrow_forward' : 'lock'"
+              class="modulo-tarjeta__flecha"
+            />
           </div>
         </div>
-      </router-link>
+      </component>
     </nav>
 
     <div class="modulos-page__acciones">
@@ -77,50 +92,82 @@
         </span>
         <span class="boton-cerrar-sesion__texto">Cerrar sesión</span>
       </q-btn>
+      <q-btn
+        v-if="veAjustes"
+        unelevated
+        no-caps
+        type="button"
+        class="boton-ajustes boton-presionable"
+        aria-label="Ajustes"
+        @click="abrirAjustes"
+      >
+        <span class="boton-ajustes__icono" aria-hidden="true">
+          <q-icon name="settings" size="20px" />
+        </span>
+        <span class="boton-ajustes__texto">Ajustes</span>
+        <q-tooltip>Usuarios y clientes del despacho</q-tooltip>
+      </q-btn>
     </div>
   </main>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
+import { RouterLink, useRouter } from 'vue-router'
 import { useSessionStore } from '../stores/session.js'
-import { DATOS_MODULO, MODULOS, RUTA_DOCUMENTOS } from '../utils/modulos.js'
+import {
+  DATOS_MODULO,
+  MODULOS,
+  RUTA_DOCUMENTOS,
+  mensajeSinAccesoModulo,
+  puedeAbrirAjustes,
+  tieneAccesoSeguimiento,
+} from '../utils/modulos.js'
 import { RUTA_PRINCIPAL_POR_ROL } from '../utils/constants.js'
 import { formatearRol } from '../utils/formateadores.js'
 import imgSeguimiento from '../assets/imagenes/organizacion-empresarial.jpg'
 import imgDocumentos from '../assets/imagenes/recepcionDocs.jpg'
 
 /*
- * Selector de módulo de la app unida (status-conta + Recepción de documentos). Aparece al entrar
- * cuando la cuenta tiene más de un módulo; desde el menú se vuelve aquí para cambiar.
+ * Selector de módulo de la app unida (status-conta + Recepción de documentos). Toda cuenta llega
+ * aquí al entrar; desde el menú se vuelve para cambiar de módulo. Los dos módulos se muestran
+ * siempre: el que la cuenta no tiene queda apagado y avisa al pulsarlo. «Ajustes» (usuarios y
+ * clientes) es un botón aparte, solo para administrador, sistemas y recepcionista.
  */
+const $q = useQuasar()
 const session = useSessionStore()
 const router = useRouter()
 const cerrando = ref(false)
 
-const modulos = computed(() => {
-  const lista = []
-  if (session.tieneModulo(MODULOS.seguimiento) && RUTA_PRINCIPAL_POR_ROL[session.rol]) {
-    lista.push({
-      clave: MODULOS.seguimiento,
-      ...DATOS_MODULO[MODULOS.seguimiento],
-      destino: RUTA_PRINCIPAL_POR_ROL[session.rol],
-      rol: formatearRol(session.rol),
-      imagen: imgSeguimiento,
-    })
-  }
-  if (session.rolDocumentos) {
-    lista.push({
-      clave: MODULOS.documentos,
-      ...DATOS_MODULO[MODULOS.documentos],
-      destino: RUTA_DOCUMENTOS,
-      rol: session.rolDocumentos,
-      imagen: imgDocumentos,
-    })
-  }
-  return lista
-})
+const veAjustes = computed(() => puedeAbrirAjustes(session.rol))
+
+const modulos = computed(() => [
+  {
+    clave: MODULOS.seguimiento,
+    ...DATOS_MODULO[MODULOS.seguimiento],
+    tieneAcceso: tieneAccesoSeguimiento(session.modulos, session.rol),
+    destino: RUTA_PRINCIPAL_POR_ROL[session.rol],
+    rol: formatearRol(session.rol),
+    imagen: imgSeguimiento,
+  },
+  {
+    clave: MODULOS.documentos,
+    ...DATOS_MODULO[MODULOS.documentos],
+    tieneAcceso: Boolean(session.rolDocumentos),
+    destino: RUTA_DOCUMENTOS,
+    rol: session.rolDocumentos,
+    imagen: imgDocumentos,
+  },
+])
+
+const avisarSinAcceso = (modulo) => {
+  $q.notify({ type: 'warning', message: mensajeSinAccesoModulo(modulo.nombre) })
+}
+
+const abrirAjustes = () => {
+  router.push({ name: 'ajustes' })
+}
 
 const cerrarSesion = async () => {
   if (cerrando.value) return
@@ -226,6 +273,15 @@ const cerrarSesion = async () => {
     box-shadow 0.25s var(--dg-curva-salida);
 }
 
+.modulo-tarjeta {
+  /* La tarjeta sin acceso es un button: se le quitan los estilos del navegador. */
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .modulo-tarjeta:hover {
   transform: translateY(-4px) scale(1.015);
   border-color: var(--dg-acento);
@@ -234,8 +290,36 @@ const cerrarSesion = async () => {
 }
 
 .modulo-tarjeta:focus-visible {
-  outline: 3px solid var(--dg-anillo-foco);
+  outline: 3px solid var(--dg-foco);
   outline-offset: 2px;
+}
+
+.modulo-tarjeta--sin-acceso {
+  background: color-mix(in srgb, var(--dg-fondo-panel) 82%, transparent);
+  box-shadow: none;
+  color: var(--dg-texto-secundario);
+}
+
+.modulo-tarjeta--sin-acceso:hover {
+  transform: none;
+  border-color: var(--dg-borde-fuerte);
+  background: var(--dg-fondo-panel);
+  box-shadow: none;
+}
+
+.modulo-tarjeta--sin-acceso .modulo-tarjeta__imagen {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.modulo-tarjeta--sin-acceso:hover .modulo-tarjeta__imagen,
+.modulo-tarjeta--sin-acceso:hover .modulo-tarjeta__flecha {
+  transform: none;
+}
+
+.modulo-tarjeta--sin-acceso .modulo-tarjeta__icono,
+.modulo-tarjeta--sin-acceso .modulo-tarjeta__pie {
+  color: var(--dg-texto-secundario);
 }
 
 .modulo-tarjeta__media {
@@ -429,20 +513,72 @@ const cerrarSesion = async () => {
   }
 }
 
+.boton-ajustes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 45px;
+  margin-left: 15px;
+  padding: 0 18px 0 14px;
+  border: none;
+  border-radius: 40px;
+  background-color: var(--q-primary);
+  color: var(--dg-texto-claro);
+  box-shadow: var(--dg-sombra-tarjeta);
+  transition:
+    background-color 0.2s var(--dg-curva-salida),
+    transform 0.15s var(--dg-curva-salida);
+}
+
+/* A diferencia de «Cerrar sesión», el texto se ve siempre: es la entrada a Ajustes. */
+.boton-ajustes :deep(.q-btn__content) {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+.boton-ajustes__icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boton-ajustes__texto {
+  white-space: nowrap;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--dg-texto-claro);
+}
+
+.boton-ajustes:hover {
+  background-color: var(--dg-acento);
+}
+
+/* El q-btn trae un contorno interior con !important (app.scss): aquí se pide el anillo exterior. */
+.boton-ajustes:focus-visible {
+  outline: 3px solid var(--dg-foco) !important;
+  outline-offset: 2px;
+}
+
+.boton-ajustes:active {
+  transform: translate(2px, 2px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .modulo-tarjeta,
   .modulo-tarjeta__imagen,
   .modulo-tarjeta__flecha,
   .boton-cerrar-sesion,
   .boton-cerrar-sesion__icono,
-  .boton-cerrar-sesion__texto {
+  .boton-cerrar-sesion__texto,
+  .boton-ajustes {
     transition: none;
   }
 
   .modulo-tarjeta:hover,
   .modulo-tarjeta:hover .modulo-tarjeta__imagen,
   .modulo-tarjeta:hover .modulo-tarjeta__flecha,
-  .boton-cerrar-sesion:active {
+  .boton-cerrar-sesion:active,
+  .boton-ajustes:active {
     transform: none;
   }
 }

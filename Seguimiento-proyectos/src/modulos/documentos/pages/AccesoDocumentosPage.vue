@@ -1,12 +1,9 @@
 <template>
-  <q-page class="acceso-page">
-    <header class="acceso-page__encabezado">
-      <h1 class="acceso-page__titulo">Acceso al módulo</h1>
-      <p class="acceso-page__lead">
-        Elige quién entra a Recepción de documentos y con qué rol. Las cuentas se crean y se editan
-        en el Directorio de Seguimiento de Proyectos.
-      </p>
-    </header>
+  <section class="acceso-page" aria-label="Acceso a módulos">
+    <p class="acceso-page__lead">
+      Elige quién entra a Recepción de documentos y con qué rol. Las cuentas se crean y se editan en
+      la pestaña «Usuarios» de Ajustes.
+    </p>
 
     <q-banner v-if="error" class="acceso-page__aviso" role="alert">
       {{ error }}
@@ -40,6 +37,29 @@
       no-data-label="No hay cuentas que coincidan."
       no-results-label="No hay cuentas que coincidan."
     >
+      <template #body-cell-nombre="props">
+        <q-td :props="props" class="acceso-page__celda">
+          <div class="acceso-page__texto">
+            {{ props.row.nombre }}
+            <q-tooltip>{{ props.row.nombre }}</q-tooltip>
+          </div>
+          <!-- Bajo 1024 px la columna «Correo» se oculta: el correo se ve bajo el nombre. -->
+          <div class="acceso-page__texto acceso-page__correo lt-md">
+            {{ props.row.correo }}
+            <q-tooltip>{{ props.row.correo }}</q-tooltip>
+          </div>
+        </q-td>
+      </template>
+
+      <template #body-cell-correo="props">
+        <q-td :props="props" class="acceso-page__celda">
+          <div class="acceso-page__texto">
+            {{ props.row.correo }}
+            <q-tooltip>{{ props.row.correo }}</q-tooltip>
+          </div>
+        </q-td>
+      </template>
+
       <template #body-cell-rol="props">
         <q-td :props="props">
           <q-select
@@ -60,7 +80,7 @@
         </q-td>
       </template>
     </q-table>
-  </q-page>
+  </section>
 </template>
 
 <script setup>
@@ -95,8 +115,23 @@ const busqueda = ref('')
 
 const columnas = [
   { name: 'nombre', label: 'Nombre', field: 'nombre', align: 'left', sortable: true },
-  { name: 'correo', label: 'Correo', field: 'correo', align: 'left', sortable: true },
-  { name: 'alias', label: 'Usuario', field: (fila) => fila.alias || '—', align: 'left' },
+  {
+    name: 'correo',
+    label: 'Correo',
+    field: 'correo',
+    align: 'left',
+    sortable: true,
+    classes: 'gt-sm',
+    headerClasses: 'gt-sm',
+  },
+  {
+    name: 'alias',
+    label: 'Usuario',
+    field: (fila) => fila.alias || '—',
+    align: 'left',
+    classes: 'gt-sm',
+    headerClasses: 'gt-sm',
+  },
   { name: 'rol', label: 'Rol en documentos', field: 'rolDocumentos', align: 'left' },
 ]
 
@@ -158,23 +193,14 @@ onMounted(cargar)
 
 <style scoped>
 .acceso-page {
-  padding: 24px 16px;
   max-width: 1080px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.acceso-page__titulo {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--dg-texto);
-}
-
 .acceso-page__lead {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--dg-texto-secundario);
   max-width: 70ch;
 }
@@ -189,8 +215,40 @@ onMounted(cargar)
   max-width: 420px;
 }
 
+/* Los textos largos se recortan con puntos suspensivos y el tooltip muestra el valor completo. */
+.acceso-page__celda {
+  max-width: 240px;
+}
+
+.acceso-page__texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acceso-page__correo {
+  font-size: 0.8rem;
+  color: var(--dg-texto-tenue);
+}
+
 .acceso-page__rol {
-  min-width: 180px;
+  min-width: 140px;
+}
+
+@media (max-width: 599px) {
+  .acceso-page__celda {
+    max-width: 130px;
+  }
+}
+
+@media (max-width: 359px) {
+  .acceso-page__celda {
+    max-width: 100px;
+  }
+
+  .acceso-page__rol {
+    min-width: 110px;
+  }
 }
 
 .acceso-page__nota {

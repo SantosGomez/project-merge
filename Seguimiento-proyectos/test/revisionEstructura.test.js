@@ -168,9 +168,9 @@ describe('Menú del celular', () => {
     assert.match(vigilancia, /botonMenu\.value\?\.\$el\?\.focus\(\)/)
   })
 
-  it('en el celular el logo solo entra al recorrido con Tab si hay selector de módulos', () => {
+  it('en el celular el logo siempre entra al recorrido con Tab (todas las cuentas tienen selector)', () => {
     const logo = plantillaLayout.slice(plantillaLayout.lastIndexOf('<q-btn', plantillaLayout.indexOf('drawer-marca__logo-boton')))
-    assert.match(logo.slice(0, logo.indexOf('>')), /:tabindex="esEscritorio \|\| session\.variosModulos \? 0 : -1"/)
+    assert.doesNotMatch(logo.slice(0, logo.indexOf('>')), /tabindex/)
   })
 })
 

@@ -1,0 +1,79 @@
+// Selector de módulos (rebanada 52b): botón «Ajustes» solo para administrador, sistemas y
+// recepcionista, tarjetas apagadas con aviso cuando no hay acceso y estilos sin valores sueltos.
+
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+
+const leer = (relativa) =>
+  readFileSync(fileURLToPath(new URL(relativa, import.meta.url)), 'utf8').replace(/\r\n/g, '\n')
+
+describe('Selector de módulos: botón «Ajustes»', () => {
+  const pagina = leer('../src/pages/ModulosPage.vue')
+
+  it('solo se muestra a quien puede abrir Ajustes y lleva texto, tooltip y aria-label', () => {
+    const inicio = pagina.indexOf('class="boton-ajustes')
+    assert.ok(inicio >= 0, 'falta el botón')
+    const boton = pagina.slice(
+      pagina.lastIndexOf('<q-btn', inicio),
+      pagina.indexOf('</q-btn>', inicio),
+    )
+    assert.match(boton, /v-if="veAjustes"/)
+    assert.match(boton, /aria-label="Ajustes"/)
+    assert.match(boton, /@click="abrirAjustes"/)
+    assert.match(boton, /boton-presionable/)
+    assert.match(boton, /<span class="boton-ajustes__texto">Ajustes<\/span>/)
+    assert.match(boton, /<q-tooltip>Usuarios y clientes del despacho<\/q-tooltip>/)
+    assert.match(pagina, /const veAjustes = computed\(\(\) => puedeAbrirAjustes\(session\.rol\)\)/)
+  })
+
+  it('abrirAjustes está definida y navega a la ruta ajustes', () => {
+    assert.match(
+      pagina,
+      /const abrirAjustes = \(\) => \{?[^}]*router\.push\(\{ name: 'ajustes' \}\)/s,
+    )
+  })
+
+  it('el texto «Ajustes» se ve siempre (no solo al pasar el mouse)', () => {
+    const texto = pagina.slice(pagina.indexOf('.boton-ajustes__texto {'))
+    const regla = texto.slice(0, texto.indexOf('}'))
+    assert.doesNotMatch(regla, /opacity:\s*0/)
+    assert.doesNotMatch(regla, /width:\s*0/)
+  })
+
+  it('el CSS usa solo variables de la paleta que existen y el movimiento reducido tiene todas sus comas', () => {
+    assert.doesNotMatch(pagina, /--dg-primary|--dg-texto-oscuro/)
+    assert.doesNotMatch(
+      pagina,
+      /outline:[^;]*--dg-anillo-foco/,
+      'esa variable es una sombra, no un color',
+    )
+    assert.equal(
+      (pagina.match(/focus-visible \{\s*outline: 3px solid var\(--dg-foco\)/g) ?? []).length,
+      2,
+      'tarjeta y botón Ajustes',
+    )
+    assert.match(pagina, /\.boton-cerrar-sesion__texto,\s*\.boton-ajustes \{/)
+    assert.doesNotMatch(pagina, /transition:\s*all/)
+    assert.doesNotMatch(pagina, /#[0-9a-fA-F]{3,8}\b/)
+  })
+})
+
+describe('Selector de módulos: tarjetas sin acceso', () => {
+  const pagina = leer('../src/pages/ModulosPage.vue')
+
+  it('las dos tarjetas se muestran siempre y la que no tiene acceso queda apagada y enfocable', () => {
+    assert.match(pagina, /tieneAccesoSeguimiento\(session\.modulos, session\.rol\)/)
+    assert.match(pagina, /Boolean\(session\.rolDocumentos\)/)
+    assert.match(pagina, /:aria-disabled="modulo\.tieneAcceso \? undefined : 'true'"/)
+    assert.match(pagina, /modulo-tarjeta--sin-acceso/)
+    assert.doesNotMatch(pagina, /(?<!aria-)disabled/, 'un botón disabled no recibe foco')
+  })
+
+  it('al pulsarla avisa con $q.notify y no navega', () => {
+    assert.match(pagina, /\$q\.notify\(/)
+    assert.match(pagina, /mensajeSinAccesoModulo\(modulo\.nombre\)/)
+    assert.match(pagina, /@click="modulo\.tieneAcceso \? undefined : avisarSinAcceso\(modulo\)"/)
+  })
+})

@@ -225,7 +225,7 @@ test('arranque sin perfil guardado: no hay sesión y no se llama al backend', as
   assert.equal(auth.llamadas.length, 0)
 })
 
-test('arranque con sesión vigente de administrador: valida con GET /auth/perfil y abre P-2', async () => {
+test('arranque con sesión vigente de administrador: valida con GET /auth/perfil y abre el selector de módulos', async () => {
   const auth = crearAuthFalsa({
     inicial: almacenConSesion({
       rol: 'administrador',
@@ -238,7 +238,7 @@ test('arranque con sesión vigente de administrador: valida con GET /auth/perfil
   const resultado = await store.restaurarSesion()
 
   assert.equal(resultado.estado, 'valida')
-  assert.deepEqual(resultado.pantallaPrincipal, '/admin/dashboard')
+  assert.deepEqual(resultado.pantallaPrincipal, '/modulos') // todas las cuentas pasan primero por el selector (rebanada 52b)
   assert.deepEqual(auth.llamadas, [{ accion: 'obtenerPerfil' }])
   assert.equal(store.autenticado, true)
   assert.equal(store.rol, 'administrador')
@@ -251,7 +251,7 @@ test('arranque con sesión vigente de administrador: valida con GET /auth/perfil
   assert.equal(programador.intervaloMs, INTERVALO_INACTIVIDAD_MS)
 })
 
-test('arranque con sesión vigente de contador: valida con GET /auth/perfil y abre P-5', async () => {
+test('arranque con sesión vigente de contador: valida con GET /auth/perfil y abre el selector de módulos', async () => {
   const auth = crearAuthFalsa({
     inicial: almacenConSesion({ rol: 'contador', id: 3, nombre: 'ana' }),
   })
@@ -260,7 +260,7 @@ test('arranque con sesión vigente de contador: valida con GET /auth/perfil y ab
   const resultado = await store.restaurarSesion()
 
   assert.equal(resultado.estado, 'valida')
-  assert.equal(resultado.pantallaPrincipal, '/contador/casos')
+  assert.equal(resultado.pantallaPrincipal, '/modulos') // todas las cuentas pasan primero por el selector (rebanada 52b)
   assert.deepEqual(auth.llamadas, [{ accion: 'obtenerPerfil' }])
   assert.equal(store.rol, 'contador')
 })
@@ -322,7 +322,7 @@ test('arranque con error del servidor: error recuperable y sin borrar la sesión
   assert.equal(store.sesionCaducada, false)
 })
 
-test('arranque del usuario de sistema: valida con el perfil y abre el directorio de usuarios (9a)', async () => {
+test('arranque del usuario de sistema: valida con el perfil y abre el selector de módulos (9a)', async () => {
   const auth = crearAuthFalsa({
     inicial: almacenConSesion({
       rol: 'usuarios_de_sistema',
@@ -335,7 +335,7 @@ test('arranque del usuario de sistema: valida con el perfil y abre el directorio
   const resultado = await store.restaurarSesion()
 
   assert.equal(resultado.estado, 'valida')
-  assert.equal(resultado.pantallaPrincipal, '/admin/directorio')
+  assert.equal(resultado.pantallaPrincipal, '/modulos') // todas las cuentas pasan primero por el selector (rebanada 52b)
   // No tiene lectura propia: el perfil acepta cualquier sesión y solo comprueba la cookie.
   assert.deepEqual(auth.llamadas, [{ accion: 'obtenerPerfil' }])
   assert.equal(store.esUsuarioSistema, true)
@@ -410,7 +410,7 @@ test('la sesión ya no expone el usuario: el nombre visible es solo el nombre (5
   assert.equal(store.nombreVisible, null)
 })
 
-test('iniciarSesion sin sesión previa: guarda la sesión, arranca el temporizador y devuelve la pantalla', async () => {
+test('iniciarSesion sin sesión previa: guarda la sesión, arranca el temporizador y lleva al selector de módulos', async () => {
   const auth = crearAuthFalsa()
   const { store, reloj, programador } = montarSesion({ auth })
 
@@ -418,7 +418,7 @@ test('iniciarSesion sin sesión previa: guarda la sesión, arranca el temporizad
 
   assert.equal(resultado.ok, true)
   assert.equal(resultado.rol, 'administrador')
-  assert.equal(resultado.pantallaPrincipal, '/admin/dashboard')
+  assert.equal(resultado.pantallaPrincipal, '/modulos') // todas las cuentas pasan primero por el selector (rebanada 52b)
   assert.equal(resultado.accesoDenegado, false)
   assert.equal(store.autenticado, true)
   assert.equal(store.rol, 'administrador')
@@ -469,7 +469,7 @@ test('iniciarSesion con credenciales inválidas conserva la sesión previa y no 
   assert.equal(store.rol, 'contador')
 })
 
-test('iniciarSesion del usuario de sistema lleva al directorio de usuarios y arranca el temporizador (9a)', async () => {
+test('iniciarSesion del usuario de sistema lleva al selector de módulos y arranca el temporizador (9a)', async () => {
   const auth = crearAuthFalsa({
     sesionLogin: { rol: 'usuarios_de_sistema', id: 8, nombre: 'sistema' },
   })
@@ -479,7 +479,7 @@ test('iniciarSesion del usuario de sistema lleva al directorio de usuarios y arr
 
   assert.equal(resultado.ok, true)
   assert.equal(resultado.accesoDenegado, false)
-  assert.equal(resultado.pantallaPrincipal, '/admin/directorio')
+  assert.equal(resultado.pantallaPrincipal, '/modulos') // todas las cuentas pasan primero por el selector (rebanada 52b)
   assert.equal(store.esUsuarioSistema, true)
   assert.equal(store.esAdministrador, false)
   assert.equal(store.esContador, false)
@@ -693,12 +693,12 @@ test('iniciarSesion con contraseña asignada lleva a crear la contraseña propia
   assert.equal(store.debeCambiarContrasena, true)
 })
 
-test('iniciarSesion sin marca conserva la pantalla principal del perfil', async () => {
+test('iniciarSesion sin marca lleva al selector de módulos', async () => {
   const { store } = montarSesion()
 
   const resultado = await store.iniciarSesion('admin_seed', 'clave')
 
-  assert.equal(resultado.pantallaPrincipal, '/admin/dashboard')
+  assert.equal(resultado.pantallaPrincipal, '/modulos') // todas las cuentas pasan primero por el selector (rebanada 52b)
   assert.equal(store.debeCambiarContrasena, false)
 })
 
@@ -719,7 +719,7 @@ test('al recargar con la marca guardada no se hace la lectura protegida y se va 
   assert.equal(store.debeCambiarContrasena, true)
 })
 
-test('crearContrasenaPropia guarda la nueva, quita la marca y devuelve la pantalla del perfil', async () => {
+test('crearContrasenaPropia guarda la nueva, quita la marca y lleva al selector de módulos', async () => {
   const auth = crearAuthFalsa({
     inicial: {
       ...almacenConSesion({ rol: 'contador', id: 7, nombre: 'Ana' }),
@@ -731,7 +731,7 @@ test('crearContrasenaPropia guarda la nueva, quita la marca y devuelve la pantal
 
   const resultado = await store.crearContrasenaPropia('MiClavePropia2')
 
-  assert.deepEqual(resultado, { ok: true, pantallaPrincipal: '/contador/casos' })
+  assert.deepEqual(resultado, { ok: true, pantallaPrincipal: '/modulos' })
   assert.deepEqual(auth.llamadas.at(-1), { accion: 'cambiarContrasena', password: 'MiClavePropia2' })
   assert.equal(store.debeCambiarContrasena, false)
 })

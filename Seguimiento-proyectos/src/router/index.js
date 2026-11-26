@@ -11,12 +11,14 @@ import AuditoriaFichaPage from '../pages/AuditoriaFichaPage.vue'
 import AuditoriasPage from '../pages/AuditoriasPage.vue'
 import CambiarContrasenaPage from '../pages/CambiarContrasenaPage.vue'
 import ContadorDashboardPage from '../pages/ContadorDashboardPage.vue'
+import AjustesPage from '../pages/AjustesPage.vue'
 import CountersDirectoryPage from '../pages/CountersDirectoryPage.vue'
 import JuntasPage from '../pages/JuntasPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import MyCasesPage from '../pages/MyCasesPage.vue'
 import ContadorAuxiliaresPage from '../pages/ContadorAuxiliaresPage.vue'
 import PaginaNoEncontrada from '../pages/[...path].vue'
+import AjustesLayout from '../layouts/AjustesLayout.vue'
 import LoginLayout from '../layouts/LoginLayout.vue'
 import MaquetaLayout from '../layouts/MaquetaLayout.vue'
 import { SCREEN_IDS, useMaquetaStore } from '../stores/maqueta.js'
@@ -70,6 +72,23 @@ const routes = [
     ],
   },
   {
+    // Ajustes: usuarios y clientes del despacho. Pantalla propia, fuera de Seguimiento y Documentos.
+    path: '/ajustes',
+    component: AjustesLayout,
+    children: [
+      {
+        path: '',
+        name: 'ajustes',
+        component: AjustesPage,
+        meta: {
+          requiereSesion: true,
+          perfil: [PROFILES.administrador, PROFILES.sistema, PROFILES.recepcionista],
+          titulo: 'Ajustes',
+        },
+      },
+    ],
+  },
+  {
     // Tras entrar con la contraseña que asignó el administrador, la persona crea la suya.
     path: '/cambiar-contrasena',
     component: LoginLayout,
@@ -97,19 +116,27 @@ const routes = [
           perfil: PROFILES.administrador,
           screenId: SCREEN_IDS.dashboard,
           titulo: 'Resumen del equipo',
-          volverA: 'admin-directorio',
+          volverA: 'ajustes',
         },
       },
       {
+        // El directorio de seguimiento es solo de la recepcionista (le ayuda a agendar juntas).
+        // El administrador y sistemas lo usan desde Ajustes, así que su enlace viejo los lleva allá.
         path: 'admin/directorio',
         name: 'admin-directorio',
         component: CountersDirectoryPage,
+        beforeEnter: () => {
+          const sesion = useSessionStore()
+          if (sesion.esAdministrador || sesion.esUsuarioSistema) {
+            return { name: 'ajustes', query: { tab: 'usuarios' }, replace: true }
+          }
+          return true
+        },
         meta: {
           requiereSesion: true,
-          perfil: [PROFILES.administrador, PROFILES.sistema, PROFILES.recepcionista],
+          perfil: [PROFILES.recepcionista],
           screenId: SCREEN_IDS.directory,
           titulo: 'Directorio de usuarios',
-          volverA: 'admin-dashboard',
         },
       },
       {
@@ -198,7 +225,8 @@ const routes = [
       rutaDocumentos('dashboard', 'doc-dashboard', () => import('../modulos/documentos/pages/DashboardPage.vue'), 'ver_directorio', 'Documentos'),
       rutaDocumentos('clientes', 'doc-clientes', () => import('../modulos/documentos/pages/ClientesPage.vue'), 'ver_directorio', 'Clientes'),
       rutaDocumentos('seguimiento', 'doc-seguimiento', () => import('../modulos/documentos/pages/SeguimientoPage.vue'), 'ver_seguimiento', 'Seguimiento de documentos'),
-      rutaDocumentos('accesos', 'doc-accesos', () => import('../modulos/documentos/pages/AccesoDocumentosPage.vue'), 'administrar_usuarios', 'Acceso al módulo'),
+      // «Acceso al módulo» ahora es la pestaña «Acceso a módulos» de Ajustes; el enlace viejo sigue funcionando.
+      { path: 'documentos/accesos', name: 'doc-accesos', redirect: { name: 'ajustes', query: { tab: 'accesos' } } },
       { path: 'usuarios/alta', redirect: { name: 'admin-directorio' } },
       { path: 'usuarios/restablecer-contrasena', redirect: { name: 'admin-directorio' } },
     ],

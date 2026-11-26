@@ -145,11 +145,12 @@ describe('Directorio de usuarios (rebanada 5: se retiran las pantallas viejas de
     }
   })
 
-  it('la sección «Usuarios» del menú solo tiene «Directorio»', () => {
-    const inicio = menu.indexOf('<template v-if="session.esUsuarioSistema">')
+  it('el menú de Seguimiento solo lleva al directorio desde la sección de la recepcionista', () => {
+    assert.doesNotMatch(menu, /<template v-if="session\.esUsuarioSistema">/)
+    const inicio = menu.indexOf('<template v-if="session.esRecepcionista">')
     const seccion = menu.slice(inicio, menu.indexOf('</template>', inicio))
     const destinos = [...seccion.matchAll(/:to="\{ name: '([^']+)' \}"/g)].map((m) => m[1])
-    assert.deepEqual(destinos, ['admin-directorio'])
+    assert.deepEqual(destinos, ['juntas', 'admin-directorio'])
   })
 })
 
@@ -172,10 +173,10 @@ describe('Directorio de usuarios (revisión): diálogos accesibles y texto del m
     })
   }
 
-  it('las dos opciones «Directorio» del menú se llaman igual que la pantalla: directorio de usuarios', () => {
+  it('las dos opciones «Directorio» de la recepcionista (menú lateral y dock) se llaman igual', () => {
     assert.doesNotMatch(menu, /directorio de contadores|Elegir contador/)
-    const opciones = [...menu.matchAll(/aria-label="Ir al directorio de usuarios"/g)]
-    assert.equal(opciones.length, 3, 'administrador, usuario de sistema y recepcionista')
+    const opciones = [...menu.matchAll(/aria-label="Ir al directorio de usuarios"|'Ir al directorio de usuarios'/g)]
+    assert.equal(opciones.length, 2, 'menú lateral y dock, solo de la recepcionista')
   })
 })
 

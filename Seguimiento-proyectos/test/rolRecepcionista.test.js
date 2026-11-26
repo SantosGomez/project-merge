@@ -45,8 +45,9 @@ describe('rol recepcionista: datos y reglas', () => {
     assert.equal(valido, true)
   })
 
-  it('entra al directorio y a «Juntas», y a ninguna otra pantalla con perfil', () => {
+  it('entra al directorio, a Ajustes y a «Juntas», y a ninguna otra pantalla con perfil', () => {
     assert.equal(accesoDeLaRecepcionista('admin-directorio'), 'permitir')
+    assert.equal(accesoDeLaRecepcionista('ajustes'), 'permitir')
     assert.equal(accesoDeLaRecepcionista('juntas'), 'permitir')
     for (const nombre of [
       'admin-dashboard',

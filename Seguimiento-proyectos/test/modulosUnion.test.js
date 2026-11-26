@@ -10,7 +10,10 @@ import {
   RUTA_SELECTOR_MODULOS,
   destinoTrasEntrar,
   hayAccesoDocumentos,
+  mensajeSinAccesoModulo,
+  puedeAbrirAjustes,
   rolDocumentosDe,
+  tieneAccesoSeguimiento,
   vistaInicialDocumentos,
 } from '../src/utils/modulos.js'
 import { crearAuthService, normalizarModulos } from '../src/services/authService.js'
@@ -39,22 +42,51 @@ function crearAlmacenFalso() {
 }
 
 describe('a dónde se entra según los módulos', () => {
-  it('con los dos módulos se elige primero; con solo documentos se entra ahí; si no, como siempre', () => {
+  it('todas las cuentas pasan primero por el selector, tengan uno o varios módulos', () => {
     assert.equal(
       destinoTrasEntrar([SEGUIMIENTO, doc('contador')], '/contador/casos'),
       RUTA_SELECTOR_MODULOS,
     )
-    assert.equal(destinoTrasEntrar([doc('practicante')], '/contador/casos'), RUTA_DOCUMENTOS)
-    assert.equal(destinoTrasEntrar([SEGUIMIENTO], '/contador/casos'), '/contador/casos')
+    assert.equal(destinoTrasEntrar([doc('practicante')], '/contador/casos'), RUTA_SELECTOR_MODULOS)
+    assert.equal(destinoTrasEntrar([SEGUIMIENTO], '/contador/casos'), RUTA_SELECTOR_MODULOS)
     assert.equal(
       destinoTrasEntrar([], '/admin/dashboard'),
-      '/admin/dashboard',
-      'una sesión vieja sin módulos sigue igual',
+      RUTA_SELECTOR_MODULOS,
+      'una sesión vieja sin módulos también pasa por el selector',
     )
   })
 
-  it('un rol de documentos desconocido no cuenta como módulo', () => {
-    assert.equal(destinoTrasEntrar([SEGUIMIENTO, doc('jefe')], '/juntas'), '/juntas')
+  it('un rol de documentos desconocido tampoco salta el selector', () => {
+    assert.equal(destinoTrasEntrar([SEGUIMIENTO, doc('jefe')], '/juntas'), RUTA_SELECTOR_MODULOS)
+  })
+})
+
+describe('selector de módulos: Ajustes y tarjetas sin acceso', () => {
+  it('el botón «Ajustes» es solo de administrador, sistemas y recepcionista', () => {
+    for (const rol of ['administrador', 'usuarios_de_sistema', 'recepcionista']) {
+      assert.equal(puedeAbrirAjustes(rol), true, rol)
+    }
+    for (const rol of ['contador', 'auxiliar', null, undefined, 'invitado']) {
+      assert.equal(puedeAbrirAjustes(rol), false, String(rol))
+    }
+  })
+
+  it('sistemas no entra a Seguimiento aunque tenga el módulo; los demás sí si lo tienen', () => {
+    assert.equal(tieneAccesoSeguimiento([SEGUIMIENTO], 'contador'), true)
+    assert.equal(tieneAccesoSeguimiento([SEGUIMIENTO, doc('administrador')], 'administrador'), true)
+    assert.equal(tieneAccesoSeguimiento([SEGUIMIENTO], 'usuarios_de_sistema'), false)
+    assert.equal(tieneAccesoSeguimiento([doc('contador')], 'contador'), false)
+    assert.equal(tieneAccesoSeguimiento([], 'contador'), true, 'sesión vieja sin módulos')
+    assert.equal(tieneAccesoSeguimiento([], null), false, 'sin rol (sesión recién cerrada)')
+    assert.equal(tieneAccesoSeguimiento([SEGUIMIENTO], null), false, 'sin rol')
+    assert.equal(tieneAccesoSeguimiento([SEGUIMIENTO], 'invitado'), false, 'rol sin pantalla')
+  })
+
+  it('el aviso de módulo sin acceso tiene qué pasó, por qué y qué hacer', () => {
+    assert.equal(
+      mensajeSinAccesoModulo('Recepción de documentos'),
+      'No tienes acceso a Recepción de documentos. Tu cuenta no tiene permiso para entrar ahí: pide a un administrador que te lo asigne.',
+    )
   })
 })
 
@@ -171,7 +203,6 @@ describe('router y menú de la app unida', () => {
       ['doc-dashboard', 'ver_directorio'],
       ['doc-clientes', 'ver_directorio'],
       ['doc-seguimiento', 'ver_seguimiento'],
-      ['doc-accesos', 'administrar_usuarios'],
     ]) {
       assert.match(
         router,
@@ -196,7 +227,8 @@ describe('router y menú de la app unida', () => {
     const dock = leer('../src/components/MenuDock.vue')
     assert.match(layout, /<template v-if="!enDocumentos">/)
     assert.match(layout, /<template v-if="enDocumentos">/)
-    assert.match(layout, /:logo-to="session\.variosModulos \? \{ name: 'modulos' \} : null"/)
+    assert.match(layout, /:logo-to="\{ name: 'modulos' \}"/, 'con uno o varios módulos')
+    assert.doesNotMatch(layout, /variosModulos/)
     assert.match(dock, /<router-link v-if="logoTo"[\s\S]*?aria-label="Inicio · Cambiar de módulo"/)
     assert.doesNotMatch(layout, /Cambiar de módulo/)
     assert.match(

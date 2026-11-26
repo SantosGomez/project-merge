@@ -22,13 +22,15 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 - 2026-11-25, rebanada 50 (sin commit): textos de Recepción y su acuse en pantalla en tú y mayúscula inicial (sin «SLA», «ingesta» ni chip del folio: ahora línea «El folio se asigna al registrar.»); botones `no-caps`; prioridades visibles Baja/Media/Alta/Urgente con `etiquetaDePrioridad` (`composables/etiquetaPrioridad.js`), valor guardado en mayúsculas. Aprobada (reviewer-ligero) y probada en navegador. Opcionales en la rebanada (subtítulo del acuse en Title Case, «Correo Electrónico», avisos por archivo). El PDF (`AcuseImprimir.vue`) conserva sus textos. Pendiente de la revisión: `SeccionAnimada` de 1 s.
 - Alta de clientes: commit 5cf80a7 (`NuevoClienteDialog.vue`, permiso `crear_cliente`, `POST /doc/clientes`).
 - 2026-11-25, rebanada 51 (con push): «Ver expediente» de Clientes abre `ExpedienteClienteDialog.vue` (datos de `clientes` + últimas 20 recepciones); «Editar» reutiliza `NuevoClienteDialog` (prop `cliente`, interruptor «Cliente activo»). `GET /doc/clientes/:id` (`ver_directorio`) y `PATCH /doc/clientes/:id` (`crear_cliente`, mismas validaciones del alta). Probada en navegador (1440 y 375). El usuario la cerró con pendientes: los `q-input` de `NuevoClienteDialog` no llevan `for` (Quasar pisa el `id`: no funcionan el foco al primer error ni los `label for`), falta guarda de `fechaRecepcion` null en la ficha, «X» de 34 px, y el PATCH revalida el contador aunque no cambie (bloquearía clientes de «Mis actividades» con contador sin rol de documentos). `servicios/cliente.js` no tiene `patch`: se usa `peticion` con `method: 'PATCH'`.
+- 2026-11-26, rebanadas 52 y 52b (sin commit; revisadas con Opus, 2254/2254): «Ajustes» (`/ajustes`, layout propio sin dock, `AjustesLayout.vue`) es un botón del selector `/modulos` para administrador, sistemas y recepcionista, con pestañas Usuarios (el directorio reutilizado), Clientes (`GET /ajustes/clientes`, admin y sistemas) y Acceso a módulos (permiso `administrar_usuarios` de documentos). Todos pasan por `/modulos` (también tras crear contraseña); un módulo sin permiso da aviso. «Directorio» de seguimiento solo para la recepcionista (`admin/directorio` redirige a Ajustes para admin y sistemas); Sistemas ya no tiene pantalla en seguimiento. El logo siempre vuelve a `/modulos`. Trampas: `--dg-anillo-foco` es sombra, para `outline` usar `--dg-foco`; el `q-btn` trae contorno global con `!important`. Pendiente: cuentas de contador/auxiliar con rol Administrador en documentos pierden accesos (0 hoy).
+- 2026-11-26, rebanada 53 (solo docs, `docs/rebanadas/53-catalogo-clientes-propuesta.md`): catálogo único de clientes sin dueño + `cliente_contador` (varios contadores); alta en Ajustes por admin, sistemas y recepción; clave obligatoria, RFC no; `cliente_id` en casos, auditorías y juntas con mapeo asistido. Siguen la 54 (esquema), 55 a 57 y 58 (firmas a disco). Antes de la 54: medir producción y respaldar.
 - 2026-11-24: `AGENTS.md` y esta memoria se reescribieron para el proyecto unido (antes eran los de status-conta).
 
 ## Pendientes de la unión
 
 - Documentos: firmas en el lienzo probadas en navegador el 2026-11-25 (rebanada 49); falta un registro completo de punta a punta (aviso «Acceso denegado», rol en dock/menú y `no-results-label` en accesos ya resueltos el 2026-11-24).
 - Límite de intentos del login cuenta por separado correo y alias de una misma persona (menor).
-- Por decidir: ¿`casos` se liga a `clientes.id` o sigue con el cliente como texto? Llave `clientes → usuarios` en cascada: pasar a `SET NULL`.
+- Decidido en la 53: `casos` se liga a `clientes.id` (`cliente_id`, mapeo asistido). Llave `clientes → usuarios` en cascada: se resuelve en la 54 con `cliente_contador`.
 - `.claude/launch.json` ya no usa el script temporal (2026-11-24): `merge-backend` en 3001 y `merge-frontend` en 9001 (los puertos del `Backend/.env`), con `cmd /c`; AGENTS.md ya lo dice. Sin `API_URL`, el frontend llama a `http://localhost:3001` (`api.js`, 2026-11-25): con 3000 chocaba con el backend de status-conta y daba error de CORS.
 - `PRODUCT.md` y `docs/constitution.md` describen solo status-conta.
 
@@ -51,7 +53,7 @@ Memoria entre sesiones (máx. ~50 líneas). Las reglas fijas están en `AGENTS.m
 
 ## Pendientes de documentos (traídos de Proyecto-documentos)
 
-- En espera de definición: relación muchos a muchos contador-cliente; tabla real de «tipos de recepción» con plantilla por cliente (el autollenado es maqueta); matriz y pantalla de documentos requeridos por cliente.
+- En espera de definición (muchos a muchos contador-cliente ya decidido en la 53, rebanada 54): tabla real de «tipos de recepción» con plantilla por cliente (el autollenado es maqueta); matriz y pantalla de documentos requeridos por cliente.
 - Deuda: el color por prioridad está duplicado en `IndexPage` y `DireccionamientoPage`.
 
 ## Errores a evitar

@@ -28,10 +28,11 @@
           outline
           icon="groups"
           label="Ver directorio"
-          :to="{ name: 'admin-directorio' }"
+          :to="{ name: 'ajustes', query: { tab: 'usuarios' } }"
         >
           <q-tooltip
-            >Abre el directorio de usuarios para buscar a una persona por su nombre.</q-tooltip
+            >Abre Ajustes en la pestaña «Usuarios» para buscar a una persona por su
+            nombre.</q-tooltip
           >
         </q-btn>
         <!-- El botón de asignar cambia con la pestaña: caso en «Casos», auditoría en «Auditorías» -->

@@ -11,9 +11,6 @@ const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'ut
 
 const src = read('../src/layouts/MaquetaLayout.vue')
 
-// Sección «Usuarios» del usuario de sistema: también lleva al directorio (directorio, rebanada 2).
-const inicioSistema = src.indexOf('<template v-if="session.esUsuarioSistema">')
-const bloqueSistema = src.slice(inicioSistema, src.indexOf('</template>', inicioSistema))
 // Sección «Recepción» de la recepcionista: también lleva al directorio (rebanada 20).
 const inicioRecepcion = src.indexOf('<template v-if="session.esRecepcionista">')
 const bloqueRecepcion = src.slice(inicioRecepcion, src.indexOf('</template>', inicioRecepcion))
@@ -100,7 +97,7 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(src.includes('<q-item-label header'), 'falta header de lista')
   })
 
-  it('el administrador ve solo la sección «Administración» con Resumen del equipo y Directorio, y no las opciones del contador', () => {
+  it('el administrador ve solo la sección «Administración» con Resumen del equipo (Ajustes se abre desde el selector de módulos), y no las opciones del contador', () => {
     const inicioAdmin = src.indexOf('<template v-if="session.esAdministrador">')
     const finAdmin = src.indexOf('</template>', inicioAdmin)
     assert.ok(inicioAdmin >= 0, 'falta el bloque <template v-if="session.esAdministrador">')
@@ -109,7 +106,8 @@ describe('Drawer sidebar — verificación estática', () => {
     const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
     assert.match(bloqueAdmin, />Administración</, 'falta el título Administración')
     assert.ok(bloqueAdmin.includes("name: 'admin-dashboard'"), 'falta Resumen del equipo')
-    assert.ok(bloqueAdmin.includes("name: 'admin-directorio'"), 'falta Directorio')
+    assert.ok(!bloqueAdmin.includes("name: 'ajustes'"), 'Ajustes ya no está en el menú')
+    assert.ok(!bloqueAdmin.includes("name: 'admin-directorio'"), 'el directorio es solo de la recepcionista')
     assert.ok(
       !bloqueAdmin.includes("name: 'contador-registro'"),
       'el administrador no ve Registro de caso',
@@ -122,13 +120,8 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(finContador > inicioContador, 'falta el cierre del bloque del contador')
 
     const bloqueContador = src.slice(inicioContador, finContador)
-    const sinBloques = src.replace(bloqueAdmin, '').replace(bloqueContador, '').replace(bloqueSistema, '').replace(bloqueRecepcion, '')
-    for (const ruta of [
-      'admin-dashboard',
-      'admin-directorio',
-      'contador-registro',
-      'contador-casos',
-    ]) {
+    const sinBloques = src.replace(bloqueAdmin, '').replace(bloqueContador, '').replace(bloqueRecepcion, '')
+    for (const ruta of ['admin-dashboard', 'ajustes', 'contador-registro', 'contador-casos']) {
       assert.ok(
         !sinBloques.includes(`name: '${ruta}'`),
         `la opción ${ruta} quedó fuera de su bloque de rol`,
@@ -165,6 +158,7 @@ describe('Drawer sidebar — verificación estática', () => {
       !bloqueContador.includes("name: 'admin-dashboard'"),
       'el contador no ve Resumen del equipo',
     )
+    assert.ok(!bloqueContador.includes("name: 'ajustes'"), 'el contador no ve Ajustes')
     assert.ok(!bloqueContador.includes("name: 'admin-directorio'"), 'el contador no ve Directorio')
 
     const inicioAdmin = src.indexOf('<template v-if="session.esAdministrador">')
@@ -173,8 +167,8 @@ describe('Drawer sidebar — verificación estática', () => {
     assert.ok(finAdmin > inicioAdmin, 'falta el cierre del bloque del administrador')
 
     const bloqueAdmin = src.slice(inicioAdmin, finAdmin)
-    const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '').replace(bloqueSistema, '').replace(bloqueRecepcion, '')
-    for (const ruta of ['admin-dashboard', 'admin-directorio', 'contador-casos']) {
+    const sinBloques = src.replace(bloqueContador, '').replace(bloqueAdmin, '').replace(bloqueRecepcion, '')
+    for (const ruta of ['admin-dashboard', 'ajustes', 'admin-directorio', 'contador-casos']) {
       assert.ok(
         !sinBloques.includes(`name: '${ruta}'`),
         `la opción ${ruta} quedó fuera de su bloque de rol`,
@@ -631,36 +625,29 @@ describe('Drawer compacto — verificación estática', () => {
     assert.match(alternar, /guardarMenuFijado\(menuFijado\.value\)/, 'guarda la preferencia')
   })
 
-  it('el logo es siempre el mismo botón; en móvil solo actúa si hay selector de módulos', () => {
+  it('el logo es siempre el mismo botón; en móvil siempre lleva al selector de módulos', () => {
     // Crear o destruir el botón al cruzar 1024 px hacía perder el foco del teclado.
     const boton = src.match(/<q-btn[^>]*drawer-marca__logo-boton[\s\S]*?<\/q-btn>/)?.[0] ?? ''
     const apertura = boton.match(/<q-btn[^>]*>/)?.[0] ?? ''
     assert.doesNotMatch(apertura, /v-if=/, 'el botón no se crea ni se destruye por ancho')
     assert.equal((src.match(/class="drawer-marca__logo"/g) ?? []).length, 1, 'un solo logo')
 
-    assert.match(apertura, /:aria-disabled="!esEscritorio && !session\.variosModulos"/, 'en móvil sin módulos se anuncia no disponible')
+    assert.doesNotMatch(apertura, /aria-disabled|tabindex/, 'todas las cuentas tienen selector: siempre disponible')
     assert.match(boton, /<q-tooltip v-if="esEscritorio">/, 'en móvil no muestra tooltip')
-    assert.match(
-      cssRule(".drawer-marca__logo-boton[aria-disabled='true']"),
-      /cursor:\s*default/,
-      'en móvil sin módulos no muestra la mano',
-    )
 
     const inicio = src.indexOf('const alternarMenuFijado')
     const alternar = src.slice(inicio, src.indexOf('\nconst ', inicio + 1))
-    assert.match(alternar, /if \(!esEscritorio\.value\)[\s\S]*?name: 'modulos'/, 'en móvil con módulos lleva al selector')
+    assert.match(alternar, /if \(!esEscritorio\.value\)[\s\S]*?name: 'modulos'/, 'en móvil lleva al selector')
+    assert.doesNotMatch(alternar, /variosModulos/)
   })
 })
 
 describe('Sección «Usuarios» y aviso de acceso (historia 9a) — verificación estática', () => {
   const aviso = read('../src/components/AccessDenied.vue')
 
-  it('el menú muestra la sección «Usuarios» solo al usuario de sistema', () => {
-    const inicio = src.indexOf('<template v-if="session.esUsuarioSistema">')
-    assert.ok(inicio >= 0, 'falta la sección del usuario de sistema')
-    const seccion = src.slice(inicio, src.indexOf('</template>', inicio))
-
-    assert.match(seccion, /<q-item-label header>Usuarios<\/q-item-label>/, 'título de sección')
+  it('el menú de Seguimiento no tiene sección para el usuario de sistema: su trabajo está en Ajustes', () => {
+    assert.doesNotMatch(src, /<template v-if="session\.esUsuarioSistema">/)
+    assert.doesNotMatch(src, /<q-item-label header>Usuarios<\/q-item-label>/)
   })
 
   it('el aviso de acceso denegado lleva a la pantalla principal de cualquier rol', () => {
@@ -688,15 +675,17 @@ describe('Directorio de usuarios (rebanada 2: el usuario de sistema entra) — v
   const rutas = read('../src/router/index.js')
   const pagina = read('../src/pages/CountersDirectoryPage.vue')
 
-  it('la ruta del directorio admite al administrador, al usuario de sistema y a la recepcionista', () => {
+  it('la ruta del directorio de seguimiento es de la recepcionista; administrador y sistemas lo usan en Ajustes', () => {
     const inicio = rutas.indexOf("name: 'admin-directorio'")
     const ruta = rutas.slice(rutas.lastIndexOf('{', inicio), rutas.indexOf('\n      },', inicio))
 
-    assert.match(ruta, /perfil: \[PROFILES\.administrador, PROFILES\.sistema, PROFILES\.recepcionista\]/, 'los tres perfiles')
+    assert.match(ruta, /perfil: \[PROFILES\.recepcionista\]/, 'solo la recepcionista')
+    const ajustes = rutas.slice(rutas.indexOf("name: 'ajustes'"), rutas.indexOf("titulo: 'Ajustes'"))
+    assert.match(ajustes, /perfil: \[PROFILES\.administrador, PROFILES\.sistema, PROFILES\.recepcionista\]/, 'Ajustes: los tres perfiles')
   })
 
-  it('la sección «Usuarios» del menú tiene la opción «Directorio»', () => {
-    const inicio = src.indexOf('<template v-if="session.esUsuarioSistema">')
+  it('la sección «Recepción» del menú tiene la opción «Directorio»', () => {
+    const inicio = src.indexOf('<template v-if="session.esRecepcionista">')
     const seccion = src.slice(inicio, src.indexOf('</template>', inicio))
 
     assert.match(seccion, /:to="\{ name: 'admin-directorio' \}"/, 'lleva al directorio')

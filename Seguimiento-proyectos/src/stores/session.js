@@ -39,7 +39,7 @@ import {
 import { estaInactivo } from '../utils/inactividad.js'
 import { construirError } from '../utils/mensajes.js'
 import { RUTA_PRINCIPAL_POR_ROL } from '../utils/constants.js'
-import { destinoTrasEntrar, rolDocumentosDe } from '../utils/modulos.js'
+import { RUTA_SELECTOR_MODULOS, destinoTrasEntrar, rolDocumentosDe } from '../utils/modulos.js'
 
 /** Minutos sin interacción tras los que la sesión caduca (RF-07). */
 export const LIMITE_INACTIVIDAD_MINUTOS = 30
@@ -417,7 +417,8 @@ export const crearSessionStore = (dependencias = {}) => {
         }
 
         this.debeCambiarContrasena = false
-        return { ok: true, pantallaPrincipal: PANTALLA_PRINCIPAL[this.rol] ?? null }
+        // Como al iniciar sesión, todas las cuentas pasan por el selector de módulos.
+        return { ok: true, pantallaPrincipal: RUTA_SELECTOR_MODULOS }
       },
 
       /**

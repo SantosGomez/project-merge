@@ -19,6 +19,7 @@ const tiempoRoutes = require('./routes/tiempoRoutes');
 const jornadaRoutes = require('./routes/jornadaRoutes');
 const informeRoutes = require('./routes/informeRoutes');
 const juntaRoutes = require('./routes/juntaRoutes');
+const ajustesRoutes = require('./routes/ajustesRoutes');
 const documentoRoutes = require('./routes/documentoRoutes');
 const { buildError } = require('./utils/errorUtils');
 const bitacora = require('./utils/bitacoraSeguridad');
@@ -133,6 +134,7 @@ function crearApp(opciones) {
   app.use('/jornadas', jornadaRoutes);
   app.use('/informes', informeRoutes);
   app.use('/juntas', juntaRoutes);
+  app.use('/ajustes', ajustesRoutes);
 
   // Middleware 404: ruta no encontrada
   app.use((req, res) => {

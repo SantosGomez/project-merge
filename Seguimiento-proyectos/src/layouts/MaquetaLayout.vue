@@ -46,7 +46,7 @@
       :nombre-usuario="session.nombreVisible"
       :rol="rolLegible"
       :perfil-to="session.trabajaCasos ? { name: 'mi-perfil' } : null"
-      :logo-to="session.variosModulos ? { name: 'modulos' } : null"
+      :logo-to="{ name: 'modulos' }"
       :perfil-activo="route.name === 'mi-perfil'"
       :cerrando-sesion="cerrandoSesion"
       :inert="fondoBloqueado"
@@ -83,8 +83,6 @@
           class="drawer-marca__logo-boton"
           aria-label="Fijar menú abierto"
           :aria-pressed="menuFijado"
-          :aria-disabled="!esEscritorio && !session.variosModulos"
-          :tabindex="esEscritorio || session.variosModulos ? 0 : -1"
           @click="alternarMenuFijado"
         >
           <img
@@ -133,24 +131,6 @@
               <q-item-section>
                 <q-item-label>Resumen del equipo</q-item-label>
                 <q-item-label caption>Ver conteos y casos</q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <q-item
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
-              :to="{ name: 'admin-directorio' }"
-              :aria-current="paginaActual('admin-directorio')"
-              aria-label="Ir al directorio de usuarios"
-            >
-              <q-item-section avatar>
-                <q-icon name="group" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Directorio</q-item-label>
-                <q-item-label caption>Ver cuentas y elegir contador</q-item-label>
               </q-item-section>
             </q-item>
 
@@ -269,28 +249,6 @@
               <q-item-section>
                 <q-item-label>Mi Calendario</q-item-label>
                 <q-item-label caption>Juntas y vencimientos</q-item-label>
-              </q-item-section>
-            </q-item>
-          </template>
-
-          <template v-if="session.esUsuarioSistema">
-            <q-item-label header>Usuarios</q-item-label>
-
-            <q-item
-              clickable
-              v-ripple
-              class="q-item--nav"
-              active-class="q-item--nav-activo"
-              :to="{ name: 'admin-directorio' }"
-              :aria-current="paginaActual('admin-directorio')"
-              aria-label="Ir al directorio de usuarios"
-            >
-              <q-item-section avatar>
-                <q-icon name="group" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>Directorio</q-item-label>
-                <q-item-label caption>Crear cuentas y cambiar contraseñas</q-item-label>
               </q-item-section>
             </q-item>
           </template>
@@ -562,10 +520,9 @@ let esperaAcompanar = null
 
 const alternarMenuFijado = () => {
   if (!esEscritorio.value) {
-    if (session.variosModulos) {
-      drawerOpen.value = false
-      void router.push({ name: 'modulos' })
-    }
+    // Todas las cuentas tienen selector de módulos: el logo lleva a él.
+    drawerOpen.value = false
+    void router.push({ name: 'modulos' })
     return
   }
   clearTimeout(esperaAcompanar)
@@ -702,7 +659,6 @@ const opcionesDocumentos = computed(() => {
     opcion('doc-dashboard', 'Documentos', 'Recibidos del periodo', 'dashboard', 'ver_directorio'),
     opcion('doc-clientes', 'Clientes', 'Semáforo por cliente', 'business', 'ver_directorio'),
     opcion('doc-seguimiento', 'Seguimiento', 'Buscar por folio o RFC', 'manage_search', 'ver_seguimiento'),
-    opcion('doc-accesos', 'Acceso al módulo', 'Quién entra y con qué rol', 'admin_panel_settings', 'administrar_usuarios'),
   ].filter((o) => o.permitida)
 })
 
@@ -733,7 +689,6 @@ const opcionesDock = computed(() => {
   if (session.esAdministrador) {
     lista.push(
       opcion('admin-dashboard', 'Resumen del equipo', 'Ver conteos y casos', 'dashboard', 'admin-dashboard', 'Ir al resumen del equipo'),
-      opcion('admin-directorio', 'Directorio', 'Ver cuentas y elegir contador', 'group', 'admin-directorio', 'Ir al directorio de usuarios'),
       auditorias,
       calendario,
     )
@@ -745,11 +700,6 @@ const opcionesDock = computed(() => {
     )
     if (session.esContador) lista.push(auditorias)
     lista.push(calendario)
-  }
-  if (session.esUsuarioSistema) {
-    lista.push(
-      opcion('admin-directorio', 'Directorio', 'Crear cuentas y cambiar contraseñas', 'group', 'admin-directorio', 'Ir al directorio de usuarios'),
-    )
   }
   if (session.esRecepcionista) {
     lista.push(

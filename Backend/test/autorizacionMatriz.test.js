@@ -119,6 +119,8 @@ const MATRIZ = [
   ['PATCH', '/juntas/:x', CALENDARIO, {}],
   ['PATCH', '/juntas/:x/respuesta', CALENDARIO, {}],
   ['DELETE', '/juntas/:x', CALENDARIO],
+  // ajustes (rebanada 52)
+  ['GET', '/ajustes/clientes', [ADMIN, SISTEMA]],
   // módulo de documentos (unión, fase 3): entra quien tiene el módulo; aquí solo el administrador
   // lo tiene por su rol. Los permisos por rol dentro del módulo están en documentosModulo.test.js.
   ['GET', '/doc/catalogos', [ADMIN]],

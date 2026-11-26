@@ -74,7 +74,7 @@ describe('ruta /juntas', () => {
     assert.equal(PANTALLA_PRINCIPAL_POR_ROL.recepcionista, 'juntas')
     assert.equal(RUTA_PRINCIPAL_POR_ROL.administrador, '/admin/dashboard')
     assert.equal(RUTA_PRINCIPAL_POR_ROL.contador, '/contador/casos')
-    assert.equal(RUTA_PRINCIPAL_POR_ROL.usuarios_de_sistema, '/admin/directorio')
+    assert.equal(RUTA_PRINCIPAL_POR_ROL.usuarios_de_sistema, '/ajustes')
   })
 })
 
@@ -101,8 +101,8 @@ describe('menú lateral: ítem «Mi Calendario»', () => {
     })
   }
 
-  it('el usuario de sistema no ve «Mi Calendario»', () => {
-    assert.doesNotMatch(seccion('session.esUsuarioSistema'), /juntas/)
+  it('el usuario de sistema no ve «Mi Calendario» (ni tiene sección en este menú)', () => {
+    assert.doesNotMatch(layout, /<template v-if="session\.esUsuarioSistema">/)
   })
 })
 

@@ -51,6 +51,28 @@ async function listarDeUsuario(usuarioId) {
 }
 
 /**
+ * Todos los clientes del catálogo, con su contador (si tiene): activos primero, cada grupo por nombre.
+ * Solo lectura, para Ajustes; no filtra por dueño.
+ * @returns {Promise<Array<Object>>}
+ */
+async function listarTodos() {
+  const filas = await query(
+    `SELECT c.id, c.clave, c.nombre, c.rfc, c.activo, c.usuario_id AS contador_id, u.nombre AS contador_nombre
+     FROM clientes c LEFT JOIN usuarios u ON u.id = c.usuario_id
+     ORDER BY c.activo DESC, c.nombre ASC, c.id ASC`
+  );
+  return filas.map((fila) => ({
+    id: fila.id,
+    clave: fila.clave,
+    nombre: fila.nombre,
+    rfc: fila.rfc,
+    activo: Boolean(fila.activo),
+    contador_id: fila.contador_id,
+    contador_nombre: fila.contador_nombre,
+  }));
+}
+
+/**
  * Busca un cliente que pertenezca al usuario; los de otros usuarios no existen para él.
  * @param {number} id - Id del cliente.
  * @param {number} usuarioId - Dueño esperado.
@@ -110,4 +132,4 @@ async function actualizar(id, usuarioId, cambios) {
   return buscarDeUsuario(id, usuarioId);
 }
 
-module.exports = { listarDeUsuario, buscarDeUsuario, crear, actualizar };
+module.exports = { listarDeUsuario, listarTodos, buscarDeUsuario, crear, actualizar };

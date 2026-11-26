@@ -81,6 +81,6 @@ export const RUTA_PRINCIPAL_POR_ROL = Object.freeze({
   [PROFILES.administrador]: '/admin/dashboard',
   [PROFILES.contador]: '/contador/casos',
   [PROFILES.auxiliar]: '/contador/casos',
-  [PROFILES.sistema]: '/admin/directorio',
+  [PROFILES.sistema]: '/ajustes',
   [PROFILES.recepcionista]: '/juntas',
 })

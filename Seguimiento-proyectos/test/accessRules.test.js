@@ -230,8 +230,8 @@ test('decidirAcceso deniega al administrador las pantallas de contador (RF-06)',
   }
 })
 
-test('la pantalla principal del usuario de sistema es el directorio de usuarios (directorio, rebanada 5)', () => {
-  assert.equal(PANTALLA_PRINCIPAL_POR_ROL.usuarios_de_sistema, 'admin-directorio')
+test('la pantalla principal del usuario de sistema es Ajustes (rebanada 52b)', () => {
+  assert.equal(PANTALLA_PRINCIPAL_POR_ROL.usuarios_de_sistema, 'ajustes')
 })
 
 test('cada nombre de ruta principal existe en el router', () => {
@@ -270,7 +270,7 @@ test('decidirAcceso deniega al usuario de sistema el dashboard y las pantallas d
     assert.deepEqual(decidirAcceso({ ruta, sesion: sistema }), {
       accion: 'denegar',
       motivo: 'perfil',
-      destino: 'admin-directorio',
+      destino: 'ajustes',
     })
   }
 })
